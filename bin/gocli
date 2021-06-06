@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -e
+
+dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+if [[ -n "${BUILD_FIRST}" ]]; then
+    printf >&2 "Building..."
+    make
+    printf >&2 "\r\033[K"
+fi
+
+GOOS="$(go env GOOS)"
+GOARCH="$(go env GOARCH)"
+
+"${dir}/${GOOS}_${GOARCH}/gocli" $*
