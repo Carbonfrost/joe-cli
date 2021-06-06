@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -e
+
+dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+if [[ -n "${BUILD_FIRST}" ]]; then
+    make
+fi
+
+eval "$(go env)"
+
+"${dir}/${GOOS}_${GOARCH}/min" $*
