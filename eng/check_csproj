@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+
+import xml.etree.ElementTree as ET
+import glob
+from typing import Callable, List, Dict
+import os
+import sys
+
+project_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + "/..")
+
+
+class Project:
+    def __init__(self, path: str, project_type: str):
+        super().__init__()
+        self.path = path
+        self.project_type = project_type
+        self.root = ET.parse(path)
+
+
+Rule = Callable[[Project], bool]
+
+
+def _create_rules():
+    required_properties = [
+        "Authors",
+        "Copyright",
+        "Description",
+        "RepositoryUrl",
+        "RootNamespace",
+        "TargetFramework",
+    ]
+
+    default_rules: List[Rule] = [
+        _required_property_rule(p) for p in required_properties
+    ]
+    src_rules = default_rules + [
+        _required_property_value_rule("IncludeSymbols", "true"),
+        _required_property_value_rule("SymbolPackageFormat", "snupkg"),
+        _required_property_rule("PackageId"),
+        _required_property_rule("PackageLicenseExpression"),
+        _required_property_rule("PackageProjectUrl"),
+    ]
+    test_rules = default_rules + [_required_property_value_rule("IsPackable", "false")]
+    return {
+        "src": src_rules,
+        "test": test_rules,
+    }
+
+
+def _diagnostic_message(path: str, message: str, line=-1, pos=-1):
+    if line == -1:
+        line = 1
+
+    location = line
+    if pos > 0:
+        location = f"{location}:{pos}"
+
+    rel_path = os.path.relpath(path)
+    _message(f"{rel_path}:{location}:{message}")
+
+
+def _message(message: str):
+    sys.stderr.write(message)
+    sys.stderr.write("\n")
+
+
+def _required_property_rule(property: str) -> Rule:
+    xpath = f".//PropertyGroup/{property}"
+
+    def result(project: Project) -> bool:
+        if 0 == len(project.root.findall(xpath)):
+            _diagnostic_message(project.path, f"required property not found {property}")
+            return False
+        return True
+
+    return result
+
+
+def _required_property_value_rule(property: str, value: str) -> Rule:
+    xpath = f".//PropertyGroup/{property}"
+
+    def result(project: Project) -> bool:
+        ele = project.root.find(xpath)
+        if ele is None or ele.text != value:
+            _diagnostic_message(
+                project.path, f"property {property} should be set to {value}"
+            )
+            return False
+        return True
+
+    return result
+
+
+def _projects():
+    return [
+        Project(path, "src")
+        for path in glob.glob(f"{project_dir}/dotnet/src/**/*.csproj")
+    ] + [
+        Project(path, "test")
+        for path in glob.glob(f"{project_dir}/dotnet/test/**/*.csproj")
+    ]
+
+
+def main():
+    rules = _create_rules()
+    problems = 0
+
+    for project in _projects():
+        for rule in rules[project.project_type]:
+            problems = problems + (0 if rule(project) else 1)
+    if problems > 0:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

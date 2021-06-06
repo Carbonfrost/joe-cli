@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# Prints out environment variables for the build environment.  You normally
+# source these in
+#
+set -e
+
+build_date=$(date +%Y-%m-%dT%H:%M:%S)
+
+# If not in git repo
+if ! git rev-parse 2>/dev/null; then
+  echo export ENG_VERSION="${ENG_VERSION:-0.0.0}"
+  echo export ENG_GIT_VERSION="0000000000000000000000000000000000000000"
+  echo export ENG_GIT_HEAD_REVISION="0000000000000000000000000000000000000000"
+  echo export ENG_GIT_BUILD_DATE="$build_date"
+  exit 0
+fi
+
+tag_version="$(git describe --tags --exact-match 2>/dev/null | tr -d 'v')"
+dirty=$(git diff --quiet || echo '.dirty')
+
+if [[ -n "$dirty" || -z "$tag_version" ]]; then
+
+  # Pre-release versions or a dirty working tree
+  tag_version="0.0.0"
+  latest_tag_version=$(
+    git describe --tags "$(git rev-list --tags --max-count=1)" 2>/dev/null | tr -d 'v'
+  )
+  build_metadata=$(git describe --tags 2>/dev/null | awk -F - '{print $(NF-1) "." $NF}')
+
+  [[ -z "$latest_tag_version" ]] && latest_tag_version="0.0.0"
+  [[ -z "$build_metadata" ]] && build_metadata="g"$(git rev-parse --short HEAD)
+
+  version="${latest_tag_version}+${build_metadata}${dirty}"
+else
+  version="$tag_version"
+fi
+
+if [[ -z "$ENG_VERSION" ]]; then
+  echo export ENG_VERSION="$version"
+fi
+
+echo export ENG_GIT_VERSION="$tag_version"
+echo export ENG_GIT_HEAD_REVISION="$(git rev-parse HEAD)"
+echo export ENG_GIT_BUILD_DATE="$build_date"

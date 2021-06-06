@@ -1,0 +1,8 @@
+#!/bin/bash
+output=$(mktemp "$(basename "$1")-out.XXXX")
+
+script -q /dev/null "$@" > "$output"
+
+if [[ $? != 0 ]]; then
+	cat "$output"
+fi

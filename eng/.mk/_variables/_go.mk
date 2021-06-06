@@ -1,0 +1,45 @@
+# ------- Go settings
+#
+
+# Variables used by Python settings
+ENG_GO_VARIABLES := \
+	GOPATH \
+	GO_LDFLAGS \
+
+ENG_GO_VERBOSE_VARIABLES := \
+	AR \
+	CC \
+	CGO_CFLAGS \
+	CGO_CPPFLAGS \
+	CGO_CXXFLAGS \
+	CGO_ENABLED \
+	CGO_FFLAGS \
+	CGO_LDFLAGS \
+	CXX \
+	GCCGO \
+	GO111MODULE \
+	GOARCH \
+	GOBIN \
+	GOCACHE \
+	GOENV \
+	GOEXE \
+	GOFLAGS \
+	GOGCCFLAGS \
+	GOHOSTARCH \
+	GOHOSTOS \
+	GOINSECURE \
+	GOMOD \
+	GONOPROXY \
+	GONOSUMDB \
+	GOOS \
+	GOPATH \
+	GOPRIVATE \
+	GOPROXY \
+	GOROOT \
+	GOSUMDB \
+	GOTMPDIR \
+	GOTOOLDIR \
+	PKG_CONFIG \
+
+# Whether we are meant to use Go.  (See go.mk for autodetection)
+ENG_USING_GO ?= $(ENG_AUTODETECT_USING_GO)

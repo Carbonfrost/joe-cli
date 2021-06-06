@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+#
+# Update the Brewfile with the given list of dependencies
+#
+# eng/brew_bundle_inject [-c|-b] BREW...
+#
+# --cask, -c    Dependencies are brew casks
+# --brew, -b    Dependencies are brew kegs
+#
+
+FILE=Brewfile
+TYPE=brew
+
+while [[ $# -gt 0 ]]
+do
+arg="$1"
+
+case $arg in
+    -c|--cask)
+    TYPE=cask
+    shift
+    ;;
+
+    -b|--brew)
+    TYPE=brew
+    shift
+    ;;
+
+    *)
+    LINE="${TYPE} '${1}'"
+    grep -qF -- "$LINE" "$FILE" || echo "$LINE" >> "$FILE"
+
+    shift
+    ;;
+esac
+done
