@@ -6,12 +6,12 @@
 	watch \
 
 BUILD_VERSION=$(shell git rev-parse --short HEAD)
-GO_LDFLAGS=-X 'github.com/Carbonfrost/gocli/internal/build.Version=$(BUILD_VERSION)'
+GO_LDFLAGS=-X 'github.com/Carbonfrost/joe-cli/internal/build.Version=$(BUILD_VERSION)'
 
 build: generate
 
 watch:
-	@ find Makefile . -name '*.go' | entr -c gocli --version --plus --time generate
+	@ find Makefile . -name '*.go' | entr -c cli --version --plus --time generate
 
 generate: -check-command-gucci
 	$(Q) gucci -s Type=bool -s Name=Bool flag.go.tpl | gofmt > flag_bool.go

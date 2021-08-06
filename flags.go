@@ -1,4 +1,4 @@
-package gocli
+package cli
 
 func names(name string) []string {
 	return []string{name}

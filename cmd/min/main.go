@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/Carbonfrost/gocli"
+	"github.com/Carbonfrost/joe-cli"
 )
 
 func main() {
-	(&gocli.App{}).Run([]string{})
+	(&cli.App{}).Run([]string{})
 }

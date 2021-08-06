@@ -1,4 +1,4 @@
-module github.com/Carbonfrost/gocli
+module github.com/Carbonfrost/joe-cli
 
 go 1.16
 

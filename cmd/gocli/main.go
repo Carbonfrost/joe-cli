@@ -4,32 +4,32 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Carbonfrost/gocli"
+	"github.com/Carbonfrost/joe-cli"
 )
 
 func main() {
-	app := &gocli.App{
-		Name: "gocli",
-		Flags: []gocli.Flag{
-			&gocli.StringFlag{
+	app := &cli.App{
+		Name: "cli",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
 				Name: "version",
 			},
-			&gocli.StringFlag{
+			&cli.StringFlag{
 				Name: "plus",
 			},
-			&gocli.StringFlag{
+			&cli.StringFlag{
 				Name: "time",
 			},
 		},
-		Commands: []*gocli.Command{
+		Commands: []*cli.Command{
 			{
 				Name: "generate",
-				Args: []gocli.Arg{
-					&gocli.StringArg{
+				Args: []cli.Arg{
+					&cli.StringArg{
 						Name: "kind",
 					},
 				},
-				Action: func(c *gocli.Context) error {
+				Action: func(c *cli.Context) error {
 					fmt.Println("TODO: handle generating")
 					return nil
 				},

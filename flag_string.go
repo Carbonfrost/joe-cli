@@ -1,4 +1,4 @@
-package gocli
+package cli
 
 import (
 	"github.com/pborman/getopt"
