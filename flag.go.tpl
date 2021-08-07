@@ -16,13 +16,20 @@ type {{ $flagName }} struct {
   Destination *{{ .Type }}
   Action      ActionFunc
   HelpText    string
+
+  option getopt.Option
 }
 
 // {{ $argName }} provides a {{ .Type }} arg
 type {{ $argName }} struct {
-  Name   string
-  Value  func(*{{ .Type }})
-  Action ActionFunc
+  Name        string
+  Value       {{ .Type }}
+  Default     string
+  Destination *{{ .Type }}
+  Action      ActionFunc
+  HelpText    string
+
+  internal {{ .Type | lower }}Value
 }
 
 func (c *Context) {{ .Name }}(name string) {{ .Type }} {
@@ -30,9 +37,15 @@ func (c *Context) {{ .Name }}(name string) {{ .Type }} {
 }
 
 func (f *{{ $flagName }}) applyToSet(s *getopt.Set) {
+  dest := f.Destination
+  
+  if dest == nil {
+    var p {{ .Type }}
+    dest = &p
+  }
   for _, name := range f.Names() {
     long, short := flagName(name)
-    s.{{ .Name }}Long(long, short, f.Default, f.HelpText, name)
+    f.option = s.{{ .Name }}VarLong(dest, long, short, f.HelpText, name)
   }
 }
 
@@ -40,6 +53,17 @@ func (f *{{ $flagName }}) Names() []string {
   return names(f.Name)
 }
 
-func (f *{{ $argName }}) Getopt(args []string) error {
+func (a *{{ $argName }}) Set(arg string) error {
+  err := a.internal.Set(arg)
+  if err != nil {
+    return err
+  }
+  dest := a.Destination
+  
+  if dest == nil {
+    var p {{ .Type }}
+    dest = &p
+  }  
+  *dest = {{ .Type }}(a.internal)
   return nil
 }

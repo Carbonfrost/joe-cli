@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"context"
-
 	"github.com/pborman/getopt"
 )
 
@@ -24,29 +22,25 @@ func (c *Command) Command(name string) (*Command, bool) {
 	return nil, false
 }
 
-func (c *Command) applyArgs(ctx *Context, args []string) error {
-	for _, arg := range c.actualArgs() {
-		err := arg.Getopt(args)
-		if err != nil {
-			// Failed to set the option to the corresponding flag
-			return err
-		}
+func (c *Command) createAndApplySet() *getopt.Set {
+	set := getopt.New()
+	for _, f := range c.actualFlags() {
+		f.applyToSet(set)
 	}
-	if len(args) > 0 {
-		panic("not implemented: apply rest of args to command")
-	}
-	return nil
+	return set
 }
 
-func (c *Command) newContext(cctx context.Context, parent *Context) *Context {
-	ctx := &Context{
-		Context: cctx,
-		set:     getopt.New(),
+func (c *Command) parseAndExecute(ctx *Context, args []string) error {
+	ctx, err := ctx.commandContext(c, args).applySubcommands()
+	if err != nil {
+		return err
 	}
-	for _, f := range c.actualFlags() {
-		f.applyToSet(ctx.set)
+
+	if err := ctx.applyFlagsAndArgs(); err != nil {
+		return err
 	}
-	return ctx
+
+	return ctx.executeCommand()
 }
 
 func (c *Command) actualArgs() []Arg {

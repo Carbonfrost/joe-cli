@@ -5,7 +5,7 @@ import (
 )
 
 type Arg interface {
-	Getopt(args []string) error
+	Set(string) error
 }
 
 type Flag interface {

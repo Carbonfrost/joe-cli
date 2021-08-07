@@ -14,13 +14,20 @@ type BoolFlag struct {
 	Destination *bool
 	Action      ActionFunc
 	HelpText    string
+
+	option getopt.Option
 }
 
 // BoolArg provides a bool arg
 type BoolArg struct {
-	Name   string
-	Value  func(*bool)
-	Action ActionFunc
+	Name        string
+	Value       bool
+	Default     string
+	Destination *bool
+	Action      ActionFunc
+	HelpText    string
+
+	internal boolValue
 }
 
 func (c *Context) Bool(name string) bool {
@@ -28,9 +35,15 @@ func (c *Context) Bool(name string) bool {
 }
 
 func (f *BoolFlag) applyToSet(s *getopt.Set) {
+	dest := f.Destination
+
+	if dest == nil {
+		var p bool
+		dest = &p
+	}
 	for _, name := range f.Names() {
 		long, short := flagName(name)
-		s.BoolLong(long, short, f.Default, f.HelpText, name)
+		f.option = s.BoolVarLong(dest, long, short, f.HelpText, name)
 	}
 }
 
@@ -38,6 +51,17 @@ func (f *BoolFlag) Names() []string {
 	return names(f.Name)
 }
 
-func (f *BoolArg) Getopt(args []string) error {
+func (a *BoolArg) Set(arg string) error {
+	err := a.internal.Set(arg)
+	if err != nil {
+		return err
+	}
+	dest := a.Destination
+
+	if dest == nil {
+		var p bool
+		dest = &p
+	}
+	*dest = bool(a.internal)
 	return nil
 }

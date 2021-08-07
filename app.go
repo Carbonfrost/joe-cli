@@ -31,55 +31,17 @@ func (a *App) Run(args []string) {
 }
 
 func (a *App) RunContext(ctx context.Context, args []string) error {
-	return parseAndExecute(ctx, a.createRoot(args[0]), args[1:])
+	root := a.createRoot(args[0])
+	return root.parseAndExecute(rootContext(ctx), args)
 }
 
 func (a *App) createRoot(name string) *Command {
 	return &Command{
 		Name:        name,
 		Flags:       a.Flags,
+		Args:        a.Args,
 		Subcommands: a.Commands,
 		Action:      a.Action,
 		Before:      a.Before,
 	}
-}
-
-func parseAndExecute(cctx context.Context, current *Command, args []string) error {
-	ctx := current.newContext(cctx, nil)
-	for len(args) > 0 {
-		err := ctx.set.Getopt(args, nil)
-		if err != nil {
-			// Failed to set the option to the corresponding flag
-			return err
-		}
-		args = ctx.set.Args()
-
-		// Args were modified by Getopt to apply any flags and stopped
-		// at the first argument.  If the argument matches a sub-command, then
-		// we push the command onto the stack
-		if len(args) > 0 {
-			if sub, ok := current.Command(args[0]); ok {
-				current = sub
-				ctx = current.newContext(cctx, ctx)
-			} else {
-				// Stop looking for commands; this is it
-				break
-			}
-		}
-	}
-
-	var (
-		defaultBefore = func(*Context) error {
-			return nil
-		}
-		defaultAfter = emptyActionImpl
-	)
-
-	current.applyArgs(ctx, args)
-	err := hookExecute(current.Before, defaultBefore, ctx)
-	if err != nil {
-		return err
-	}
-
-	return hookExecute(current.Action, defaultAfter, ctx)
 }
