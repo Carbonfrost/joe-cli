@@ -68,11 +68,18 @@ func parseAndExecute(cctx context.Context, current *Command, args []string) erro
 		}
 	}
 
+	var (
+		defaultBefore = func(*Context) error {
+			return nil
+		}
+		defaultAfter = emptyActionImpl
+	)
+
 	current.applyArgs(ctx, args)
-	err := execute(current.Before, ctx)
+	err := hookExecute(current.Before, defaultBefore, ctx)
 	if err != nil {
 		return err
 	}
 
-	return execute(current.Action, ctx)
+	return hookExecute(current.Action, defaultAfter, ctx)
 }
