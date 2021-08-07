@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"os"
 )
 
 // App provides the definition of an app, which is composed of commands, flags, and arguments.
@@ -26,8 +28,12 @@ type App struct {
 	Before ActionFunc
 }
 
+var (
+	ExitHandler func(string, int)
+)
+
 func (a *App) Run(args []string) {
-	_ = a.RunContext(context.TODO(), args)
+	exit(a.RunContext(context.TODO(), args))
 }
 
 func (a *App) RunContext(ctx context.Context, args []string) error {
@@ -44,4 +50,27 @@ func (a *App) createRoot(name string) *Command {
 		Action:      a.Action,
 		Before:      a.Before,
 	}
+}
+
+func exit(err error) {
+	if err == nil {
+		return
+	}
+
+	handler := ExitHandler
+	code := 1
+	if handler == nil {
+		handler = defaultExitHandler
+	}
+	if coder, ok := err.(ExitCoder); ok {
+		code = coder.ExitCode()
+	}
+	handler(err.Error(), code)
+}
+
+func defaultExitHandler(message string, status int) {
+	if message != "" {
+		fmt.Fprintln(os.Stderr, message)
+	}
+	os.Exit(status)
 }
