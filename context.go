@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 
-	"github.com/pborman/getopt"
+	"github.com/pborman/getopt/v2"
 )
 
 // Context provides the context in which the app, command, or flag is executing

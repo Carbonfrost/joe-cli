@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/pborman/getopt"
+	"github.com/pborman/getopt/v2"
 )
 
 type Arg interface {

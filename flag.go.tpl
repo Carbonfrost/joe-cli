@@ -1,7 +1,7 @@
 package cli
 
 import (
-  "github.com/pborman/getopt"
+  "github.com/pborman/getopt/v2"
 )
 
 // DON'T EDIT THIS FILE.  This file was generated from a template, flag.go.tpl
@@ -45,7 +45,7 @@ func (f *{{ $flagName }}) applyToSet(s *getopt.Set) {
   }
   for _, name := range f.Names() {
     long, short := flagName(name)
-    f.option = s.{{ .Name }}VarLong(dest, long, short, f.HelpText, name)
+    f.option = s.FlagLong(dest, long, short, f.HelpText, name)
   }
 }
 
