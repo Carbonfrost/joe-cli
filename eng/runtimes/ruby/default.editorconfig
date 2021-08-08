@@ -1,0 +1,5 @@
+[*.gemspec]
+indent_size = 2
+
+[*.rb]
+indent_size = 2

@@ -30,8 +30,13 @@ ENG_ENABLED_RUNTIMES += ruby
 
 ## Install Ruby and project dependencies
 ruby/init: -ruby/init
+ruby/fmt: -ruby/fmt
+
+fmt: ruby/fmt
+
 else
 ruby/init: -hint-unsupported-ruby
+ruby/fmt: -hint-unsupported-ruby
 endif
 
 -ruby/init: -check-command-rbenv
@@ -39,6 +44,9 @@ endif
 	$(Q) $(OUTPUT_COLLAPSED) rbenv install -s
 	$(Q) $(OUTPUT_COLLAPSED) gem install bundler
 	$(Q) [ -f Gemfile ] && $(OUTPUT_HIDDEN) bundle install
+
+-ruby/fmt: -check-command-rufo
+	$(Q) rufo .
 
 -use/ruby-Gemfile: -check-command-Gemfile
 	$(Q) [ -f Gemfile ] || bundle init

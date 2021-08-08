@@ -1,3 +1,12 @@
+#!/usr/bin/env bash
+
+#
+# editorconfig_merge <editor_config_file>...
+#
+
+echo "# This file was generated.  Investigate \`make .editorconfig' to update"
+echo "root = true"
+
 awk '/^$/{
    next
 }
@@ -16,4 +25,4 @@ a[hdr] != "" {
 END {
    for (i=1; i<=n; i++)
       print seq[i] ORS a[seq[i]] (i<n ? ORS : "")
-}' f1 f2
+}' $*
