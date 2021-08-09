@@ -14,5 +14,6 @@ watch:
 	@ find Makefile . -name '*.go' | entr -c cli --version --plus --time generate
 
 generate: -check-command-gucci
+	$(Q) go generate ./...
 	$(Q) gucci -s Type=bool -s Name=Bool flag.go.tpl | gofmt > flag_bool.go
 	$(Q) gucci -s Type=string -s Name=String flag.go.tpl | gofmt > flag_string.go

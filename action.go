@@ -8,6 +8,8 @@ import (
 // ActionFunc provides the basic function for
 type ActionFunc func(*Context) error
 
+//counterfeiter:generate . ActionHandler
+
 // Action represents the building block of the various actions
 // to perform when an app, command, flag, or argument is being evaluated.
 type ActionHandler interface {
