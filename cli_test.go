@@ -45,10 +45,10 @@ var _ = Describe("RunContext", func() {
 								Destination: &sub.Flag1,
 							},
 						},
-						Action: func(*cli.Context) error {
+						Action: cli.ActionFunc(func(*cli.Context) error {
 							global.Command = "sub"
 							return nil
-						},
+						}),
 					},
 				},
 			}

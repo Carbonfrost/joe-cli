@@ -9,8 +9,8 @@ type Command struct {
 	Subcommands []*Command
 	Flags       []Flag
 	Args        []Arg
-	Action      ActionFunc
-	Before      ActionFunc
+	Action      ActionHandler
+	Before      ActionHandler
 }
 
 func (c *Command) Command(name string) (*Command, bool) {

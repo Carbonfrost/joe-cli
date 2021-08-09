@@ -14,7 +14,7 @@ type {{ $flagName }} struct {
   Value       {{ .Type }}
   Default     string
   Destination *{{ .Type }}
-  Action      ActionFunc
+  Action      ActionHandler
   HelpText    string
 
   option getopt.Option
@@ -26,7 +26,7 @@ type {{ $argName }} struct {
   Value       {{ .Type }}
   Default     string
   Destination *{{ .Type }}
-  Action      ActionFunc
+  Action      ActionHandler
   HelpText    string
 
   internal {{ .Type | lower }}Value

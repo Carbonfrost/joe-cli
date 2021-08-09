@@ -29,10 +29,10 @@ func main() {
 						Name: "kind",
 					},
 				},
-				Action: func(c *cli.Context) error {
+				Action: cli.Action(func() error {
 					fmt.Println("TODO: handle generating")
 					return nil
-				},
+				}),
 			},
 		},
 	}

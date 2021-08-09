@@ -12,7 +12,7 @@ type BoolFlag struct {
 	Value       bool
 	Default     string
 	Destination *bool
-	Action      ActionFunc
+	Action      ActionHandler
 	HelpText    string
 
 	option getopt.Option
@@ -24,7 +24,7 @@ type BoolArg struct {
 	Value       bool
 	Default     string
 	Destination *bool
-	Action      ActionFunc
+	Action      ActionHandler
 	HelpText    string
 
 	internal boolValue

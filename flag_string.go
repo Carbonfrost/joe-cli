@@ -12,7 +12,7 @@ type StringFlag struct {
 	Value       string
 	Default     string
 	Destination *string
-	Action      ActionFunc
+	Action      ActionHandler
 	HelpText    string
 
 	option getopt.Option
@@ -24,7 +24,7 @@ type StringArg struct {
 	Value       string
 	Default     string
 	Destination *string
-	Action      ActionFunc
+	Action      ActionHandler
 	HelpText    string
 
 	internal stringValue

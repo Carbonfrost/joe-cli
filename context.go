@@ -135,10 +135,8 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 
 func (ctx *Context) executeCommand() error {
 	var (
-		defaultBefore = func(*Context) error {
-			return nil
-		}
-		defaultAfter = emptyActionImpl
+		defaultBefore = emptyAction
+		defaultAfter  = emptyAction
 	)
 
 	cmd := ctx.command

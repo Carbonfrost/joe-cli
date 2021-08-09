@@ -10,19 +10,19 @@ type ActionFunc func(*Context) error
 
 // Action represents the building block of the various actions
 // to perform when an app, command, flag, or argument is being evaluated.
-type Action interface {
+type ActionHandler interface {
 	Execute(*Context) error
 }
 
 var (
-	emptyAction Action = ActionFunc(emptyActionImpl)
+	emptyAction ActionHandler = ActionFunc(emptyActionImpl)
 )
 
 // Pipeline combines various actions into a single action
 func Pipeline(actions ...interface{}) ActionFunc {
-	myActions := make([]Action, 0, len(actions))
+	myActions := make([]ActionHandler, 0, len(actions))
 	for i, a := range actions {
-		myActions[i] = NewAction(a)
+		myActions[i] = Action(a)
 	}
 
 	return func(c *Context) (err error) {
@@ -36,14 +36,14 @@ func Pipeline(actions ...interface{}) ActionFunc {
 	}
 }
 
-func NewAction(item interface{}) Action {
+func Action(item interface{}) ActionHandler {
 	switch a := item.(type) {
-	case func(*Context) error:
-		return ActionFunc(a)
-	case Action:
-		return a
 	case nil:
 		return nil
+	case func(*Context) error:
+		return ActionFunc(a)
+	case ActionHandler:
+		return a
 	case func(*Context):
 		return ActionFunc(func(c *Context) error {
 			a(c)
@@ -63,6 +63,9 @@ func NewAction(item interface{}) Action {
 }
 
 func (af ActionFunc) Execute(c *Context) error {
+	if af == nil {
+		return nil
+	}
 	return af(c)
 }
 
@@ -70,16 +73,16 @@ func emptyActionImpl(*Context) error {
 	return nil
 }
 
-func execute(af ActionFunc, c *Context) error {
+func execute(af ActionHandler, c *Context) error {
 	if af == nil {
 		return nil
 	}
-	return af(c)
+	return af.Execute(c)
 }
 
-func hookExecute(af ActionFunc, defaultFunc ActionFunc, c *Context) error {
-	if err := execute(af, c); err != nil {
+func hookExecute(x, y ActionHandler, c *Context) error {
+	if err := execute(x, c); err != nil {
 		return err
 	}
-	return execute(defaultFunc, c)
+	return execute(y, c)
 }
