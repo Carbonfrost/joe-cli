@@ -10,22 +10,22 @@ import (
 func main() {
 	app := &cli.App{
 		Name: "cli",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
+		Flags: []*cli.Flag{
+			{
 				Name: "version",
 			},
-			&cli.StringFlag{
+			{
 				Name: "plus",
 			},
-			&cli.StringFlag{
+			{
 				Name: "time",
 			},
 		},
 		Commands: []*cli.Command{
 			{
 				Name: "generate",
-				Args: []cli.Arg{
-					&cli.StringArg{
+				Args: []*cli.Arg{
+					{
 						Name: "kind",
 					},
 				},

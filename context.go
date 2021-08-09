@@ -82,7 +82,7 @@ func (c *Context) applySubcommands() (*Context, error) {
 func (ctx *Context) applyFlagsAndArgs() (err error) {
 	var (
 		currentIndex = -1
-		current      Arg
+		current      *Arg
 
 		// ctx.args contains the name of the command and its arguments
 		args []string = ctx.args

@@ -15,10 +15,10 @@ type App struct {
 	Commands []*Command
 
 	// Flags supplies global flags for use with the app
-	Flags []Flag
+	Flags []*Flag
 
 	// Args will be bound for non-command arguments
-	Args []Arg
+	Args []*Arg
 
 	// Action specifies the action to run for the app, assuming no other more specific command
 	// has been selected

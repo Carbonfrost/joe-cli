@@ -18,8 +18,8 @@ var (
 func fileRequiredApp() *cli.App {
 	// <FILE>
 	return &cli.App{
-		Args: []cli.Arg{
-			&cli.StringArg{
+		Args: []*cli.Arg{
+			{
 				Name: "FILE",
 			},
 		},
@@ -29,8 +29,8 @@ func fileRequiredApp() *cli.App {
 func optionalArgumentApp() *cli.App {
 	// <arg>
 	return &cli.App{
-		Args: []cli.Arg{
-			&cli.StringArg{
+		Args: []*cli.Arg{
+			{
 				Name: "a",
 			},
 		},

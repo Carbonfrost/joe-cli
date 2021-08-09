@@ -30,19 +30,19 @@ var _ = Describe("RunContext", func() {
 				sub    mappedValues
 			)
 			var app = &cli.App{
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:        "global",
-						Destination: &global.Global,
+				Flags: []*cli.Flag{
+					{
+						Name:  "global",
+						Value: &global.Global,
 					},
 				},
 				Commands: []*cli.Command{
 					&cli.Command{
 						Name: "sub",
-						Flags: []cli.Flag{
-							&cli.BoolFlag{
-								Name:        "flag1",
-								Destination: &sub.Flag1,
+						Flags: []*cli.Flag{
+							{
+								Name:  "flag1",
+								Value: &sub.Flag1,
 							},
 						},
 						Action: cli.ActionFunc(func(*cli.Context) error {
@@ -103,24 +103,24 @@ var _ = Describe("RunContext", func() {
 		func(arguments string, expected types.GomegaMatcher) {
 			var result mappedValues
 			var app = &cli.App{
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:        "flag1",
-						Destination: &result.Flag1,
+				Flags: []*cli.Flag{
+					{
+						Name:  "flag1",
+						Value: &result.Flag1,
 					},
-					&cli.BoolFlag{
-						Name:        "flag2",
-						Destination: &result.Flag2,
+					{
+						Name:  "flag2",
+						Value: &result.Flag2,
 					},
-					&cli.StringFlag{
-						Name:        "flag3",
-						Destination: &result.Flag3,
+					{
+						Name:  "flag3",
+						Value: &result.Flag3,
 					},
 				},
-				Args: []cli.Arg{
-					&cli.StringArg{
-						Name:        "arg",
-						Destination: &result.Arg,
+				Args: []*cli.Arg{
+					{
+						Name:  "arg",
+						Value: &result.Arg,
 					},
 				},
 			}

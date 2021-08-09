@@ -13,8 +13,8 @@ var _ = Describe("Action", func() {
 	XIt("executes action on setting flag", func() {
 		act := new(joeclifakes.FakeActionHandler)
 		app := &cli.App{
-			Flags: []cli.Flag{
-				&cli.StringFlag{
+			Flags: []*cli.Flag{
+				{
 					Name:   "f",
 					Action: act,
 				},

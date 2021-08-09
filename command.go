@@ -7,8 +7,8 @@ import (
 type Command struct {
 	Name        string
 	Subcommands []*Command
-	Flags       []Flag
-	Args        []Arg
+	Flags       []*Flag
+	Args        []*Arg
 	Action      ActionHandler
 	Before      ActionHandler
 }
@@ -43,16 +43,16 @@ func (c *Command) parseAndExecute(ctx *Context, args []string) error {
 	return ctx.executeCommand()
 }
 
-func (c *Command) actualArgs() []Arg {
+func (c *Command) actualArgs() []*Arg {
 	if c.Args == nil {
-		return make([]Arg, 0)
+		return make([]*Arg, 0)
 	}
 	return c.Args
 }
 
-func (c *Command) actualFlags() []Flag {
+func (c *Command) actualFlags() []*Flag {
 	if c.Flags == nil {
-		return make([]Flag, 0)
+		return make([]*Flag, 0)
 	}
 	return c.Flags
 }
