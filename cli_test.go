@@ -102,7 +102,7 @@ var _ = Describe("RunContext", func() {
 	DescribeTable("bind args and flags",
 		func(arguments string, expected types.GomegaMatcher) {
 			var result mappedValues
-			var app = &cli.App{
+			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
 						Name:  "flag1",
@@ -196,6 +196,12 @@ var _ = Describe("RunContext", func() {
 			app("<FILE>"),
 			"",
 			Equal("argument FILE required"),
+		),
+		Entry(
+			"missing command",
+			app("sub"),
+			"unknown",
+			Equal(`"unknown" is not a command`),
 		),
 	)
 })

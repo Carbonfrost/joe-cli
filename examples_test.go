@@ -12,6 +12,7 @@ var (
 	appExamples = map[string]*cli.App{
 		"<FILE>": fileRequiredApp(),
 		"<arg>":  optionalArgumentApp(),
+		"sub":    subcommandApp(),
 	}
 )
 
@@ -32,6 +33,26 @@ func optionalArgumentApp() *cli.App {
 		Args: []*cli.Arg{
 			{
 				Name: "a",
+			},
+		},
+	}
+}
+
+func subcommandApp() *cli.App {
+	return &cli.App{
+		Flags: []*cli.Flag{
+			{
+				Name: "flag1",
+			},
+		},
+		Args: []*cli.Arg{
+			{
+				Name: "arg",
+			},
+		},
+		Commands: []*cli.Command{
+			{
+				Name: "sub",
 			},
 		},
 	}

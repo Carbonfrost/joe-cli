@@ -24,6 +24,7 @@ type exitError struct {
 
 const (
 	UnexpectedArgument = ErrorCode(iota)
+	CommandNotFound
 )
 
 func Exit(message ...interface{}) ExitCoder {
@@ -83,6 +84,8 @@ func (e ErrorCode) String() string {
 	switch e {
 	case UnexpectedArgument:
 		return "unexpected argument"
+	case CommandNotFound:
+		return "is not a command"
 	}
 	return "unknown error"
 }
@@ -93,6 +96,14 @@ func (e *exitError) Error() string {
 
 func (e *exitError) ExitCode() int {
 	return e.exitCode
+}
+
+func commandMissing(name string) error {
+	return &Error{
+		Code: CommandNotFound,
+		Err:  fmt.Errorf("%q is not a command", name),
+		Name: name,
+	}
 }
 
 func unexpectedArgument(value string) *Error {

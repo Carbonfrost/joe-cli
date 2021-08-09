@@ -18,6 +18,9 @@ type Context struct {
 }
 
 func (c *Context) Parent() *Context {
+	if c == nil {
+		return nil
+	}
 	return c.parent
 }
 
@@ -25,10 +28,7 @@ func (c *Context) Command() *Command {
 	if c.command != nil {
 		return c.command
 	}
-	if c.Parent() != nil {
-		return c.Parent().Command()
-	}
-	return nil
+	return c.Parent().Command()
 }
 
 func (*Context) Value(name string) interface{} {
@@ -70,6 +70,8 @@ func (c *Context) applySubcommands() (*Context, error) {
 		if len(args) > 0 {
 			if sub, ok := ctx.command.Command(args[0]); ok {
 				ctx = ctx.commandContext(sub, args)
+			} else if len(ctx.command.Subcommands) > 0 {
+				return c, commandMissing(args[0])
 			} else {
 				// Stop looking for commands; this is it
 				break
