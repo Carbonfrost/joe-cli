@@ -11,10 +11,11 @@ type Context struct {
 	context.Context
 	parent *Context
 
+	target interface{} // *Command, *Flag, or *Arg
+
 	// When the context is being used for a command
-	command *Command
-	args    []string
-	set     *getopt.Set
+	args []string
+	set  *getopt.Set
 }
 
 func (c *Context) Parent() *Context {
@@ -25,10 +26,24 @@ func (c *Context) Parent() *Context {
 }
 
 func (c *Context) Command() *Command {
-	if c.command != nil {
-		return c.command
+	if cmd, ok := c.target.(*Command); ok {
+		return cmd
 	}
 	return c.Parent().Command()
+}
+
+func (c *Context) Arg() *Arg {
+	if a, ok := c.target.(*Arg); ok {
+		return a
+	}
+	return c.Parent().Arg()
+}
+
+func (c *Context) Flag() *Flag {
+	if f, ok := c.target.(*Flag); ok {
+		return f
+	}
+	return c.Parent().Flag()
 }
 
 func (*Context) Value(name string) interface{} {
@@ -46,10 +61,18 @@ func rootContext(cctx context.Context) *Context {
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	return &Context{
 		Context: c.Context,
-		command: cmd,
+		target:  cmd,
 		args:    args,
 		parent:  c,
 		set:     cmd.createAndApplySet(),
+	}
+}
+
+func (c *Context) optionContext(opt option) *Context {
+	return &Context{
+		Context: c.Context,
+		target:  opt,
+		parent:  c,
 	}
 }
 
@@ -68,9 +91,10 @@ func (c *Context) applySubcommands() (*Context, error) {
 		// at the first argument.  If the argument matches a sub-command, then
 		// we push the command onto the stack
 		if len(args) > 0 {
-			if sub, ok := ctx.command.Command(args[0]); ok {
+			cmd := ctx.target.(*Command)
+			if sub, ok := cmd.Command(args[0]); ok {
 				ctx = ctx.commandContext(sub, args)
-			} else if len(ctx.command.Subcommands) > 0 {
+			} else if len(cmd.Subcommands) > 0 {
 				return c, commandMissing(args[0])
 			} else {
 				// Stop looking for commands; this is it
@@ -90,7 +114,8 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 		args []string = ctx.args
 
 		enumerator = func() bool {
-			actual := ctx.command.actualArgs()
+			cmd := ctx.target.(*Command)
+			actual := cmd.actualArgs()
 			currentIndex = currentIndex + 1
 			if currentIndex < len(actual) {
 				current = actual[currentIndex]
@@ -136,15 +161,54 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 }
 
 func (ctx *Context) executeCommand() error {
+	cmd := ctx.target.(*Command)
+
 	var (
-		defaultBefore = emptyAction
-		defaultAfter  = emptyAction
+		defaultBefore = ActionFunc(func(_ *Context) error {
+			// Invoke the Before action on all flags and args, but only the actual
+			// Action when the flag or arg was set
+			for _, f := range cmd.flagsAndArgs() {
+				err := ctx.optionContext(f).executeBeforeOption()
+				if err != nil {
+					return err
+				}
+			}
+			for _, f := range cmd.flagsAndArgs() {
+				if f.Seen() {
+					err := ctx.optionContext(f).executeOption()
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		})
+		defaultAfter = emptyAction
 	)
 
-	cmd := ctx.command
 	if err := hookExecute(cmd.Before, defaultBefore, ctx); err != nil {
 		return err
 	}
 
 	return hookExecute(cmd.Action, defaultAfter, ctx)
+}
+
+func (ctx *Context) executeOption() error {
+	f := ctx.target.(option)
+
+	var (
+		defaultAfter = emptyAction
+	)
+
+	return hookExecute(f.action(), defaultAfter, ctx)
+}
+
+func (ctx *Context) executeBeforeOption() error {
+	a := ctx.target.(option)
+
+	var (
+		defaultBefore = emptyAction
+	)
+
+	return hookExecute(a.before(), defaultBefore, ctx)
 }

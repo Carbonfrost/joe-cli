@@ -9,8 +9,7 @@ import (
 
 var _ = Describe("Action", func() {
 
-	// TODO Detect flag being set and invoke action
-	XIt("executes action on setting flag", func() {
+	It("executes action on setting flag", func() {
 		act := new(joeclifakes.FakeActionHandler)
 		app := &cli.App{
 			Flags: []*cli.Flag{
