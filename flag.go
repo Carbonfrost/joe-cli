@@ -85,10 +85,6 @@ type optionWrapper struct {
 	arg *Arg
 }
 
-func (c *Context) String(name string) string {
-	return c.Value(name).(string)
-}
-
 func (f *Flag) applyToSet(s *getopt.Set) {
 	f.Value = ensureDestination(f.Value)
 	for _, name := range f.Names() {
@@ -154,4 +150,17 @@ func ensureDestination(dest interface{}) interface{} {
 		return &p
 	}
 	return dest
+}
+
+func names(name string) []string {
+	return []string{name}
+}
+
+// flagName gets the long and short name for getopt given the name specified in the flag
+func flagName(name string) (string, rune) {
+	if len(name) == 1 {
+		return "", []rune(name)[0]
+	} else {
+		return name, 0
+	}
 }
