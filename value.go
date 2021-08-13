@@ -18,6 +18,70 @@ type generic struct {
 	p interface{}
 }
 
+func Bool() *bool {
+	return new(bool)
+}
+
+func String() *string {
+	return new(string)
+}
+
+func List() *[]string {
+	return new([]string)
+}
+
+func Int() *int {
+	return new(int)
+}
+
+func Int8() *int8 {
+	return new(int8)
+}
+
+func Int16() *int16 {
+	return new(int16)
+}
+
+func Int32() *int32 {
+	return new(int32)
+}
+
+func Int64() *int64 {
+	return new(int64)
+}
+
+func UInt() *uint {
+	return new(uint)
+}
+
+func UInt8() *uint8 {
+	return new(uint8)
+}
+
+func UInt16() *uint16 {
+	return new(uint16)
+}
+
+func UInt32() *uint32 {
+	return new(uint32)
+}
+
+func UInt64() *uint64 {
+	return new(uint64)
+}
+
+func Float32() *float32 {
+	return new(float32)
+}
+
+func Float64() *float64 {
+	return new(float64)
+}
+
+func Duration() *time.Duration {
+	return new(time.Duration)
+}
+
 func (g *generic) Set(value string, opt getopt.Option) error {
 	strconvErr := func(err error) error {
 		if e, ok := err.(*strconv.NumError); ok {

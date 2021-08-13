@@ -95,6 +95,66 @@ func (*Context) Value(name string) interface{} {
 	panic("not implemented: context value")
 }
 
+func (c *Context) Bool(name string) bool {
+	return *c.Value(name).(*bool)
+}
+
+func (c *Context) String(name string) string {
+	return *c.Value(name).(*string)
+}
+
+func (c *Context) List(name string) []string {
+	return *c.Value(name).(*[]string)
+}
+
+func (c *Context) Int(name string) int {
+	return *c.Value(name).(*int)
+}
+
+func (c *Context) Int8(name string) int8 {
+	return *c.Value(name).(*int8)
+}
+
+func (c *Context) Int16(name string) int16 {
+	return *c.Value(name).(*int16)
+}
+
+func (c *Context) Int32(name string) int32 {
+	return *c.Value(name).(*int32)
+}
+
+func (c *Context) Int64(name string) int64 {
+	return *c.Value(name).(*int64)
+}
+
+func (c *Context) UInt(name string) uint {
+	return *c.Value(name).(*uint)
+}
+
+func (c *Context) UInt8(name string) uint8 {
+	return *c.Value(name).(*uint8)
+}
+
+func (c *Context) UInt16(name string) uint16 {
+	return *c.Value(name).(*uint16)
+}
+
+func (c *Context) UInt32(name string) uint32 {
+	return *c.Value(name).(*uint32)
+}
+
+func (c *Context) UInt64(name string) uint64 {
+	return *c.Value(name).(*uint64)
+}
+
+func (c *Context) Float32(name string) float32 {
+	return *c.Value(name).(*float32)
+}
+
+func (c *Context) Float64(name string) float64 {
+	return *c.Value(name).(*float64)
+}
+
 func (c *Context) Name() string {
 	switch t := c.target.(type) {
 	case *Arg:
