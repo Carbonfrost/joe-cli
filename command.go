@@ -118,6 +118,28 @@ func (c *Command) Arg(name string) (*Arg, bool) {
 	return findArgByName(c.Args, name)
 }
 
+func (c *Command) VisibleArgs() []*Arg {
+	res := make([]*Arg, 0, len(c.actualArgs()))
+	for _, o := range c.actualArgs() {
+		if o.flags.hidden() {
+			continue
+		}
+		res = append(res, o)
+	}
+	return res
+}
+
+func (c *Command) VisibleFlags() []*Flag {
+	res := make([]*Flag, 0, len(c.actualFlags()))
+	for _, o := range c.actualFlags() {
+		if o.flags.hidden() {
+			continue
+		}
+		res = append(res, o)
+	}
+	return res
+}
+
 func (c *Command) createValues() map[string]interface{} {
 	values := map[string]interface{}{}
 	for _, f := range c.actualFlags() {
@@ -254,16 +276,16 @@ func (c CommandsByName) Swap(i, j int) {
 }
 
 func getGroup(f *Flag) optionGroup {
-	if f.Hidden {
+	if f.internalFlags().hidden() {
 		return hidden
 	}
 	if hasOnlyShortName(f) && hasNoValue(f) {
-		if f.Required {
+		if f.internalFlags().required() {
 			return onlyShortNoValue
 		}
 		return onlyShortNoValueOptional
 	}
-	if f.Required {
+	if f.internalFlags().required() {
 		return other
 	}
 	return otherOptional

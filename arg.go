@@ -12,11 +12,10 @@ type Arg struct {
 	FilePath    string
 	HelpText    string
 	UsageText   string
-	Required    bool
-	Hidden      bool
 	Value       interface{}
 	DefaultText string
 	NArg        int
+	Options     Option
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
@@ -28,6 +27,7 @@ type Arg struct {
 
 	internal *generic
 	count    int
+	flags    internalFlags
 }
 
 type optionWrapper struct {
@@ -54,6 +54,14 @@ func (a *Arg) Set(arg string) error {
 	return a.ensureInternal().Set(arg, optionWrapper{arg: a})
 }
 
+func (a *Arg) SetHidden() {
+	a.flags |= internalFlagHidden
+}
+
+func (a *Arg) SetRequired() {
+	a.flags |= internalFlagRequired
+}
+
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
 	return a.newSynopsis().formatString()
@@ -64,6 +72,14 @@ func (a *Arg) newSynopsis() *argSynopsis {
 		value: fmt.Sprintf("<%s>", a.Name),
 		multi: a.NArg < 0 || a.NArg > 1,
 	}
+}
+
+func (a *Arg) internalFlags() internalFlags {
+	return a.flags
+}
+
+func (a *Arg) options() Option {
+	return a.Options
 }
 
 func (a *Arg) action() ActionHandler {

@@ -68,6 +68,16 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 			ContainSubstring("Loads configuration from FILEs")),
+		Entry("does not show hidden flags",
+			&cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "hidden",
+						Options: cli.Hidden,
+					},
+				},
+			},
+			Not(ContainSubstring("--hidden"))),
 	)
 
 })

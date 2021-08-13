@@ -57,10 +57,9 @@ type Flag struct {
 	UsageText   string
 	EnvVars     []string
 	FilePath    string
-	Required    bool
-	Hidden      bool
 	Value       interface{}
 	DefaultText string
+	Options     Option
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
@@ -70,6 +69,7 @@ type Flag struct {
 	// function signature to use.
 	Action interface{}
 	option getopt.Option
+	flags  internalFlags
 }
 
 // FlagsByName is a sortable slice for flags
@@ -79,7 +79,11 @@ type option interface {
 	Occurrences() int
 	Seen() bool
 	Set(string) error
+	SetHidden()
+	SetRequired()
 
+	options() Option
+	internalFlags() internalFlags
 	value() interface{}
 	name() string
 	envVars() []string
@@ -221,6 +225,22 @@ func (f *Flag) canonicalName(short bool) string {
 		}
 	}
 	return ""
+}
+
+func (f *Flag) SetHidden() {
+	f.flags |= internalFlagHidden
+}
+
+func (f *Flag) SetRequired() {
+	f.flags |= internalFlagRequired
+}
+
+func (f *Flag) internalFlags() internalFlags {
+	return f.flags
+}
+
+func (f *Flag) options() Option {
+	return f.Options
 }
 
 func (f *Flag) action() ActionHandler {

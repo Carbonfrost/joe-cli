@@ -612,13 +612,11 @@ func (c *Context) executeCommand() error {
 }
 
 func (c *Context) executeOption() error {
-	f := c.target.(option)
-
 	var (
 		defaultAfter = emptyAction
 	)
 
-	return hookExecute(f.action(), defaultAfter, c)
+	return hookExecute(c.option().action(), defaultAfter, c)
 }
 
 func (c *Context) lookupOption(name string) option {
@@ -629,13 +627,15 @@ func (c *Context) lookupOption(name string) option {
 	return c.LookupArg(name)
 }
 
-func defaultBeforeOption(o option) ActionFunc {
-	return func(ctx *Context) error {
-		if v, ok := loadFlagValueFromEnvironment(o); ok {
-			return o.Set(v)
-		}
-		return nil
-	}
+func (c *Context) option() option {
+	return c.target.(option)
+}
+
+func defaultBeforeOption(o option) ActionHandler {
+	return Pipeline(
+		o.options(),
+		ActionFunc(setupOptionFromEnv),
+	)
 }
 
 func defaultBeforeCommand(c *Command) ActionFunc {
@@ -683,4 +683,12 @@ func wrapUsage(indent int, s string) string {
 	indentText := strings.Repeat(" ", indent)
 	doc.ToText(buf, s, indentText, "  "+indentText, width-indent)
 	return buf.String()
+}
+
+func setupOptionFromEnv(ctx *Context) error {
+	o := ctx.option()
+	if v, ok := loadFlagValueFromEnvironment(o); ok {
+		return o.Set(v)
+	}
+	return nil
 }

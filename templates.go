@@ -61,9 +61,6 @@ usage: {{ if .CommandLineage }}{{.CommandLineage}} {{ end }}{{ .SelectedCommand.
 func visibleFlags(items []*Flag) []*flagData {
 	res := make([]*flagData, 0, len(items))
 	for _, a := range items {
-		if a.Hidden {
-			continue
-		}
 		res = append(res, flagAdapter(a))
 	}
 	return res
@@ -72,9 +69,6 @@ func visibleFlags(items []*Flag) []*flagData {
 func visibleArgs(items []*Arg) []*flagData {
 	res := make([]*flagData, 0, len(items))
 	for _, a := range items {
-		if a.Hidden {
-			continue
-		}
 		res = append(res, argAdapter(a))
 	}
 	return res
@@ -105,8 +99,8 @@ func commandAdapter(val *Command) *commandData {
 		Description:        val.Description,
 		HelpText:           val.HelpText,
 		Synopsis:           val.Synopsis(),
-		VisibleArgs:        visibleArgs(val.Args),
-		VisibleFlags:       visibleFlags(val.Flags),
+		VisibleArgs:        visibleArgs(val.VisibleArgs()),
+		VisibleFlags:       visibleFlags(val.VisibleFlags()),
 		VisibleCommands:    visibleCommands(val.Subcommands),
 		CommandsByCategory: visibleCategories(GroupedByCategory(val.Subcommands)),
 	}
