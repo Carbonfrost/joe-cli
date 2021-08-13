@@ -4,6 +4,29 @@ import (
 	"github.com/pborman/getopt/v2"
 )
 
+// Flag represents a command line flag.  The only required attribute that must be set is Name.
+// By default, the type of a flag is string; however, to use a more specific type you must
+// either specify a pointer to a variable or use the built-in constants that identify the type to
+// use:
+//
+//   &Flag{
+//     Name: "age",
+//     Value: &age, // var age int -- defined somewhere in scope
+//   }
+//
+//   &Flag{
+//     Name: "age",
+//     Value: cli.Int(), // also sets int
+//   }
+//
+// The corresponding, typed method to access the value of the flag by name is available from the Context.
+// In this case, you can  obtain value of the --age=21 flag using Context.Int("flag"), which may be
+// necessary when you don't use your own variable.
+//
+// A pointer to any of the following types is possible for Value: string, bool,
+// int (and any variant of all sizes and/or unsigned), float32, float64, []string, time.Duration,
+// and any implementer of the Value interface.
+//
 type Flag struct {
 	Name        string
 	Aliases     []string

@@ -27,6 +27,12 @@ const (
 	CommandNotFound
 )
 
+// Exit formats an error message using the default formats for each of the arguments,
+// except the last one, which is interpreted as the desired exit code.  The function
+// provides similar semantics to fmt.Sprint in that all values are converted to text
+// and joined together.  Spaces are added between operands when neither is a string.
+// If the last argument is an integer, it is interpreted as the exit code that will
+// be generated when the program exits.  If no integer is present, the value 1 is used.
 func Exit(message ...interface{}) ExitCoder {
 	switch len(message) {
 	case 0:

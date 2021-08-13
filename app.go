@@ -71,6 +71,8 @@ var (
 	ExitHandler func(string, int)
 )
 
+// Run the application and exit using the exit handler.  This function exits using the
+// ExitHandler if an error occurs.  If you want to process the error yourself, use RunContext.
 func (a *App) Run(args []string) {
 	exit(a.RunContext(context.TODO(), args))
 }
