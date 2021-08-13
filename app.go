@@ -27,6 +27,9 @@ type App struct {
 	// Before executes before the app action or any sub-command action runs.
 	// Refer to cli.Action about the correct function signature to use.
 	Before interface{}
+
+	HelpText  string
+	UsageText string
 }
 
 var (

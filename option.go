@@ -8,6 +8,7 @@ type Flag struct {
 	Name        string
 	Aliases     []string
 	HelpText    string
+	UsageText   string
 	EnvVars     []string
 	FilePath    string
 	Required    bool
@@ -29,6 +30,8 @@ type Arg struct {
 	Name        string
 	EnvVars     []string
 	FilePath    string
+	HelpText    string
+	UsageText   string
 	Required    bool
 	Hidden      bool
 	Value       interface{}
