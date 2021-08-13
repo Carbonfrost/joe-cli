@@ -2,7 +2,9 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pborman/getopt/v2"
 )
@@ -20,6 +22,8 @@ type Context struct {
 	args []string
 	set  *getopt.Set
 }
+
+type ContextPath []string
 
 // contextData provides data that is copied into child contexts
 type contextData struct {
@@ -63,12 +67,129 @@ func (c *Context) Flag() *Flag {
 	return c.Parent().Flag()
 }
 
+func (c *Context) IsApp() bool {
+	_, ok := c.target.(*App)
+	return ok
+}
+
+func (c *Context) IsCommand() bool {
+	_, ok := c.target.(*Command)
+	return ok
+}
+
+func (c *Context) IsArg() bool {
+	_, ok := c.target.(*Arg)
+	return ok
+}
+
+func (c *Context) IsFlag() bool {
+	_, ok := c.target.(*Flag)
+	return ok
+}
+
 func (c *Context) Args() []string {
 	return c.args
 }
 
 func (*Context) Value(name string) interface{} {
 	panic("not implemented: context value")
+}
+
+func (c *Context) Name() string {
+	switch t := c.target.(type) {
+	case *Arg:
+		return fmt.Sprintf("<%s>", t.Name)
+	case *Flag:
+		if len(t.Name) == 1 {
+			return fmt.Sprintf("-%s", t.Name)
+		}
+		return fmt.Sprintf("--%s", t.Name)
+	case *Command:
+		return t.Name
+	}
+	return ""
+}
+
+func (c *Context) Path() ContextPath {
+	res := make([]string, 0)
+	c.lineageFunc(func(ctx *Context) {
+		res = append(res, ctx.Name())
+	})
+
+	// Reverse to get the proper order, and remove the root context if present
+	res = reverse(res)
+	if res[0] == "" {
+		res = res[1:]
+	}
+	return ContextPath(res)
+}
+
+func (c *Context) Lineage() []*Context {
+	res := make([]*Context, 0)
+	c.lineageFunc(func(ctx *Context) {
+		res = append(res, ctx)
+	})
+	return res
+}
+
+func (c *Context) lineageFunc(f func(*Context)) {
+	current := c
+	for current != nil {
+		f(current)
+		current = current.Parent()
+	}
+}
+
+func (c ContextPath) Last() string {
+	return c[len(c)-1]
+}
+
+func (c ContextPath) IsCommand() bool {
+	return !(c.IsFlag() || c.IsArg())
+}
+
+func (c ContextPath) IsFlag() bool {
+	return []rune(c.Last())[0] == '-'
+}
+
+func (c ContextPath) IsArg() bool {
+	return []rune(c.Last())[0] == '<'
+}
+
+func (c ContextPath) String() string {
+	return strings.Join([]string(c), " ")
+}
+
+func (c ContextPath) Match(pattern string) bool {
+	parts := strings.Fields(pattern)
+	if len(parts) == 0 {
+		return true
+	}
+	if len(parts) == 1 && parts[0] == "*" {
+		return true
+	}
+	for i, j := len(parts)-1, len(c)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
+		if matchField(parts[i], c[j]) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchField(pattern, field string) bool {
+	if pattern == "*" {
+		return true
+	}
+	if pattern == "-" || pattern == "--" {
+		return strings.HasPrefix(field, "-")
+	}
+	if pattern == "<>" {
+		return strings.HasPrefix(field, "<")
+	}
+	if pattern == field {
+		return true
+	}
+	return false
 }
 
 func rootContext(cctx context.Context, app *App) *Context {
@@ -261,4 +382,11 @@ func defaultBeforeApp(a *App) ActionFunc {
 		ActionFunc(setupDefaultIO),
 		ActionFunc(setupDefaultData),
 	)
+}
+
+func reverse(arr []string) []string {
+	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
+		arr[i], arr[j] = arr[j], arr[i]
+	}
+	return arr
 }

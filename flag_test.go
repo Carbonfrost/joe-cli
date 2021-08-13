@@ -10,9 +10,16 @@ import (
 var _ = Describe("Flag", func() {
 
 	Describe("Action", func() {
-		It("executes action on setting flag", func() {
-			act := new(joeclifakes.FakeActionHandler)
-			app := &cli.App{
+		var (
+			act       *joeclifakes.FakeActionHandler
+			app       *cli.App
+			arguments = "app -f value"
+		)
+
+		BeforeEach(func() {
+			act = new(joeclifakes.FakeActionHandler)
+			app = &cli.App{
+				Name: "app",
 				Flags: []*cli.Flag{
 					{
 						Name:   "f",
@@ -20,12 +27,21 @@ var _ = Describe("Flag", func() {
 					},
 				},
 			}
+		})
 
-			args, _ := cli.Split("app -f value")
+		JustBeforeEach(func() {
+			args, _ := cli.Split(arguments)
 			app.RunContext(nil, args)
+		})
+
+		It("executes action on setting flag", func() {
 			Expect(act.ExecuteCallCount()).To(Equal(1))
 		})
 
+		It("provides properly initialized context", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Name()).To(Equal("-f"))
+			Expect(captured.Path().String()).To(Equal("app -f"))
+		})
 	})
-
 })
