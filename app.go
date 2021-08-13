@@ -3,13 +3,48 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"time"
 )
 
 // App provides the definition of an app, which is composed of commands, flags, and arguments.
 type App struct {
-	// Name specifies the name of the app
+
+	// Name provides the name of the app.  This value is inferred from the base name of the entry process if
+	// it is explicitly not set.  It will be displayed on the help screen and other templates.
 	Name string
+
+	// Version provides the version of the app.  This value is typically used in templates, and otherwise
+	// provides no special behavior.
+	Version string
+
+	// Description provides a description of the app.  This value is typically used in templates, and otherwise
+	// provides no special behavior.
+	Description string
+
+	// BuildDate provides the time when the app was built.  This value is typically used in templates, and otherwise
+	// provides no special behavior.   The default value is inferred by checking the last modification time of
+	// the entry process.
+	BuildDate time.Time
+
+	// Author provides the author of the app.  This value is typically used in templates, and otherwise
+	// provides no special behavior.
+	Author string
+
+	// Copyright provides a copyright message for the app.  This value is typically used in templates, and otherwise
+	// provides no special behavior.
+	Copyright string
+
+	// In corresponds to standard in
+	Stdin io.Reader
+
+	// In corresponds to standard out
+	Stdout io.Writer
+
+	// In corresponds to standard error
+	Stderr io.Writer
 
 	// Comands provides the list of commands in the app
 	Commands []*Command
@@ -80,4 +115,41 @@ func defaultExitHandler(message string, status int) {
 		fmt.Fprintln(os.Stderr, message)
 	}
 	os.Exit(status)
+}
+
+func buildDate() time.Time {
+	info, err := os.Stat(os.Args[0])
+	if err != nil {
+		return time.Now()
+	}
+	return info.ModTime()
+}
+
+func setupDefaultData(c *Context) error {
+	a := c.target.(*App)
+	if a.Name == "" {
+		a.Name = filepath.Base(os.Args[0])
+	}
+	if a.BuildDate.IsZero() {
+		a.BuildDate = buildDate()
+	}
+	return nil
+}
+
+func setupDefaultIO(c *Context) error {
+	a := c.target.(*App)
+	if a.Stdin == nil {
+		a.Stdin = os.Stdin
+	}
+	if a.Stdout == nil {
+		a.Stdout = os.Stdout
+	}
+	if a.Stderr == nil {
+		a.Stderr = os.Stderr
+	}
+
+	c.contextData.Stdin = a.Stdin
+	c.contextData.Stdout = a.Stdout
+	c.contextData.Stderr = a.Stderr
+	return nil
 }

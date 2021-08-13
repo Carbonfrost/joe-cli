@@ -1,6 +1,9 @@
 package cli_test
 
 import (
+	"io"
+	"os"
+
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 
@@ -66,6 +69,52 @@ var _ = Describe("App", func() {
 			})
 		})
 
+	})
+
+	Describe("i/o", func() {
+
+		It("sets up default I/O from standard files", func() {
+			var (
+				in  io.Reader
+				out io.Writer
+				err io.Writer
+			)
+			app := &cli.App{
+				Action: func(c *cli.Context) {
+					in, out, err = c.Stdin, c.Stdout, c.Stderr
+				},
+			}
+
+			app.RunContext(nil, []string{"app"})
+
+			Expect(in).To(Equal(os.Stdin))
+			Expect(out).To(Equal(os.Stdout))
+			Expect(err).To(Equal(os.Stderr))
+		})
+
+		It("sets up I/O in nested commands", func() {
+			var (
+				in  io.Reader
+				out io.Writer
+				err io.Writer
+			)
+			app := &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "s",
+						Action: func(c *cli.Context) {
+							in, out, err = c.Stdin, c.Stdout, c.Stderr
+						},
+					},
+				},
+			}
+
+			app.RunContext(nil, []string{"app", "s"})
+
+			Expect(in).To(Equal(os.Stdin))
+			Expect(out).To(Equal(os.Stdout))
+			Expect(err).To(Equal(os.Stderr))
+		})
 	})
 
 })

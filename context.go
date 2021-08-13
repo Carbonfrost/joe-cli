@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"io"
 
 	"github.com/pborman/getopt/v2"
 )
@@ -9,6 +10,8 @@ import (
 // Context provides the context in which the app, command, or flag is executing
 type Context struct {
 	context.Context
+	*contextData
+
 	parent *Context
 
 	target interface{} // *Command, *Flag, or *Arg
@@ -16,6 +19,13 @@ type Context struct {
 	// When the context is being used for a command
 	args []string
 	set  *getopt.Set
+}
+
+// contextData provides data that is copied into child contexts
+type contextData struct {
+	Stdout io.Writer
+	Stderr io.Writer
+	Stdin  io.Reader
 }
 
 func (c *Context) Parent() *Context {
@@ -53,32 +63,39 @@ func (c *Context) Flag() *Flag {
 	return c.Parent().Flag()
 }
 
+func (c *Context) Args() []string {
+	return c.args
+}
+
 func (*Context) Value(name string) interface{} {
 	panic("not implemented: context value")
 }
 
 func rootContext(cctx context.Context, app *App) *Context {
 	return &Context{
-		Context: cctx,
-		target:  app,
+		Context:     cctx,
+		contextData: &contextData{},
+		target:      app,
 	}
 }
 
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	return &Context{
-		Context: c.Context,
-		target:  cmd,
-		args:    args,
-		parent:  c,
-		set:     cmd.createAndApplySet(),
+		Context:     c.Context,
+		contextData: c.contextData,
+		target:      cmd,
+		args:        args,
+		parent:      c,
+		set:         cmd.createAndApplySet(),
 	}
 }
 
 func (c *Context) optionContext(opt option) *Context {
 	return &Context{
-		Context: c.Context,
-		target:  opt,
-		parent:  c,
+		Context:     c.Context,
+		contextData: c.contextData,
+		target:      opt,
+		parent:      c,
 	}
 }
 
@@ -240,5 +257,8 @@ func defaultBeforeCommand(c *Command) ActionFunc {
 }
 
 func defaultBeforeApp(a *App) ActionFunc {
-	return nil
+	return Pipeline(
+		ActionFunc(setupDefaultIO),
+		ActionFunc(setupDefaultData),
+	)
 }

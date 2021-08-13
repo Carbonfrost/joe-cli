@@ -22,7 +22,7 @@ var (
 
 // Pipeline combines various actions into a single action
 func Pipeline(actions ...interface{}) ActionFunc {
-	myActions := make([]ActionHandler, 0, len(actions))
+	myActions := make([]ActionHandler, len(actions))
 	for i, a := range actions {
 		myActions[i] = Action(a)
 	}
