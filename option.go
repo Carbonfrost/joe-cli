@@ -14,9 +14,15 @@ type Flag struct {
 	Hidden      bool
 	Value       interface{}
 	DefaultText string
-	Before      ActionHandler
-	Action      ActionHandler
-	option      getopt.Option
+
+	// Before executes before the command runs.  Refer to cli.Action about the correct
+	// function signature to use.
+	Before interface{}
+
+	// Action executes if the flag was set.  Refer to cli.Action about the correct
+	// function signature to use.
+	Action interface{}
+	option getopt.Option
 }
 
 type Arg struct {
@@ -27,8 +33,14 @@ type Arg struct {
 	Hidden      bool
 	Value       interface{}
 	DefaultText string
-	Before      ActionHandler
-	Action      ActionHandler
+
+	// Before executes before the command runs.  Refer to cli.Action about the correct
+	// function signature to use.
+	Before interface{}
+
+	// Action executes if the flag was set.  Refer to cli.Action about the correct
+	// function signature to use.
+	Action interface{}
 
 	internal *generic
 	count    int
@@ -72,11 +84,11 @@ func (f *Flag) Names() []string {
 }
 
 func (f *Flag) action() ActionHandler {
-	return f.Action
+	return Action(f.Action)
 }
 
 func (f *Flag) before() ActionHandler {
-	return f.Before
+	return Action(f.Before)
 }
 
 func (a *Arg) Occurrences() int {
@@ -98,11 +110,11 @@ func (a *Arg) Set(arg string) error {
 }
 
 func (a *Arg) action() ActionHandler {
-	return a.Action
+	return Action(a.Action)
 }
 
 func (a *Arg) before() ActionHandler {
-	return a.Before
+	return Action(a.Before)
 }
 
 func (o optionWrapper) Count() int {

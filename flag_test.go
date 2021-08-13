@@ -7,22 +7,25 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Action", func() {
+var _ = Describe("Flag", func() {
 
-	It("executes action on setting flag", func() {
-		act := new(joeclifakes.FakeActionHandler)
-		app := &cli.App{
-			Flags: []*cli.Flag{
-				{
-					Name:   "f",
-					Action: act,
+	Describe("Action", func() {
+		It("executes action on setting flag", func() {
+			act := new(joeclifakes.FakeActionHandler)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:   "f",
+						Action: act,
+					},
 				},
-			},
-		}
+			}
 
-		args, _ := cli.Split("app -f value")
-		app.RunContext(nil, args)
-		Expect(act.ExecuteCallCount()).To(Equal(1))
+			args, _ := cli.Split("app -f value")
+			app.RunContext(nil, args)
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
+
 	})
 
 })

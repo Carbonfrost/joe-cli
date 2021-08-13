@@ -9,8 +9,14 @@ type Command struct {
 	Subcommands []*Command
 	Flags       []*Flag
 	Args        []*Arg
-	Action      ActionHandler
-	Before      ActionHandler
+
+	// Action specifies the action to run for the command, assuming no other more specific command
+	// has been selected.  Refer to cli.Action about the correct function signature to use.
+	Action interface{}
+
+	// Before executes before the app action or any sub-command action runs.  Refer to
+	// cli.Action about the correct function signature to use.
+	Before interface{}
 }
 
 func (c *Command) Command(name string) (*Command, bool) {

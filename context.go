@@ -25,6 +25,13 @@ func (c *Context) Parent() *Context {
 	return c.parent
 }
 
+func (c *Context) App() *App {
+	if cmd, ok := c.target.(*App); ok {
+		return cmd
+	}
+	return c.Parent().App()
+}
+
 func (c *Context) Command() *Command {
 	if cmd, ok := c.target.(*Command); ok {
 		return cmd
@@ -50,12 +57,11 @@ func (*Context) Value(name string) interface{} {
 	panic("not implemented: context value")
 }
 
-func rootContext(cctx context.Context) *Context {
-	ctx := &Context{
+func rootContext(cctx context.Context, app *App) *Context {
+	return &Context{
 		Context: cctx,
-		set:     getopt.New(),
+		target:  app,
 	}
-	return ctx
 }
 
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
@@ -160,37 +166,40 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 	return
 }
 
+func (ctx *Context) executeBefores() error {
+	if ctx == nil {
+		return nil
+	}
+
+	err := ctx.Parent().executeBefores()
+	if err != nil {
+		return err
+	}
+
+	switch c := ctx.target.(type) {
+	case *App:
+		return hookExecute(Action(c.Before), defaultBeforeApp(c), ctx)
+	case *Command:
+		return hookExecute(Action(c.Before), defaultBeforeCommand(c), ctx)
+	case option:
+		return hookExecute(c.before(), defaultBeforeOption(c), ctx)
+	}
+
+	return nil
+}
+
 func (ctx *Context) executeCommand() error {
 	cmd := ctx.target.(*Command)
 
 	var (
-		defaultBefore = ActionFunc(func(_ *Context) error {
-			// Invoke the Before action on all flags and args, but only the actual
-			// Action when the flag or arg was set
-			for _, f := range cmd.flagsAndArgs() {
-				err := ctx.optionContext(f).executeBeforeOption()
-				if err != nil {
-					return err
-				}
-			}
-			for _, f := range cmd.flagsAndArgs() {
-				if f.Seen() {
-					err := ctx.optionContext(f).executeOption()
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		})
 		defaultAfter = emptyAction
 	)
 
-	if err := hookExecute(cmd.Before, defaultBefore, ctx); err != nil {
+	if err := ctx.executeBefores(); err != nil {
 		return err
 	}
 
-	return hookExecute(cmd.Action, defaultAfter, ctx)
+	return hookExecute(Action(cmd.Action), defaultAfter, ctx)
 }
 
 func (ctx *Context) executeOption() error {
@@ -203,12 +212,33 @@ func (ctx *Context) executeOption() error {
 	return hookExecute(f.action(), defaultAfter, ctx)
 }
 
-func (ctx *Context) executeBeforeOption() error {
-	a := ctx.target.(option)
+func defaultBeforeOption(o option) ActionFunc {
+	return nil
+}
 
-	var (
-		defaultBefore = emptyAction
-	)
+func defaultBeforeCommand(c *Command) ActionFunc {
+	return func(ctx *Context) error {
+		for _, f := range c.flagsAndArgs() {
+			err := hookExecute(f.before(), defaultBeforeOption(f), ctx)
+			if err != nil {
+				return err
+			}
+		}
 
-	return hookExecute(a.before(), defaultBefore, ctx)
+		// Invoke the Before action on all flags and args, but only the actual
+		// Action when the flag or arg was set
+		for _, f := range c.flagsAndArgs() {
+			if f.Seen() {
+				err := ctx.optionContext(f).executeOption()
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+}
+
+func defaultBeforeApp(a *App) ActionFunc {
+	return nil
 }

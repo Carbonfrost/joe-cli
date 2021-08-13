@@ -21,11 +21,12 @@ type App struct {
 	Args []*Arg
 
 	// Action specifies the action to run for the app, assuming no other more specific command
-	// has been selected
-	Action ActionFunc
+	// has been selected.  Refer to cli.Action about the correct function signature to use.
+	Action interface{}
 
-	// Before executes before the app action or any sub-command action runs
-	Before ActionFunc
+	// Before executes before the app action or any sub-command action runs.
+	// Refer to cli.Action about the correct function signature to use.
+	Before interface{}
 }
 
 var (
@@ -38,7 +39,7 @@ func (a *App) Run(args []string) {
 
 func (a *App) RunContext(ctx context.Context, args []string) error {
 	root := a.createRoot(args[0])
-	return root.parseAndExecute(rootContext(ctx), args)
+	return root.parseAndExecute(rootContext(ctx, a), args)
 }
 
 func (a *App) createRoot(name string) *Command {
@@ -48,7 +49,10 @@ func (a *App) createRoot(name string) *Command {
 		Args:        a.Args,
 		Subcommands: a.Commands,
 		Action:      a.Action,
-		Before:      a.Before,
+
+		// Hooks are intentionally left nil because App handles its hooks
+		// from the root context
+		Before: nil,
 	}
 }
 
