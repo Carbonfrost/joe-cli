@@ -5,6 +5,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
@@ -46,4 +47,35 @@ var _ = Describe("Command", func() {
 		})
 	})
 
+	Describe("Synopsis", func() {
+		DescribeTable("",
+			func(cmd *cli.Command, expected string) {
+				Expect(cmd.Synopsis()).To(Equal(expected))
+			},
+			Entry(
+				"combine and sort boolean short flags",
+				&cli.Command{
+					Flags: []*cli.Flag{
+						{Name: "t", Value: cli.Bool()},
+						{Name: "s", Value: cli.Bool()},
+						{Name: "g", Value: cli.Bool()},
+						{Name: "h", Value: cli.Bool()},
+						{Name: "o", Value: cli.Bool()},
+					},
+					Name: "cmd",
+				},
+				"cmd [-ghost]",
+			),
+			Entry(
+				"use long name with value",
+				&cli.Command{
+					Flags: []*cli.Flag{
+						{Name: "tan", Aliases: []string{"a"}, Value: cli.String()},
+						{Name: "h", Aliases: []string{"cos"}, Value: cli.String()},
+					},
+					Name: "cmd",
+				},
+				"cmd [--tan=STRING] [--cos=STRING]",
+			))
+	})
 })

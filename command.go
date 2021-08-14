@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"bytes"
+	"sort"
+
 	"github.com/pborman/getopt/v2"
 )
 
@@ -20,6 +23,26 @@ type Command struct {
 
 	HelpText  string
 	UsageText string
+}
+
+type commandSynopsis struct {
+	name  string
+	flags map[optionGroup][]*flagSynopsis
+}
+
+type optionGroup int
+
+const (
+	onlyShortNoValue         = optionGroup(iota) // -v
+	onlyShortNoValueOptional                     // [-v]
+	onlyBoolLong                                 // [--[no-]support]
+	otherOptional                                // [--long=value]
+	other                                        // --long=value
+	hidden
+)
+
+func (c *Command) Synopsis() string {
+	return c.newSynopsis().formatString()
 }
 
 func (c *Command) Command(name string) (*Command, bool) {
@@ -75,4 +98,84 @@ func (c *Command) flagsAndArgs() []option {
 		res = append(res, a)
 	}
 	return res
+}
+
+func (c *commandSynopsis) formatString() string {
+	var res bytes.Buffer
+	res.WriteString(c.name)
+
+	groups := c.flags
+	// short option list -abc
+	if len(groups[onlyShortNoValue]) > 0 {
+		res.WriteString(" -")
+		for _, f := range groups[onlyShortNoValue] {
+			res.WriteString(f.short)
+		}
+	}
+
+	if len(groups[onlyShortNoValueOptional]) > 0 {
+		res.WriteString(" [-")
+		for _, f := range groups[onlyShortNoValueOptional] {
+			res.WriteString(f.short)
+		}
+		res.WriteString("]")
+	}
+
+	for _, f := range groups[otherOptional] {
+		res.WriteString(" [")
+		res.WriteString(f.formatString(true))
+		res.WriteString("]")
+	}
+
+	for _, f := range groups[other] {
+		res.WriteString(" ")
+		res.WriteString(f.formatString(true))
+	}
+
+	return res.String()
+}
+
+func (c *Command) newSynopsis() *commandSynopsis {
+	groups := map[optionGroup][]*flagSynopsis{
+		onlyShortNoValue:         []*flagSynopsis{},
+		onlyShortNoValueOptional: []*flagSynopsis{},
+		onlyBoolLong:             []*flagSynopsis{},
+		hidden:                   []*flagSynopsis{},
+		otherOptional:            []*flagSynopsis{},
+		other:                    []*flagSynopsis{},
+	}
+	for _, f := range c.actualFlags() {
+		group := getGroup(f)
+		groups[group] = append(groups[group], f.newSynopsis())
+	}
+
+	sortedByName(groups[onlyShortNoValueOptional])
+	sortedByName(groups[onlyShortNoValue])
+
+	return &commandSynopsis{
+		name:  c.Name,
+		flags: groups,
+	}
+}
+
+func getGroup(f *Flag) optionGroup {
+	if f.Hidden {
+		return hidden
+	}
+	if hasOnlyShortName(f) && hasNoValue(f) {
+		if f.Required {
+			return onlyShortNoValue
+		}
+		return onlyShortNoValueOptional
+	}
+	if f.Required {
+		return other
+	}
+	return otherOptional
+}
+
+func sortedByName(flags []*flagSynopsis) {
+	sort.Slice(flags, func(i, j int) bool {
+		return flags[i].short < flags[j].short
+	})
 }

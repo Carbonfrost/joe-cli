@@ -4,6 +4,7 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
@@ -44,4 +45,67 @@ var _ = Describe("Flag", func() {
 			Expect(captured.Path().String()).To(Equal("app -f"))
 		})
 	})
+
+	Describe("Synopsis", func() {
+
+		DescribeTable("",
+			func(f *cli.Flag, expected string) {
+				Expect(f.Synopsis()).To(Equal(expected))
+			},
+			Entry(
+				"bool flag no placeholders",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.Bool(),
+				},
+				"-o",
+			),
+			Entry(
+				"int flag no placeholders",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.Int(),
+				},
+				"-o NUMBER",
+			),
+			Entry(
+				"String flag no placeholders",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.String(),
+				},
+				"-o STRING",
+			),
+			Entry(
+				"long flag with placeholder",
+				&cli.Flag{
+					Name:     "otown",
+					HelpText: "{USE}",
+					Value:    cli.Int(),
+				},
+				"--otown=USE",
+			),
+			Entry(
+				"short flag with placeholder",
+				&cli.Flag{
+					Name:     "o",
+					HelpText: "{USE}",
+					Value:    cli.Int(),
+				},
+				"-o USE",
+			),
+			Entry(
+				"aliases flag with placeholder",
+				&cli.Flag{
+					Name:     "otown",
+					Aliases:  []string{"o", "other", "u"},
+					HelpText: "{USE}",
+					Value:    cli.Int(),
+				},
+				"-o, --otown=USE",
+			),
+		)
+
+	})
+
 })

@@ -1,6 +1,10 @@
 package cli
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	"github.com/pborman/getopt/v2"
 )
 
@@ -85,11 +89,87 @@ type optionWrapper struct {
 	arg *Arg
 }
 
+type flagSynopsis struct {
+	short string
+	long  string
+	sep   string
+	value string
+}
+
 func (f *Flag) applyToSet(s *getopt.Set) {
 	f.Value = ensureDestination(f.Value)
 	for _, name := range f.Names() {
 		long, short := flagName(name)
 		f.option = s.FlagLong(f.Value, long, short, f.HelpText, name)
+	}
+}
+
+// Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
+// is inferred from the HelpText.  Up to one short and one long name will be used.
+func (f *Flag) Synopsis() string {
+	return f.newSynopsis().formatString(false)
+}
+
+func (f *Flag) newSynopsis() *flagSynopsis {
+	short := f.canonicalName(true)
+	long := f.canonicalName(false)
+	sep := "="
+
+	if len(long) == 0 {
+		sep = " "
+	}
+
+	return &flagSynopsis{
+		short: short,
+		long:  long,
+		sep:   sep,
+		value: valueSynopsis(f),
+	}
+}
+
+func (f *flagSynopsis) formatString(hideAlternates bool) string {
+	sepIfNeeded := ""
+	if len(f.value) > 0 {
+		sepIfNeeded = f.sep
+	}
+	return f.names(hideAlternates) + sepIfNeeded + f.value
+}
+
+func (f *flagSynopsis) names(hideAlternates bool) string {
+	if len(f.long) == 0 {
+		return fmt.Sprintf("-%s", f.short)
+	}
+	if len(f.short) == 0 {
+		return fmt.Sprintf("--%s", f.long)
+	}
+	if hideAlternates {
+		return fmt.Sprintf("--%s", f.long)
+	}
+	return fmt.Sprintf("-%s, --%s", f.short, f.long)
+}
+
+func valueSynopsis(f *Flag) string {
+	usage := strings.Join(parseUsage(f.HelpText).Placeholders(), " ")
+	if len(usage) > 0 {
+		return usage
+	}
+	switch f.Value.(type) {
+	case *bool:
+		return ""
+	case *int, *int8, *int16, *int32, *int64:
+		return "NUMBER"
+	case *uint, *uint8, *uint16, *uint32, *uint64:
+		return "NUMBER"
+	case *float32, *float64:
+		return "NUMBER"
+	case *string:
+		return "STRING"
+	case *[]string:
+		return "VALUES"
+	case *time.Duration:
+		return "DURATION"
+	default:
+		return "VALUE"
 	}
 }
 
@@ -102,7 +182,19 @@ func (f *Flag) Occurrences() int {
 }
 
 func (f *Flag) Names() []string {
-	return names(f.Name)
+	return append([]string{f.Name}, f.Aliases...)
+}
+
+func (f *Flag) canonicalName(short bool) string {
+	if short == (len(f.Name) == 1) {
+		return f.Name
+	}
+	for _, s := range f.Aliases {
+		if short == (len(s) == 1) {
+			return s
+		}
+	}
+	return ""
 }
 
 func (f *Flag) action() ActionHandler {
@@ -111,6 +203,17 @@ func (f *Flag) action() ActionHandler {
 
 func (f *Flag) before() ActionHandler {
 	return Action(f.Before)
+}
+
+func hasOnlyShortName(f *Flag) bool {
+	return len(f.Name) == 1
+}
+
+func hasNoValue(f *Flag) bool {
+	if _, ok := f.Value.(*bool); ok {
+		return true
+	}
+	return false
 }
 
 func (a *Arg) Occurrences() int {
@@ -150,10 +253,6 @@ func ensureDestination(dest interface{}) interface{} {
 		return &p
 	}
 	return dest
-}
-
-func names(name string) []string {
-	return []string{name}
 }
 
 // flagName gets the long and short name for getopt given the name specified in the flag
