@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -259,4 +260,16 @@ func wrapGeneric(v interface{}) *generic {
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))
 	}
+}
+
+func dereference(v interface{}) interface{} {
+	if _, ok := v.(Value); ok {
+		return v
+	}
+
+	val := reflect.ValueOf(v)
+	if val.Kind() == reflect.Ptr {
+		return val.Elem().Interface()
+	}
+	return v
 }

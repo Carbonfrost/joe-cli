@@ -63,6 +63,7 @@ type Arg struct {
 	Hidden      bool
 	Value       interface{}
 	DefaultText string
+	NArg        int
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
 	// function signature to use.

@@ -19,8 +19,9 @@ type Context struct {
 	target interface{} // *Command, *Flag, or *Arg
 
 	// When the context is being used for a command
-	args []string
-	set  *getopt.Set
+	args   []string
+	set    *getopt.Set
+	values map[string]interface{}
 }
 
 type ContextPath []string
@@ -91,8 +92,14 @@ func (c *Context) Args() []string {
 	return c.args
 }
 
-func (*Context) Value(name string) interface{} {
-	panic("not implemented: context value")
+func (c *Context) Value(name string) interface{} {
+	if c == nil {
+		return nil
+	}
+	if v, ok := c.values[name]; ok {
+		return dereference(v)
+	}
+	return c.Parent().Value(name)
 }
 
 func (c *Context) Bool(name string) bool {
@@ -268,6 +275,7 @@ func (c *Context) commandContext(cmd *Command, args []string) *Context {
 		args:        args,
 		parent:      c,
 		set:         cmd.createAndApplySet(),
+		values:      cmd.createValues(),
 	}
 }
 
@@ -325,7 +333,9 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 				current = actual[currentIndex]
 				return true
 			}
-			err = unexpectedArgument(args[0])
+			if len(args) > 0 {
+				err = unexpectedArgument(args[0])
+			}
 			return false
 		}
 	)
@@ -339,16 +349,19 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 		if err != nil {
 			return
 		}
-		args = ctx.set.Args()
 
-		if len(args) > 0 {
-			err = current.Set(args[0])
-			if err != nil {
-				return
-			}
-		} else {
+		args = ctx.set.Args()
+		if len(args) == 0 {
 			break
 		}
+
+		args, err = applyArgument(args, current)
+	}
+
+	// Done with parsing.  Returning here is necessary because trying empty args
+	// with Getopt will corrupt its internal state
+	if len(args) == 0 {
+		return
 	}
 
 	// Any remaining parsing must be flags only
@@ -362,6 +375,50 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 		err = unexpectedArgument(args[0])
 	}
 	return
+}
+
+func applyArgument(args []string, current *Arg) ([]string, error) {
+	var (
+		// takeArgs updates args by taking the values that will be passed to
+		// the *Arg.Set call.  narg < 0 implies taking all arguments,
+		// 0 means take it if it exists and doesn't look like a flag,
+		// other values are a discrete number to take
+		takeArgs = func(narg int) func() bool {
+			if narg < 0 {
+				return func() bool {
+					args = args[1:]
+					return true
+				}
+			}
+			if narg == 0 {
+				narg = 1
+			}
+			return func() bool {
+				narg = narg - 1
+				if narg > 0 {
+					args = args[1:]
+				}
+				return narg >= 0
+			}
+		}
+	)
+
+	taker := takeArgs(current.NArg)
+	for {
+		if len(args) == 0 {
+			break
+		}
+
+		value := args[0]
+		if !taker() {
+			break
+		}
+		err := current.Set(value)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return args, nil
 }
 
 func (ctx *Context) executeBefores() error {

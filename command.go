@@ -62,6 +62,17 @@ func (c *Command) createAndApplySet() *getopt.Set {
 	return set
 }
 
+func (c *Command) createValues() map[string]interface{} {
+	values := map[string]interface{}{}
+	for _, f := range c.actualFlags() {
+		values[f.Name] = f.Value
+	}
+	for _, f := range c.actualArgs() {
+		values[f.Name] = f.Value
+	}
+	return values
+}
+
 func (c *Command) parseAndExecute(ctx *Context, args []string) error {
 	ctx, err := ctx.commandContext(c, args).applySubcommands()
 	if err != nil {
