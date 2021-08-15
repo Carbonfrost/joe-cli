@@ -162,6 +162,16 @@ func (c *Context) Float64(name string) float64 {
 	return *c.Value(name).(*float64)
 }
 
+func (c *Context) Do(actions ...ActionHandler) error {
+	for _, a := range actions {
+		err := a.Execute(c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *Context) Name() string {
 	switch t := c.target.(type) {
 	case *Arg:
