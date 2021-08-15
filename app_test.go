@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"io"
 	"os"
 
@@ -69,6 +70,35 @@ var _ = Describe("App", func() {
 			})
 		})
 
+	})
+
+	Describe("help", func() {
+		It("sets up default --help flag", func() {
+			var (
+				help *cli.Flag
+			)
+			app := &cli.App{
+				Action: func(c *cli.Context) {
+					help, _ = c.App().Flag("help")
+				},
+			}
+
+			app.RunContext(nil, []string{"app"})
+			Expect(help).ToNot(BeNil())
+		})
+
+		It("prints default help output", func() {
+			var (
+				capture bytes.Buffer
+			)
+			app := &cli.App{
+				Name:   "hunter",
+				Stderr: &capture,
+			}
+
+			_ = app.RunContext(nil, []string{"app", "--help"})
+			Expect(capture.String()).To(HavePrefix("usage: hunter [--help]"))
+		})
 	})
 
 	Describe("i/o", func() {

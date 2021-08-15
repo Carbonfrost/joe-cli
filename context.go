@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"text/template"
 
 	"github.com/pborman/getopt/v2"
 )
@@ -172,6 +173,23 @@ func (c *Context) Do(actions ...ActionHandler) error {
 	return nil
 }
 
+func (c *Context) Template(name string) *template.Template {
+	const width = 78
+
+	switch name {
+	case "help", "version":
+		funcMap := template.FuncMap{
+			"Join": strings.Join,
+			"Trim": strings.TrimSpace,
+		}
+
+		return template.Must(
+			template.New(name).Funcs(funcMap).Parse(templateString(name)),
+		)
+	}
+	return nil
+}
+
 func (c *Context) Name() string {
 	switch t := c.target.(type) {
 	case *Arg:
@@ -301,6 +319,7 @@ func (c *Context) optionContext(opt option) *Context {
 func (c *Context) applySubcommands() (*Context, error) {
 	ctx := c
 	args := c.args
+
 	for len(args) > 0 {
 		err := ctx.set.Getopt(args, nil)
 		if err != nil {
@@ -315,7 +334,13 @@ func (c *Context) applySubcommands() (*Context, error) {
 		if len(args) > 0 {
 			cmd := ctx.target.(*Command)
 			if sub, ok := cmd.Command(args[0]); ok {
+				err := ctx.executeBefore()
+				if err != nil {
+					return ctx, err
+				}
+
 				ctx = ctx.commandContext(sub, args)
+
 			} else if len(cmd.Subcommands) > 0 {
 				return c, commandMissing(args[0])
 			} else {
@@ -431,14 +456,9 @@ func applyArgument(args []string, current *Arg) ([]string, error) {
 	return args, nil
 }
 
-func (ctx *Context) executeBefores() error {
+func (ctx *Context) executeBefore() error {
 	if ctx == nil {
 		return nil
-	}
-
-	err := ctx.Parent().executeBefores()
-	if err != nil {
-		return err
 	}
 
 	switch c := ctx.target.(type) {
@@ -460,7 +480,7 @@ func (ctx *Context) executeCommand() error {
 		defaultAfter = emptyAction
 	)
 
-	if err := ctx.executeBefores(); err != nil {
+	if err := ctx.executeBefore(); err != nil {
 		return err
 	}
 
@@ -513,6 +533,8 @@ func defaultBeforeApp(a *App) ActionFunc {
 	return Pipeline(
 		ActionFunc(setupDefaultIO),
 		ActionFunc(setupDefaultData),
+		ActionFunc(addHelpCommand),
+		ActionFunc(addHelpFlag),
 	)
 }
 

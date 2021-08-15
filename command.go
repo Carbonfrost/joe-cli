@@ -74,7 +74,13 @@ func (c *Command) createValues() map[string]interface{} {
 }
 
 func (c *Command) parseAndExecute(ctx *Context, args []string) error {
-	ctx, err := ctx.commandContext(c, args).applySubcommands()
+	ctx = ctx.commandContext(c, args)
+	err := ctx.executeBefore()
+	if err != nil {
+		return err
+	}
+
+	ctx, err = ctx.applySubcommands()
 	if err != nil {
 		return err
 	}
@@ -189,4 +195,15 @@ func sortedByName(flags []*flagSynopsis) {
 	sort.Slice(flags, func(i, j int) bool {
 		return flags[i].short < flags[j].short
 	})
+}
+
+func findCommand(current *Command, commands []string) (*Command, error) {
+	for _, c := range commands {
+		var ok bool
+		current, ok = current.Command(c)
+		if !ok {
+			return nil, commandMissing(c)
+		}
+	}
+	return current, nil
 }

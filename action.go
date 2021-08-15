@@ -88,3 +88,13 @@ func hookExecute(x, y ActionHandler, c *Context) error {
 	}
 	return execute(y, c)
 }
+
+func doThenExit(a ActionHandler) ActionFunc {
+	return func(c *Context) error {
+		err := a.Execute(c)
+		if err != nil {
+			return err
+		}
+		return Exit(0)
+	}
+}

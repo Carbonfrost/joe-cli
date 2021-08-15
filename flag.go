@@ -182,10 +182,16 @@ func valueSynopsis(f *Flag) string {
 }
 
 func (f *Flag) Seen() bool {
+	if f.option == nil {
+		return false
+	}
 	return f.option.Seen()
 }
 
 func (f *Flag) Occurrences() int {
+	if f.option == nil {
+		return 0
+	}
 	return f.option.Count()
 }
 

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 )
 
 var (
@@ -28,6 +29,56 @@ type literal struct {
 }
 
 type placeholdersByPos []*placeholderExpr
+
+func DisplayHelpScreen(command ...string) ActionFunc {
+	return func(c *Context) error {
+		cmd, err := findCommand(c.App().createRoot(), command)
+		if err != nil {
+			return err
+		}
+
+		tpl := c.Template("help")
+		data := struct {
+			SelectedCommand interface{}
+			App             *App
+		}{
+			SelectedCommand: commandAdapter(cmd),
+			App:             c.App(),
+		}
+
+		w := tabwriter.NewWriter(c.Stderr, 1, 8, 2, ' ', 0)
+
+		_ = tpl.Execute(w, data)
+		_ = w.Flush()
+		return nil
+	}
+}
+
+func defaultHelpCommand() *Command {
+	return &Command{
+		Name:     "help",
+		HelpText: "Display help for a command",
+		Args: []*Arg{
+			{
+				Name:  "command",
+				Value: List(),
+				NArg:  -1,
+			},
+		},
+		Action: func(c *Context) error {
+			return c.Do(doThenExit(DisplayHelpScreen(c.List("command")...)))
+		},
+	}
+}
+
+func defaultHelpFlag() *Flag {
+	return &Flag{
+		Name:     "help",
+		HelpText: "Display this help screen then exit",
+		Value:    Bool(),
+		Action:   doThenExit(DisplayHelpScreen()),
+	}
+}
 
 func (f *usage) Placeholders() []string {
 	res := make([]string, 0)

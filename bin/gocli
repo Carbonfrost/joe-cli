@@ -13,4 +13,4 @@ fi
 GOOS="$(go env GOOS)"
 GOARCH="$(go env GOARCH)"
 
-"${dir}/${GOOS}_${GOARCH}/cli" "$@"
+"${dir}/${GOOS}_${GOARCH}/gocli" "$@"

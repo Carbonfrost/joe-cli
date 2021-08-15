@@ -12,18 +12,24 @@ func main() {
 		Name: "cli",
 		Flags: []*cli.Flag{
 			{
-				Name: "version",
+				Name:     "will",
+				HelpText: "a useful measure of {POWER}",
 			},
 			{
-				Name: "plus",
+				Name:     "plus",
+				HelpText: "the only operator that works",
+				Value:    cli.Bool(),
 			},
 			{
-				Name: "time",
+				Name:     "time",
+				HelpText: "an absolute property",
+				Value:    cli.Duration(),
 			},
 		},
 		Commands: []*cli.Command{
 			{
-				Name: "generate",
+				Name:     "generate",
+				HelpText: "Generate something useful",
 				Args: []*cli.Arg{
 					{
 						Name: "kind",

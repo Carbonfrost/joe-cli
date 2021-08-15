@@ -65,6 +65,8 @@ type App struct {
 
 	HelpText  string
 	UsageText string
+
+	rootCommand *Command
 }
 
 var (
@@ -77,23 +79,50 @@ func (a *App) Run(args []string) {
 	exit(a.RunContext(context.TODO(), args))
 }
 
-func (a *App) RunContext(ctx context.Context, args []string) error {
-	root := a.createRoot(args[0])
-	return root.parseAndExecute(rootContext(ctx, a), args)
+func (a *App) RunContext(c context.Context, args []string) error {
+	ctx := rootContext(c, a)
+	err := ctx.executeBefore()
+	if err != nil {
+		return err
+	}
+
+	root := a.createRoot()
+	return root.parseAndExecute(ctx, args)
 }
 
-func (a *App) createRoot(name string) *Command {
-	return &Command{
-		Name:        name,
-		Flags:       a.Flags,
-		Args:        a.Args,
-		Subcommands: a.Commands,
-		Action:      a.Action,
-
-		// Hooks are intentionally left nil because App handles its hooks
-		// from the root context
-		Before: nil,
+func (a *App) Command(name string) (*Command, bool) {
+	for _, sub := range a.Commands {
+		if sub.Name == name {
+			return sub, true
+		}
 	}
+	return nil, false
+}
+
+func (a *App) Flag(name string) (*Flag, bool) {
+	for _, sub := range a.Flags {
+		if sub.Name == name {
+			return sub, true
+		}
+	}
+	return nil, false
+}
+
+func (a *App) createRoot() *Command {
+	if a.rootCommand == nil {
+		a.rootCommand = &Command{
+			Name:        a.Name,
+			Flags:       a.Flags,
+			Args:        a.Args,
+			Subcommands: a.Commands,
+			Action:      a.Action,
+
+			// Hooks are intentionally left nil because App handles its hooks
+			// from the root context
+			Before: nil,
+		}
+	}
+	return a.rootCommand
 }
 
 func exit(err error) {
@@ -153,5 +182,23 @@ func setupDefaultIO(c *Context) error {
 	c.contextData.Stdin = a.Stdin
 	c.contextData.Stdout = a.Stdout
 	c.contextData.Stderr = a.Stderr
+	return nil
+}
+
+func addHelpCommand(c *Context) error {
+	app := c.target.(*App)
+	if len(app.Commands) > 0 {
+		if _, ok := app.Command("help"); !ok {
+			app.Commands = append(app.Commands, defaultHelpCommand())
+		}
+	}
+	return nil
+}
+
+func addHelpFlag(c *Context) error {
+	app := c.target.(*App)
+	if _, ok := app.Flag("help"); !ok {
+		app.Flags = append(app.Flags, defaultHelpFlag())
+	}
 	return nil
 }
