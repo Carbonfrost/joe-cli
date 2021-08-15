@@ -478,7 +478,12 @@ func (ctx *Context) executeOption() error {
 }
 
 func defaultBeforeOption(o option) ActionFunc {
-	return nil
+	return func(ctx *Context) error {
+		if v, ok := loadFlagValueFromEnvironment(o); ok {
+			return o.Set(v)
+		}
+		return nil
+	}
 }
 
 func defaultBeforeCommand(c *Command) ActionFunc {

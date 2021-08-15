@@ -1,6 +1,8 @@
 package cli_test
 
 import (
+	"os"
+
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo"
@@ -43,6 +45,47 @@ var _ = Describe("Flag", func() {
 			captured := act.ExecuteArgsForCall(0)
 			Expect(captured.Name()).To(Equal("-f"))
 			Expect(captured.Path().String()).To(Equal("app -f"))
+		})
+	})
+
+	Context("when environment variables are set", func() {
+		var (
+			actual    string
+			arguments string
+		)
+
+		BeforeEach(func() {
+			arguments = "app "
+		})
+
+		JustBeforeEach(func() {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "f",
+						EnvVars: []string{"_GOCLI_F"},
+						Value:   &actual,
+					},
+				},
+			}
+
+			os.Setenv("_GOCLI_F", "environment value")
+			args, _ := cli.Split(arguments)
+			app.RunContext(nil, args)
+		})
+
+		It("sets up value from environment", func() {
+			Expect(actual).To(Equal("environment value"))
+		})
+
+		Context("when option also set", func() {
+			BeforeEach(func() {
+				arguments = "app -f 'option text'"
+			})
+
+			It("sets up value from option", func() {
+				Expect(actual).To(Equal("option text"))
+			})
 		})
 	})
 

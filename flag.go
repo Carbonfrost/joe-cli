@@ -2,6 +2,9 @@ package cli
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -80,6 +83,10 @@ type Arg struct {
 type option interface {
 	Occurrences() int
 	Seen() bool
+	Set(string) error
+	name() string
+	envVars() []string
+	filePath() string
 	before() ActionHandler
 	action() ActionHandler
 }
@@ -186,6 +193,10 @@ func (f *Flag) Names() []string {
 	return append([]string{f.Name}, f.Aliases...)
 }
 
+func (f *Flag) Set(arg string) error {
+	return f.option.Value().Set(arg, f.option)
+}
+
 func (f *Flag) canonicalName(short bool) string {
 	if short == (len(f.Name) == 1) {
 		return f.Name
@@ -204,6 +215,18 @@ func (f *Flag) action() ActionHandler {
 
 func (f *Flag) before() ActionHandler {
 	return Action(f.Before)
+}
+
+func (f *Flag) name() string {
+	return f.Name
+}
+
+func (f *Flag) envVars() []string {
+	return f.EnvVars
+}
+
+func (f *Flag) filePath() string {
+	return f.FilePath
 }
 
 func hasOnlyShortName(f *Flag) bool {
@@ -243,6 +266,18 @@ func (a *Arg) before() ActionHandler {
 	return Action(a.Before)
 }
 
+func (a *Arg) name() string {
+	return a.Name
+}
+
+func (a *Arg) envVars() []string {
+	return a.EnvVars
+}
+
+func (a *Arg) filePath() string {
+	return a.FilePath
+}
+
 func (o optionWrapper) Count() int {
 	return o.arg.count
 }
@@ -263,4 +298,28 @@ func flagName(name string) (string, rune) {
 	} else {
 		return name, 0
 	}
+}
+
+func loadFlagValueFromEnvironment(f option) (string, bool) {
+	if f.Seen() {
+		return "", false
+	}
+
+	envVars := f.envVars()
+	for _, envVar := range envVars {
+		envVar = strings.TrimSpace(envVar)
+		if val, ok := os.LookupEnv(envVar); ok {
+			return val, true
+		}
+	}
+
+	filePath := f.filePath()
+	if len(filePath) > 0 {
+		for _, fileVar := range filepath.SplitList(filePath) {
+			if data, err := ioutil.ReadFile(fileVar); err == nil {
+				return string(data), true
+			}
+		}
+	}
+	return "", false
 }
