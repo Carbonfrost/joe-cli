@@ -329,3 +329,21 @@ func loadFlagValueFromEnvironment(f option) (string, bool) {
 	}
 	return "", false
 }
+
+func findArgByName(items []*Arg, name string) (*Arg, bool) {
+	for _, sub := range items {
+		if sub.Name == name {
+			return sub, true
+		}
+	}
+	return nil, false
+}
+
+func findFlagByName(items []*Flag, name string) (*Flag, bool) {
+	for _, sub := range items {
+		if sub.Name == name {
+			return sub, true
+		}
+	}
+	return nil, false
+}

@@ -32,6 +32,12 @@ type commandSynopsis struct {
 
 type optionGroup int
 
+type command interface {
+	Command(string) (*Command, bool)
+	Flag(string) (*Flag, bool)
+	Arg(string) (*Arg, bool)
+}
+
 const (
 	onlyShortNoValue         = optionGroup(iota) // -v
 	onlyShortNoValueOptional                     // [-v]
@@ -46,12 +52,15 @@ func (c *Command) Synopsis() string {
 }
 
 func (c *Command) Command(name string) (*Command, bool) {
-	for _, sub := range c.Subcommands {
-		if sub.Name == name {
-			return sub, true
-		}
-	}
-	return nil, false
+	return findCommandByName(c.Subcommands, name)
+}
+
+func (c *Command) Flag(name string) (*Flag, bool) {
+	return findFlagByName(c.Flags, name)
+}
+
+func (c *Command) Arg(name string) (*Arg, bool) {
+	return findArgByName(c.Args, name)
 }
 
 func (c *Command) createAndApplySet() *getopt.Set {
@@ -207,3 +216,14 @@ func findCommand(current *Command, commands []string) (*Command, error) {
 	}
 	return current, nil
 }
+
+func findCommandByName(cmds []*Command, name string) (*Command, bool) {
+	for _, sub := range cmds {
+		if sub.Name == name {
+			return sub, true
+		}
+	}
+	return nil, false
+}
+
+var _ command = &Command{}

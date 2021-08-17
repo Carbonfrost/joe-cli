@@ -91,21 +91,15 @@ func (a *App) RunContext(c context.Context, args []string) error {
 }
 
 func (a *App) Command(name string) (*Command, bool) {
-	for _, sub := range a.Commands {
-		if sub.Name == name {
-			return sub, true
-		}
-	}
-	return nil, false
+	return findCommandByName(a.Commands, name)
 }
 
 func (a *App) Flag(name string) (*Flag, bool) {
-	for _, sub := range a.Flags {
-		if sub.Name == name {
-			return sub, true
-		}
-	}
-	return nil, false
+	return findFlagByName(a.Flags, name)
+}
+
+func (a *App) Arg(name string) (*Arg, bool) {
+	return findArgByName(a.Args, name)
 }
 
 func (a *App) createRoot() *Command {
@@ -202,3 +196,5 @@ func addHelpFlag(c *Context) error {
 	}
 	return nil
 }
+
+var _ command = &App{}
