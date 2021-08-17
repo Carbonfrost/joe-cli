@@ -136,7 +136,7 @@ func exit(err error) {
 }
 
 func defaultExitHandler(message string, status int) {
-	if message != "" {
+	if message != "" && status != 0 {
 		fmt.Fprintln(os.Stderr, message)
 	}
 	os.Exit(status)
