@@ -3,8 +3,6 @@ package cli
 import (
 	"bytes"
 	"sort"
-
-	"github.com/pborman/getopt/v2"
 )
 
 type Command struct {
@@ -61,14 +59,6 @@ func (c *Command) Flag(name string) (*Flag, bool) {
 
 func (c *Command) Arg(name string) (*Arg, bool) {
 	return findArgByName(c.Args, name)
-}
-
-func (c *Command) createAndApplySet() *getopt.Set {
-	set := getopt.New()
-	for _, f := range c.actualFlags() {
-		f.applyToSet(set)
-	}
-	return set
 }
 
 func (c *Command) createValues() map[string]interface{} {

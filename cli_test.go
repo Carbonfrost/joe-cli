@@ -86,7 +86,7 @@ var _ = Describe("RunContext", func() {
 				Flag1: true,
 			}),
 		),
-		XEntry( // TODO interspersed global flags
+		Entry(
 			"intersperse global flags",
 			"sub --flag1 --global",
 			Equal(commanderValues{

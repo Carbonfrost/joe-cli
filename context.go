@@ -296,15 +296,16 @@ func rootContext(cctx context.Context, app *App) *Context {
 }
 
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
-	return &Context{
+	result := &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
 		target:      cmd,
 		args:        args,
 		parent:      c,
-		set:         cmd.createAndApplySet(),
 		values:      cmd.createValues(),
 	}
+	result.applySet()
+	return result
 }
 
 func (c *Context) optionContext(opt option) *Context {
@@ -313,6 +314,29 @@ func (c *Context) optionContext(opt option) *Context {
 		contextData: c.contextData,
 		target:      opt,
 		parent:      c,
+	}
+}
+
+func (c *Context) applySet() {
+	set := getopt.New()
+	c.set = set
+	for {
+		var (
+			cmd *Command
+			ok  bool
+			all = map[string]bool{}
+		)
+		if cmd, ok = c.target.(*Command); !ok {
+			break
+		}
+		for _, f := range cmd.actualFlags() {
+			if all[f.Name] {
+				continue
+			}
+			all[f.Name] = true
+			f.applyToSet(set)
+		}
+		c = c.Parent()
 	}
 }
 
