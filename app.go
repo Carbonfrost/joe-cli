@@ -155,6 +155,9 @@ func setupDefaultData(c *Context) error {
 	if a.Name == "" {
 		a.Name = filepath.Base(os.Args[0])
 	}
+	if a.Version == "" {
+		a.Version = "0.0.0"
+	}
 	if a.BuildDate.IsZero() {
 		a.BuildDate = buildDate()
 	}
@@ -179,22 +182,20 @@ func setupDefaultIO(c *Context) error {
 	return nil
 }
 
-func addHelpCommand(c *Context) error {
-	app := c.target.(*App)
-	if len(app.Commands) > 0 {
-		if _, ok := app.Command("help"); !ok {
-			app.Commands = append(app.Commands, defaultHelpCommand())
+func addAppCommand(name string, f *Flag, cmd *Command) ActionFunc {
+	return func(c *Context) error {
+		app := c.target.(*App)
+		if len(app.Commands) > 0 {
+			if _, ok := app.Command(name); !ok {
+				app.Commands = append(app.Commands, cmd)
+			}
 		}
-	}
-	return nil
-}
 
-func addHelpFlag(c *Context) error {
-	app := c.target.(*App)
-	if _, ok := app.Flag("help"); !ok {
-		app.Flags = append(app.Flags, defaultHelpFlag())
+		if _, ok := app.Flag(name); !ok {
+			app.Flags = append(app.Flags, f)
+		}
+		return nil
 	}
-	return nil
 }
 
 var _ command = &App{}

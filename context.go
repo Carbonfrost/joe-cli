@@ -533,8 +533,8 @@ func defaultBeforeApp(a *App) ActionFunc {
 	return Pipeline(
 		ActionFunc(setupDefaultIO),
 		ActionFunc(setupDefaultData),
-		ActionFunc(addHelpCommand),
-		ActionFunc(addHelpFlag),
+		ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
+		ActionFunc(addAppCommand("version", defaultVersionFlag(), defaultVersionCommand())),
 	)
 }
 

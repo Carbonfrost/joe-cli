@@ -22,7 +22,10 @@ var (
 {{range .SelectedCommand.VisibleCommands}}
 {{ "\t" }}{{.Name}}{{ "\t" }}{{.HelpText}}{{end}}
 `
-	VersionTemplate = "{{ .App.Name }} {{ .App.Version }}"
+
+	// VersionTemplate specifies the Go template for what is printed when
+	//   the version flag or command is used.
+	VersionTemplate string = "{{ .App.Name }}, version {{ .App.Version }}\n"
 )
 
 func visibleFlags(items []*Flag) []*flagData {

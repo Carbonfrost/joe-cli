@@ -54,6 +54,23 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 	}
 }
 
+func PrintVersion() ActionFunc {
+	return func(c *Context) error {
+		tpl := c.Template("version")
+		data := struct {
+			App *App
+		}{
+			App: c.App(),
+		}
+
+		w := tabwriter.NewWriter(c.Stderr, 1, 8, 2, ' ', 0)
+
+		_ = tpl.Execute(w, data)
+		_ = w.Flush()
+		return nil
+	}
+}
+
 func defaultHelpCommand() *Command {
 	return &Command{
 		Name:     "help",
@@ -77,6 +94,23 @@ func defaultHelpFlag() *Flag {
 		HelpText: "Display this help screen then exit",
 		Value:    Bool(),
 		Action:   doThenExit(DisplayHelpScreen()),
+	}
+}
+
+func defaultVersionFlag() *Flag {
+	return &Flag{
+		Name:     "version",
+		HelpText: "Print the build version then exit",
+		Value:    Bool(),
+		Action:   doThenExit(PrintVersion()),
+	}
+}
+
+func defaultVersionCommand() *Command {
+	return &Command{
+		Name:     "version",
+		HelpText: "Print the build version then exit",
+		Action:   doThenExit(PrintVersion()),
 	}
 }
 

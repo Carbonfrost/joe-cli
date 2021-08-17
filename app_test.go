@@ -101,6 +101,36 @@ var _ = Describe("App", func() {
 		})
 	})
 
+	Describe("version", func() {
+		It("sets up default --version flag", func() {
+			var (
+				version *cli.Flag
+			)
+			app := &cli.App{
+				Action: func(c *cli.Context) {
+					version, _ = c.App().Flag("version")
+				},
+			}
+
+			app.RunContext(nil, []string{"app"})
+			Expect(version).ToNot(BeNil())
+		})
+
+		It("prints default version output", func() {
+			var (
+				capture bytes.Buffer
+			)
+			app := &cli.App{
+				Name:    "hunter",
+				Version: "1.619",
+				Stderr:  &capture,
+			}
+
+			_ = app.RunContext(nil, []string{"app", "--version"})
+			Expect(capture.String()).To(HavePrefix("hunter, version 1.619"))
+		})
+	})
+
 	Describe("i/o", func() {
 
 		It("sets up default I/O from standard files", func() {
