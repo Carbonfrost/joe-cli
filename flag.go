@@ -35,8 +35,24 @@ import (
 // and any implementer of the Value interface.
 //
 type Flag struct {
-	Name        string
-	Aliases     []string
+	Name string
+
+	// Aliases provides a list of alternative names for the flag.  In general, Name should
+	// be used for the long name of the flag, and Aliases should contain the short name.
+	// If there are additional names for compatibility reasons, they should be included
+	// with Aliases but listed after the preferred names. Note that only one short name
+	// and one long name is displayed on help screens by default.
+	Aliases []string
+
+	// HelpText contains text which briefly describes the usage of the flag.  If it contains
+	// placeholders in the form {PLACEHOLDER}, then these name the purpose of the flag's
+	// value.  If a flag has multiple values, then placeholders can also specify the index of
+	// the corresponding value using the syntax {0:PLACEHOLDER}; otherwise, the order is
+	// inferred start to end.
+	// For style, generally the usage text should be limited to about 40 characters.
+	// Sentence case is recommended for the usage text.    Uppercase is recommended for the
+	// text of placeholders.  The placeholder is used in the synoposis for the flag as well
+	// as error messages.
 	HelpText    string
 	UsageText   string
 	EnvVars     []string
