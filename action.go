@@ -16,26 +16,22 @@ type ActionHandler interface {
 	Execute(*Context) error
 }
 
+type ActionPipeline struct {
+	items []ActionHandler
+}
+
 var (
 	emptyAction ActionHandler = ActionFunc(emptyActionImpl)
 )
 
 // Pipeline combines various actions into a single action
-func Pipeline(actions ...interface{}) ActionFunc {
+func Pipeline(actions ...interface{}) *ActionPipeline {
 	myActions := make([]ActionHandler, len(actions))
 	for i, a := range actions {
 		myActions[i] = Action(a)
 	}
 
-	return func(c *Context) (err error) {
-		for _, a := range myActions {
-			err = a.Execute(c)
-			if err != nil {
-				return
-			}
-		}
-		return nil
-	}
+	return &ActionPipeline{myActions}
 }
 
 func Action(item interface{}) ActionHandler {
@@ -71,6 +67,23 @@ func (af ActionFunc) Execute(c *Context) error {
 	return af(c)
 }
 
+func (p *ActionPipeline) Append(x ActionHandler) *ActionPipeline {
+	return &ActionPipeline{
+		items: append(p.items, unwind(x)...),
+	}
+	return p
+}
+
+func (p *ActionPipeline) Execute(c *Context) (err error) {
+	for _, a := range p.items {
+		err = a.Execute(c)
+		if err != nil {
+			return
+		}
+	}
+	return nil
+}
+
 func emptyActionImpl(*Context) error {
 	return nil
 }
@@ -97,4 +110,20 @@ func doThenExit(a ActionHandler) ActionFunc {
 		}
 		return Exit(0)
 	}
+}
+
+func pipeline(x, y ActionHandler) *ActionPipeline {
+	return &ActionPipeline{
+		items: append(unwind(x), unwind(y)...),
+	}
+}
+
+func unwind(x ActionHandler) []ActionHandler {
+	if x == nil {
+		return nil
+	}
+	if pipe, ok := x.(*ActionPipeline); ok {
+		return pipe.items
+	}
+	return []ActionHandler{x}
 }

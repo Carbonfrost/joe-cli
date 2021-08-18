@@ -553,7 +553,7 @@ func defaultBeforeCommand(c *Command) ActionFunc {
 	}
 }
 
-func defaultBeforeApp(a *App) ActionFunc {
+func defaultBeforeApp(a *App) ActionHandler {
 	return Pipeline(
 		ActionFunc(setupDefaultIO),
 		ActionFunc(setupDefaultData),
