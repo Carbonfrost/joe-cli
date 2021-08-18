@@ -103,64 +103,124 @@ func (c *Context) Value(name string) interface{} {
 	return c.Parent().Value(name)
 }
 
-func (c *Context) Bool(name string) bool {
-	return c.Value(name).(bool)
+func (c *Context) Bool(name string) (res bool) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(bool)
+	}
+	return
 }
 
-func (c *Context) String(name string) string {
-	return c.Value(name).(string)
+func (c *Context) String(name string) (res string) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(string)
+	}
+	return
 }
 
-func (c *Context) List(name string) []string {
-	return c.Value(name).([]string)
+func (c *Context) List(name string) (res []string) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.([]string)
+	}
+	return
 }
 
-func (c *Context) Int(name string) int {
-	return c.Value(name).(int)
+func (c *Context) Int(name string) (res int) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(int)
+	}
+	return
 }
 
-func (c *Context) Int8(name string) int8 {
-	return c.Value(name).(int8)
+func (c *Context) Int8(name string) (res int8) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(int8)
+	}
+	return
 }
 
-func (c *Context) Int16(name string) int16 {
-	return c.Value(name).(int16)
+func (c *Context) Int16(name string) (res int16) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(int16)
+	}
+	return
 }
 
-func (c *Context) Int32(name string) int32 {
-	return c.Value(name).(int32)
+func (c *Context) Int32(name string) (res int32) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(int32)
+	}
+	return
 }
 
-func (c *Context) Int64(name string) int64 {
-	return c.Value(name).(int64)
+func (c *Context) Int64(name string) (res int64) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(int64)
+	}
+	return
 }
 
-func (c *Context) UInt(name string) uint {
-	return c.Value(name).(uint)
+func (c *Context) UInt(name string) (res uint) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(uint)
+	}
+	return
 }
 
-func (c *Context) UInt8(name string) uint8 {
-	return c.Value(name).(uint8)
+func (c *Context) UInt8(name string) (res uint8) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(uint8)
+	}
+	return
 }
 
-func (c *Context) UInt16(name string) uint16 {
-	return c.Value(name).(uint16)
+func (c *Context) UInt16(name string) (res uint16) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(uint16)
+	}
+	return
 }
 
-func (c *Context) UInt32(name string) uint32 {
-	return c.Value(name).(uint32)
+func (c *Context) UInt32(name string) (res uint32) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(uint32)
+	}
+	return
 }
 
-func (c *Context) UInt64(name string) uint64 {
-	return c.Value(name).(uint64)
+func (c *Context) UInt64(name string) (res uint64) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(uint64)
+	}
+	return
 }
 
-func (c *Context) Float32(name string) float32 {
-	return c.Value(name).(float32)
+func (c *Context) Float32(name string) (res float32) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(float32)
+	}
+	return
 }
 
-func (c *Context) Float64(name string) float64 {
-	return c.Value(name).(float64)
+func (c *Context) Float64(name string) (res float64) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(float64)
+	}
+	return
 }
 
 func (c *Context) Do(actions ...ActionHandler) error {
