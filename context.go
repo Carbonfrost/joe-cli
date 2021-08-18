@@ -93,6 +93,43 @@ func (c *Context) Args() []string {
 	return c.args
 }
 
+func (c *Context) LookupFlag(name string) *Flag {
+	if c == nil {
+		return nil
+	}
+	if cmd, ok := c.target.(*Command); ok {
+		if f, found := findFlagByName(cmd.Flags, name); found {
+			return f
+		}
+	}
+	return c.Parent().LookupFlag(name)
+}
+
+func (c *Context) LookupArg(name string) *Arg {
+	if c == nil {
+		return nil
+	}
+	if cmd, ok := c.target.(*Command); ok {
+		if a, found := findArgByName(cmd.Args, name); found {
+			return a
+		}
+	}
+	return c.Parent().LookupArg(name)
+}
+
+func (c *Context) Seen(name string) bool {
+	f := c.lookupOption(name)
+	return f != nil && f.Seen()
+}
+
+func (c *Context) Occurrences(name string) int {
+	f := c.lookupOption(name)
+	if f != nil {
+		return f.Occurrences()
+	}
+	return -1
+}
+
 func (c *Context) Value(name string) interface{} {
 	if c == nil {
 		return nil
@@ -436,16 +473,16 @@ func (c *Context) applySubcommands() (*Context, error) {
 	return ctx, nil
 }
 
-func (ctx *Context) applyFlagsAndArgs() (err error) {
+func (c *Context) applyFlagsAndArgs() (err error) {
 	var (
 		currentIndex = -1
 		current      *Arg
 
-		// ctx.args contains the name of the command and its arguments
-		args []string = ctx.args
+		// c.args contains the name of the command and its arguments
+		args []string = c.args
 
 		enumerator = func() bool {
-			cmd := ctx.target.(*Command)
+			cmd := c.target.(*Command)
 			actual := cmd.actualArgs()
 			currentIndex = currentIndex + 1
 			if currentIndex < len(actual) {
@@ -464,12 +501,12 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 			return
 		}
 
-		err = ctx.set.Getopt(args, nil)
+		err = c.set.Getopt(args, nil)
 		if err != nil {
 			return
 		}
 
-		args = ctx.set.Args()
+		args = c.set.Args()
 		if len(args) == 0 {
 			break
 		}
@@ -484,11 +521,11 @@ func (ctx *Context) applyFlagsAndArgs() (err error) {
 	}
 
 	// Any remaining parsing must be flags only
-	err = ctx.set.Getopt(args, nil)
+	err = c.set.Getopt(args, nil)
 	if err != nil {
 		return
 	}
-	args = ctx.set.Args()
+	args = c.set.Args()
 
 	if len(args) > 0 {
 		err = unexpectedArgument(args[0])
@@ -540,45 +577,53 @@ func applyArgument(args []string, current *Arg) ([]string, error) {
 	return args, nil
 }
 
-func (ctx *Context) executeBefore() error {
-	if ctx == nil {
+func (c *Context) executeBefore() error {
+	if c == nil {
 		return nil
 	}
 
-	switch c := ctx.target.(type) {
+	switch tt := c.target.(type) {
 	case *App:
-		return hookExecute(Action(c.Before), defaultBeforeApp(c), ctx)
+		return hookExecute(Action(tt.Before), defaultBeforeApp(tt), c)
 	case *Command:
-		return hookExecute(Action(c.Before), defaultBeforeCommand(c), ctx)
+		return hookExecute(Action(tt.Before), defaultBeforeCommand(tt), c)
 	case option:
-		return hookExecute(c.before(), defaultBeforeOption(c), ctx)
+		return hookExecute(tt.before(), defaultBeforeOption(tt), c)
 	}
 
 	return nil
 }
 
-func (ctx *Context) executeCommand() error {
-	cmd := ctx.target.(*Command)
+func (c *Context) executeCommand() error {
+	cmd := c.target.(*Command)
 
 	var (
 		defaultAfter = emptyAction
 	)
 
-	if err := ctx.executeBefore(); err != nil {
+	if err := c.executeBefore(); err != nil {
 		return err
 	}
 
-	return hookExecute(Action(cmd.Action), defaultAfter, ctx)
+	return hookExecute(Action(cmd.Action), defaultAfter, c)
 }
 
-func (ctx *Context) executeOption() error {
-	f := ctx.target.(option)
+func (c *Context) executeOption() error {
+	f := c.target.(option)
 
 	var (
 		defaultAfter = emptyAction
 	)
 
-	return hookExecute(f.action(), defaultAfter, ctx)
+	return hookExecute(f.action(), defaultAfter, c)
+}
+
+func (c *Context) lookupOption(name string) option {
+	f := c.LookupFlag(name)
+	if f != nil {
+		return f
+	}
+	return c.LookupArg(name)
 }
 
 func defaultBeforeOption(o option) ActionFunc {
