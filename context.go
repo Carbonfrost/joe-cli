@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"go/doc"
 	"io"
 	"strings"
 	"text/template"
@@ -278,6 +280,7 @@ func (c *Context) Template(name string) *template.Template {
 		funcMap := template.FuncMap{
 			"Join": strings.Join,
 			"Trim": strings.TrimSpace,
+			"Wrap": wrapUsage,
 		}
 
 		return template.Must(
@@ -672,4 +675,12 @@ func reverse(arr []string) []string {
 		arr[i], arr[j] = arr[j], arr[i]
 	}
 	return arr
+}
+
+func wrapUsage(indent int, s string) string {
+	const width = 80
+	buf := bytes.NewBuffer(nil)
+	indentText := strings.Repeat(" ", indent)
+	doc.ToText(buf, s, indentText, "  "+indentText, width-indent)
+	return buf.String()
 }

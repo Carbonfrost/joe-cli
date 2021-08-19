@@ -19,12 +19,27 @@ type Command struct {
 	// cli.Action about the correct function signature to use.
 	Before interface{}
 
+	// Category places the command into a category.  Categories are displayed on the default
+	// help screen.
+	Category string
+
+	// Description provides a long description for the command.  The long description is
+	// displayed on the help screen
+	Description string
+
 	HelpText  string
 	UsageText string
 }
 
 // CommandsByName provides a slice that can sort on name
 type CommandsByName []*Command
+
+type CommandCategory struct {
+	Category string
+	Commands []*Command
+}
+
+type CommandsByCategory []*CommandCategory
 
 type commandSynopsis struct {
 	name  string
@@ -47,6 +62,44 @@ const (
 	other                                        // --long=value
 	hidden
 )
+
+func GroupedByCategory(cmds []*Command) CommandsByCategory {
+	res := CommandsByCategory{}
+	for _, command := range cmds {
+		cc := res.Category(command.Category)
+		if cc == nil {
+			cc = &CommandCategory{
+				Category: command.Category,
+				Commands: []*Command{},
+			}
+			res = append(res, cc)
+		}
+		cc.Commands = append(cc.Commands, command)
+	}
+	sort.Sort(res)
+	return res
+}
+
+func (c CommandsByCategory) Category(name string) *CommandCategory {
+	for _, cc := range c {
+		if cc.Category == name {
+			return cc
+		}
+	}
+	return nil
+}
+
+func (c CommandsByCategory) Less(i, j int) bool {
+	return c[i].Category < c[j].Category
+}
+
+func (c CommandsByCategory) Len() int {
+	return len(c)
+}
+
+func (c CommandsByCategory) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
 
 func (c *Command) Synopsis() string {
 	return c.newSynopsis().formatString()

@@ -73,7 +73,7 @@ type Flag struct {
 }
 
 // FlagsByName is a sortable slice for flags
-type FlagsByName []Flag
+type FlagsByName []*Flag
 
 type option interface {
 	Occurrences() int

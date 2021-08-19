@@ -110,6 +110,7 @@ func (a *App) createRoot() *Command {
 			Args:        a.Args,
 			Subcommands: a.Commands,
 			Action:      a.Action,
+			Description: a.Description,
 
 			// Hooks are intentionally left nil because App handles its hooks
 			// from the root context
