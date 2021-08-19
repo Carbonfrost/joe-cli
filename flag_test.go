@@ -1,6 +1,8 @@
 package cli_test
 
 import (
+	"errors"
+	"flag"
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -89,6 +91,25 @@ var _ = Describe("Flag", func() {
 		})
 	})
 
+	XContext("when a custom Value is used", func() {
+
+		It("applies the conversion", func() {
+			t := new(temperature)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "s",
+						Value: t,
+					},
+				},
+			}
+
+			arguments, _ := cli.Split("app -sC")
+			app.RunContext(nil, arguments)
+			Expect(*t).To(Equal(temperature("Celsius")))
+		})
+	})
+
 	Describe("Synopsis", func() {
 
 		DescribeTable("",
@@ -152,3 +173,23 @@ var _ = Describe("Flag", func() {
 	})
 
 })
+
+type temperature string
+
+func (t *temperature) Set(s string) error {
+	switch s {
+	case "F":
+		*t = "Fahrenheit"
+	case "C":
+		*t = "Celsius"
+	default:
+		return errors.New("not supported")
+	}
+	return nil
+}
+
+func (t *temperature) String() string {
+	return string(*t)
+}
+
+var _ flag.Value = new(temperature)

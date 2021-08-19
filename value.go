@@ -5,15 +5,13 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"flag"
 	"time"
 
 	"github.com/pborman/getopt/v2"
 )
 
-type Value interface {
-	Set(string) error
-	String() string
-}
+type Value = flag.Value
 
 type generic struct {
 	p interface{}
