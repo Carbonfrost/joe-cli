@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 )
@@ -58,6 +59,13 @@ func Action(item interface{}) ActionHandler {
 		})
 	}
 	panic(fmt.Sprintf("unexpected type: %s", reflect.TypeOf(item)))
+}
+
+func ContextValue(key, value interface{}) ActionFunc {
+	return func(c *Context) error {
+		c.Context = context.WithValue(c.Context, key, value)
+		return nil
+	}
 }
 
 func (af ActionFunc) Execute(c *Context) error {
