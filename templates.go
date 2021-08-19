@@ -42,7 +42,7 @@ var (
 
 {{/* Usage is the entry point, which calls flags, subcommands */}} 
 {{- define "Usage" -}}
-usage: {{.SelectedCommand.Synopsis }}
+usage: {{ if .CommandLineage }}{{.CommandLineage}} {{ end }}{{ .SelectedCommand.Synopsis }}
 {{ if .SelectedCommand.Description }}
 {{ .SelectedCommand.Description | Wrap 4 }}
 {{- end -}}

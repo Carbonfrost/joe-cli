@@ -48,7 +48,7 @@ var _ = Describe("Command", func() {
 	})
 
 	Describe("Synopsis", func() {
-		DescribeTable("",
+		DescribeTable("examples",
 			func(cmd *cli.Command, expected string) {
 				Expect(cmd.Synopsis()).To(Equal(expected))
 			},

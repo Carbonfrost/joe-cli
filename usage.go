@@ -38,11 +38,19 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 		}
 
 		tpl := c.Template("help")
+		lineage := ""
+
+		if len(command) > 0 {
+			lineage = c.App().Name + " " + strings.Join(command[0:len(command)-1], " ")
+		}
+
 		data := struct {
-			SelectedCommand interface{}
+			SelectedCommand *commandData
+			CommandLineage  string
 			App             *App
 		}{
 			SelectedCommand: commandAdapter(cmd),
+			CommandLineage:  lineage,
 			App:             c.App(),
 		}
 
