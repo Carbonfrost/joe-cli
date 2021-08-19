@@ -23,6 +23,9 @@ type Command struct {
 	UsageText string
 }
 
+// CommandsByName provides a slice that can sort on name
+type CommandsByName []*Command
+
 type commandSynopsis struct {
 	name  string
 	flags map[optionGroup][]*flagSynopsis
@@ -172,6 +175,18 @@ func (c *Command) newSynopsis() *commandSynopsis {
 		name:  c.Name,
 		flags: groups,
 	}
+}
+
+func (c CommandsByName) Len() int {
+	return len(c)
+}
+
+func (c CommandsByName) Less(i, j int) bool {
+	return c[i].Name < c[j].Name
+}
+
+func (c CommandsByName) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
 }
 
 func getGroup(f *Flag) optionGroup {

@@ -72,6 +72,9 @@ type Flag struct {
 	option getopt.Option
 }
 
+// FlagsByName is a sortable slice for flags
+type FlagsByName []Flag
+
 type option interface {
 	Occurrences() int
 	Seen() bool
@@ -225,6 +228,18 @@ func (f *Flag) filePath() string {
 func (f *Flag) value() interface{} {
 	f.Value = ensureDestination(f.Value, 1)
 	return f.Value
+}
+
+func (f FlagsByName) Len() int {
+	return len(f)
+}
+
+func (f FlagsByName) Less(i, j int) bool {
+	return f[i].canonicalName(false) < f[j].canonicalName(false)
+}
+
+func (f FlagsByName) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
 }
 
 func hasOnlyShortName(f *Flag) bool {
