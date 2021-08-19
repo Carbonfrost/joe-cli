@@ -100,6 +100,8 @@ type option interface {
 	Occurrences() int
 	Seen() bool
 	Set(string) error
+
+	value() interface{}
 	name() string
 	envVars() []string
 	filePath() string
@@ -121,10 +123,9 @@ type flagSynopsis struct {
 }
 
 func (f *Flag) applyToSet(s *getopt.Set) {
-	f.Value = ensureDestination(f.Value)
 	for _, name := range f.Names() {
 		long, short := flagName(name)
-		f.option = s.FlagLong(f.Value, long, short, f.HelpText, name)
+		f.option = s.FlagLong(f.value(), long, short, f.HelpText, name)
 	}
 }
 
@@ -251,6 +252,11 @@ func (f *Flag) filePath() string {
 	return f.FilePath
 }
 
+func (f *Flag) value() interface{} {
+	f.Value = ensureDestination(f.Value, 1)
+	return f.Value
+}
+
 func hasOnlyShortName(f *Flag) bool {
 	return len(f.Name) == 1
 }
@@ -271,13 +277,8 @@ func (a *Arg) Seen() bool {
 }
 
 func (a *Arg) Set(arg string) error {
-	a.Value = ensureDestination(a.Value)
-	if a.internal == nil {
-		a.internal = wrapGeneric(a.Value)
-	}
-
 	a.count = a.count + 1
-	return a.internal.Set(arg, optionWrapper{arg: a})
+	return a.ensureInternal().Set(arg, optionWrapper{arg: a})
 }
 
 func (a *Arg) action() ActionHandler {
@@ -300,15 +301,29 @@ func (a *Arg) filePath() string {
 	return a.FilePath
 }
 
+func (a *Arg) value() interface{} {
+	a.ensureInternal()
+	return a.Value
+}
+
+func (a *Arg) ensureInternal() *generic {
+	a.Value = ensureDestination(a.Value, a.NArg)
+	if a.internal == nil {
+		a.internal = wrapGeneric(a.Value)
+	}
+	return a.internal
+}
+
 func (o optionWrapper) Count() int {
 	return o.arg.count
 }
 
-func ensureDestination(dest interface{}) interface{} {
+func ensureDestination(dest interface{}, narg int) interface{} {
 	if dest == nil {
-		// Default to using a string if it wasn't set
-		var p string
-		return &p
+		if narg == 1 || narg == 0 {
+			return String()
+		}
+		return List()
 	}
 	return dest
 }

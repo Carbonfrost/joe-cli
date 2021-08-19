@@ -64,10 +64,10 @@ func (c *Command) Arg(name string) (*Arg, bool) {
 func (c *Command) createValues() map[string]interface{} {
 	values := map[string]interface{}{}
 	for _, f := range c.actualFlags() {
-		values[f.Name] = f.Value
+		values[f.Name] = f.value()
 	}
 	for _, f := range c.actualArgs() {
-		values[f.Name] = f.Value
+		values[f.Name] = f.value()
 	}
 	return values
 }
