@@ -278,7 +278,9 @@ func (c *Context) Template(name string) *template.Template {
 	switch name {
 	case "help", "version":
 		funcMap := template.FuncMap{
-			"Join": strings.Join,
+			"Join": func(v string, args []string) string {
+				return strings.Join(args, v)
+			},
 			"Trim": strings.TrimSpace,
 			"Wrap": wrapUsage,
 		}

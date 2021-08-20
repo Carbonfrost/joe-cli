@@ -2,6 +2,7 @@ package cli
 
 type commandData struct {
 	Name               string
+	Names              []string
 	Description        string
 	HelpText           string
 	Synopsis           string
@@ -28,7 +29,7 @@ var (
 {{ range .CommandsByCategory }}
 {{ if .Category }}{{.Category}}:{{ end }}
 {{- range .VisibleCommands }}
-{{ "\t" }}{{.Name}}{{ "\t" }}{{.HelpText}}{{end}}
+{{ "\t" }}{{ .Names | Join ", " }}{{ "\t" }}{{.HelpText}}{{end}}
 {{ else }}
 {{- range .VisibleCommands }}
 {{ "\t" }}{{.Name}}{{ "\t" }}{{.HelpText}}{{end}}
@@ -96,6 +97,7 @@ func visibleCategories(items CommandsByCategory) []*commandCategory {
 func commandAdapter(val *Command) *commandData {
 	return &commandData{
 		Name:               val.Name,
+		Names:              val.Names(),
 		Description:        val.Description,
 		HelpText:           val.HelpText,
 		Synopsis:           val.Synopsis(),

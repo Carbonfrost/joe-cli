@@ -10,6 +10,7 @@ type Command struct {
 	Subcommands []*Command
 	Flags       []*Flag
 	Args        []*Arg
+	Aliases     []string
 
 	// Action specifies the action to run for the command, assuming no other more specific command
 	// has been selected.  Refer to cli.Action about the correct function signature to use.
@@ -139,6 +140,10 @@ func (c *Command) VisibleFlags() []*Flag {
 		res = append(res, o)
 	}
 	return res
+}
+
+func (c *Command) Names() []string {
+	return append([]string{c.Name}, c.Aliases...)
 }
 
 func (c *Command) createValues() map[string]interface{} {
@@ -327,6 +332,11 @@ func findCommandByName(cmds []*Command, name string) (*Command, bool) {
 	for _, sub := range cmds {
 		if sub.Name == name {
 			return sub, true
+		}
+		for _, alias := range sub.Aliases {
+			if alias == name {
+				return sub, true
+			}
 		}
 	}
 	return nil, false
