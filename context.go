@@ -641,7 +641,7 @@ func defaultBeforeOption(o option) ActionFunc {
 func defaultBeforeCommand(c *Command) ActionFunc {
 	return func(ctx *Context) error {
 		for _, f := range c.flagsAndArgs() {
-			err := hookExecute(f.before(), defaultBeforeOption(f), ctx)
+			err := hookExecute(f.before(), defaultBeforeOption(f), ctx.optionContext(f))
 			if err != nil {
 				return err
 			}

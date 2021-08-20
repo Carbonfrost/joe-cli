@@ -68,6 +68,13 @@ func ContextValue(key, value interface{}) ActionFunc {
 	}
 }
 
+func SetValue(v interface{}) ActionFunc {
+	return func(c *Context) error {
+		c.target.(option).Set(genericString(dereference(v)))
+		return nil
+	}
+}
+
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {
 		return nil

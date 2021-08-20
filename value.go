@@ -1,11 +1,11 @@
 package cli
 
 import (
+	"flag"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
-	"flag"
 	"time"
 
 	"github.com/pborman/getopt/v2"
@@ -201,39 +201,79 @@ func (g *generic) Set(value string, opt getopt.Option) error {
 func (g *generic) String() string {
 	switch p := g.p.(type) {
 	case *bool:
-		if *p {
+		return genericString(*p)
+	case *string:
+		return genericString(*p)
+	case *[]string:
+		return genericString(*p)
+	case *int:
+		return genericString(*p)
+	case *int8:
+		return genericString(*p)
+	case *int16:
+		return genericString(*p)
+	case *int32:
+		return genericString(*p)
+	case *int64:
+		return genericString(*p)
+	case *uint:
+		return genericString(*p)
+	case *uint8:
+		return genericString(*p)
+	case *uint16:
+		return genericString(*p)
+	case *uint32:
+		return genericString(*p)
+	case *uint64:
+		return genericString(*p)
+	case *float32:
+		return genericString(*p)
+	case *float64:
+		return genericString(*p)
+	case *time.Duration:
+		return genericString(*p)
+	}
+	panic("unreachable!")
+}
+
+func genericString(v interface{}) string {
+	switch p := v.(type) {
+	case Value:
+		return p.String()
+	case bool:
+		if p {
 			return "true"
 		}
 		return "false"
-	case *string:
-		return *p
-	case *[]string:
-		return strings.Join([]string(*p), ",")
-	case *int:
-		return strconv.FormatInt(int64(*p), 10)
-	case *int8:
-		return strconv.FormatInt(int64(*p), 10)
-	case *int16:
-		return strconv.FormatInt(int64(*p), 10)
-	case *int32:
-		return strconv.FormatInt(int64(*p), 10)
-	case *int64:
-		return strconv.FormatInt(*p, 10)
-	case *uint:
-		return strconv.FormatUint(uint64(*p), 10)
-	case *uint8:
-		return strconv.FormatUint(uint64(*p), 10)
-	case *uint16:
-		return strconv.FormatUint(uint64(*p), 10)
-	case *uint32:
-		return strconv.FormatUint(uint64(*p), 10)
-	case *uint64:
-		return strconv.FormatUint(*p, 10)
-	case *float32:
-		return strconv.FormatFloat(float64(*p), 'g', -1, 32)
-	case *float64:
-		return strconv.FormatFloat(*p, 'g', -1, 64)
-	case *time.Duration:
+	case string:
+		return p
+	case []string:
+		return strings.Join([]string(p), ",")
+	case int:
+		return strconv.FormatInt(int64(p), 10)
+	case int8:
+		return strconv.FormatInt(int64(p), 10)
+	case int16:
+		return strconv.FormatInt(int64(p), 10)
+	case int32:
+		return strconv.FormatInt(int64(p), 10)
+	case int64:
+		return strconv.FormatInt(p, 10)
+	case uint:
+		return strconv.FormatUint(uint64(p), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(p), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(p), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(p), 10)
+	case uint64:
+		return strconv.FormatUint(p, 10)
+	case float32:
+		return strconv.FormatFloat(float64(p), 'g', -1, 32)
+	case float64:
+		return strconv.FormatFloat(p, 'g', -1, 64)
+	case time.Duration:
 		return p.String()
 	}
 	panic("unreachable!")
