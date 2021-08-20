@@ -97,7 +97,7 @@ var _ = Describe("App", func() {
 			}
 
 			_ = app.RunContext(nil, []string{"app", "--help"})
-			Expect(capture.String()).To(HavePrefix("usage: hunter [--help]"))
+			Expect(capture.String()).To(HavePrefix("usage: hunter "))
 		})
 	})
 

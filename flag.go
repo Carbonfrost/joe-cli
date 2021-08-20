@@ -82,6 +82,8 @@ type option interface {
 	SetHidden()
 	SetRequired()
 
+	wrapAction(func(ActionHandler) ActionFunc)
+	setInternalFlags(internalFlags)
 	options() Option
 	internalFlags() internalFlags
 	value() interface{}
@@ -239,8 +241,16 @@ func (f *Flag) internalFlags() internalFlags {
 	return f.flags
 }
 
+func (f *Flag) setInternalFlags(i internalFlags) {
+	f.flags |= i
+}
+
 func (f *Flag) options() Option {
 	return f.Options
+}
+
+func (f *Flag) wrapAction(fn func(ActionHandler) ActionFunc) {
+	f.Action = fn(Action(f.Action))
 }
 
 func (f *Flag) action() ActionHandler {

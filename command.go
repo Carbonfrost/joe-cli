@@ -61,6 +61,7 @@ const (
 	onlyBoolLong                                 // [--[no-]support]
 	otherOptional                                // [--long=value]
 	other                                        // --long=value
+	actionGroup                                  // { --help|--version}
 	hidden
 )
 
@@ -200,6 +201,17 @@ func (c *commandSynopsis) formatString() string {
 	res.WriteString(c.name)
 
 	groups := c.flags
+	if len(groups[actionGroup]) > 0 {
+		res.WriteString(" {")
+		for i, f := range groups[actionGroup] {
+			if i > 0 {
+				res.WriteString(" | ")
+			}
+			res.WriteString(f.formatString(true))
+		}
+		res.WriteString("}")
+	}
+
 	// short option list -abc
 	if len(groups[onlyShortNoValue]) > 0 {
 		res.WriteString(" -")
@@ -278,6 +290,9 @@ func (c CommandsByName) Swap(i, j int) {
 func getGroup(f *Flag) optionGroup {
 	if f.internalFlags().hidden() {
 		return hidden
+	}
+	if f.internalFlags().exits() {
+		return actionGroup
 	}
 	if hasOnlyShortName(f) && hasNoValue(f) {
 		if f.internalFlags().required() {

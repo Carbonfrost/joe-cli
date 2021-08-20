@@ -90,5 +90,6 @@ var _ = Describe("Command", func() {
 				},
 				"cmd [-t] <arg>",
 			))
+
 	})
 })

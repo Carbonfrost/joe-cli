@@ -78,6 +78,9 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 			Not(ContainSubstring("--hidden"))),
+		Entry("display action-like flags",
+			&cli.App{},
+			ContainSubstring("{--help | --version}")),
 	)
 
 })

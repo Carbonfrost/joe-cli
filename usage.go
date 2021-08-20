@@ -102,7 +102,8 @@ func defaultHelpFlag() *Flag {
 		Name:     "help",
 		HelpText: "Display this help screen then exit",
 		Value:    Bool(),
-		Action:   doThenExit(DisplayHelpScreen()),
+		Options:  Exits,
+		Action:   DisplayHelpScreen(),
 	}
 }
 
@@ -111,7 +112,8 @@ func defaultVersionFlag() *Flag {
 		Name:     "version",
 		HelpText: "Print the build version then exit",
 		Value:    Bool(),
-		Action:   doThenExit(PrintVersion()),
+		Options:  Exits,
+		Action:   PrintVersion(),
 	}
 }
 

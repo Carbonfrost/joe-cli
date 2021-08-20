@@ -78,8 +78,16 @@ func (a *Arg) internalFlags() internalFlags {
 	return a.flags
 }
 
+func (a *Arg) setInternalFlags(i internalFlags) {
+	a.flags |= i
+}
+
 func (a *Arg) options() Option {
 	return a.Options
+}
+
+func (a *Arg) wrapAction(fn func(ActionHandler) ActionFunc) {
+	a.Action = fn(Action(a.Action))
 }
 
 func (a *Arg) action() ActionHandler {

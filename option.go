@@ -6,6 +6,13 @@ type internalFlags int
 const (
 	Hidden = Option(1 << iota)
 	Required
+
+	// Exits marks a flag that causes the app to exit.  This value is added to the options of flags
+	// like --help and --version to indicate that they cause the app to exit when used.  It implicitly
+	// causes the action of the flag to return SuccessStatus if they return no other error.  When this
+	// option is set, it also causes the flag to be set apart visually on the help screen.
+	Exits
+
 	maxOption
 
 	None Option = 0
@@ -14,12 +21,14 @@ const (
 const (
 	internalFlagHidden = internalFlags(1 << iota)
 	internalFlagRequired
+	internalFlagExits
 )
 
 var (
 	optionMap = map[Option]ActionFunc{
 		Hidden:   hiddenOption,
 		Required: requiredOption,
+		Exits:    wrapWithExit,
 	}
 )
 
@@ -35,6 +44,10 @@ func (f internalFlags) hidden() bool {
 
 func (f internalFlags) required() bool {
 	return f&internalFlagRequired == internalFlagRequired
+}
+
+func (f internalFlags) exits() bool {
+	return f&internalFlagExits == internalFlagExits
 }
 
 func splitOptions(options int) []ActionHandler {
@@ -55,5 +68,11 @@ func hiddenOption(c *Context) error {
 
 func requiredOption(c *Context) error {
 	c.option().SetRequired()
+	return nil
+}
+
+func wrapWithExit(c *Context) error {
+	c.option().setInternalFlags(internalFlagExits)
+	c.option().wrapAction(doThenExit)
 	return nil
 }
