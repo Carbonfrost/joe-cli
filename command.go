@@ -44,6 +44,7 @@ type CommandsByCategory []*CommandCategory
 type commandSynopsis struct {
 	name  string
 	flags map[optionGroup][]*flagSynopsis
+	args  []*argSynopsis
 }
 
 type optionGroup int
@@ -204,6 +205,11 @@ func (c *commandSynopsis) formatString() string {
 		res.WriteString(f.formatString(true))
 	}
 
+	for _, a := range c.args {
+		res.WriteString(" ")
+		res.WriteString(a.formatString())
+	}
+
 	return res.String()
 }
 
@@ -216,9 +222,13 @@ func (c *Command) newSynopsis() *commandSynopsis {
 		otherOptional:            []*flagSynopsis{},
 		other:                    []*flagSynopsis{},
 	}
+	args := make([]*argSynopsis, 0)
 	for _, f := range c.actualFlags() {
 		group := getGroup(f)
 		groups[group] = append(groups[group], f.newSynopsis())
+	}
+	for _, a := range c.actualArgs() {
+		args = append(args, a.newSynopsis())
 	}
 
 	sortedByName(groups[onlyShortNoValueOptional])
@@ -227,6 +237,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 	return &commandSynopsis{
 		name:  c.Name,
 		flags: groups,
+		args:  args,
 	}
 }
 

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"regexp"
 	"sort"
 	"strconv"
@@ -122,9 +123,9 @@ func defaultVersionCommand() *Command {
 	}
 }
 
-func (f *usage) Placeholders() []string {
+func (u *usage) Placeholders() []string {
 	res := make([]string, 0)
-	for _, e := range f.placeholders() {
+	for _, e := range u.placeholders() {
 		res = append(res, e.name)
 	}
 	return res
@@ -142,10 +143,10 @@ func (p placeholdersByPos) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-func (f *usage) placeholders() []*placeholderExpr {
-	res := make(placeholdersByPos, 0, len(f.exprs))
+func (u *usage) placeholders() []*placeholderExpr {
+	res := make(placeholdersByPos, 0, len(u.exprs))
 	seen := map[string]bool{}
-	for _, item := range f.exprs {
+	for _, item := range u.exprs {
 		if e, ok := item.(*placeholderExpr); ok {
 			if !seen[e.name] {
 				res = append(res, e)
@@ -155,6 +156,19 @@ func (f *usage) placeholders() []*placeholderExpr {
 	}
 	sort.Sort(res)
 	return res
+}
+
+func (u *usage) WithoutPlaceholders() string {
+	var b bytes.Buffer
+	for _, e := range u.exprs {
+		switch item := e.(type) {
+		case *placeholderExpr:
+			b.WriteString(item.name)
+		case *literal:
+			b.WriteString(item.text)
+		}
+	}
+	return b.String()
 }
 
 func parseUsage(text string) *usage {

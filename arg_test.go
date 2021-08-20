@@ -74,6 +74,33 @@ var _ = Describe("Arg", func() {
 		Entry("list when -2", -2, cli.List()),
 	)
 
+	Describe("Synopsis", func() {
+
+		DescribeTable("examples",
+			func(f *cli.Arg, expected string) {
+				Expect(f.Synopsis()).To(Equal(expected))
+			},
+			Entry(
+				"bool arg",
+				&cli.Arg{
+					Name:  "arg",
+					Value: cli.Bool(),
+				},
+				"<arg>",
+			),
+			Entry(
+				"repeat arg",
+				&cli.Arg{
+					Name:  "arg",
+					NArg:  -1,
+					Value: cli.Bool(),
+				},
+				"<arg>...",
+			),
+		)
+
+	})
+
 	Context("when environment variables are set", func() {
 		var (
 			actual    string

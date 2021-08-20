@@ -112,7 +112,7 @@ var _ = Describe("Flag", func() {
 
 	Describe("Synopsis", func() {
 
-		DescribeTable("",
+		DescribeTable("examples",
 			func(f *cli.Flag, expected string) {
 				Expect(f.Synopsis()).To(Equal(expected))
 			},

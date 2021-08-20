@@ -76,6 +76,19 @@ var _ = Describe("Command", func() {
 					Name: "cmd",
 				},
 				"cmd [--tan=STRING] [--cos=STRING]",
+			),
+			Entry(
+				"flags and args",
+				&cli.Command{
+					Flags: []*cli.Flag{
+						{Name: "t", Value: cli.Bool()},
+					},
+					Args: []*cli.Arg{
+						{Name: "arg"},
+					},
+					Name: "cmd",
+				},
+				"cmd [-t] <arg>",
 			))
 	})
 })

@@ -113,10 +113,11 @@ func commandAdapter(val *Command) *commandData {
 }
 
 func flagAdapter(val *Flag) *flagData {
+	syn := val.newSynopsis()
 	return &flagData{
 		Name:     val.Name,
-		HelpText: val.HelpText,
-		Synopsis: val.Synopsis(),
+		HelpText: syn.value.helpText,
+		Synopsis: syn.formatString(false),
 	}
 }
 
@@ -124,7 +125,7 @@ func argAdapter(val *Arg) *flagData {
 	return &flagData{
 		Name:     val.Name,
 		HelpText: val.HelpText,
-		Synopsis: val.Name,
+		Synopsis: val.newSynopsis().formatString(),
 	}
 }
 

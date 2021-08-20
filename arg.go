@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/pborman/getopt/v2"
 )
 
@@ -34,6 +36,11 @@ type optionWrapper struct {
 	arg *Arg
 }
 
+type argSynopsis struct {
+	value string
+	multi bool
+}
+
 func (a *Arg) Occurrences() int {
 	return a.count
 }
@@ -45,6 +52,18 @@ func (a *Arg) Seen() bool {
 func (a *Arg) Set(arg string) error {
 	a.count = a.count + 1
 	return a.ensureInternal().Set(arg, optionWrapper{arg: a})
+}
+
+// Synopsis contains the value placeholder
+func (a *Arg) Synopsis() string {
+	return a.newSynopsis().formatString()
+}
+
+func (a *Arg) newSynopsis() *argSynopsis {
+	return &argSynopsis{
+		value: fmt.Sprintf("<%s>", a.Name),
+		multi: a.NArg < 0 || a.NArg > 1,
+	}
 }
 
 func (a *Arg) action() ActionHandler {
@@ -67,9 +86,20 @@ func (a *Arg) filePath() string {
 	return a.FilePath
 }
 
+func (a *Arg) helpText() string {
+	return a.HelpText
+}
+
 func (a *Arg) value() interface{} {
 	a.ensureInternal()
 	return a.Value
+}
+
+func (a *argSynopsis) formatString() string {
+	if a.multi {
+		return a.value + "..."
+	}
+	return a.value
 }
 
 func (a *Arg) ensureInternal() *generic {

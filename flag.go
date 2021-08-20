@@ -84,6 +84,7 @@ type option interface {
 	name() string
 	envVars() []string
 	filePath() string
+	helpText() string
 	before() ActionHandler
 	action() ActionHandler
 }
@@ -92,7 +93,12 @@ type flagSynopsis struct {
 	short string
 	long  string
 	sep   string
-	value string
+	value *valueSynopsis
+}
+
+type valueSynopsis struct {
+	placeholder string
+	helpText    string
 }
 
 func (f *Flag) applyToSet(s *getopt.Set) {
@@ -121,16 +127,17 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 		short: short,
 		long:  long,
 		sep:   sep,
-		value: valueSynopsis(f),
+		value: getValueSynopsis(f),
 	}
 }
 
 func (f *flagSynopsis) formatString(hideAlternates bool) string {
 	sepIfNeeded := ""
-	if len(f.value) > 0 {
+	place := f.value.placeholder
+	if len(place) > 0 {
 		sepIfNeeded = f.sep
 	}
-	return f.names(hideAlternates) + sepIfNeeded + f.value
+	return f.names(hideAlternates) + sepIfNeeded + place
 }
 
 func (f *flagSynopsis) names(hideAlternates bool) string {
@@ -146,12 +153,23 @@ func (f *flagSynopsis) names(hideAlternates bool) string {
 	return fmt.Sprintf("-%s, --%s", f.short, f.long)
 }
 
-func valueSynopsis(f *Flag) string {
-	usage := strings.Join(parseUsage(f.HelpText).Placeholders(), " ")
+func getValueSynopsis(o option) *valueSynopsis {
+	use := parseUsage(o.helpText())
+	usage := strings.Join(use.Placeholders(), " ")
 	if len(usage) > 0 {
-		return usage
+		return &valueSynopsis{
+			placeholder: usage,
+			helpText:    use.WithoutPlaceholders(),
+		}
 	}
-	switch f.Value.(type) {
+	return &valueSynopsis{
+		placeholder: placeholder(o.value()),
+		helpText:    use.WithoutPlaceholders(),
+	}
+}
+
+func placeholder(v interface{}) string {
+	switch v.(type) {
 	case *bool:
 		return ""
 	case *int, *int8, *int16, *int32, *int64:
@@ -228,6 +246,10 @@ func (f *Flag) filePath() string {
 func (f *Flag) value() interface{} {
 	f.Value = ensureDestination(f.Value, 1)
 	return f.Value
+}
+
+func (f *Flag) helpText() string {
+	return f.HelpText
 }
 
 func (f FlagsByName) Len() int {
