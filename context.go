@@ -422,6 +422,13 @@ func (c *Context) optionContext(opt option) *Context {
 func (c *Context) applySet() {
 	set := getopt.New()
 	c.set = set
+	for _, f := range c.allFlagsInScope() {
+		f.applyToSet(set)
+	}
+}
+
+func (c *Context) allFlagsInScope() []*Flag {
+	result := make([]*Flag, 0)
 	for {
 		var (
 			cmd *Command
@@ -436,10 +443,29 @@ func (c *Context) applySet() {
 				continue
 			}
 			all[f.Name] = true
-			f.applyToSet(set)
+			result = append(result, f)
 		}
 		c = c.Parent()
 	}
+	return result
+}
+
+func (c *Context) flagsAndArgs(persistent bool) []option {
+	cmd := c.Command()
+	res := make([]option, 0, len(cmd.Flags)+len(cmd.Args))
+	if persistent {
+		for _, f := range c.allFlagsInScope() {
+			res = append(res, f)
+		}
+	} else {
+		for _, f := range cmd.Flags {
+			res = append(res, f)
+		}
+	}
+	for _, a := range cmd.Args {
+		res = append(res, a)
+	}
+	return res
 }
 
 func (c *Context) applySubcommands() (*Context, error) {
@@ -642,7 +668,7 @@ func defaultBeforeOption(o option) ActionHandler {
 
 func defaultBeforeCommand(c *Command) ActionFunc {
 	return func(ctx *Context) error {
-		for _, f := range c.flagsAndArgs() {
+		for _, f := range ctx.flagsAndArgs(true) {
 			err := hookExecute(f.before(), defaultBeforeOption(f), ctx.optionContext(f))
 			if err != nil {
 				return err
@@ -651,7 +677,7 @@ func defaultBeforeCommand(c *Command) ActionFunc {
 
 		// Invoke the Before action on all flags and args, but only the actual
 		// Action when the flag or arg was set
-		for _, f := range c.flagsAndArgs() {
+		for _, f := range ctx.flagsAndArgs(true) {
 			if f.Seen() {
 				err := ctx.optionContext(f).executeOption()
 				if err != nil {

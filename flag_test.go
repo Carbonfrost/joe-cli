@@ -48,6 +48,52 @@ var _ = Describe("Flag", func() {
 			Expect(captured.Name()).To(Equal("-f"))
 			Expect(captured.Path().String()).To(Equal("app -f"))
 		})
+
+		It("contains the value in the context", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Value("")).To(Equal("value"))
+		})
+
+		Context("for a persistent flag", func() {
+			BeforeEach(func() {
+				act = new(joeclifakes.FakeActionHandler)
+				app = &cli.App{
+					Name: "app",
+					Commands: []*cli.Command{
+						{
+							Name: "sub",
+						},
+					},
+					Flags: []*cli.Flag{
+						{
+							Name:   "f",
+							Action: act,
+						},
+					},
+				}
+			})
+
+			Context("set within the subcommand", func() {
+				BeforeEach(func() {
+					arguments = "app sub -f value"
+				})
+
+				It("executes action on setting flag", func() {
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				})
+
+				It("provides properly initialized context", func() {
+					captured := act.ExecuteArgsForCall(0)
+					Expect(captured.Name()).To(Equal("-f"))
+					Expect(captured.Path().String()).To(Equal("app sub -f"))
+				})
+
+				It("contains the value in the context", func() {
+					captured := act.ExecuteArgsForCall(0)
+					Expect(captured.Value("")).To(Equal("value"))
+				})
+			})
+		})
 	})
 
 	Context("when environment variables are set", func() {

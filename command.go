@@ -190,17 +190,6 @@ func (c *Command) actualFlags() []*Flag {
 	return c.Flags
 }
 
-func (c *Command) flagsAndArgs() []option {
-	res := make([]option, 0, len(c.Flags)+len(c.Args))
-	for _, f := range c.Flags {
-		res = append(res, f)
-	}
-	for _, a := range c.Args {
-		res = append(res, a)
-	}
-	return res
-}
-
 func (c *commandSynopsis) formatString() string {
 	var res bytes.Buffer
 	res.WriteString(c.name)
