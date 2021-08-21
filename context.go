@@ -91,6 +91,11 @@ func (c *Context) IsFlag() bool {
 	return ok
 }
 
+func (c *Context) isOption() bool {
+	_, ok := c.target.(option)
+	return ok
+}
+
 func (c *Context) Args() []string {
 	return c.args
 }
@@ -132,10 +137,22 @@ func (c *Context) Occurrences(name string) int {
 	return -1
 }
 
+// Value obtains the value of the flag or argument with the specified name.  If name
+// is the empty string, this is interpreted as using the name of whatever is the
+// current context flag or argument.
 func (c *Context) Value(name string) interface{} {
 	if c == nil {
 		return nil
 	}
+	if name == "" {
+		if c.isOption() {
+			return dereference(c.option().value())
+		}
+		name = c.Name()
+	}
+
+	// Strip possible decorators --flag, <arg>
+	name = strings.Trim(name, "-<>")
 	if v, ok := c.values[name]; ok {
 		return dereference(v)
 	}
