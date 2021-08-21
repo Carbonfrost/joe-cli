@@ -68,8 +68,12 @@ func (a *Arg) Synopsis() string {
 }
 
 func (a *Arg) newSynopsis() *argSynopsis {
+	usage := a.UsageText
+	if usage == "" {
+		usage = fmt.Sprintf("<%s>", a.Name)
+	}
 	return &argSynopsis{
-		value: fmt.Sprintf("<%s>", a.Name),
+		value: usage,
 		multi: a.NArg < 0 || a.NArg > 1,
 	}
 }
