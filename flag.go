@@ -105,6 +105,7 @@ type flagSynopsis struct {
 type valueSynopsis struct {
 	placeholder string
 	helpText    string
+	usage       *usage
 }
 
 func (f *Flag) applyToSet(s *getopt.Set) {
@@ -117,7 +118,7 @@ func (f *Flag) applyToSet(s *getopt.Set) {
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
 // is inferred from the HelpText.  Up to one short and one long name will be used.
 func (f *Flag) Synopsis() string {
-	return f.newSynopsis().formatString(false)
+	return textUsage.flag(f.newSynopsis(), false)
 }
 
 func (f *Flag) newSynopsis() *flagSynopsis {
@@ -137,15 +138,6 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 	}
 }
 
-func (f *flagSynopsis) formatString(hideAlternates bool) string {
-	sepIfNeeded := ""
-	place := f.value.placeholder
-	if len(place) > 0 {
-		sepIfNeeded = f.sep
-	}
-	return f.names(hideAlternates) + sepIfNeeded + place
-}
-
 func (f *flagSynopsis) names(hideAlternates bool) string {
 	if len(f.long) == 0 {
 		return fmt.Sprintf("-%s", f.short)
@@ -160,17 +152,19 @@ func (f *flagSynopsis) names(hideAlternates bool) string {
 }
 
 func getValueSynopsis(o option) *valueSynopsis {
-	use := parseUsage(o.helpText())
-	usage := strings.Join(use.Placeholders(), " ")
-	if len(usage) > 0 {
+	usage := parseUsage(o.helpText())
+	placeholders := strings.Join(usage.Placeholders(), " ")
+	if len(placeholders) > 0 {
 		return &valueSynopsis{
-			placeholder: usage,
-			helpText:    use.WithoutPlaceholders(),
+			placeholder: placeholders,
+			usage:       usage,
+			helpText:    usage.WithoutPlaceholders(),
 		}
 	}
 	return &valueSynopsis{
 		placeholder: placeholder(o.value()),
-		helpText:    use.WithoutPlaceholders(),
+		helpText:    usage.WithoutPlaceholders(),
+		usage:       usage,
 	}
 }
 

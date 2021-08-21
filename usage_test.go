@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"os"
 
 	"github.com/Carbonfrost/joe-cli"
 	. "github.com/onsi/ginkgo"
@@ -38,6 +39,7 @@ var _ = Describe("usage", func() {
 var _ = Describe("DisplayHelpScreen", func() {
 	var (
 		renderHelpScreen = func(app *cli.App) string {
+			defer disableConsoleColor()()
 			var buffer bytes.Buffer
 			app.Stderr = &buffer
 			_ = app.RunContext(nil, []string{"app", "--help"})
@@ -84,3 +86,10 @@ var _ = Describe("DisplayHelpScreen", func() {
 	)
 
 })
+
+func disableConsoleColor() func() {
+	os.Setenv("NO_COLOR", "1")
+	return func() {
+		os.Setenv("NO_COLOR", "0")
+	}
+}

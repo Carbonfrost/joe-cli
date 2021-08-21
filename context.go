@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"go/doc"
 	"io"
+	"os"
 	"strings"
 	"text/template"
 
 	"github.com/pborman/getopt/v2"
+	"golang.org/x/term"
 )
 
 // Context provides the context in which the app, command, or flag is executing
@@ -290,7 +292,7 @@ func (c *Context) Do(actions ...ActionHandler) error {
 }
 
 func (c *Context) Template(name string) *template.Template {
-	const width = 78
+	width := guessWidth()
 
 	switch name {
 	case "help", "version":
@@ -299,7 +301,40 @@ func (c *Context) Template(name string) *template.Template {
 				return strings.Join(args, v)
 			},
 			"Trim": strings.TrimSpace,
-			"Wrap": wrapUsage,
+			"Wrap": func(indent int, s string) string {
+				buf := bytes.NewBuffer(nil)
+				indentText := strings.Repeat(" ", indent)
+				doc.ToText(buf, s, indentText, "  "+indentText, width-indent)
+				return buf.String()
+			},
+			"BoldFirst": func(args []string) []string {
+				args[0] = bold.Open + args[0] + bold.Close
+				return args
+			},
+			"SynopsisHangingIndent": func(d *commandData) string {
+				var buf bytes.Buffer
+				hang := strings.Repeat(
+					" ",
+					len("usage:")+lenIgnoringCSI(d.Lineage)+len(d.Name)+1,
+				)
+
+				buf.WriteString(d.Lineage)
+
+				limit := width - len("usage:") - lenIgnoringCSI(d.Lineage) - 1
+				for _, t := range d.Synopsis {
+					tLength := lenIgnoringCSI(t)
+					if limit-tLength < 0 {
+						buf.WriteString("\n")
+						buf.WriteString(hang)
+						limit = width - len(hang)
+					}
+
+					buf.WriteString(" ")
+					buf.WriteString(t)
+					limit = limit - 1 - tLength
+				}
+				return buf.String()
+			},
 		}
 
 		return template.Must(
@@ -722,18 +757,21 @@ func reverse(arr []string) []string {
 	return arr
 }
 
-func wrapUsage(indent int, s string) string {
-	const width = 80
-	buf := bytes.NewBuffer(nil)
-	indentText := strings.Repeat(" ", indent)
-	doc.ToText(buf, s, indentText, "  "+indentText, width-indent)
-	return buf.String()
-}
-
 func setupOptionFromEnv(ctx *Context) error {
 	o := ctx.option()
 	if v, ok := loadFlagValueFromEnvironment(o); ok {
 		return o.Set(v)
 	}
 	return nil
+}
+
+func guessWidth() int {
+	fd := int(os.Stdout.Fd())
+	if term.IsTerminal(fd) {
+		width, _, err := term.GetSize(fd)
+		if err == nil && width > 12 {
+			return width
+		}
+	}
+	return 80
 }

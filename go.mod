@@ -9,4 +9,5 @@ require (
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.15.0
 	github.com/pborman/getopt/v2 v2.1.0
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 )

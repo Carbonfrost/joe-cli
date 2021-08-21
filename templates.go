@@ -5,7 +5,8 @@ type commandData struct {
 	Names              []string
 	Description        string
 	HelpText           string
-	Synopsis           string
+	Synopsis           []string
+	Lineage            string
 	VisibleCommands    []*commandData
 	VisibleFlags       []*flagData
 	VisibleArgs        []*flagData
@@ -29,7 +30,7 @@ var (
 {{ range .CommandsByCategory }}
 {{ if .Category }}{{.Category}}:{{ end }}
 {{- range .VisibleCommands }}
-{{ "\t" }}{{ .Names | Join ", " }}{{ "\t" }}{{.HelpText}}{{end}}
+{{ "\t" }}{{ .Names | BoldFirst | Join ", " }}{{ "\t" }}{{.HelpText}}{{end}}
 {{ else }}
 {{- range .VisibleCommands }}
 {{ "\t" }}{{.Name}}{{ "\t" }}{{.HelpText}}{{end}}
@@ -43,7 +44,7 @@ var (
 
 {{/* Usage is the entry point, which calls flags, subcommands */}} 
 {{- define "Usage" -}}
-usage: {{ if .CommandLineage }}{{.CommandLineage}} {{ end }}{{ .SelectedCommand.Synopsis }}
+usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 {{ if .SelectedCommand.Description }}
 {{ .SelectedCommand.Description | Wrap 4 }}
 {{- end -}}
@@ -59,48 +60,55 @@ usage: {{ if .CommandLineage }}{{.CommandLineage}} {{ end }}{{ .SelectedCommand.
 	VersionTemplate string = "{{ .App.Name }}, version {{ .App.Version }}\n"
 )
 
-func visibleFlags(items []*Flag) []*flagData {
-	res := make([]*flagData, 0, len(items))
-	for _, a := range items {
-		res = append(res, flagAdapter(a))
-	}
-	return res
+func (c *commandData) withLineage(lineage string) *commandData {
+	c.Lineage = lineage
+	return c
 }
 
-func visibleArgs(items []*Arg) []*flagData {
-	res := make([]*flagData, 0, len(items))
-	for _, a := range items {
-		res = append(res, argAdapter(a))
-	}
-	return res
-}
+func commandAdapter(val *Command, gen usageGenerator) *commandData {
+	var (
+		visibleFlags = func(items []*Flag) []*flagData {
+			res := make([]*flagData, 0, len(items))
+			for _, a := range items {
+				res = append(res, flagAdapter(a, gen))
+			}
+			return res
+		}
 
-func visibleCommands(items []*Command) []*commandData {
-	res := make([]*commandData, 0, len(items))
-	for _, a := range items {
-		res = append(res, commandAdapter(a))
-	}
-	return res
-}
+		visibleArgs = func(items []*Arg) []*flagData {
+			res := make([]*flagData, 0, len(items))
+			for _, a := range items {
+				res = append(res, argAdapter(a, gen))
+			}
+			return res
+		}
 
-func visibleCategories(items CommandsByCategory) []*commandCategory {
-	res := make([]*commandCategory, 0, len(items))
-	for _, a := range items {
-		res = append(res, &commandCategory{
-			Category:        a.Category,
-			VisibleCommands: visibleCommands(a.Commands),
-		})
-	}
-	return res
-}
+		visibleCommands = func(items []*Command) []*commandData {
+			res := make([]*commandData, 0, len(items))
+			for _, a := range items {
+				res = append(res, commandAdapter(a, gen))
+			}
+			return res
+		}
 
-func commandAdapter(val *Command) *commandData {
+		visibleCategories = func(items CommandsByCategory) []*commandCategory {
+			res := make([]*commandCategory, 0, len(items))
+			for _, a := range items {
+				res = append(res, &commandCategory{
+					Category:        a.Category,
+					VisibleCommands: visibleCommands(a.Commands),
+				})
+			}
+			return res
+		}
+	)
+
 	return &commandData{
 		Name:               val.Name,
 		Names:              val.Names(),
 		Description:        val.Description,
 		HelpText:           val.HelpText,
-		Synopsis:           val.Synopsis(),
+		Synopsis:           gen.command(val.newSynopsis()),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
 		VisibleCommands:    visibleCommands(val.Subcommands),
@@ -108,20 +116,20 @@ func commandAdapter(val *Command) *commandData {
 	}
 }
 
-func flagAdapter(val *Flag) *flagData {
+func flagAdapter(val *Flag, gen usageGenerator) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
 		Name:     val.Name,
-		HelpText: syn.value.helpText,
-		Synopsis: syn.formatString(false),
+		HelpText: gen.helpText(syn.value.usage),
+		Synopsis: gen.flag(syn, false),
 	}
 }
 
-func argAdapter(val *Arg) *flagData {
+func argAdapter(val *Arg, gen usageGenerator) *flagData {
 	return &flagData{
 		Name:     val.Name,
 		HelpText: val.HelpText,
-		Synopsis: val.newSynopsis().formatString(),
+		Synopsis: gen.arg(val.newSynopsis()),
 	}
 }
 

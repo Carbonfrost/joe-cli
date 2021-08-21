@@ -2,6 +2,8 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -11,6 +13,7 @@ import (
 
 var (
 	usagePattern = regexp.MustCompile(`{(.+?)}`)
+	controlCodes = regexp.MustCompile("\u001B\\[\\d+m")
 )
 
 type usage struct {
@@ -29,7 +32,34 @@ type literal struct {
 	text string
 }
 
+type usageGenerator interface {
+	command(c *commandSynopsis) []string
+	arg(a *argSynopsis) string
+	flag(f *flagSynopsis, hideAlternates bool) string
+	value(v *valueSynopsis) string
+	helpText(u *usage) string
+}
+
+type termFormatter struct{}
+
 type placeholdersByPos []*placeholderExpr
+
+type defaultUsage struct {
+	*termFormatter
+}
+
+type csPair struct {
+	Open  string
+	Close string
+}
+
+var (
+	textUsage   = &defaultUsage{} // nil formatter disables formatting
+	modernUsage = &defaultUsage{&termFormatter{}}
+
+	bold      = namedCSPair(1, 22)
+	underline = namedCSPair(4, 24)
+)
 
 func DisplayHelpScreen(command ...string) ActionFunc {
 	return func(c *Context) error {
@@ -47,15 +77,13 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 
 		data := struct {
 			SelectedCommand *commandData
-			CommandLineage  string
 			App             *App
 		}{
-			SelectedCommand: commandAdapter(cmd),
-			CommandLineage:  lineage,
+			SelectedCommand: commandAdapter(cmd, getUsageGenerator()).withLineage(lineage),
 			App:             c.App(),
 		}
 
-		w := tabwriter.NewWriter(c.Stderr, 1, 8, 2, ' ', 0)
+		w := tabwriter.NewWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
 
 		_ = tpl.Execute(w, data)
 		_ = w.Flush()
@@ -173,6 +201,132 @@ func (u *usage) WithoutPlaceholders() string {
 	return b.String()
 }
 
+// bold command name, flag names
+// underline arg names, value placeholders
+
+func (d *defaultUsage) command(c *commandSynopsis) []string {
+	tokens := make([]string, 0)
+
+	var (
+		add = func(s string) {
+			tokens = append(tokens, s)
+		}
+	)
+	add(d.Bold(c.name))
+
+	groups := c.flags
+	if len(groups[actionGroup]) > 0 {
+		var res bytes.Buffer
+		res.WriteString("{")
+		for i, f := range groups[actionGroup] {
+			if i > 0 {
+				res.WriteString(" | ")
+			}
+			res.WriteString(d.flag(f, true))
+		}
+		res.WriteString("}")
+		add(res.String())
+	}
+
+	// short option list -abc
+	if len(groups[onlyShortNoValue]) > 0 {
+		var res bytes.Buffer
+		res.WriteString("-")
+		for _, f := range groups[onlyShortNoValue] {
+			res.WriteString(f.short)
+		}
+		add(res.String())
+	}
+
+	if len(groups[onlyShortNoValueOptional]) > 0 {
+		var res bytes.Buffer
+		res.WriteString("[-")
+		for _, f := range groups[onlyShortNoValueOptional] {
+			res.WriteString(f.short)
+		}
+		res.WriteString("]")
+		add(res.String())
+	}
+
+	for _, f := range groups[otherOptional] {
+		add("[" + d.flag(f, true) + "]")
+	}
+
+	for _, f := range groups[other] {
+		add(d.flag(f, true))
+	}
+
+	for _, a := range c.args {
+		add(d.arg(a))
+	}
+
+	return tokens
+}
+
+func (d *defaultUsage) arg(a *argSynopsis) string {
+	if a.multi {
+		return a.value + "..."
+	}
+	return a.value
+}
+
+func (d *defaultUsage) flag(f *flagSynopsis, hideAlternates bool) string {
+	sepIfNeeded := ""
+	place := f.value.placeholder
+	if len(place) > 0 {
+		sepIfNeeded = f.sep
+	}
+	names := d.Bold(f.names(hideAlternates))
+	return names + sepIfNeeded + d.Underline(place)
+}
+
+func (d *defaultUsage) value(v *valueSynopsis) string {
+	return d.Underline(v.placeholder)
+}
+
+func (d *defaultUsage) helpText(u *usage) string {
+	var b bytes.Buffer
+	for _, e := range u.exprs {
+		switch item := e.(type) {
+		case *placeholderExpr:
+			b.WriteString(d.Underline(item.name))
+		case *literal:
+			b.WriteString(item.text)
+		}
+	}
+	return b.String()
+}
+
+func (t *termFormatter) Bold(s string) string {
+	if t == nil {
+		return s
+	}
+	return bold.Open + s + bold.Close
+}
+
+func (t *termFormatter) Underline(s string) string {
+	if t == nil {
+		return s
+	}
+	return underline.Open + s + underline.Close
+}
+
+// namedCSPair provides the ANSI control scheme pair for a formatting sequence.
+// tabwriter escapes are added to disregard them in formatting
+func namedCSPair(open uint8, close uint8) csPair {
+	return csPair{
+		Open:  fmt.Sprintf("%[1]s\u001B[%[2]dm%[1]s", "", open),
+		Close: fmt.Sprintf("%[1]s\u001B[%[2]dm%[1]s", "", close),
+	}
+}
+
+func getUsageGenerator() usageGenerator {
+	if os.Getenv("NO_COLOR") == "1" {
+		return textUsage
+	}
+	return modernUsage
+}
+
 func parseUsage(text string) *usage {
 	content := []byte(text)
 	allIndexes := usagePattern.FindAllSubmatchIndex(content, -1)
@@ -209,4 +363,8 @@ func newExpr(token []byte) expr {
 	pos, _ := strconv.Atoi(positionAndName[0])
 	name := positionAndName[1]
 	return &placeholderExpr{name: name, pos: pos}
+}
+
+func lenIgnoringCSI(s string) int {
+	return len(controlCodes.ReplaceAllString(s, ""))
 }

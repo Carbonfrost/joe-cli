@@ -91,6 +91,7 @@ var _ = Describe("App", func() {
 			var (
 				capture bytes.Buffer
 			)
+			defer disableConsoleColor()()
 			app := &cli.App{
 				Name:   "hunter",
 				Stderr: &capture,

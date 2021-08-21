@@ -64,7 +64,7 @@ func (a *Arg) SetRequired() {
 
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
-	return a.newSynopsis().formatString()
+	return textUsage.arg(a.newSynopsis())
 }
 
 func (a *Arg) newSynopsis() *argSynopsis {
@@ -117,13 +117,6 @@ func (a *Arg) helpText() string {
 func (a *Arg) value() interface{} {
 	a.ensureInternal()
 	return a.Value
-}
-
-func (a *argSynopsis) formatString() string {
-	if a.multi {
-		return a.value + "..."
-	}
-	return a.value
 }
 
 func (a *Arg) ensureInternal() *generic {

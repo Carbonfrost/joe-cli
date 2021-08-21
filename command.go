@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"bytes"
 	"sort"
+	"strings"
 )
 
 type Command struct {
@@ -105,7 +105,7 @@ func (c CommandsByCategory) Swap(i, j int) {
 }
 
 func (c *Command) Synopsis() string {
-	return c.newSynopsis().formatString()
+	return strings.Join(textUsage.command(c.newSynopsis()), " ")
 }
 
 func (c *Command) Command(name string) (*Command, bool) {
@@ -188,57 +188,6 @@ func (c *Command) actualFlags() []*Flag {
 		return make([]*Flag, 0)
 	}
 	return c.Flags
-}
-
-func (c *commandSynopsis) formatString() string {
-	var res bytes.Buffer
-	res.WriteString(c.name)
-
-	groups := c.flags
-	if len(groups[actionGroup]) > 0 {
-		res.WriteString(" {")
-		for i, f := range groups[actionGroup] {
-			if i > 0 {
-				res.WriteString(" | ")
-			}
-			res.WriteString(f.formatString(true))
-		}
-		res.WriteString("}")
-	}
-
-	// short option list -abc
-	if len(groups[onlyShortNoValue]) > 0 {
-		res.WriteString(" -")
-		for _, f := range groups[onlyShortNoValue] {
-			res.WriteString(f.short)
-		}
-	}
-
-	if len(groups[onlyShortNoValueOptional]) > 0 {
-		res.WriteString(" [-")
-		for _, f := range groups[onlyShortNoValueOptional] {
-			res.WriteString(f.short)
-		}
-		res.WriteString("]")
-	}
-
-	for _, f := range groups[otherOptional] {
-		res.WriteString(" [")
-		res.WriteString(f.formatString(true))
-		res.WriteString("]")
-	}
-
-	for _, f := range groups[other] {
-		res.WriteString(" ")
-		res.WriteString(f.formatString(true))
-	}
-
-	for _, a := range c.args {
-		res.WriteString(" ")
-		res.WriteString(a.formatString())
-	}
-
-	return res.String()
 }
 
 func (c *Command) newSynopsis() *commandSynopsis {
