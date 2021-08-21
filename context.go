@@ -27,6 +27,8 @@ type Context struct {
 	args   []string
 	set    *getopt.Set
 	values map[string]interface{}
+
+	didSubcommandExecute bool
 }
 
 type ContextPath []string
@@ -520,52 +522,16 @@ func (c *Context) flagsAndArgs(persistent bool) []option {
 	return res
 }
 
-func (c *Context) applySubcommands() (*Context, error) {
-	ctx := c
-	args := c.args
-
-	for len(args) > 0 {
-		err := ctx.set.Getopt(args, nil)
-		if err != nil {
-			// Failed to set the option to the corresponding flag
-			return nil, err
-		}
-		args = ctx.set.Args()
-
-		// Args were modified by Getopt to apply any flags and stopped
-		// at the first argument.  If the argument matches a sub-command, then
-		// we push the command onto the stack
-		if len(args) > 0 {
-			cmd := ctx.target.(*Command)
-			if sub, ok := cmd.Command(args[0]); ok {
-				err := ctx.executeBefore()
-				if err != nil {
-					return ctx, err
-				}
-
-				ctx = ctx.commandContext(sub, args)
-
-			} else if len(cmd.Subcommands) > 0 {
-				return c, commandMissing(args[0])
-			} else {
-				// Stop looking for commands; this is it
-				break
-			}
-		}
-	}
-	return ctx, nil
-}
-
 func (c *Context) applyFlagsAndArgs() (err error) {
 	var (
 		currentIndex = -1
 		current      *Arg
+		cmd          = c.target.(*Command)
 
 		// c.args contains the name of the command and its arguments
 		args []string = c.args
 
 		enumerator = func() bool {
-			cmd := c.target.(*Command)
 			actual := cmd.actualArgs()
 			currentIndex = currentIndex + 1
 			if currentIndex < len(actual) {
@@ -688,7 +654,14 @@ func (c *Context) executeCommand() error {
 		return err
 	}
 
-	return hookExecute(Action(cmd.Action), defaultAfter, c)
+	var action ActionHandler
+
+	if !c.didSubcommandExecute {
+		// Only execute the command if one of its sub-commands did not run
+		action = Action(cmd.Action)
+	}
+
+	return hookExecute(action, defaultAfter, c)
 }
 
 func (c *Context) executeOption() error {

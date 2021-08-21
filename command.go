@@ -30,6 +30,8 @@ type Command struct {
 
 	HelpText  string
 	UsageText string
+
+	disallowFlagsAfterArgs bool
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -65,6 +67,24 @@ const (
 	actionGroup                                  // { --help|--version}
 	hidden
 )
+
+// ExecuteSubcommand finds and executes a sub-command.  This action is intended to be used
+// as the action on an argument.  The argument should be a list of strings, which represent
+// the subcommand to locate and execute and the arguments to use.  If no sub-command matches, an error
+// is generated, which you can intercept with custom handling using interceptErr.  It is uncommon
+// to use this action because this action is implicitly bound to a synthetic argument when a
+// command defines any sub-commands.
+func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) ActionFunc {
+	return func(c *Context) error {
+		invoke := c.List("")
+		cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], interceptErr)
+		if err != nil {
+			return err
+		}
+		c.Parent().didSubcommandExecute = true
+		return cmd.parseAndExecute(c.Parent(), invoke)
+	}
+}
 
 func GroupedByCategory(cmds []*Command) CommandsByCategory {
 	res := CommandsByCategory{}
@@ -146,6 +166,11 @@ func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
 }
 
+func (c *Command) appendArg(arg *Arg) *Command {
+	c.Args = append(c.Args, arg)
+	return c
+}
+
 func (c *Command) createValues() map[string]interface{} {
 	values := map[string]interface{}{}
 	for _, f := range c.actualFlags() {
@@ -159,21 +184,30 @@ func (c *Command) createValues() map[string]interface{} {
 
 func (c *Command) parseAndExecute(ctx *Context, args []string) error {
 	ctx = ctx.commandContext(c, args)
-	err := ctx.executeBefore()
-	if err != nil {
-		return err
-	}
-
-	ctx, err = ctx.applySubcommands()
-	if err != nil {
-		return err
-	}
+	c.ensureSubcommands()
 
 	if err := ctx.applyFlagsAndArgs(); err != nil {
 		return err
 	}
 
 	return ctx.executeCommand()
+}
+
+func (c *Command) ensureSubcommands() {
+	if len(c.Subcommands) > 0 {
+		if len(c.Args) > 0 {
+			panic("cannot specify subcommands and arguments")
+		}
+
+		c.disallowFlagsAfterArgs = true
+		c.appendArg(&Arg{
+			Name:      "command",
+			UsageText: "<command> [<args>]",
+			Value:     List(),
+			NArg:      -1,
+			Action:    ExecuteSubcommand(nil),
+		})
+	}
 }
 
 func (c *Command) actualArgs() []*Arg {
@@ -278,6 +312,19 @@ func findCommandByName(cmds []*Command, name string) (*Command, bool) {
 		}
 	}
 	return nil, false
+}
+
+func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptErr func(*Context, error) (*Command, error)) (*Command, error) {
+	if res, ok := cmd.Command(sub); ok {
+		return res, nil
+	}
+	if interceptErr != nil {
+		res, err := interceptErr(c, commandMissing(sub))
+		if res != nil || err != nil {
+			return res, err
+		}
+	}
+	return nil, commandMissing(sub)
 }
 
 var _ command = &Command{}

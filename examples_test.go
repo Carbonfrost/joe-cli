@@ -45,11 +45,6 @@ func subcommandApp() *cli.App {
 				Name: "flag1",
 			},
 		},
-		Args: []*cli.Arg{
-			{
-				Name: "arg",
-			},
-		},
 		Commands: []*cli.Command{
 			{
 				Name: "sub",
