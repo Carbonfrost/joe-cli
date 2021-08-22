@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -29,6 +30,9 @@ const (
 	UnknownOption
 	MissingArgument
 	InvalidArgument
+	ExpectedArgument
+	UnknownExpr
+	ArgsMustPrecedeExprs
 )
 
 // Exit formats an error message using the default formats for each of the arguments,
@@ -101,7 +105,11 @@ func (e ErrorCode) String() string {
 	case MissingArgument:
 		return "missing parameter"
 	case InvalidArgument:
-		return "parameter not valid "
+		return "parameter not valid"
+	case UnknownExpr:
+		return "unknown expression"
+	case ArgsMustPrecedeExprs:
+		return "arguments must precede expressions"
 	}
 	return "unknown error"
 }
@@ -125,7 +133,18 @@ func commandMissing(name string) error {
 func unexpectedArgument(value string) *Error {
 	return &Error{
 		Code: UnexpectedArgument,
-		Err:  fmt.Errorf("too many arguments: %q", value),
+		Err:  fmt.Errorf("unexpected argument %q", value),
+	}
+}
+
+func expectedArgument(count int) *Error {
+	msg := "expected argument"
+	if count > 1 {
+		msg = fmt.Sprintf("expected %d arguments", count)
+	}
+	return &Error{
+		Code: ExpectedArgument,
+		Err:  errors.New(msg),
 	}
 }
 
@@ -165,5 +184,29 @@ func setFlagError(o *internalOption, value string, err error) error {
 		Name:  o.Name(),
 		Value: value,
 		Err:   err,
+	}
+}
+
+func unknownExpr(name string) error {
+	return &Error{
+		Code: UnknownExpr,
+		Name: name,
+		Err:  fmt.Errorf("unknown expression: %s", name),
+	}
+}
+
+func argsMustPrecedeExprs(arg string) error {
+	return &Error{
+		Code:  ArgsMustPrecedeExprs,
+		Value: arg,
+		Err:   fmt.Errorf("arguments must precede expressions: %q", arg),
+	}
+}
+
+func wrapExprError(name string, err error) error {
+	return &Error{
+		Code: InvalidArgument,
+		Name: name,
+		Err:  err,
 	}
 }

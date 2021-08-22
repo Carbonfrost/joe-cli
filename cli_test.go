@@ -189,7 +189,7 @@ var _ = Describe("RunContext", func() {
 			"too many arguments",
 			app("<arg>"),
 			"a b c",
-			Equal("too many arguments: \"b\""),
+			Equal("unexpected argument \"b\""),
 		),
 		XEntry( // TODO Required arguments
 			"required argument",

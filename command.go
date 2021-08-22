@@ -10,6 +10,7 @@ type Command struct {
 	Subcommands []*Command
 	Flags       []*Flag
 	Args        []*Arg
+	Exprs       []*Expr
 	Aliases     []string
 
 	// Action specifies the action to run for the command, assuming no other more specific command
@@ -30,8 +31,6 @@ type Command struct {
 
 	HelpText  string
 	UsageText string
-
-	disallowFlagsAfterArgs bool
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -162,6 +161,17 @@ func (c *Command) VisibleFlags() []*Flag {
 	return res
 }
 
+func (c *Command) VisibleExprs() []*Expr {
+	res := make([]*Expr, 0, len(c.actualExprs()))
+	for _, o := range c.actualExprs() {
+		if o.flags.hidden() {
+			continue
+		}
+		res = append(res, o)
+	}
+	return res
+}
+
 func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
 }
@@ -174,6 +184,7 @@ func (c *Command) appendArg(arg *Arg) *Command {
 func (c *Command) parseAndExecute(ctx *Context, args []string) error {
 	ctx = ctx.commandContext(c, args)
 	c.ensureSubcommands()
+	c.ensureExprs()
 	ctx.applySet()
 
 	if err := ctx.applyFlagsAndArgs(); err != nil {
@@ -188,8 +199,6 @@ func (c *Command) ensureSubcommands() {
 		if len(c.Args) > 0 {
 			panic("cannot specify subcommands and arguments")
 		}
-
-		c.disallowFlagsAfterArgs = true
 		c.appendArg(&Arg{
 			Name:      "command",
 			UsageText: "<command> [<args>]",
@@ -200,11 +209,32 @@ func (c *Command) ensureSubcommands() {
 	}
 }
 
+func (c *Command) ensureExprs() {
+	if len(c.Exprs) > 0 {
+		c.appendArg(&Arg{
+			Name:      "expression",
+			UsageText: "<expression>",
+			Value:     new(exprPipeline),
+			NArg:      -1,
+			Action: BindExpression(func(c *Context) ([]*Expr, error) {
+				return c.Command().Exprs, nil
+			}),
+		})
+	}
+}
+
 func (c *Command) actualArgs() []*Arg {
 	if c.Args == nil {
 		return make([]*Arg, 0)
 	}
 	return c.Args
+}
+
+func (c *Command) actualExprs() []*Expr {
+	if c.Exprs == nil {
+		return make([]*Expr, 0)
+	}
+	return c.Exprs
 }
 
 func (c *Command) actualFlags() []*Flag {

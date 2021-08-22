@@ -27,6 +27,24 @@ type Arg struct {
 	flags  internalFlags
 }
 
+type ArgCounter interface {
+	Take(arg string, possibleFlag bool) error
+	Done() error
+}
+
+type discreteCounter struct {
+	total int
+	count int
+}
+
+type optionalCounter struct {
+	seen bool
+}
+
+type varArgsCounter struct {
+	stopOnFlags bool
+}
+
 type argSynopsis struct {
 	value string
 	multi bool
@@ -48,6 +66,36 @@ func Args(namevalue ...interface{}) []*Arg {
 		})
 	}
 	return res
+}
+
+// ArgCount gets the arg counter for the specified value.  If the value is an int, it is interpreted
+// as the discrete number of values in the argument if it is 1 or greater, but if it is < 0
+// it implies taking all arguments, or 0 means take it if it exists.
+//
+//  >= 1   take exactly n number of arguments, though if they look like flags treat as an error
+//     0   take argument if it does not look like a flag
+//    -1   take all remaining arguments (even when they look like flags)
+//    -2   take all remaining arguments but stop before taking one that looks like a flag
+//
+// Any other negative value uses the behavior of -1.
+//
+func ArgCount(v interface{}) ArgCounter {
+	switch count := v.(type) {
+	case ArgCounter:
+		return count
+	case int:
+		if count > 0 {
+			return &discreteCounter{count, count}
+		}
+		if count == 0 {
+			return &optionalCounter{}
+		}
+		return &varArgsCounter{
+			stopOnFlags: count == -2,
+		}
+	default:
+		panic(fmt.Sprintf("unexpected type for ArgCounter: %T", v))
+	}
 }
 
 func (a *Arg) Occurrences() int {
@@ -76,9 +124,13 @@ func (a *Arg) Synopsis() string {
 }
 
 func (a *Arg) newSynopsis() *argSynopsis {
+	return a.newSynopsisCore(fmt.Sprintf("<%s>", a.Name))
+}
+
+func (a *Arg) newSynopsisCore(defaultUsage string) *argSynopsis {
 	usage := a.UsageText
 	if usage == "" {
-		usage = fmt.Sprintf("<%s>", a.Name)
+		usage = defaultUsage
 	}
 	return &argSynopsis{
 		value: usage,
@@ -133,6 +185,44 @@ func (a *Arg) helpText() string {
 func (a *Arg) value() interface{} {
 	a.Value = ensureDestination(a.Value, a.NArg)
 	return a.Value
+}
+
+func (d *discreteCounter) Take(arg string, possibleFlag bool) error {
+	if d.count == 0 {
+		return argEndOfArguments
+	}
+	d.count -= 1
+	return nil
+}
+
+func (d *discreteCounter) Done() error {
+	if d.count > 0 {
+		return expectedArgument(d.total)
+	}
+	return nil
+}
+
+func (d *optionalCounter) Take(arg string, possibleFlag bool) error {
+	if d.seen {
+		return argEndOfArguments
+	}
+	d.seen = true
+	return nil
+}
+
+func (d *optionalCounter) Done() error {
+	return nil
+}
+
+func (v *varArgsCounter) Take(arg string, possibleFlag bool) error {
+	if v.stopOnFlags && allowFlag(arg, possibleFlag) {
+		return argEndOfArguments
+	}
+	return nil
+}
+
+func (*varArgsCounter) Done() error {
+	return nil
 }
 
 func findArgByName(items []*Arg, name string) (*Arg, bool) {

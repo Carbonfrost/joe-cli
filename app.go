@@ -55,6 +55,9 @@ type App struct {
 	// Args will be bound for non-command arguments
 	Args []*Arg
 
+	// Exprs will provide expression evaluation
+	Exprs []*Expr
+
 	// Action specifies the action to run for the app, assuming no other more specific command
 	// has been selected.  Refer to cli.Action about the correct function signature to use.
 	Action interface{}
@@ -108,6 +111,7 @@ func (a *App) createRoot() *Command {
 			Name:        a.Name,
 			Flags:       a.Flags,
 			Args:        a.Args,
+			Exprs:       a.Exprs,
 			Subcommands: a.Commands,
 			Action:      a.Action,
 			Description: a.Description,

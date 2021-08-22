@@ -2,12 +2,14 @@ package cli_test
 
 import (
 	"os"
+	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("Arg", func() {
@@ -48,31 +50,93 @@ var _ = Describe("Arg", func() {
 		})
 	})
 
-	DescribeTable(
-		"NArg",
-		func(count int, expected interface{}) {
-			act := new(joeclifakes.FakeActionHandler)
-			app := &cli.App{
-				Name: "app",
-				Args: []*cli.Arg{
-					{
-						Name: "f",
-						NArg: count,
-					},
-				},
-				Action: act,
-			}
-			args, _ := cli.Split("app f")
-			app.RunContext(nil, args)
+	Describe("NArg", func() {
 
-			captured := act.ExecuteArgsForCall(0)
-			Expect(captured.LookupArg("f").Value).To(BeAssignableToTypeOf(expected))
-		},
-		Entry("list when 0", 0, cli.String()),
-		Entry("string when 1", 1, cli.String()),
-		Entry("list when 2", 2, cli.List()),
-		Entry("list when -2", -2, cli.List()),
-	)
+		DescribeTable(
+			"inferred type",
+			func(count int, expected interface{}) {
+				act := new(joeclifakes.FakeActionHandler)
+				app := &cli.App{
+					Name: "app",
+					Args: []*cli.Arg{
+						{
+							Name: "f",
+							NArg: count,
+						},
+					},
+					Action: act,
+				}
+				arguments := "f"
+				if count > 0 {
+					arguments = strings.Repeat(" g", count)
+				}
+				args, _ := cli.Split("app " + arguments)
+				err := app.RunContext(nil, args)
+				Expect(err).NotTo(HaveOccurred())
+
+				captured := act.ExecuteArgsForCall(0)
+				Expect(captured.LookupArg("f").Value).To(BeAssignableToTypeOf(expected))
+			},
+			Entry("list when 0", 0, cli.String()),
+			Entry("string when 1", 1, cli.String()),
+			Entry("list when 2", 2, cli.List()),
+			Entry("list when -2", -2, cli.List()),
+		)
+
+		DescribeTable(
+			"arg parsing",
+			func(count int, arguments string, match types.GomegaMatcher) {
+				items := []string{}
+				app := &cli.App{
+					Name: "app",
+					Args: []*cli.Arg{
+						{
+							Name:  "f",
+							NArg:  count,
+							Value: &items,
+						},
+					},
+					Flags: []*cli.Flag{
+						{
+							Name:  "f",
+							Value: cli.Bool(),
+						},
+					},
+				}
+				args, _ := cli.Split("app " + arguments)
+				err := app.RunContext(nil, args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(items).To(match)
+			},
+			Entry("exactly 1", 1, "one", Equal([]string{"one"})),
+			Entry("exactly 3", 3, "one two three", Equal([]string{"one", "two", "three"})),
+			Entry("all values even flags", -1, "one -f two -f", Equal([]string{"one", "-f", "two", "-f"})),
+			Entry("values stop on flags", -2, "one two -f", Equal([]string{"one", "two"})),
+			Entry("optional empty", 0, "", Equal([]string{})),
+		)
+
+		DescribeTable(
+			"errors",
+			func(count int, arguments string, match types.GomegaMatcher) {
+				app := &cli.App{
+					Name: "app",
+					Args: []*cli.Arg{
+						{
+							Name: "f",
+							NArg: count,
+						},
+					},
+				}
+				args, _ := cli.Split("app " + arguments)
+				err := app.RunContext(nil, args)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(match)
+			},
+			Entry("missing when 1", 1, "", Equal("expected argument")),
+			Entry("too few by 1", 2, "a", Equal("expected 2 arguments")),
+			Entry("too many by 1", 1, "a b", Equal(`unexpected argument "b"`)),
+		)
+	})
 
 	Describe("Synopsis", func() {
 

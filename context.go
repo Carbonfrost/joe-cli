@@ -139,6 +139,10 @@ func (c *Context) Occurrences(name string) int {
 	return -1
 }
 
+func (c *Context) Expression() Expression {
+	return c.Value("expression").(Expression)
+}
+
 // Value obtains the value of the flag or argument with the specified name.  If name
 // is the empty string, this is interpreted as using the name of whatever is the
 // current context flag or argument.
@@ -469,6 +473,17 @@ func (c *Context) optionContext(opt option) *Context {
 		Context:     c.Context,
 		contextData: c.contextData,
 		target:      opt,
+		parent:      c,
+	}
+}
+
+func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
+	return &Context{
+		Context:     c.Context,
+		contextData: c.contextData,
+		target:      expr,
+		args:        args,
+		set:         data,
 		parent:      c,
 	}
 }

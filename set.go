@@ -15,7 +15,7 @@ type set struct {
 
 type argBinding struct {
 	items  []*internalOption
-	takers []func() bool
+	takers []ArgCounter
 	index  int
 }
 
@@ -32,7 +32,17 @@ type internalOption struct {
 	narg     int
 }
 
+type argCountError int
 type parserState int
+
+const (
+	argCannotUseFlag = argCountError(iota) // arg looks like a flag and cannot be used
+	argExpectedMore                        // more arguments were expected
+
+	_argStartSoftErrors // start of soft errors -- these are errors that cause the next
+	// argument to be parsed in the binding
+	argEndOfArguments // no more arguments taken by this
+)
 
 const (
 	flagsOrArgs = parserState(iota)
@@ -50,11 +60,11 @@ func newSet() *set {
 
 func newArgBinding(args []*internalOption) *argBinding {
 	items := make([]*internalOption, len(args))
-	takers := make([]func() bool, len(args))
+	takers := make([]ArgCounter, len(args))
 
 	for i, x := range args {
 		items[i] = x
-		takers[i] = takeArgs(x.narg)
+		takers[i] = ArgCount(x.narg)
 	}
 	return &argBinding{
 		items, takers, 0,
@@ -88,14 +98,16 @@ Parsing:
 		// end of options?
 		if arg == "" || arg[0] != '-' {
 			for {
-				err := bind.SetArg(arg)
+				err := bind.SetArg(arg, state == flagsOrArgs)
 				if err != nil {
 					// Not accepted as an argumnet, possibly a flag per usual out of
 					// order
 					if arg[0] == '-' && state == flagsOrArgs {
 						break
 					}
-					return err
+					if isHardArgCountErr(err) {
+						return err
+					}
 				}
 
 				if len(args) == 0 {
@@ -193,7 +205,8 @@ Parsing:
 			}
 		}
 	}
-	return nil
+
+	return bind.Done()
 }
 
 func (s *set) defineFlag(name string, alias string, p interface{}) *internalOption {
@@ -236,12 +249,19 @@ func (s *set) defineArg(name string, v interface{}, narg int) *internalOption {
 	return opt
 }
 
+func (s *set) withArgs(args []*Arg) *set {
+	for _, a := range args {
+		a.applyToSet(s)
+	}
+	return s
+}
+
 func (a *argBinding) next() bool {
 	a.index += 1
 	return a.index < len(a.items)
 }
 
-func (a *argBinding) current() (*internalOption, func() bool) {
+func (a *argBinding) current() (*internalOption, ArgCounter) {
 	if a.index < len(a.items) {
 		return a.items[a.index], a.takers[a.index]
 	}
@@ -249,38 +269,56 @@ func (a *argBinding) current() (*internalOption, func() bool) {
 }
 
 func (a *argBinding) Done() error {
-	// TODO Handle end of binding
+	if _, c := a.current(); c != nil {
+		return c.Done()
+	}
 	return nil
 }
 
-func (a *argBinding) SetArg(arg string) error {
-	c, t := a.current()
-	if c == nil {
-		return unexpectedArgument(arg)
-	}
+func (a *argBinding) SetArg(arg string, possibleFlag bool) error {
 
-	if t() {
-		if err := c.Set(arg); err != nil {
+	for {
+		c, t := a.current()
+		if c == nil {
+			return unexpectedArgument(arg)
+		}
+
+		err := t.Take(arg, possibleFlag)
+		if err == nil {
+			return c.Set(arg)
+		}
+
+		if isHardArgCountErr(err) {
 			return err
 		}
-		return nil
+
+		a.next()
 	}
+}
 
-	if !a.next() {
-		return unexpectedArgument(arg)
+func (e argCountError) Error() string {
+	switch e {
+	case argCannotUseFlag:
+		return "cannot use; looks like a flag"
+	case argEndOfArguments:
+		return "no more arguments to take"
+	case argExpectedMore:
+		return "more arguments expected"
 	}
+	panic("unreachable!")
+}
 
-	c, t = a.current()
-
-	if t() {
-		if err := c.Set(arg); err != nil {
-			return err
-		}
-		return nil
-
-	} else {
-		return unexpectedArgument(arg)
+// isHardArgCountErr represents errors that must be returned to the outer
+// parser loop so that it can either fail the parse or try parsing a flag
+func isHardArgCountErr(e error) bool {
+	if f, ok := e.(argCountError); ok {
+		return f < _argStartSoftErrors
 	}
+	return true
+}
+
+func allowFlag(arg string, possibleFlag bool) bool {
+	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
 }
 
 func (o *internalOption) Seen() bool {
@@ -312,20 +350,5 @@ func flagName(name string) (string, rune) {
 		return "", []rune(name)[0]
 	} else {
 		return name, 0
-	}
-}
-
-func takeArgs(narg int) func() bool {
-	if narg < 0 {
-		return func() bool {
-			return true
-		}
-	}
-	if narg == 0 {
-		narg = 1
-	}
-	return func() bool {
-		narg = narg - 1
-		return narg >= 0
 	}
 }

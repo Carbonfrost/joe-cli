@@ -3,12 +3,16 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"github.com/juju/ansiterm"
+	"github.com/juju/ansiterm/tabwriter"
+	"io"
+	"log"
 	"os"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"text/tabwriter"
+	"text/template"
 )
 
 var (
@@ -36,6 +40,7 @@ type usageGenerator interface {
 	command(c *commandSynopsis) []string
 	arg(a *argSynopsis) string
 	flag(f *flagSynopsis, hideAlternates bool) string
+	expr(f *exprSynopsis) string
 	value(v *valueSynopsis) string
 	helpText(u *usage) string
 }
@@ -72,7 +77,12 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 		lineage := ""
 
 		if len(command) > 0 {
-			lineage = c.App().Name + " " + strings.Join(command[0:len(command)-1], " ")
+			all := make([]string, 0)
+			if len(c.App().Name) > 0 {
+				all = append(all, c.App().Name)
+			}
+			all = append(all, command[0:len(command)-1]...)
+			lineage = " " + strings.Join(all, " ")
 		}
 
 		data := struct {
@@ -83,9 +93,9 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 			App:             c.App(),
 		}
 
-		w := tabwriter.NewWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
+		w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
 
-		_ = tpl.Execute(w, data)
+		executeTemplate(tpl, w, data)
 		_ = w.Flush()
 		return nil
 	}
@@ -100,9 +110,9 @@ func PrintVersion() ActionFunc {
 			App: c.App(),
 		}
 
-		w := tabwriter.NewWriter(c.Stderr, 1, 8, 2, ' ', 0)
+		w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', 0)
 
-		_ = tpl.Execute(w, data)
+		executeTemplate(tpl, w, data)
 		_ = w.Flush()
 		return nil
 	}
@@ -280,6 +290,16 @@ func (d *defaultUsage) flag(f *flagSynopsis, hideAlternates bool) string {
 	return names + sepIfNeeded + d.Underline(place)
 }
 
+func (d *defaultUsage) expr(e *exprSynopsis) string {
+	var b bytes.Buffer
+	b.WriteString(d.Bold(e.name))
+	for _, a := range e.args {
+		b.WriteString(" ")
+		b.WriteString(d.Underline(d.arg(a)))
+	}
+	return b.String()
+}
+
 func (d *defaultUsage) value(v *valueSynopsis) string {
 	return d.Underline(v.placeholder)
 }
@@ -309,6 +329,13 @@ func (t *termFormatter) Underline(s string) string {
 		return s
 	}
 	return underline.Open + s + underline.Close
+}
+
+func executeTemplate(tpl *template.Template, w io.Writer, d interface{}) {
+	err := tpl.Execute(w, d)
+	if err != nil && os.Getenv("DEBUG_TEMPLATES") == "1" {
+		log.Fatal(err)
+	}
 }
 
 // namedCSPair provides the ANSI control scheme pair for a formatting sequence.

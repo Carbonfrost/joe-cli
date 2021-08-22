@@ -10,6 +10,7 @@ type commandData struct {
 	VisibleCommands    []*commandData
 	VisibleFlags       []*flagData
 	VisibleArgs        []*flagData
+	VisibleExprs       []*flagData
 	CommandsByCategory []*commandCategory
 }
 
@@ -42,6 +43,11 @@ var (
 {{ "\t" }}{{.Synopsis}}{{ "\t" }}{{.HelpText}}{{end}}
 {{- end -}}
 
+{{- define "Expressions" -}}
+{{ range .VisibleExprs }}
+{{ "\t" }}{{.Synopsis}}{{ "\t" }}{{.HelpText}}{{end}}
+{{- end -}}
+
 {{/* Usage is the entry point, which calls flags, subcommands */}} 
 {{- define "Usage" -}}
 usage:{{ .SelectedCommand | SynopsisHangingIndent }}
@@ -49,6 +55,7 @@ usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 {{ .SelectedCommand.Description | Wrap 4 }}
 {{- end -}}
 {{- template "Flags" .SelectedCommand -}}
+{{- template "Expressions" .SelectedCommand -}}
 {{- template "Subcommands" .SelectedCommand -}}
 {{- end -}}
 
@@ -83,6 +90,14 @@ func commandAdapter(val *Command, gen usageGenerator) *commandData {
 			return res
 		}
 
+		visibleExprs = func(items []*Expr) []*flagData {
+			res := make([]*flagData, 0, len(items))
+			for _, a := range items {
+				res = append(res, exprAdapter(a, gen))
+			}
+			return res
+		}
+
 		visibleCommands = func(items []*Command) []*commandData {
 			res := make([]*commandData, 0, len(items))
 			for _, a := range items {
@@ -111,6 +126,7 @@ func commandAdapter(val *Command, gen usageGenerator) *commandData {
 		Synopsis:           gen.command(val.newSynopsis()),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
+		VisibleExprs:       visibleExprs(val.VisibleExprs()),
 		VisibleCommands:    visibleCommands(val.Subcommands),
 		CommandsByCategory: visibleCategories(GroupedByCategory(val.Subcommands)),
 	}
@@ -130,6 +146,15 @@ func argAdapter(val *Arg, gen usageGenerator) *flagData {
 		Name:     val.Name,
 		HelpText: val.HelpText,
 		Synopsis: gen.arg(val.newSynopsis()),
+	}
+}
+
+func exprAdapter(val *Expr, gen usageGenerator) *flagData {
+	syn := val.newSynopsis()
+	return &flagData{
+		Name:     val.Name,
+		HelpText: gen.helpText(syn.usage),
+		Synopsis: gen.expr(syn),
 	}
 }
 
