@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pborman/getopt/v2"
 	"golang.org/x/term"
 )
 
@@ -24,9 +23,8 @@ type Context struct {
 	target interface{} // *Command, *Flag, or *Arg
 
 	// When the context is being used for a command
-	args   []string
-	set    *getopt.Set
-	values map[string]interface{}
+	args []string
+	set  *Set
 
 	didSubcommandExecute bool
 }
@@ -157,7 +155,7 @@ func (c *Context) Value(name string) interface{} {
 
 	// Strip possible decorators --flag, <arg>
 	name = strings.Trim(name, "-<>")
-	if v, ok := c.values[name]; ok {
+	if v, ok := c.set.LookupValue(name); ok {
 		return dereference(v)
 	}
 	return c.Parent().Value(name)
@@ -452,16 +450,13 @@ func rootContext(cctx context.Context, app *App) *Context {
 }
 
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
-	result := &Context{
+	return &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
 		target:      cmd,
 		args:        args,
 		parent:      c,
-		values:      cmd.createValues(),
 	}
-	result.applySet()
-	return result
 }
 
 func (c *Context) optionContext(opt option) *Context {
@@ -474,10 +469,13 @@ func (c *Context) optionContext(opt option) *Context {
 }
 
 func (c *Context) applySet() {
-	set := getopt.New()
+	set := newSet()
 	c.set = set
 	for _, f := range c.allFlagsInScope() {
 		f.applyToSet(set)
+	}
+	for _, a := range c.target.(*Command).actualArgs() {
+		a.applyToSet(set)
 	}
 }
 
@@ -550,7 +548,7 @@ func (c *Context) applyFlagsAndArgs() (err error) {
 			return
 		}
 
-		err = c.set.Getopt(args, nil)
+		err = c.set.Getopt(args)
 		if err != nil {
 			return
 		}
@@ -570,7 +568,7 @@ func (c *Context) applyFlagsAndArgs() (err error) {
 	}
 
 	// Any remaining parsing must be flags only
-	err = c.set.Getopt(args, nil)
+	err = c.set.Getopt(args)
 	if err != nil {
 		return
 	}

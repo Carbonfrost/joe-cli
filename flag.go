@@ -82,6 +82,7 @@ type option interface {
 	SetHidden()
 	SetRequired()
 
+	applyToSet(s *Set)
 	wrapAction(func(ActionHandler) ActionFunc)
 	setInternalFlags(internalFlags)
 	options() Option
@@ -108,10 +109,9 @@ type valueSynopsis struct {
 	usage       *usage
 }
 
-func (f *Flag) applyToSet(s *getopt.Set) {
+func (f *Flag) applyToSet(s *Set) {
 	for _, name := range f.Names() {
-		long, short := flagName(name)
-		f.option = s.FlagLong(wrapFlagLong(f.value()), long, short, f.HelpText, name)
+		f.option = s.defineFlag(f.Name, name, f.value())
 	}
 }
 
@@ -307,15 +307,6 @@ func ensureDestination(dest interface{}, narg int) interface{} {
 		return List()
 	}
 	return dest
-}
-
-// flagName gets the long and short name for getopt given the name specified in the flag
-func flagName(name string) (string, rune) {
-	if len(name) == 1 {
-		return "", []rune(name)[0]
-	} else {
-		return name, 0
-	}
 }
 
 func loadFlagValueFromEnvironment(f option) (string, bool) {

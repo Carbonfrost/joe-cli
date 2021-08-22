@@ -2,8 +2,6 @@ package cli
 
 import (
 	"fmt"
-
-	"github.com/pborman/getopt/v2"
 )
 
 type Arg struct {
@@ -25,15 +23,8 @@ type Arg struct {
 	// function signature to use.
 	Action interface{}
 
-	internal *generic
-	count    int
-	flags    internalFlags
-}
-
-type optionWrapper struct {
-	getopt.Option
-
-	arg *Arg
+	option *optionWrapper
+	flags  internalFlags
 }
 
 type argSynopsis struct {
@@ -42,16 +33,17 @@ type argSynopsis struct {
 }
 
 func (a *Arg) Occurrences() int {
-	return a.count
+	return a.option.Count()
 }
 
 func (a *Arg) Seen() bool {
-	return a.count > 0
+	return a.option.Count() > 0
 }
 
 func (a *Arg) Set(arg string) error {
-	a.count = a.count + 1
-	return a.ensureInternal().Set(arg, optionWrapper{arg: a})
+	a.option.count += 1
+	err := a.option.Value().Set(arg, a.option)
+	return err
 }
 
 func (a *Arg) SetHidden() {
@@ -94,6 +86,10 @@ func (a *Arg) wrapAction(fn func(ActionHandler) ActionFunc) {
 	a.Action = fn(Action(a.Action))
 }
 
+func (a *Arg) applyToSet(s *Set) {
+	a.option = s.defineArg(a.Name, a.value())
+}
+
 func (a *Arg) action() ActionHandler {
 	return Action(a.Action)
 }
@@ -119,20 +115,8 @@ func (a *Arg) helpText() string {
 }
 
 func (a *Arg) value() interface{} {
-	a.ensureInternal()
-	return a.Value
-}
-
-func (a *Arg) ensureInternal() *generic {
 	a.Value = ensureDestination(a.Value, a.NArg)
-	if a.internal == nil {
-		a.internal = wrapGeneric(a.Value)
-	}
-	return a.internal
-}
-
-func (o optionWrapper) Count() int {
-	return o.arg.count
+	return a.Value
 }
 
 func findArgByName(items []*Arg, name string) (*Arg, bool) {

@@ -171,20 +171,10 @@ func (c *Command) appendArg(arg *Arg) *Command {
 	return c
 }
 
-func (c *Command) createValues() map[string]interface{} {
-	values := map[string]interface{}{}
-	for _, f := range c.actualFlags() {
-		values[f.Name] = f.value()
-	}
-	for _, f := range c.actualArgs() {
-		values[f.Name] = f.value()
-	}
-	return values
-}
-
 func (c *Command) parseAndExecute(ctx *Context, args []string) error {
 	ctx = ctx.commandContext(c, args)
 	c.ensureSubcommands()
+	ctx.applySet()
 
 	if err := ctx.applyFlagsAndArgs(); err != nil {
 		return err
