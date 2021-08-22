@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"reflect"
 )
 
 // ActionFunc provides the basic function for
@@ -48,6 +47,15 @@ func Action(item interface{}) ActionHandler {
 			a(c)
 			return nil
 		})
+	case func(context.Context) error:
+		return ActionFunc(func(c *Context) error {
+			return a(c.Context)
+		})
+	case func(context.Context):
+		return ActionFunc(func(c *Context) error {
+			a(c.Context)
+			return nil
+		})
 	case func() error:
 		return ActionFunc(func(*Context) error {
 			return a()
@@ -58,7 +66,7 @@ func Action(item interface{}) ActionHandler {
 			return nil
 		})
 	}
-	panic(fmt.Sprintf("unexpected type: %s", reflect.TypeOf(item)))
+	panic(fmt.Sprintf("unexpected type: %T", item))
 }
 
 func ContextValue(key, value interface{}) ActionFunc {
