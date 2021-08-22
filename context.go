@@ -24,7 +24,7 @@ type Context struct {
 
 	// When the context is being used for a command
 	args []string
-	set  *Set
+	set  *set
 
 	didSubcommandExecute bool
 }
@@ -155,7 +155,7 @@ func (c *Context) Value(name string) interface{} {
 
 	// Strip possible decorators --flag, <arg>
 	name = strings.Trim(name, "-<>")
-	if v, ok := c.set.LookupValue(name); ok {
+	if v, ok := c.set.lookupValue(name); ok {
 		return dereference(v)
 	}
 	return c.Parent().Value(name)
@@ -521,107 +521,7 @@ func (c *Context) flagsAndArgs(persistent bool) []option {
 }
 
 func (c *Context) applyFlagsAndArgs() (err error) {
-	var (
-		currentIndex = -1
-		current      *Arg
-		cmd          = c.target.(*Command)
-
-		// c.args contains the name of the command and its arguments
-		args []string = c.args
-
-		enumerator = func() bool {
-			actual := cmd.actualArgs()
-			currentIndex = currentIndex + 1
-			if currentIndex < len(actual) {
-				current = actual[currentIndex]
-				return true
-			}
-			if len(args) > 0 {
-				err = unexpectedArgument(args[0])
-			}
-			return false
-		}
-	)
-
-	for enumerator() {
-		if err != nil {
-			return
-		}
-
-		err = c.set.Getopt(args)
-		if err != nil {
-			return
-		}
-
-		args = c.set.Args()
-		if len(args) == 0 {
-			break
-		}
-
-		args, err = applyArgument(args, current)
-	}
-
-	// Done with parsing.  Returning here is necessary because trying empty args
-	// with Getopt will corrupt its internal state
-	if len(args) == 0 {
-		return
-	}
-
-	// Any remaining parsing must be flags only
-	err = c.set.Getopt(args)
-	if err != nil {
-		return
-	}
-	args = c.set.Args()
-
-	if len(args) > 0 {
-		err = unexpectedArgument(args[0])
-	}
-	return
-}
-
-func applyArgument(args []string, current *Arg) ([]string, error) {
-	var (
-		// takeArgs updates args by taking the values that will be passed to
-		// the *Arg.Set call.  narg < 0 implies taking all arguments,
-		// 0 means take it if it exists and doesn't look like a flag,
-		// other values are a discrete number to take
-		takeArgs = func(narg int) func() bool {
-			if narg < 0 {
-				return func() bool {
-					args = args[1:]
-					return true
-				}
-			}
-			if narg == 0 {
-				narg = 1
-			}
-			return func() bool {
-				narg = narg - 1
-				if narg > 0 {
-					args = args[1:]
-				}
-				return narg >= 0
-			}
-		}
-	)
-
-	taker := takeArgs(current.NArg)
-	for {
-		if len(args) == 0 {
-			break
-		}
-
-		value := args[0]
-		if !taker() {
-			break
-		}
-		err := current.Set(value)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return args, nil
+	return c.set.parse(c.args)
 }
 
 func (c *Context) executeBefore() error {

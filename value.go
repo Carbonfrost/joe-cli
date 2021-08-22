@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pborman/getopt/v2"
 )
 
 type Value = flag.Value
@@ -81,7 +79,7 @@ func Duration() *time.Duration {
 	return new(time.Duration)
 }
 
-func (g *generic) Set(value string, opt getopt.Option) error {
+func (g *generic) Set(value string, opt *internalOption) error {
 	strconvErr := func(err error) error {
 		if e, ok := err.(*strconv.NumError); ok {
 			switch e.Err {

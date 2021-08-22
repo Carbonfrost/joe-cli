@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/pborman/getopt/v2"
 )
 
 // Flag represents a command line flag.  The only required attribute that must be set is Name.
@@ -68,7 +66,7 @@ type Flag struct {
 	// Action executes if the flag was set.  Refer to cli.Action about the correct
 	// function signature to use.
 	Action interface{}
-	option getopt.Option
+	option *internalOption
 	flags  internalFlags
 }
 
@@ -82,7 +80,7 @@ type option interface {
 	SetHidden()
 	SetRequired()
 
-	applyToSet(s *Set)
+	applyToSet(s *set)
 	wrapAction(func(ActionHandler) ActionFunc)
 	setInternalFlags(internalFlags)
 	options() Option
@@ -109,7 +107,7 @@ type valueSynopsis struct {
 	usage       *usage
 }
 
-func (f *Flag) applyToSet(s *Set) {
+func (f *Flag) applyToSet(s *set) {
 	for _, name := range f.Names() {
 		f.option = s.defineFlag(f.Name, name, f.value())
 	}

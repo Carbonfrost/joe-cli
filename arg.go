@@ -23,7 +23,7 @@ type Arg struct {
 	// function signature to use.
 	Action interface{}
 
-	option *optionWrapper
+	option *internalOption
 	flags  internalFlags
 }
 
@@ -41,9 +41,7 @@ func (a *Arg) Seen() bool {
 }
 
 func (a *Arg) Set(arg string) error {
-	a.option.count += 1
-	err := a.option.Value().Set(arg, a.option)
-	return err
+	return a.option.Value().Set(arg, a.option)
 }
 
 func (a *Arg) SetHidden() {
@@ -86,8 +84,8 @@ func (a *Arg) wrapAction(fn func(ActionHandler) ActionFunc) {
 	a.Action = fn(Action(a.Action))
 }
 
-func (a *Arg) applyToSet(s *Set) {
-	a.option = s.defineArg(a.Name, a.value())
+func (a *Arg) applyToSet(s *set) {
+	a.option = s.defineArg(a.Name, a.value(), a.NArg)
 }
 
 func (a *Arg) action() ActionHandler {
