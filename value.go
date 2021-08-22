@@ -94,6 +94,8 @@ func (g *generic) Set(value string, opt getopt.Option) error {
 		return err
 	}
 	switch p := g.p.(type) {
+	case Value:
+		return p.Set(value)
 	case *bool:
 		switch strings.ToLower(value) {
 		case "", "1", "true", "on", "t":
@@ -232,6 +234,8 @@ func (g *generic) String() string {
 		return genericString(*p)
 	case *time.Duration:
 		return genericString(*p)
+	case Value:
+		return genericString(p)
 	}
 	panic("unreachable!")
 }
@@ -282,7 +286,7 @@ func genericString(v interface{}) string {
 func wrapGeneric(v interface{}) *generic {
 	switch v.(type) {
 	case Value:
-		panic("not implemented: Value wrap generic")
+		return &generic{v}
 	case *bool:
 		return &generic{v}
 	case *string, *[]string:
@@ -297,6 +301,17 @@ func wrapGeneric(v interface{}) *generic {
 		return &generic{v}
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))
+	}
+}
+
+// wrapFlagLong will wrap the simple flag.Value with the one
+// required by getopt if necessary
+func wrapFlagLong(v interface{}) interface{} {
+	switch v.(type) {
+	case Value:
+		return wrapGeneric(v)
+	default:
+		return v
 	}
 }
 

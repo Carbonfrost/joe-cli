@@ -137,7 +137,7 @@ var _ = Describe("Flag", func() {
 		})
 	})
 
-	XContext("when a custom Value is used", func() {
+	Context("when a custom Value is used", func() {
 
 		It("applies the conversion", func() {
 			t := new(temperature)
@@ -153,6 +153,23 @@ var _ = Describe("Flag", func() {
 			arguments, _ := cli.Split("app -sC")
 			app.RunContext(nil, arguments)
 			Expect(*t).To(Equal(temperature("Celsius")))
+		})
+
+		It("propagates the conversion error", func() {
+			t := new(temperature)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "s",
+						Value: t,
+					},
+				},
+			}
+
+			arguments, _ := cli.Split("app -sK")
+			err := app.RunContext(nil, arguments)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("not supported"))
 		})
 	})
 

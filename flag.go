@@ -111,7 +111,7 @@ type valueSynopsis struct {
 func (f *Flag) applyToSet(s *getopt.Set) {
 	for _, name := range f.Names() {
 		long, short := flagName(name)
-		f.option = s.FlagLong(f.value(), long, short, f.HelpText, name)
+		f.option = s.FlagLong(wrapFlagLong(f.value()), long, short, f.HelpText, name)
 	}
 }
 
