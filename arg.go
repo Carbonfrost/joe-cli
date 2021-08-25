@@ -32,6 +32,24 @@ type argSynopsis struct {
 	multi bool
 }
 
+// Args provides a simple initializer for positional arguments.  You specify each argument name and value
+// in order to this function.    It generates the corresponding list of required positional arguments.
+// A panic occurs when this function is not called properly: when a name is blank, when names and values
+// are not arranged in pairs, or when a supported type of value is used.
+func Args(namevalue ...interface{}) []*Arg {
+	if len(namevalue)%2 != 0 {
+		panic("unexpected number of arguments")
+	}
+	res := make([]*Arg, 0, len(namevalue)/2)
+	for i := 0; i < len(namevalue); i += 2 {
+		res = append(res, &Arg{
+			Name:  namevalue[i].(string),
+			Value: namevalue[i+1],
+		})
+	}
+	return res
+}
+
 func (a *Arg) Occurrences() int {
 	return a.option.Count()
 }
