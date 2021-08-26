@@ -23,6 +23,10 @@ type Arg struct {
 	// function signature to use.
 	Action interface{}
 
+	// Data provides an arbitrary mapping of additional data.  This data can be used by
+	// middleware and it is made available to templates
+	Data map[string]interface{}
+
 	option *internalOption
 	flags  internalFlags
 }

@@ -12,17 +12,20 @@ type commandData struct {
 	VisibleArgs        []*flagData
 	VisibleExprs       []*flagData
 	CommandsByCategory []*commandCategory
+	Data               map[string]interface{}
 }
 
 type flagData struct {
 	Name     string
 	Synopsis string
 	HelpText string
+	Data     map[string]interface{}
 }
 
 type commandCategory struct {
 	Category        string
 	VisibleCommands []*commandData
+	Data            map[string]interface{}
 }
 
 var (
@@ -129,6 +132,7 @@ func commandAdapter(val *Command, gen usageGenerator) *commandData {
 		VisibleExprs:       visibleExprs(val.VisibleExprs()),
 		VisibleCommands:    visibleCommands(val.Subcommands),
 		CommandsByCategory: visibleCategories(GroupedByCategory(val.Subcommands)),
+		Data:               val.Data,
 	}
 }
 
@@ -138,6 +142,7 @@ func flagAdapter(val *Flag, gen usageGenerator) *flagData {
 		Name:     val.Name,
 		HelpText: gen.helpText(syn.value.usage),
 		Synopsis: gen.flag(syn, false),
+		Data:     val.Data,
 	}
 }
 
@@ -146,6 +151,7 @@ func argAdapter(val *Arg, gen usageGenerator) *flagData {
 		Name:     val.Name,
 		HelpText: val.HelpText,
 		Synopsis: gen.arg(val.newSynopsis()),
+		Data:     val.Data,
 	}
 }
 
@@ -155,6 +161,7 @@ func exprAdapter(val *Expr, gen usageGenerator) *flagData {
 		Name:     val.Name,
 		HelpText: gen.helpText(syn.usage),
 		Synopsis: gen.expr(syn),
+		Data:     val.Data,
 	}
 }
 

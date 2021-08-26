@@ -29,6 +29,10 @@ type Command struct {
 	// displayed on the help screen
 	Description string
 
+	// Data provides an arbitrary mapping of additional data.  This data can be used by
+	// middleware and it is made available to templates
+	Data map[string]interface{}
+
 	HelpText  string
 	UsageText string
 }

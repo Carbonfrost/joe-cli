@@ -59,6 +59,10 @@ type Flag struct {
 	DefaultText string
 	Options     Option
 
+	// Data provides an arbitrary mapping of additional data.  This data can be used by
+	// middleware and it is made available to templates
+	Data map[string]interface{}
+
 	// Before executes before the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
 	Before interface{}

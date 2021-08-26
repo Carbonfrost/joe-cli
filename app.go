@@ -66,6 +66,10 @@ type App struct {
 	// Refer to cli.Action about the correct function signature to use.
 	Before interface{}
 
+	// Data provides an arbitrary mapping of additional data.  This data can be used by
+	// middleware and it is made available to templates
+	Data map[string]interface{}
+
 	HelpText  string
 	UsageText string
 
@@ -115,6 +119,7 @@ func (a *App) createRoot() *Command {
 			Subcommands: a.Commands,
 			Action:      a.Action,
 			Description: a.Description,
+			Data:        a.Data,
 
 			// Hooks are intentionally left nil because App handles its hooks
 			// from the root context
