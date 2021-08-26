@@ -281,6 +281,11 @@ func (c *Context) Float64(name string) (res float64) {
 	return
 }
 
+// File obtains the file for the specified flag or argument.
+func (c *Context) File(name string) *File {
+	return c.Value(name).(*File)
+}
+
 func (c *Context) Do(actions ...ActionHandler) error {
 	for _, a := range actions {
 		err := a.Execute(c)

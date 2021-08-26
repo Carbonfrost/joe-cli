@@ -13,6 +13,10 @@ const (
 	// option is set, it also causes the flag to be set apart visually on the help screen.
 	Exits
 
+	// MustExist indicates that when a File or Path value is used, it must represent a file
+	// or path that exists.
+	MustExist
+
 	maxOption
 
 	None Option = 0
@@ -26,9 +30,10 @@ const (
 
 var (
 	optionMap = map[Option]ActionFunc{
-		Hidden:   hiddenOption,
-		Required: requiredOption,
-		Exits:    wrapWithExit,
+		Hidden:    hiddenOption,
+		Required:  requiredOption,
+		Exits:     wrapWithExit,
+		MustExist: mustExistOption,
 	}
 )
 
@@ -75,4 +80,17 @@ func wrapWithExit(c *Context) error {
 	c.option().setInternalFlags(internalFlagExits)
 	c.option().wrapAction(doThenExit)
 	return nil
+}
+
+func mustExistOption(c *Context) error {
+	v := c.Value("")
+	if v == nil {
+		return nil
+	}
+	f := v.(*File)
+	if f.Exists() {
+		return nil
+	}
+	_, err := f.Stat()
+	return err
 }
