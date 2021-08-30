@@ -29,6 +29,14 @@ type Context struct {
 	didSubcommandExecute bool
 }
 
+type hasArguments interface {
+	actualArgs() []*Arg
+}
+
+type hasFlags interface {
+	actualFlags() []*Flag
+}
+
 type ContextPath []string
 
 // contextData provides data that is copied into child contexts
@@ -66,6 +74,10 @@ func (c *Context) Arg() *Arg {
 	return c.Parent().Arg()
 }
 
+func (c *Context) Expr() *Expr {
+	return c.target.(*Expr)
+}
+
 func (c *Context) Flag() *Flag {
 	if f, ok := c.target.(*Flag); ok {
 		return f
@@ -80,6 +92,11 @@ func (c *Context) IsApp() bool {
 
 func (c *Context) IsCommand() bool {
 	_, ok := c.target.(*Command)
+	return ok
+}
+
+func (c *Context) IsExpr() bool {
+	_, ok := c.target.(*Expr)
 	return ok
 }
 
@@ -102,26 +119,45 @@ func (c *Context) Args() []string {
 	return c.args
 }
 
-func (c *Context) LookupFlag(name string) *Flag {
+func (c *Context) LookupFlag(name interface{}) *Flag {
 	if c == nil {
 		return nil
 	}
-	if cmd, ok := c.target.(*Command); ok {
-		if f, found := findFlagByName(cmd.Flags, name); found {
-			return f
+	switch v := name.(type) {
+	case rune:
+		return c.LookupFlag(string(v))
+	case string:
+		if aa, ok := c.target.(hasFlags); ok {
+			if f, found := findFlagByName(aa.actualFlags(), v); found {
+				return f
+			}
 		}
+	case *Flag:
+		return c.LookupFlag(v.Name)
+	default:
+		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
+
 	return c.Parent().LookupFlag(name)
 }
 
-func (c *Context) LookupArg(name string) *Arg {
+func (c *Context) LookupArg(name interface{}) *Arg {
 	if c == nil {
 		return nil
 	}
-	if cmd, ok := c.target.(*Command); ok {
-		if a, found := findArgByName(cmd.Args, name); found {
-			return a
+	switch v := name.(type) {
+	case int:
+		return c.LookupArg(c.logicalArg(v))
+	case string:
+		if aa, ok := c.target.(hasArguments); ok {
+			if a, found := findArgByName(aa.actualArgs(), v); found {
+				return a
+			}
 		}
+	case *Arg:
+		return c.LookupArg(v.Name)
+	default:
+		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
 	return c.Parent().LookupArg(name)
 }
@@ -143,13 +179,48 @@ func (c *Context) Expression() Expression {
 	return c.Value("expression").(Expression)
 }
 
+// NValue gets the maximum number available, exclusive, as an argument Value.
+func (c *Context) NValue() int {
+	if t, ok := c.target.(hasArguments); ok {
+		return len(t.actualArgs())
+	}
+	return 0
+}
+
+// Values gets all the values from the context .
+func (c *Context) Values() []interface{} {
+	res := make([]interface{}, 0, c.NValue())
+	for i := 0; i < len(res); i++ {
+		res[i] = c.Value(i)
+	}
+	return res
+}
+
 // Value obtains the value of the flag or argument with the specified name.  If name
 // is the empty string, this is interpreted as using the name of whatever is the
 // current context flag or argument.
-func (c *Context) Value(name string) interface{} {
+func (c *Context) Value(name interface{}) interface{} {
 	if c == nil {
 		return nil
 	}
+	switch v := name.(type) {
+	case rune:
+		return c.valueCore(string(v))
+	case int:
+		return c.valueCore(c.logicalArg(v).Name)
+	case string:
+		return c.valueCore(v)
+	case nil:
+		return c.valueCore("")
+	case *Arg:
+		return c.valueCore(v.Name)
+	case *Flag:
+		return c.valueCore(v.Name)
+	}
+	panic(fmt.Sprintf("unexpected type: %T", name))
+}
+
+func (c *Context) valueCore(name string) interface{} {
 	if name == "" {
 		if c.isOption() {
 			return dereference(c.option().value())
@@ -165,7 +236,7 @@ func (c *Context) Value(name string) interface{} {
 	return c.Parent().Value(name)
 }
 
-func (c *Context) Bool(name string) (res bool) {
+func (c *Context) Bool(name interface{}) (res bool) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(bool)
@@ -173,7 +244,7 @@ func (c *Context) Bool(name string) (res bool) {
 	return
 }
 
-func (c *Context) String(name string) (res string) {
+func (c *Context) String(name interface{}) (res string) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(string)
@@ -181,7 +252,7 @@ func (c *Context) String(name string) (res string) {
 	return
 }
 
-func (c *Context) List(name string) (res []string) {
+func (c *Context) List(name interface{}) (res []string) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.([]string)
@@ -189,7 +260,7 @@ func (c *Context) List(name string) (res []string) {
 	return
 }
 
-func (c *Context) Int(name string) (res int) {
+func (c *Context) Int(name interface{}) (res int) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(int)
@@ -197,7 +268,7 @@ func (c *Context) Int(name string) (res int) {
 	return
 }
 
-func (c *Context) Int8(name string) (res int8) {
+func (c *Context) Int8(name interface{}) (res int8) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(int8)
@@ -205,7 +276,7 @@ func (c *Context) Int8(name string) (res int8) {
 	return
 }
 
-func (c *Context) Int16(name string) (res int16) {
+func (c *Context) Int16(name interface{}) (res int16) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(int16)
@@ -213,7 +284,7 @@ func (c *Context) Int16(name string) (res int16) {
 	return
 }
 
-func (c *Context) Int32(name string) (res int32) {
+func (c *Context) Int32(name interface{}) (res int32) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(int32)
@@ -221,7 +292,7 @@ func (c *Context) Int32(name string) (res int32) {
 	return
 }
 
-func (c *Context) Int64(name string) (res int64) {
+func (c *Context) Int64(name interface{}) (res int64) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(int64)
@@ -229,7 +300,7 @@ func (c *Context) Int64(name string) (res int64) {
 	return
 }
 
-func (c *Context) UInt(name string) (res uint) {
+func (c *Context) UInt(name interface{}) (res uint) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(uint)
@@ -237,7 +308,7 @@ func (c *Context) UInt(name string) (res uint) {
 	return
 }
 
-func (c *Context) UInt8(name string) (res uint8) {
+func (c *Context) UInt8(name interface{}) (res uint8) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(uint8)
@@ -245,7 +316,7 @@ func (c *Context) UInt8(name string) (res uint8) {
 	return
 }
 
-func (c *Context) UInt16(name string) (res uint16) {
+func (c *Context) UInt16(name interface{}) (res uint16) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(uint16)
@@ -253,7 +324,7 @@ func (c *Context) UInt16(name string) (res uint16) {
 	return
 }
 
-func (c *Context) UInt32(name string) (res uint32) {
+func (c *Context) UInt32(name interface{}) (res uint32) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(uint32)
@@ -261,7 +332,7 @@ func (c *Context) UInt32(name string) (res uint32) {
 	return
 }
 
-func (c *Context) UInt64(name string) (res uint64) {
+func (c *Context) UInt64(name interface{}) (res uint64) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(uint64)
@@ -269,7 +340,7 @@ func (c *Context) UInt64(name string) (res uint64) {
 	return
 }
 
-func (c *Context) Float32(name string) (res float32) {
+func (c *Context) Float32(name interface{}) (res float32) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(float32)
@@ -277,7 +348,7 @@ func (c *Context) Float32(name string) (res float32) {
 	return
 }
 
-func (c *Context) Float64(name string) (res float64) {
+func (c *Context) Float64(name interface{}) (res float64) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(float64)
@@ -286,8 +357,12 @@ func (c *Context) Float64(name string) (res float64) {
 }
 
 // File obtains the file for the specified flag or argument.
-func (c *Context) File(name string) *File {
-	return c.Value(name).(*File)
+func (c *Context) File(name interface{}) (res *File) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*File)
+	}
+	return
 }
 
 func (c *Context) Do(actions ...ActionHandler) error {
@@ -396,6 +471,10 @@ func (c *Context) lineageFunc(f func(*Context)) {
 		f(current)
 		current = current.Parent()
 	}
+}
+
+func (c *Context) logicalArg(index int) *Arg {
+	return c.target.(hasArguments).actualArgs()[index]
 }
 
 func (c ContextPath) Last() string {
@@ -666,3 +745,5 @@ func guessWidth() int {
 	}
 	return 80
 }
+
+var _ hasArguments = &Expr{}

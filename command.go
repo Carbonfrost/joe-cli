@@ -56,6 +56,8 @@ type commandSynopsis struct {
 type optionGroup int
 
 type command interface {
+	hasArguments
+	hasFlags
 	Command(string) (*Command, bool)
 	Flag(string) (*Flag, bool)
 	Arg(string) (*Arg, bool)

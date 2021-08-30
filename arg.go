@@ -98,7 +98,7 @@ func ArgCount(v interface{}) ArgCounter {
 			stopOnFlags: count == -2,
 		}
 	default:
-		panic(fmt.Sprintf("unexpected type for ArgCounter: %T", v))
+		panic(fmt.Sprintf("unexpected type: %T", v))
 	}
 }
 

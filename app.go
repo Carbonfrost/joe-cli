@@ -129,6 +129,20 @@ func (a *App) createRoot() *Command {
 	return a.rootCommand
 }
 
+func (a *App) actualArgs() []*Arg {
+	if a.Args == nil {
+		return make([]*Arg, 0)
+	}
+	return a.Args
+}
+
+func (a *App) actualFlags() []*Flag {
+	if a.Flags == nil {
+		return make([]*Flag, 0)
+	}
+	return a.Flags
+}
+
 func exit(err error) {
 	if err == nil {
 		return
