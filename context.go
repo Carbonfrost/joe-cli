@@ -236,133 +236,69 @@ func (c *Context) valueCore(name string) interface{} {
 	return c.Parent().Value(name)
 }
 
-func (c *Context) Bool(name interface{}) (res bool) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(bool)
-	}
-	return
+func (c *Context) Bool(name interface{}) bool {
+	return lookupBool(c, name)
 }
 
-func (c *Context) String(name interface{}) (res string) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(string)
-	}
-	return
+func (c *Context) String(name interface{}) string {
+	return lookupString(c, name)
 }
 
-func (c *Context) List(name interface{}) (res []string) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.([]string)
-	}
-	return
+func (c *Context) List(name interface{}) []string {
+	return lookupList(c, name)
 }
 
-func (c *Context) Int(name interface{}) (res int) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(int)
-	}
-	return
+func (c *Context) Int(name interface{}) int {
+	return lookupInt(c, name)
 }
 
-func (c *Context) Int8(name interface{}) (res int8) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(int8)
-	}
-	return
+func (c *Context) Int8(name interface{}) int8 {
+	return lookupInt8(c, name)
 }
 
-func (c *Context) Int16(name interface{}) (res int16) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(int16)
-	}
-	return
+func (c *Context) Int16(name interface{}) int16 {
+	return lookupInt16(c, name)
 }
 
-func (c *Context) Int32(name interface{}) (res int32) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(int32)
-	}
-	return
+func (c *Context) Int32(name interface{}) int32 {
+	return lookupInt32(c, name)
 }
 
-func (c *Context) Int64(name interface{}) (res int64) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(int64)
-	}
-	return
+func (c *Context) Int64(name interface{}) int64 {
+	return lookupInt64(c, name)
 }
 
-func (c *Context) UInt(name interface{}) (res uint) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(uint)
-	}
-	return
+func (c *Context) UInt(name interface{}) uint {
+	return lookupUInt(c, name)
 }
 
-func (c *Context) UInt8(name interface{}) (res uint8) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(uint8)
-	}
-	return
+func (c *Context) UInt8(name interface{}) uint8 {
+	return lookupUInt8(c, name)
 }
 
-func (c *Context) UInt16(name interface{}) (res uint16) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(uint16)
-	}
-	return
+func (c *Context) UInt16(name interface{}) uint16 {
+	return lookupUInt16(c, name)
 }
 
-func (c *Context) UInt32(name interface{}) (res uint32) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(uint32)
-	}
-	return
+func (c *Context) UInt32(name interface{}) uint32 {
+	return lookupUInt32(c, name)
 }
 
-func (c *Context) UInt64(name interface{}) (res uint64) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(uint64)
-	}
-	return
+func (c *Context) UInt64(name interface{}) uint64 {
+	return lookupUInt64(c, name)
 }
 
-func (c *Context) Float32(name interface{}) (res float32) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(float32)
-	}
-	return
+func (c *Context) Float32(name interface{}) float32 {
+	return lookupFloat32(c, name)
 }
 
-func (c *Context) Float64(name interface{}) (res float64) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(float64)
-	}
-	return
+func (c *Context) Float64(name interface{}) float64 {
+	return lookupFloat64(c, name)
 }
 
 // File obtains the file for the specified flag or argument.
-func (c *Context) File(name interface{}) (res *File) {
-	val := c.Value(name)
-	if val != nil {
-		res = val.(*File)
-	}
-	return
+func (c *Context) File(name interface{}) *File {
+	return lookupFile(c, name)
 }
 
 func (c *Context) Do(actions ...ActionHandler) error {
@@ -746,4 +682,7 @@ func guessWidth() int {
 	return 80
 }
 
-var _ hasArguments = &Expr{}
+var (
+	_ hasArguments = &Expr{}
+	_ Lookup       = &Context{}
+)

@@ -57,6 +57,7 @@ type Expression interface {
 // context.  Optionally, the original Expr is made available
 type ExprBinding interface {
 	ExprEvaluator
+	Lookup
 	Expr() *Expr
 }
 
@@ -66,7 +67,7 @@ type ExprsByName []*Expr
 type yielder = func(interface{}) error
 
 type exprPipelineFactory struct {
-	exprs map[string]func() *boundExpr
+	exprs map[string]func(*Context) *boundExpr
 }
 
 type exprPipeline struct {
@@ -81,12 +82,14 @@ type exprSynopsis struct {
 }
 
 type boundExpr struct {
+	*Context
 	expr *Expr
 	set  *set
 }
 
 type exprBinding struct {
 	ExprEvaluator
+	Lookup
 	expr *Expr
 }
 
@@ -99,22 +102,25 @@ func BindExpression(exprFunc func(*Context) ([]*Expr, error)) ActionHandler {
 
 		pipe := c.Value("").(*exprPipeline)
 		fac := newExprPipelineFactory(exprs)
-		return pipe.applyFactory(fac)
+		return pipe.applyFactory(c, fac)
 	})
 }
 
 func NewExprBinding(ev ExprEvaluator, exprlookup ...interface{}) ExprBinding {
 	var (
-		expr *Expr
+		expr   *Expr
+		lookup Lookup = LookupValues{}
 	)
 	switch len(exprlookup) {
 	case 2:
+		lookup = exprlookup[1].(Lookup)
 		fallthrough
 	case 1:
 		expr = exprlookup[0].(*Expr)
 	}
 	return &exprBinding{
 		ExprEvaluator: ev,
+		Lookup:        lookup,
 		expr:          expr,
 	}
 }
@@ -212,14 +218,18 @@ func Predicate(filter func(v interface{}) bool) EvaluatorFunc {
 
 func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 	res := &exprPipelineFactory{
-		exprs: map[string]func() *boundExpr{},
+		exprs: map[string]func(*Context) *boundExpr{},
 	}
 	for _, e := range exprs {
 		e1 := e
-		res.exprs[e.Name] = func() *boundExpr {
+		res.exprs[e.Name] = func(c *Context) *boundExpr {
+			// TODO Pass along args
+			args := []string{}
+			set := newSet().withArgs(e1.Args)
 			return &boundExpr{
-				expr: e1,
-				set:  newSet().withArgs(e1.Args),
+				expr:    e1,
+				set:     set,
+				Context: c.exprContext(e1, args, set),
 			}
 		}
 	}
@@ -282,10 +292,7 @@ func (b *boundExpr) Expr() *Expr {
 }
 
 func (b *boundExpr) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
-	// TODO Pass along args
-	args := []string{}
-	ctx := c.exprContext(b.expr, args, b.set)
-	return Evaluator(b.expr.Evaluate).Evaluate(ctx, v, yield)
+	return Evaluator(b.expr.Evaluate).Evaluate(b.Context, v, yield)
 }
 
 func (p *exprPipeline) Set(arg string) error {
@@ -341,7 +348,7 @@ func (p *exprPipeline) Append(expr ExprBinding) {
 	p.items = append(p.items, expr)
 }
 
-func (e *exprPipelineFactory) parse(args []string) ([]ExprBinding, error) {
+func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, error) {
 	results := make([]ExprBinding, 0)
 
 	if len(args) == 0 {
@@ -362,7 +369,7 @@ Parsing:
 			return nil, unknownExpr(arg)
 		}
 
-		set := s()
+		set := s(c)
 		results = append(results, set)
 		if len(set.set.positionalOptions) == 0 {
 			continue Parsing
@@ -391,8 +398,8 @@ Parsing:
 	return results, nil
 }
 
-func (p *exprPipeline) applyFactory(fac *exprPipelineFactory) error {
-	exprs, err := fac.parse(p.args)
+func (p *exprPipeline) applyFactory(c *Context, fac *exprPipelineFactory) error {
+	exprs, err := fac.parse(c, p.args)
 	p.items = exprs
 	return err
 }
