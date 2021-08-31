@@ -12,7 +12,7 @@ type Arg struct {
 	UsageText   string
 	Value       interface{}
 	DefaultText string
-	NArg        int
+	NArg        interface{}
 	Options     Option
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
@@ -32,6 +32,9 @@ type Arg struct {
 }
 
 type ArgCounter interface {
+	// Take considers the argument and and returns whether it can be used.
+	// If the error EndOfArguments is returned, then the arg counter is done with
+	// taking argumens.  All other errors are treated as fatal.
 	Take(arg string, possibleFlag bool) error
 	Done() error
 }
@@ -97,6 +100,8 @@ func ArgCount(v interface{}) ArgCounter {
 		return &varArgsCounter{
 			stopOnFlags: count == -2,
 		}
+	case nil:
+		return ArgCount(0)
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", v))
 	}
@@ -138,7 +143,7 @@ func (a *Arg) newSynopsisCore(defaultUsage string) *argSynopsis {
 	}
 	return &argSynopsis{
 		value: usage,
-		multi: a.NArg < 0 || a.NArg > 1,
+		multi: isMulti(a.NArg),
 	}
 }
 
@@ -187,13 +192,13 @@ func (a *Arg) helpText() string {
 }
 
 func (a *Arg) value() interface{} {
-	a.Value = ensureDestination(a.Value, a.NArg)
+	a.Value = ensureDestination(a.Value, isMulti(a.NArg))
 	return a.Value
 }
 
 func (d *discreteCounter) Take(arg string, possibleFlag bool) error {
 	if d.count == 0 {
-		return argEndOfArguments
+		return EndOfArguments
 	}
 	d.count -= 1
 	return nil
@@ -208,7 +213,7 @@ func (d *discreteCounter) Done() error {
 
 func (d *optionalCounter) Take(arg string, possibleFlag bool) error {
 	if d.seen {
-		return argEndOfArguments
+		return EndOfArguments
 	}
 	d.seen = true
 	return nil
@@ -220,7 +225,7 @@ func (d *optionalCounter) Done() error {
 
 func (v *varArgsCounter) Take(arg string, possibleFlag bool) error {
 	if v.stopOnFlags && allowFlag(arg, possibleFlag) {
-		return argEndOfArguments
+		return EndOfArguments
 	}
 	return nil
 }
@@ -236,4 +241,11 @@ func findArgByName(items []*Arg, name string) (*Arg, bool) {
 		}
 	}
 	return nil, false
+}
+
+func isMulti(narg interface{}) bool {
+	if narg, ok := narg.(int); ok {
+		return narg < 0 || narg > 1
+	}
+	return false
 }

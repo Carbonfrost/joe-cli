@@ -29,7 +29,7 @@ type internalOption struct {
 	value    *generic
 	count    int
 	uname    string
-	narg     int
+	narg     interface{}
 }
 
 type argCountError int
@@ -41,7 +41,9 @@ const (
 
 	_argStartSoftErrors // start of soft errors -- these are errors that cause the next
 	// argument to be parsed in the binding
-	argEndOfArguments // no more arguments taken by this
+
+	// EndOfArguments signals no more arguments taken by this arg counter.
+	EndOfArguments
 )
 
 const (
@@ -238,7 +240,7 @@ func (s *set) defineFlag(name string, alias string, p interface{}) *internalOpti
 	return res
 }
 
-func (s *set) defineArg(name string, v interface{}, narg int) *internalOption {
+func (s *set) defineArg(name string, v interface{}, narg interface{}) *internalOption {
 	opt := &internalOption{
 		value: wrapGeneric(v),
 		narg:  narg,
@@ -300,7 +302,7 @@ func (e argCountError) Error() string {
 	switch e {
 	case argCannotUseFlag:
 		return "cannot use; looks like a flag"
-	case argEndOfArguments:
+	case EndOfArguments:
 		return "no more arguments to take"
 	case argExpectedMore:
 		return "more arguments expected"
