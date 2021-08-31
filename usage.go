@@ -129,9 +129,7 @@ func defaultHelpCommand() *Command {
 				NArg:  -1,
 			},
 		},
-		Action: func(c *Context) error {
-			return c.Do(doThenExit(DisplayHelpScreen(c.List("command")...)))
-		},
+		Action: displayHelp,
 	}
 }
 
@@ -141,7 +139,7 @@ func defaultHelpFlag() *Flag {
 		HelpText: "Display this help screen then exit",
 		Value:    Bool(),
 		Options:  Exits,
-		Action:   DisplayHelpScreen(),
+		Action:   displayHelp,
 	}
 }
 
@@ -394,4 +392,17 @@ func newExpr(token []byte) expr {
 
 func lenIgnoringCSI(s string) int {
 	return len(controlCodes.ReplaceAllString(s, ""))
+}
+
+func displayHelp(c *Context) error {
+	command := make([]string, 0)
+
+	// Ignore any flags that were detected in this context
+	for _, c := range c.List("command") {
+		if c[0] == '-' {
+			continue
+		}
+		command = append(command, c)
+	}
+	return c.Do(DisplayHelpScreen(command...))
 }

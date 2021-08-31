@@ -38,18 +38,20 @@ var _ = Describe("usage", func() {
 
 var _ = Describe("DisplayHelpScreen", func() {
 	var (
-		renderHelpScreen = func(app *cli.App) string {
+		renderHelpScreen = func(app *cli.App, args string) string {
 			defer disableConsoleColor()()
+
+			arguments, _ := cli.Split(args)
 			var buffer bytes.Buffer
 			app.Stderr = &buffer
-			_ = app.RunContext(nil, []string{"app", "--help"})
+			_ = app.RunContext(nil, arguments)
 			return buffer.String()
 		}
 	)
 
 	DescribeTable("examples",
 		func(app *cli.App, expected types.GomegaMatcher) {
-			Expect(renderHelpScreen(app)).To(expected)
+			Expect(renderHelpScreen(app, "app --help")).To(expected)
 		},
 		Entry("shows normal flags",
 			&cli.App{
@@ -83,6 +85,34 @@ var _ = Describe("DisplayHelpScreen", func() {
 		Entry("display action-like flags",
 			&cli.App{},
 			ContainSubstring("{--help | --version}")),
+	)
+
+	DescribeTable("sub-command examples",
+		func(app *cli.App, args string, expected types.GomegaMatcher) {
+			Expect(renderHelpScreen(app, args)).To(expected)
+		},
+		Entry("shows sub-command using help switch",
+			&cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+					},
+				},
+			},
+			"app --help sub",
+			ContainSubstring("usage: app sub")),
+		Entry("show sub-command using help command",
+			&cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+					},
+				},
+			},
+			"app help sub",
+			ContainSubstring("usage: app sub")),
 	)
 
 })
