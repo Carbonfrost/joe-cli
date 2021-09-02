@@ -108,10 +108,16 @@ func ArgCount(v interface{}) ArgCounter {
 }
 
 func (a *Arg) Occurrences() int {
+	if a == nil || a.option == nil {
+		return 0
+	}
 	return a.option.Count()
 }
 
 func (a *Arg) Seen() bool {
+	if a == nil || a.option == nil {
+		return false
+	}
 	return a.option.Count() > 0
 }
 

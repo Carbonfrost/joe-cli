@@ -94,7 +94,6 @@ func (p *ActionPipeline) Append(x ActionHandler) *ActionPipeline {
 	return &ActionPipeline{
 		items: append(p.items, unwind(x)...),
 	}
-	return p
 }
 
 func (p *ActionPipeline) Execute(c *Context) (err error) {
