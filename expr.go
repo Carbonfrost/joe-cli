@@ -13,8 +13,9 @@ type ExprEvaluator interface {
 type EvaluatorFunc func(*Context, interface{}, func(interface{}) error) error
 
 type Expr struct {
-	Name string
-	Args []*Arg
+	Name    string
+	Aliases []string
+	Args    []*Arg
 
 	HelpText  string
 	UsageText string
@@ -83,7 +84,8 @@ type exprPipeline struct {
 }
 
 type exprSynopsis struct {
-	name  string
+	long  string
+	short string
 	args  []*argSynopsis
 	usage *usage
 }
@@ -249,7 +251,7 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 	}
 	for _, e := range exprs {
 		e1 := e
-		res.exprs[e.Name] = func(c *Context) *boundExpr {
+		fac := func(c *Context) *boundExpr {
 			// TODO Pass along args
 			args := []string{}
 			set := newSet().withArgs(e1.Args)
@@ -259,8 +261,16 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 				Context: c.exprContext(e1, args, set),
 			}
 		}
+		res.exprs[e.Name] = fac
+		for _, alias := range e.Aliases {
+			res.exprs[alias] = fac
+		}
 	}
 	return res
+}
+
+func (e *Expr) Names() []string {
+	return append([]string{e.Name}, e.Aliases...)
 }
 
 func (e *Expr) Synopsis() string {
@@ -280,9 +290,12 @@ func (e *Expr) newSynopsis() *exprSynopsis {
 			args[i] = a.newSynopsisCore(strings.ToUpper(a.Name))
 		}
 	}
+	short := e.canonicalName(true)
+	long := e.canonicalName(false)
 
 	return &exprSynopsis{
-		name:  fmt.Sprintf("-%s", e.Name),
+		long:  long,
+		short: short,
 		usage: usage,
 		args:  args,
 	}
@@ -293,6 +306,18 @@ func (e *Expr) actualArgs() []*Arg {
 		return make([]*Arg, 0)
 	}
 	return e.Args
+}
+
+func (e *Expr) canonicalName(short bool) string {
+	if short == (len(e.Name) == 1) {
+		return e.Name
+	}
+	for _, s := range e.Aliases {
+		if short == (len(s) == 1) {
+			return s
+		}
+	}
+	return ""
 }
 
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
@@ -456,6 +481,16 @@ func (p *exprPipeline) applyFactory(c *Context, fac *exprPipelineFactory) error 
 
 func (b *exprBinding) Expr() *Expr {
 	return b.expr
+}
+
+func (e *exprSynopsis) names() string {
+	if len(e.long) == 0 {
+		return fmt.Sprintf("-%s", e.short)
+	}
+	if len(e.short) == 0 {
+		return fmt.Sprintf("-%s", e.long)
+	}
+	return fmt.Sprintf("-%s, -%s", e.short, e.long)
 }
 
 func emptyYielder(interface{}) error {

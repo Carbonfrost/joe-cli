@@ -301,7 +301,8 @@ func (d *defaultUsage) flag(f *flagSynopsis, hideAlternates bool) string {
 
 func (d *defaultUsage) expr(e *exprSynopsis) string {
 	var b bytes.Buffer
-	b.WriteString(d.Bold(e.name))
+	names := d.Bold(e.names())
+	b.WriteString(names)
 	for _, a := range e.args {
 		b.WriteString(" ")
 		b.WriteString(d.Underline(d.arg(a)))
