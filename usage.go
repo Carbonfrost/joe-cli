@@ -68,9 +68,20 @@ var (
 
 func DisplayHelpScreen(command ...string) ActionFunc {
 	return func(c *Context) error {
-		cmd, err := findCommand(c.App().createRoot(), command)
-		if err != nil {
-			return err
+		current := c.App().createRoot()
+		persistentFlags := make([]*Flag, 0)
+
+		// Find command and accumulate persistent flags
+		for i, c := range command {
+			if i < len(command) {
+				persistentFlags = append(persistentFlags, current.VisibleFlags()...)
+			}
+
+			var ok bool
+			current, ok = current.Command(c)
+			if !ok {
+				return commandMissing(c)
+			}
 		}
 
 		tpl := c.Template("help")
@@ -89,7 +100,7 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 			SelectedCommand *commandData
 			App             *App
 		}{
-			SelectedCommand: commandAdapter(cmd, getUsageGenerator()).withLineage(lineage),
+			SelectedCommand: commandAdapter(current).withLineage(lineage, persistentFlags),
 			App:             c.App(),
 		}
 

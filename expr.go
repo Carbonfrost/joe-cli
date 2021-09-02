@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -17,6 +18,7 @@ type Expr struct {
 
 	HelpText  string
 	UsageText string
+	Category  string
 
 	// Evaluate provides the evaluation behavior for the expression.  The value should
 	// implement ExprEvaluator or support runtime conversion to that interface via
@@ -63,6 +65,11 @@ type ExprBinding interface {
 
 // ExprsByName is a sortable slice for exprs
 type ExprsByName []*Expr
+type ExprsByCategory []*ExprCategory
+type ExprCategory struct {
+	Category string
+	Exprs    []*Expr
+}
 
 type yielder = func(interface{}) error
 
@@ -216,6 +223,26 @@ func Predicate(filter func(v interface{}) bool) EvaluatorFunc {
 	})
 }
 
+func GroupExprsByCategory(exprs []*Expr) ExprsByCategory {
+	res := ExprsByCategory{}
+	all := map[string]*ExprCategory{}
+	category := func(name string) *ExprCategory {
+		if c, ok := all[name]; ok {
+			return c
+		}
+		c := &ExprCategory{Category: name, Exprs: []*Expr{}}
+		all[name] = c
+		res = append(res, c)
+		return c
+	}
+	for _, e := range exprs {
+		cc := category(e.Category)
+		cc.Exprs = append(cc.Exprs, e)
+	}
+	sort.Sort(res)
+	return res
+}
+
 func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 	res := &exprPipelineFactory{
 		exprs: map[string]func(*Context) *boundExpr{},
@@ -284,6 +311,29 @@ func (e ExprsByName) Less(i, j int) bool {
 }
 
 func (e ExprsByName) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
+func (f *ExprCategory) VisibleExprs() []*Expr {
+	res := make([]*Expr, 0, len(f.Exprs))
+	for _, o := range f.Exprs {
+		if o.flags.hidden() {
+			continue
+		}
+		res = append(res, o)
+	}
+	return res
+}
+
+func (e ExprsByCategory) Less(i, j int) bool {
+	return e[i].Category < e[j].Category
+}
+
+func (e ExprsByCategory) Len() int {
+	return len(e)
+}
+
+func (e ExprsByCategory) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
 }
 

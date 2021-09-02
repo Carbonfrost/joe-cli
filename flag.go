@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -58,6 +59,7 @@ type Flag struct {
 	Value       interface{}
 	DefaultText string
 	Options     Option
+	Category    string
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
@@ -76,6 +78,11 @@ type Flag struct {
 
 // FlagsByName is a sortable slice for flags
 type FlagsByName []*Flag
+type FlagsByCategory []*FlagCategory
+type FlagCategory struct {
+	Category string
+	Flags    []*Flag
+}
 
 type option interface {
 	Occurrences() int
@@ -109,6 +116,26 @@ type valueSynopsis struct {
 	placeholder string
 	helpText    string
 	usage       *usage
+}
+
+func GroupFlagsByCategory(flags []*Flag) FlagsByCategory {
+	res := FlagsByCategory{}
+	all := map[string]*FlagCategory{}
+	category := func(name string) *FlagCategory {
+		if c, ok := all[name]; ok {
+			return c
+		}
+		c := &FlagCategory{Category: name, Flags: []*Flag{}}
+		all[name] = c
+		res = append(res, c)
+		return c
+	}
+	for _, f := range flags {
+		cc := category(f.Category)
+		cc.Flags = append(cc.Flags, f)
+	}
+	sort.Sort(res)
+	return res
 }
 
 func (f *Flag) applyToSet(s *set) {
@@ -287,6 +314,29 @@ func (f FlagsByName) Less(i, j int) bool {
 }
 
 func (f FlagsByName) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
+
+func (f *FlagCategory) VisibleFlags() []*Flag {
+	res := make([]*Flag, 0, len(f.Flags))
+	for _, o := range f.Flags {
+		if o.flags.hidden() {
+			continue
+		}
+		res = append(res, o)
+	}
+	return res
+}
+
+func (f FlagsByCategory) Less(i, j int) bool {
+	return f[i].Category < f[j].Category
+}
+
+func (f FlagsByCategory) Len() int {
+	return len(f)
+}
+
+func (f FlagsByCategory) Swap(i, j int) {
 	f[i], f[j] = f[j], f[i]
 }
 

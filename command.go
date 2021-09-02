@@ -315,17 +315,6 @@ func sortedByName(flags []*flagSynopsis) {
 	})
 }
 
-func findCommand(current *Command, commands []string) (*Command, error) {
-	for _, c := range commands {
-		var ok bool
-		current, ok = current.Command(c)
-		if !ok {
-			return nil, commandMissing(c)
-		}
-	}
-	return current, nil
-}
-
 func findCommandByName(cmds []*Command, name string) (*Command, bool) {
 	for _, sub := range cmds {
 		if sub.Name == name {
