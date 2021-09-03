@@ -350,6 +350,15 @@ func (f *ExprCategory) VisibleExprs() []*Expr {
 	return res
 }
 
+func (e *ExprCategory) Undocumented() bool {
+	for _, x := range e.Exprs {
+		if x.HelpText != "" {
+			return false
+		}
+	}
+	return true
+}
+
 func (e ExprsByCategory) Less(i, j int) bool {
 	return e[i].Category < e[j].Category
 }

@@ -328,6 +328,15 @@ func (f *FlagCategory) VisibleFlags() []*Flag {
 	return res
 }
 
+func (e *FlagCategory) Undocumented() bool {
+	for _, x := range e.Flags {
+		if x.HelpText != "" {
+			return false
+		}
+	}
+	return true
+}
+
 func (f FlagsByCategory) Less(i, j int) bool {
 	return f[i].Category < f[j].Category
 }

@@ -117,6 +117,15 @@ func (c CommandsByCategory) Category(name string) *CommandCategory {
 	return nil
 }
 
+func (e *CommandCategory) Undocumented() bool {
+	for _, x := range e.Commands {
+		if x.HelpText != "" {
+			return false
+		}
+	}
+	return true
+}
+
 func (c CommandsByCategory) Less(i, j int) bool {
 	return c[i].Category < c[j].Category
 }

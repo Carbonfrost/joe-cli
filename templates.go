@@ -8,9 +8,9 @@ type commandData struct {
 	Synopsis           []string
 	Lineage            string
 	VisibleCommands    []*commandData
-	VisibleFlags       []*flagData
-	VisibleArgs        []*flagData
-	VisibleExprs       []*flagData
+	VisibleFlags       flagDataList
+	VisibleArgs        flagDataList
+	VisibleExprs       flagDataList
 	Persistent         *persistentCommandData
 	CommandsByCategory []*commandCategory
 	FlagsByCategory    []*flagCategory
@@ -20,7 +20,7 @@ type commandData struct {
 
 type persistentCommandData struct {
 	FlagsByCategory []*flagCategory
-	VisibleFlags    []*flagData
+	VisibleFlags    flagDataList
 }
 
 type flagData struct {
@@ -36,15 +36,18 @@ type commandCategory struct {
 	Data            map[string]interface{}
 }
 
+type flagDataList []*flagData
 type flagCategory struct {
+	Undocumented bool
 	Category     string
-	VisibleFlags []*flagData
+	VisibleFlags flagDataList
 	Data         map[string]interface{}
 }
 
 type exprCategory struct {
+	Undocumented bool
 	Category     string
-	VisibleExprs []*flagData
+	VisibleExprs flagDataList
 	Data         map[string]interface{}
 }
 
@@ -68,7 +71,11 @@ var (
 {{- define "Flags" -}}
 {{ range .FlagsByCategory }}
 {{ if .Category }}{{.Category}}:{{ end }}
+{{ if .Undocumented -}}
+{{ .VisibleFlags.Names | Join ", " | Wrap 4 }}
+{{- else -}}
 {{ range .VisibleFlags }}{{- template "Flag" . -}}{{ "\n" }}{{end}}
+{{- end -}}
 {{- else -}}
 {{ range .VisibleFlags }}{{- template "Flag" . -}}{{ "\n" }}{{end}}
 {{- end }}
@@ -89,12 +96,16 @@ Global options (specify before any sub-commands): {{ "\n" }}
 {{ if .VisibleExprs -}}
 {{ range .ExprsByCategory }}
 {{ if .Category }}{{.Category}}:{{ end }}
+{{ if .Undocumented -}}
+{{ .VisibleExprs.Names | Join ", " | Wrap 4 }}
+{{- else -}}
 {{ range .VisibleExprs }}{{- template "Expression" . -}}{{ "\n" }}{{end}}
+{{- end -}}
 {{- else -}}
 Expressions:
 {{ range .VisibleExprs }}{{- template "Expression" . -}}{{ "\n" }}{{end}}
-{{- end }}
-{{- end }}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/* Usage is the entry point, which calls flags, subcommands */}} 
@@ -120,11 +131,19 @@ usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 func (c *commandData) withLineage(lineage string, persistent []*Flag) *commandData {
 	gen := getUsageGenerator()
 	c.Lineage = lineage
-	c.Persistent = &persistentCommandData {
-		VisibleFlags: visibleFlags(persistent, gen),
-	FlagsByCategory: visibleFlagCategories(GroupFlagsByCategory(persistent), gen),
-}
+	c.Persistent = &persistentCommandData{
+		VisibleFlags:    visibleFlags(persistent, gen),
+		FlagsByCategory: visibleFlagCategories(GroupFlagsByCategory(persistent), gen),
+	}
 	return c
+}
+
+func (e flagDataList) Names() []string {
+	res := make([]string, 0, len(e))
+	for _, x := range e {
+		res = append(res, "-"+x.Name)
+	}
+	return res
 }
 
 func visibleFlags(items []*Flag, gen usageGenerator) []*flagData {
@@ -140,6 +159,7 @@ func visibleFlagCategories(items FlagsByCategory, gen usageGenerator) []*flagCat
 	for _, a := range items {
 		res = append(res, &flagCategory{
 			Category:     a.Category,
+			Undocumented: a.Undocumented(),
 			VisibleFlags: visibleFlags(a.VisibleFlags(), gen),
 		})
 	}
@@ -193,6 +213,7 @@ func commandAdapter(val *Command) *commandData {
 			for _, a := range items {
 				res = append(res, &exprCategory{
 					Category:     a.Category,
+					Undocumented: a.Undocumented(),
 					VisibleExprs: visibleExprs(a.VisibleExprs()),
 				})
 			}
