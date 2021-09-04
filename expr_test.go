@@ -55,6 +55,16 @@ var _ = Describe("Expr", func() {
 						{
 							Name: "expr",
 						},
+						{
+							Name: "offset",
+							Args: []*cli.Arg{
+								{
+									Name:  "value",
+									Value: new(int),
+									NArg:  1,
+								},
+							},
+						},
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
@@ -64,6 +74,11 @@ var _ = Describe("Expr", func() {
 				Expect(err.Error()).To(match)
 			},
 			Entry("args after expr", "arg -expr unbound", Equal(`arguments must precede expressions: "unbound"`)),
+			Entry(
+				"missing argument",
+				"arg -offset",
+				Equal(`expected argument`),
+			),
 		)
 	})
 

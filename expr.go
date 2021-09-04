@@ -464,7 +464,7 @@ Parsing:
 		}
 
 		bind := newArgBinding(set.set.positionalOptions)
-		for {
+		for len(args) > 0 {
 			arg = args[0]
 			args = args[1:]
 
@@ -474,13 +474,9 @@ Parsing:
 					return nil, wrapExprError(set.expr.Name, err)
 				}
 			}
-
-			if len(args) == 0 {
-				if err := bind.Done(); err != nil {
-					return nil, wrapExprError(set.expr.Name, err)
-				}
-				continue Parsing
-			}
+		}
+		if err := bind.Done(); err != nil {
+			return nil, wrapExprError(set.expr.Name, err)
 		}
 	}
 	return results, nil
