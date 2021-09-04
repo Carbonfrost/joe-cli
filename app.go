@@ -66,6 +66,10 @@ type App struct {
 	// Refer to cli.Action about the correct function signature to use.
 	Before interface{}
 
+	// After executes after the app action or any sub-command action runs.
+	// Refer to cli.Action about the correct function signature to use.
+	After interface{}
+
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
 	Data map[string]interface{}
@@ -120,6 +124,8 @@ func (a *App) createRoot() *Command {
 			Action:      a.Action,
 			Description: a.Description,
 			Data:        a.Data,
+
+			After: a.After,
 
 			// Hooks are intentionally left nil because App handles its hooks
 			// from the root context

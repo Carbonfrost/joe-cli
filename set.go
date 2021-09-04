@@ -20,16 +20,17 @@ type argBinding struct {
 }
 
 type internalOption struct {
-	short    rune   // 0 means no short name
-	long     string // "" means no long name
-	isLong   bool   // True if they used the long name
-	flag     bool   // true if a boolean flag
-	optional bool   // true if we take an optional value
-	where    string // file where the option was defined
-	value    *generic
-	count    int
-	uname    string
-	narg     interface{}
+	short      rune   // 0 means no short name
+	long       string // "" means no long name
+	isLong     bool   // True if they used the long name
+	flag       bool   // true if a boolean flag
+	optional   bool   // true if we take an optional value
+	where      string // file where the option was defined
+	value      *generic
+	count      int
+	uname      string
+	narg       interface{}
+	persistent bool // true when the option is a clone of a persistent flag
 }
 
 type argCountError int

@@ -21,6 +21,10 @@ type Command struct {
 	// cli.Action about the correct function signature to use.
 	Before interface{}
 
+	// After executes after the app action or any sub-command action runs.
+	// Refer to cli.Action about the correct function signature to use.
+	After interface{}
+
 	// Category places the command into a category.  Categories are displayed on the default
 	// help screen.
 	Category string

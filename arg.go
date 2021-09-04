@@ -23,6 +23,10 @@ type Arg struct {
 	// function signature to use.
 	Action interface{}
 
+	// After executes after the command runs.  Refer to cli.Action about the correct
+	// function signature to use.
+	After interface{}
+
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
 	Data map[string]interface{}
@@ -179,6 +183,10 @@ func (a *Arg) action() ActionHandler {
 
 func (a *Arg) before() ActionHandler {
 	return Action(a.Before)
+}
+
+func (a *Arg) after() ActionHandler {
+	return Action(a.After)
 }
 
 func (a *Arg) name() string {

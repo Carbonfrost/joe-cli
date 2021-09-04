@@ -69,6 +69,10 @@ type Flag struct {
 	// function signature to use.
 	Before interface{}
 
+	// After executes after the command runs.  Refer to cli.Action about the correct
+	// function signature to use.
+	After interface{}
+
 	// Action executes if the flag was set.  Refer to cli.Action about the correct
 	// function signature to use.
 	Action interface{}
@@ -102,6 +106,7 @@ type option interface {
 	filePath() string
 	helpText() string
 	before() ActionHandler
+	after() ActionHandler
 	action() ActionHandler
 }
 
@@ -282,6 +287,10 @@ func (f *Flag) action() ActionHandler {
 
 func (f *Flag) before() ActionHandler {
 	return Action(f.Before)
+}
+
+func (f *Flag) after() ActionHandler {
+	return Action(f.After)
 }
 
 func (f *Flag) name() string {

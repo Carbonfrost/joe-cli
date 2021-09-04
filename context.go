@@ -506,8 +506,14 @@ func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
 func (c *Context) applySet() {
 	set := newSet()
 	c.set = set
-	for _, f := range c.allFlagsInScope() {
+	for _, f := range c.target.(*Command).actualFlags() {
 		f.applyToSet(set)
+	}
+	if c.Parent() != nil {
+		for _, f := range c.Parent().allFlagsInScope() {
+			f.applyToSet(set)
+			f.option.persistent = true
+		}
 	}
 	for _, a := range c.target.(*Command).actualArgs() {
 		a.applyToSet(set)
@@ -568,6 +574,9 @@ func (c *Context) executeBefore() error {
 	case *App:
 		return hookExecute(Action(tt.Before), defaultBeforeApp(tt), c)
 	case *Command:
+		if err := c.Parent().executeBeforeSubcommand(); err != nil {
+			return err
+		}
 		return hookExecute(Action(tt.Before), defaultBeforeCommand(tt), c)
 	case option:
 		return hookExecute(tt.before(), defaultBeforeOption(tt), c)
@@ -576,12 +585,63 @@ func (c *Context) executeBefore() error {
 	return nil
 }
 
+func (c *Context) executeBeforeSubcommand() error {
+	if c == nil {
+		return nil
+	}
+
+	if err := c.Parent().executeBeforeSubcommand(); err != nil {
+		return err
+	}
+
+	if tt, ok := c.target.(*Command); ok {
+		act := Action(tt.Before)
+		if act != nil {
+			return act.Execute(c)
+		}
+	}
+
+	return nil
+}
+
+func (c *Context) executeAfter() error {
+	if c == nil {
+		return nil
+	}
+
+	switch tt := c.target.(type) {
+	case *App:
+		return hookExecute(Action(tt.After), defaultAfterApp(tt), c)
+	case *Command:
+		if err := hookExecute(Action(tt.After), defaultAfterCommand(tt), c); err != nil {
+			return err
+		}
+		return c.Parent().executeAfterSubcommand()
+
+	case option:
+		return hookExecute(tt.after(), defaultAfterOption(tt), c)
+	}
+
+	return nil
+}
+
+func (c *Context) executeAfterSubcommand() error {
+	if c == nil {
+		return nil
+	}
+
+	if tt, ok := c.target.(*Command); ok {
+		act := Action(tt.After)
+		if act != nil {
+			return act.Execute(c)
+		}
+	}
+
+	return c.Parent().executeAfterSubcommand()
+}
+
 func (c *Context) executeCommand() error {
 	cmd := c.target.(*Command)
-
-	var (
-		defaultAfter = emptyAction
-	)
 
 	if err := c.executeBefore(); err != nil {
 		return err
@@ -594,7 +654,13 @@ func (c *Context) executeCommand() error {
 		action = Action(cmd.Action)
 	}
 
-	return hookExecute(action, defaultAfter, c)
+	if action != nil {
+		if err := action.Execute(c); err != nil {
+			return err
+		}
+	}
+
+	return c.executeAfter()
 }
 
 func (c *Context) executeOption() error {
@@ -624,9 +690,21 @@ func defaultBeforeOption(o option) ActionHandler {
 	)
 }
 
+func defaultAfterOption(o option) ActionHandler {
+	return emptyAction
+}
+
 func defaultBeforeCommand(c *Command) ActionFunc {
 	return func(ctx *Context) error {
-		for _, f := range ctx.flagsAndArgs(true) {
+		opts := ctx.flagsAndArgs(true)
+		for _, f := range opts {
+			if flag, ok := f.(*Flag); ok {
+				if flag.option.persistent {
+					// This is a persistent flag that was cloned into the flag set of the current
+					// command; don't process it again
+					continue
+				}
+			}
 			err := hookExecute(f.before(), defaultBeforeOption(f), ctx.optionContext(f))
 			if err != nil {
 				return err
@@ -635,7 +713,7 @@ func defaultBeforeCommand(c *Command) ActionFunc {
 
 		// Invoke the Before action on all flags and args, but only the actual
 		// Action when the flag or arg was set
-		for _, f := range ctx.flagsAndArgs(true) {
+		for _, f := range opts {
 			if f.Seen() {
 				err := ctx.optionContext(f).executeOption()
 				if err != nil {
@@ -647,6 +725,10 @@ func defaultBeforeCommand(c *Command) ActionFunc {
 	}
 }
 
+func defaultAfterCommand(a *Command) ActionHandler {
+	return emptyAction
+}
+
 func defaultBeforeApp(a *App) ActionHandler {
 	return Pipeline(
 		ActionFunc(setupDefaultIO),
@@ -654,6 +736,10 @@ func defaultBeforeApp(a *App) ActionHandler {
 		ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
 		ActionFunc(addAppCommand("version", defaultVersionFlag(), defaultVersionCommand())),
 	)
+}
+
+func defaultAfterApp(a *App) ActionHandler {
+	return emptyAction
 }
 
 func reverse(arr []string) []string {
