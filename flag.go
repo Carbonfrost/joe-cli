@@ -73,6 +73,10 @@ type Flag struct {
 	// function signature to use.
 	After interface{}
 
+	// Uses provides an action handler that is always executed during the initialization phase
+	// of the app.  Typically, hooks and other configuration actions are added to this handler.
+	Uses interface{}
+
 	// Action executes if the flag was set.  Refer to cli.Action about the correct
 	// function signature to use.
 	Action interface{}
@@ -89,6 +93,7 @@ type FlagCategory struct {
 }
 
 type option interface {
+	target
 	Occurrences() int
 	Seen() bool
 	Set(string) error
@@ -170,6 +175,25 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 		sep:   sep,
 		value: getValueSynopsis(f),
 	}
+}
+
+func (f *Flag) setData(name string, v interface{}) {
+	f.ensureData()[name] = v
+}
+
+func (f *Flag) setCategory(name string) {
+	f.Category = name
+}
+
+func (f *Flag) initialize(c *Context) error {
+	return hookExecute(Action(f.Uses), nil, c)
+}
+
+func (f *Flag) ensureData() map[string]interface{} {
+	if f.Data == nil {
+		f.Data = map[string]interface{}{}
+	}
+	return f.Data
 }
 
 func (f *flagSynopsis) names(hideAlternates bool) string {

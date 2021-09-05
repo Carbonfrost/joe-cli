@@ -20,6 +20,12 @@ type ActionPipeline struct {
 	items []ActionHandler
 }
 
+type target interface {
+	initialize(*Context) error
+	setCategory(name string)
+	setData(name string, v interface{})
+}
+
 var (
 	emptyAction ActionHandler = ActionFunc(emptyActionImpl)
 )
@@ -81,6 +87,24 @@ func SetValue(v interface{}) ActionFunc {
 		c.target.(option).Set(genericString(dereference(v)))
 		return nil
 	}
+}
+
+// Data sets metadata for a command, flag, arg, or expression.  This handler is generally
+// set up inside a Uses pipeline.
+func Data(name string, value interface{}) ActionHandler {
+	return ActionFunc(func(c *Context) error {
+		c.target.setData(name, value)
+		return nil
+	})
+}
+
+// Category sets the category of a command, flag, or expression.  This handler is generally
+// set up inside a Uses pipeline.
+func Category(name string) ActionHandler {
+	return ActionFunc(func(c *Context) error {
+		c.target.setCategory(name)
+		return nil
+	})
 }
 
 func (af ActionFunc) Execute(c *Context) error {

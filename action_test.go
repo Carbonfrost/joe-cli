@@ -13,47 +13,92 @@ import (
 
 var _ = Describe("middleware", func() {
 
-	var (
-		captured *cli.Context
-		before   cli.ActionHandler
-		flags    []*cli.Flag
-	)
-	JustBeforeEach(func() {
-		act := new(joeclifakes.FakeActionHandler)
-		app := &cli.App{
-			Name:   "app",
-			Before: before,
-			Action: act,
-			Flags:  flags,
-		}
-		app.RunContext(context.TODO(), []string{"app"})
-		captured = act.ExecuteArgsForCall(0)
-	})
-
-	Context("ContextValue", func() {
-		BeforeEach(func() {
-			before = cli.ContextValue("mykey", "context value")
+	Describe("before", func() {
+		var (
+			captured *cli.Context
+			before   cli.ActionHandler
+			flags    []*cli.Flag
+		)
+		JustBeforeEach(func() {
+			act := new(joeclifakes.FakeActionHandler)
+			app := &cli.App{
+				Name:   "app",
+				Before: before,
+				Action: act,
+				Flags:  flags,
+			}
+			app.RunContext(context.TODO(), []string{"app"})
+			captured = act.ExecuteArgsForCall(0)
 		})
 
-		It("ContextValue can set and retrieve context value", func() {
-			Expect(captured.Context.Value("mykey")).To(BeIdenticalTo("context value"))
+		Context("ContextValue", func() {
+			BeforeEach(func() {
+				before = cli.ContextValue("mykey", "context value")
+			})
+
+			It("ContextValue can set and retrieve context value", func() {
+				Expect(captured.Context.Value("mykey")).To(BeIdenticalTo("context value"))
+			})
+
 		})
 
+		Context("SetValue", func() {
+			BeforeEach(func() {
+				flags = []*cli.Flag{
+					{
+						Name:   "int",
+						Value:  cli.Int(),
+						Before: cli.SetValue(420),
+					},
+				}
+			})
+
+			It("can set and retrieve value", func() {
+				Expect(captured.Value("int")).To(Equal(420))
+			})
+		})
 	})
 
-	Context("SetValue", func() {
-		BeforeEach(func() {
-			flags = []*cli.Flag{
-				{
-					Name:   "int",
-					Value:  cli.Int(),
-					Before: cli.SetValue(420),
+	Describe("initialization", func() {
+		var (
+			captured    *cli.Context
+			initializer cli.ActionHandler
+		)
+		JustBeforeEach(func() {
+			act := new(joeclifakes.FakeActionHandler)
+			app := &cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name:   "sub",
+						Uses:   initializer,
+						Action: act,
+					},
 				},
 			}
+			app.RunContext(context.TODO(), []string{"app", "sub"})
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+			captured = act.ExecuteArgsForCall(0)
 		})
 
-		It("can set and retrieve value", func() {
-			Expect(captured.Value("int")).To(Equal(420))
+		Context("Data", func() {
+			BeforeEach(func() {
+				initializer = cli.Data("ok", "money")
+			})
+
+			It("can set data", func() {
+				Expect(captured.Command().Data).To(HaveKeyWithValue("ok", "money"))
+			})
+		})
+
+		Context("Category", func() {
+			BeforeEach(func() {
+				initializer = cli.Category("bags")
+			})
+
+			It("can set category", func() {
+				Expect(captured.Command().Category).To(Equal("bags"))
+			})
 		})
 	})
 

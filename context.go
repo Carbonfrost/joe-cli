@@ -20,7 +20,7 @@ type Context struct {
 
 	parent *Context
 
-	target interface{} // *Command, *Flag, or *Arg
+	target target // *Command, *Flag, *App, or *Arg
 
 	// When the context is being used for a command
 	args []string
@@ -681,6 +681,11 @@ func (c *Context) lookupOption(name string) option {
 
 func (c *Context) option() option {
 	return c.target.(option)
+}
+
+func (c *Context) andInitialize() *Context {
+	c.target.initialize(c)
+	return c
 }
 
 func defaultBeforeOption(o option) ActionHandler {

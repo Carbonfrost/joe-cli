@@ -34,6 +34,10 @@ type Expr struct {
 	// function signature to use.
 	After interface{}
 
+	// Uses provides an action handler that is always executed during the initialization phase
+	// of the app.  Typically, hooks and other configuration actions are added to this handler.
+	Uses interface{}
+
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
 	Data map[string]interface{}
@@ -322,6 +326,25 @@ func (e *Expr) canonicalName(short bool) string {
 		}
 	}
 	return ""
+}
+
+func (e *Expr) setData(name string, v interface{}) {
+	e.ensureData()[name] = v
+}
+
+func (e *Expr) setCategory(name string) {
+	e.Category = name
+}
+
+func (e *Expr) initialize(c *Context) error {
+	return hookExecute(Action(e.Uses), nil, c)
+}
+
+func (e *Expr) ensureData() map[string]interface{} {
+	if e.Data == nil {
+		e.Data = map[string]interface{}{}
+	}
+	return e.Data
 }
 
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {

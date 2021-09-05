@@ -27,6 +27,10 @@ type Arg struct {
 	// function signature to use.
 	After interface{}
 
+	// Uses provides an action handler that is always executed during the initialization phase
+	// of the app.  Typically, hooks and other configuration actions are added to this handler.
+	Uses interface{}
+
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
 	Data map[string]interface{}
@@ -208,6 +212,23 @@ func (a *Arg) helpText() string {
 func (a *Arg) value() interface{} {
 	a.Value = ensureDestination(a.Value, isMulti(a.NArg))
 	return a.Value
+}
+
+func (a *Arg) setData(name string, v interface{}) {
+	a.ensureData()[name] = v
+}
+
+func (a *Arg) setCategory(name string) {}
+
+func (a *Arg) initialize(c *Context) error {
+	return hookExecute(Action(a.Uses), nil, c)
+}
+
+func (a *Arg) ensureData() map[string]interface{} {
+	if a.Data == nil {
+		a.Data = map[string]interface{}{}
+	}
+	return a.Data
 }
 
 func (d *discreteCounter) Take(arg string, possibleFlag bool) error {

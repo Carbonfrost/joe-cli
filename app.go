@@ -70,6 +70,10 @@ type App struct {
 	// Refer to cli.Action about the correct function signature to use.
 	After interface{}
 
+	// Uses provides an action handler that is always executed during the initialization phase
+	// of the app.  Typically, hooks and other configuration actions are added to this handler.
+	Uses interface{}
+
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
 	Data map[string]interface{}
@@ -91,7 +95,7 @@ func (a *App) Run(args []string) {
 }
 
 func (a *App) RunContext(c context.Context, args []string) error {
-	ctx := rootContext(c, a)
+	ctx := rootContext(c, a).andInitialize()
 	err := ctx.executeBefore()
 	if err != nil {
 		return err
@@ -147,6 +151,33 @@ func (a *App) actualFlags() []*Flag {
 		return make([]*Flag, 0)
 	}
 	return a.Flags
+}
+
+func (a *App) setCategory(name string) {}
+func (a *App) setData(name string, v interface{}) {
+	a.ensureData()[name] = v
+}
+
+func (a *App) initialize(c *Context) error {
+	if err := hookExecute(Action(a.Uses), nil, c); err != nil {
+		return err
+	}
+
+	for _, sub := range a.Commands {
+		err := sub.initialize(c.commandContext(sub, nil))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *App) ensureData() map[string]interface{} {
+	if a.Data == nil {
+		a.Data = map[string]interface{}{}
+	}
+	return a.Data
 }
 
 func exit(err error) {

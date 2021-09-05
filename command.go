@@ -25,6 +25,10 @@ type Command struct {
 	// Refer to cli.Action about the correct function signature to use.
 	After interface{}
 
+	// Uses provides an action handler that is always executed during the initialization phase
+	// of the app.  Typically, hooks and other configuration actions are added to this handler.
+	Uses interface{}
+
 	// Category places the command into a category.  Categories are displayed on the default
 	// help screen.
 	Category string
@@ -289,6 +293,47 @@ func (c *Command) newSynopsis() *commandSynopsis {
 		flags: groups,
 		args:  args,
 	}
+}
+
+func (c *Command) setData(name string, v interface{}) {
+	c.ensureData()[name] = v
+}
+
+func (c *Command) setCategory(name string) {
+	c.Category = name
+}
+
+func (c *Command) initialize(ctx *Context) error {
+	if err := hookExecute(Action(c.Uses), nil, ctx); err != nil {
+		return err
+	}
+
+	for _, sub := range c.Flags {
+		err := sub.initialize(ctx.optionContext(sub))
+		if err != nil {
+			return err
+		}
+	}
+	for _, sub := range c.Args {
+		err := sub.initialize(ctx.optionContext(sub))
+		if err != nil {
+			return err
+		}
+	}
+	for _, sub := range c.Exprs {
+		err := sub.initialize(ctx.exprContext(sub, nil, nil))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Command) ensureData() map[string]interface{} {
+	if c.Data == nil {
+		c.Data = map[string]interface{}{}
+	}
+	return c.Data
 }
 
 func (c CommandsByName) Len() int {
