@@ -110,9 +110,14 @@ type option interface {
 	envVars() []string
 	filePath() string
 	helpText() string
+	uses() ActionHandler
 	before() ActionHandler
 	after() ActionHandler
 	action() ActionHandler
+}
+
+type optionContext struct {
+	option option
 }
 
 type flagSynopsis struct {
@@ -185,10 +190,6 @@ func (f *Flag) setCategory(name string) {
 	f.Category = name
 }
 
-func (f *Flag) initialize(c *Context) error {
-	return hookExecute(Action(f.Uses), nil, c)
-}
-
 func (f *Flag) ensureData() map[string]interface{} {
 	if f.Data == nil {
 		f.Data = map[string]interface{}{}
@@ -211,6 +212,38 @@ func (f *flagSynopsis) names(hideAlternates bool) string {
 		return fmt.Sprintf("--%s", f.long)
 	}
 	return fmt.Sprintf("-%s, --%s", f.short, f.long)
+}
+
+func (o *optionContext) hooks() *hooks {
+	return nil
+}
+
+func (o *optionContext) initialize(c *Context) error {
+	return hookExecute(Action(o.option.uses()), nil, c)
+}
+
+func (o *optionContext) executeBefore(ctx *Context) error {
+	tt := o.target().(option)
+	return hookExecute(tt.before(), defaultOption.Before, ctx)
+}
+
+func (o *optionContext) executeBeforeDescendent(ctx *Context) error { return nil }
+func (o *optionContext) executeAfterDescendent(ctx *Context) error  { return nil }
+func (o *optionContext) executeAfter(ctx *Context) error            { return nil }
+func (o *optionContext) execute(ctx *Context) error                 { return nil }
+func (o *optionContext) app() (*App, bool)                          { return nil, false }
+func (o *optionContext) args() []string                             { return nil }
+func (o *optionContext) set() *set                                  { return nil }
+func (o *optionContext) target() target                             { return o.option }
+func (o *optionContext) setDidSubcommandExecute()                   {}
+func (o *optionContext) lookupValue(name string) (interface{}, bool) {
+	if name == "" {
+		return o.option.value(), true
+	}
+	return nil, false
+}
+func (o *optionContext) Name() string {
+	return o.option.name()
 }
 
 func getValueSynopsis(o option) *valueSynopsis {
@@ -311,6 +344,10 @@ func (f *Flag) wrapAction(fn func(ActionHandler) ActionFunc) {
 
 func (f *Flag) action() ActionHandler {
 	return Action(f.Action)
+}
+
+func (f *Flag) uses() ActionHandler {
+	return Action(f.Uses)
 }
 
 func (f *Flag) before() ActionHandler {

@@ -185,6 +185,10 @@ func (a *Arg) action() ActionHandler {
 	return Action(a.Action)
 }
 
+func (a *Arg) uses() ActionHandler {
+	return Action(a.Uses)
+}
+
 func (a *Arg) before() ActionHandler {
 	return Action(a.Before)
 }
@@ -219,10 +223,6 @@ func (a *Arg) setData(name string, v interface{}) {
 }
 
 func (a *Arg) setCategory(name string) {}
-
-func (a *Arg) initialize(c *Context) error {
-	return hookExecute(Action(a.Uses), nil, c)
-}
 
 func (a *Arg) ensureData() map[string]interface{} {
 	if a.Data == nil {

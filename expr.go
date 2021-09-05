@@ -110,6 +110,12 @@ type exprBinding struct {
 	expr *Expr
 }
 
+type exprContext struct {
+	expr  *Expr
+	args_ []string
+	set_  *set
+}
+
 func BindExpression(exprFunc func(*Context) ([]*Expr, error)) ActionHandler {
 	return ActionFunc(func(c *Context) error {
 		exprs, err := exprFunc(c)
@@ -336,10 +342,6 @@ func (e *Expr) setCategory(name string) {
 	e.Category = name
 }
 
-func (e *Expr) initialize(c *Context) error {
-	return hookExecute(Action(e.Uses), nil, c)
-}
-
 func (e *Expr) ensureData() map[string]interface{} {
 	if e.Data == nil {
 		e.Data = map[string]interface{}{}
@@ -528,6 +530,40 @@ func (e *exprSynopsis) names() string {
 	}
 	return fmt.Sprintf("-%s, -%s", e.short, e.long)
 }
+
+func (e *exprContext) initialize(c *Context) error {
+	return hookExecute(Action(e.expr.Uses), nil, c)
+}
+
+func (e *exprContext) hooks() *hooks {
+	return nil
+}
+
+func (e *exprContext) executeBefore(ctx *Context) error {
+	return hookExecute(Action(e.expr.Before), defaultExpr.Before, ctx)
+}
+
+func (e *exprContext) executeAfter(ctx *Context) error {
+	return hookExecute(Action(e.expr.After), defaultExpr.After, ctx)
+}
+
+func (e *exprContext) executeBeforeDescendent(ctx *Context) error { return nil }
+func (e *exprContext) executeAfterDescendent(ctx *Context) error  { return nil }
+func (e *exprContext) execute(ctx *Context) error                 { return nil }
+func (e *exprContext) app() (*App, bool)                          { return nil, false }
+func (e *exprContext) args() []string                             { return e.args_ }
+func (e *exprContext) set() *set {
+	if e.set_ == nil {
+		e.set_ = newSet()
+	}
+	return e.set_
+}
+func (e *exprContext) setDidSubcommandExecute() {}
+func (e *exprContext) target() target           { return e.expr }
+func (e *exprContext) lookupValue(name string) (interface{}, bool) {
+	return e.set_.lookupValue(name)
+}
+func (e *exprContext) Name() string { return e.expr.Name }
 
 func emptyYielder(interface{}) error {
 	return nil

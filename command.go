@@ -44,7 +44,7 @@ type Command struct {
 	HelpText  string
 	UsageText string
 
-	cmdHooks hooks
+	cmdHooks            hooks
 	didSetupDefaultArgs bool
 }
 
@@ -74,6 +74,13 @@ type command interface {
 	Arg(string) (*Arg, bool)
 }
 
+type commandContext struct {
+	cmd                  *Command
+	args_                []string
+	set_                 *set
+	didSubcommandExecute bool
+}
+
 const (
 	onlyShortNoValue         = optionGroup(iota) // -v
 	onlyShortNoValueOptional                     // [-v]
@@ -97,8 +104,9 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 		if err != nil {
 			return err
 		}
-		c.Parent().didSubcommandExecute = true
-		return cmd.parseAndExecute(c.Parent(), invoke)
+		c.Parent().internal.setDidSubcommandExecute()
+		newCtx := c.Parent().commandContext(cmd, invoke)
+		return cmd.parseAndExecuteSelf(newCtx)
 	}
 }
 
@@ -207,8 +215,7 @@ func (c *Command) appendArg(arg *Arg) *Command {
 	return c
 }
 
-func (c *Command) parseAndExecute(ctx *Context, args []string) error {
-	ctx = ctx.commandContext(c, args)
+func (c *Command) parseAndExecuteSelf(ctx *Context) error {
 	c.setupDefaultArgs()
 	ctx.applySet()
 
@@ -317,33 +324,6 @@ func (c *Command) setCategory(name string) {
 	c.Category = name
 }
 
-func (c *Command) initialize(ctx *Context) error {
-	if err := hookExecute(Action(c.Uses), nil, ctx); err != nil {
-		return err
-	}
-
-	for _, sub := range c.Flags {
-		err := sub.initialize(ctx.optionContext(sub))
-		if err != nil {
-			return err
-		}
-	}
-	for _, sub := range c.Args {
-		err := sub.initialize(ctx.optionContext(sub))
-		if err != nil {
-			return err
-		}
-	}
-	for _, sub := range c.Exprs {
-		err := sub.initialize(ctx.exprContext(sub, nil, nil))
-		if err != nil {
-			return err
-		}
-	}
-	c.setupDefaultArgs()
-	return nil
-}
-
 func (c *Command) ensureData() map[string]interface{} {
 	if c.Data == nil {
 		c.Data = map[string]interface{}{}
@@ -365,6 +345,87 @@ func (c CommandsByName) Less(i, j int) bool {
 
 func (c CommandsByName) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
+}
+
+func (c *commandContext) initialize(ctx *Context) error {
+	if err := hookExecute(Action(c.cmd.Uses), defaultCommand.Uses, ctx); err != nil {
+		return err
+	}
+
+	for _, sub := range c.cmd.Flags {
+		err := ctx.optionContext(sub).initialize()
+		if err != nil {
+			return err
+		}
+	}
+	for _, sub := range c.cmd.Args {
+		err := ctx.optionContext(sub).initialize()
+		if err != nil {
+			return err
+		}
+	}
+	for _, sub := range c.cmd.Exprs {
+		err := ctx.exprContext(sub, nil, nil).initialize()
+		if err != nil {
+			return err
+		}
+	}
+	c.cmd.setupDefaultArgs()
+	return nil
+}
+
+func (c *commandContext) executeBeforeDescendent(ctx *Context) error {
+	return ctx.executeBeforeHooks(c.cmd)
+}
+
+func (c *commandContext) executeBefore(ctx *Context) error {
+	if err := ctx.executeBeforeHooks(c.cmd); err != nil {
+		return err
+	}
+	return hookExecute(Action(c.cmd.Before), defaultCommand.Before, ctx)
+}
+
+func (c *commandContext) executeAfter(ctx *Context) error {
+	if err := ctx.executeAfterHooks(c.cmd); err != nil {
+		return err
+	}
+	return hookExecute(Action(c.cmd.After), defaultCommand.After, ctx)
+}
+
+func (c *commandContext) executeAfterDescendent(ctx *Context) error {
+	return ctx.executeAfterHooks(c.cmd)
+}
+
+func (c *commandContext) execute(ctx *Context) error {
+	if !c.didSubcommandExecute {
+		return actionOrEmpty(c.cmd.Action).Execute(ctx)
+	}
+	return nil
+}
+
+func (c *commandContext) hooks() *hooks {
+	return &c.cmd.cmdHooks
+}
+
+func (c *commandContext) app() (*App, bool) { return nil, false }
+func (c *commandContext) set() *set {
+	if c.set_ == nil {
+		c.set_ = newSet()
+	}
+	return c.set_
+}
+func (c *commandContext) args() []string { return c.args_ }
+func (c *commandContext) target() target { return c.cmd }
+func (c *commandContext) lookupValue(name string) (interface{}, bool) {
+	return c.set().lookupValue(name)
+}
+
+func (c *commandContext) setDidSubcommandExecute() {
+	c.didSubcommandExecute = true
+}
+
+func (c *commandContext) Name() string {
+	return c.cmd.Name
 }
 
 func getGroup(f *Flag) optionGroup {

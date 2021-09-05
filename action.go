@@ -21,14 +21,41 @@ type ActionPipeline struct {
 }
 
 type target interface {
-	initialize(*Context) error
 	hooks() *hooks
 	setCategory(name string)
 	setData(name string, v interface{})
 }
 
+type actionPipelines struct {
+	Uses   ActionHandler
+	Before ActionHandler
+	After  ActionHandler
+}
+
 var (
 	emptyAction ActionHandler = ActionFunc(emptyActionImpl)
+
+	defaultApp = actionPipelines{
+		Uses: Pipeline(
+			ActionFunc(setupDefaultIO),
+			ActionFunc(setupDefaultData),
+			ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
+			ActionFunc(addAppCommand("version", defaultVersionFlag(), defaultVersionCommand())),
+		),
+	}
+
+	defaultCommand = actionPipelines{
+		Before: ActionFunc(triggerFlagsAndArgs),
+	}
+
+	defaultOption = actionPipelines{
+		Before: Pipeline(
+			ActionFunc(setupOptionFromOptions()),
+			ActionFunc(setupOptionFromEnv),
+		),
+	}
+
+	defaultExpr = actionPipelines{}
 )
 
 // Pipeline combines various actions into a single action
@@ -85,7 +112,7 @@ func ContextValue(key, value interface{}) ActionFunc {
 
 func SetValue(v interface{}) ActionFunc {
 	return func(c *Context) error {
-		c.target.(option).Set(genericString(dereference(v)))
+		c.target().(option).Set(genericString(dereference(v)))
 		return nil
 	}
 }
@@ -94,7 +121,7 @@ func SetValue(v interface{}) ActionFunc {
 // set up inside a Uses pipeline.
 func Data(name string, value interface{}) ActionHandler {
 	return ActionFunc(func(c *Context) error {
-		c.target.setData(name, value)
+		c.target().setData(name, value)
 		return nil
 	})
 }
@@ -103,7 +130,7 @@ func Data(name string, value interface{}) ActionHandler {
 // set up inside a Uses pipeline.
 func Category(name string) ActionHandler {
 	return ActionFunc(func(c *Context) error {
-		c.target.setCategory(name)
+		c.target().setCategory(name)
 		return nil
 	})
 }
@@ -191,4 +218,11 @@ func unwind(x ActionHandler) []ActionHandler {
 		return pipe.items
 	}
 	return []ActionHandler{x}
+}
+
+func actionOrEmpty(v interface{}) ActionHandler {
+	if v == nil {
+		return emptyAction
+	}
+	return Action(v)
 }

@@ -17,16 +17,26 @@ import (
 type Context struct {
 	context.Context
 	*contextData
+	internal internalContext
 
 	parent *Context
+}
 
-	target target // *Command, *Flag, *App, or *Arg
-
-	// When the context is being used for a command
-	args []string
-	set  *set
-
-	didSubcommandExecute bool
+type internalContext interface {
+	initialize(*Context) error
+	executeBeforeDescendent(*Context) error
+	executeBefore(*Context) error
+	executeAfter(*Context) error
+	executeAfterDescendent(*Context) error
+	execute(*Context) error
+	app() (*App, bool)
+	args() []string
+	set() *set
+	target() target // *Command, *Arg, *Flag, or *Expr
+	lookupValue(string) (interface{}, bool)
+	setDidSubcommandExecute()
+	hooks() *hooks
+	Name() string
 }
 
 type hasArguments interface {
@@ -72,69 +82,69 @@ func (c *Context) Parent() *Context {
 }
 
 func (c *Context) App() *App {
-	if cmd, ok := c.target.(*App); ok {
+	if cmd, ok := c.internal.app(); ok {
 		return cmd
 	}
 	return c.Parent().App()
 }
 
 func (c *Context) Command() *Command {
-	if cmd, ok := c.target.(*Command); ok {
+	if cmd, ok := c.target().(*Command); ok {
 		return cmd
 	}
 	return c.Parent().Command()
 }
 
 func (c *Context) Arg() *Arg {
-	if a, ok := c.target.(*Arg); ok {
+	if a, ok := c.target().(*Arg); ok {
 		return a
 	}
 	return c.Parent().Arg()
 }
 
 func (c *Context) Expr() *Expr {
-	return c.target.(*Expr)
+	return c.target().(*Expr)
 }
 
 func (c *Context) Flag() *Flag {
-	if f, ok := c.target.(*Flag); ok {
+	if f, ok := c.target().(*Flag); ok {
 		return f
 	}
 	return c.Parent().Flag()
 }
 
 func (c *Context) IsApp() bool {
-	_, ok := c.target.(*App)
+	_, ok := c.internal.app()
 	return ok
 }
 
 func (c *Context) IsCommand() bool {
-	_, ok := c.target.(*Command)
+	_, ok := c.target().(*Command)
 	return ok
 }
 
 func (c *Context) IsExpr() bool {
-	_, ok := c.target.(*Expr)
+	_, ok := c.target().(*Expr)
 	return ok
 }
 
 func (c *Context) IsArg() bool {
-	_, ok := c.target.(*Arg)
+	_, ok := c.target().(*Arg)
 	return ok
 }
 
 func (c *Context) IsFlag() bool {
-	_, ok := c.target.(*Flag)
+	_, ok := c.target().(*Flag)
 	return ok
 }
 
 func (c *Context) isOption() bool {
-	_, ok := c.target.(option)
+	_, ok := c.target().(option)
 	return ok
 }
 
 func (c *Context) Args() []string {
-	return c.args
+	return c.internal.args()
 }
 
 func (c *Context) LookupFlag(name interface{}) *Flag {
@@ -145,7 +155,7 @@ func (c *Context) LookupFlag(name interface{}) *Flag {
 	case rune:
 		return c.LookupFlag(string(v))
 	case string:
-		if aa, ok := c.target.(hasFlags); ok {
+		if aa, ok := c.target().(hasFlags); ok {
 			if f, found := findFlagByName(aa.actualFlags(), v); found {
 				return f
 			}
@@ -167,7 +177,7 @@ func (c *Context) LookupArg(name interface{}) *Arg {
 	case int:
 		return c.LookupArg(c.logicalArg(v))
 	case string:
-		if aa, ok := c.target.(hasArguments); ok {
+		if aa, ok := c.target().(hasArguments); ok {
 			if a, found := findArgByName(aa.actualArgs(), v); found {
 				return a
 			}
@@ -199,7 +209,7 @@ func (c *Context) Expression() Expression {
 
 // NValue gets the maximum number available, exclusive, as an argument Value.
 func (c *Context) NValue() int {
-	if t, ok := c.target.(hasArguments); ok {
+	if t, ok := c.target().(hasArguments); ok {
 		return len(t.actualArgs())
 	}
 	return 0
@@ -238,6 +248,18 @@ func (c *Context) Value(name interface{}) interface{} {
 	panic(fmt.Sprintf("unexpected type: %T", name))
 }
 
+func (c *Context) target() target {
+	if c == nil {
+		return nil
+	}
+	return c.internal.target()
+}
+
+func (c *Context) app() *App {
+	a, _ := c.internal.app()
+	return a
+}
+
 func (c *Context) valueCore(name string) interface{} {
 	if name == "" {
 		if c.isOption() {
@@ -248,7 +270,7 @@ func (c *Context) valueCore(name string) interface{} {
 
 	// Strip possible decorators --flag, <arg>
 	name = strings.Trim(name, "-<>")
-	if v, ok := c.set.lookupValue(name); ok {
+	if v, ok := c.internal.lookupValue(name); ok {
 		return dereference(v)
 	}
 	return c.Parent().Value(name)
@@ -383,7 +405,7 @@ func (c *Context) Template(name string) *template.Template {
 }
 
 func (c *Context) Name() string {
-	switch t := c.target.(type) {
+	switch t := c.target().(type) {
 	case *Arg:
 		return fmt.Sprintf("<%s>", t.Name)
 	case *Flag:
@@ -428,12 +450,12 @@ func (c *Context) lineageFunc(f func(*Context)) {
 }
 
 func (c *Context) logicalArg(index int) *Arg {
-	return c.target.(hasArguments).actualArgs()[index]
+	return c.target().(hasArguments).actualArgs()[index]
 }
 
 func (c *Context) demandInit() *hooks {
 	// TODO Might not always be available
-	return c.target.hooks()
+	return c.internal.hooks()
 }
 
 func (c ContextPath) Last() string {
@@ -526,11 +548,17 @@ func matchField(pattern, field string) bool {
 	return false
 }
 
-func rootContext(cctx context.Context, app *App) *Context {
+func rootContext(cctx context.Context, app *App, args []string) *Context {
 	return &Context{
 		Context:     cctx,
 		contextData: &contextData{},
-		target:      app,
+		internal: &appContext{
+			commandContext: &commandContext{
+				cmd:   nil, // This will be set after initialization
+				args_: args,
+			},
+			app_: app,
+		},
 	}
 }
 
@@ -538,9 +566,11 @@ func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	return &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
-		target:      cmd,
-		args:        args,
-		parent:      c,
+		internal: &commandContext{
+			cmd:   cmd,
+			args_: args,
+		},
+		parent: c,
 	}
 }
 
@@ -548,8 +578,10 @@ func (c *Context) optionContext(opt option) *Context {
 	return &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
-		target:      opt,
-		parent:      c,
+		internal: &optionContext{
+			option: opt,
+		},
+		parent: c,
 	}
 }
 
@@ -557,17 +589,18 @@ func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
 	return &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
-		target:      expr,
-		args:        args,
-		set:         data,
-		parent:      c,
+		internal: &exprContext{
+			expr:  expr,
+			args_: args,
+			set_:  data,
+		},
+		parent: c,
 	}
 }
 
 func (c *Context) applySet() {
-	set := newSet()
-	c.set = set
-	for _, f := range c.target.(*Command).actualFlags() {
+	set := c.internal.set()
+	for _, f := range c.target().(*Command).actualFlags() {
 		f.applyToSet(set)
 	}
 	if c.Parent() != nil {
@@ -576,7 +609,7 @@ func (c *Context) applySet() {
 			f.option.persistent = true
 		}
 	}
-	for _, a := range c.target.(*Command).actualArgs() {
+	for _, a := range c.target().(*Command).actualArgs() {
 		a.applyToSet(set)
 	}
 }
@@ -589,7 +622,7 @@ func (c *Context) allFlagsInScope() []*Flag {
 			ok  bool
 			all = map[string]bool{}
 		)
-		if cmd, ok = c.target.(*Command); !ok {
+		if cmd, ok = c.target().(*Command); !ok {
 			break
 		}
 		for _, f := range cmd.actualFlags() {
@@ -623,143 +656,75 @@ func (c *Context) flagsAndArgs(persistent bool) []option {
 }
 
 func (c *Context) applyFlagsAndArgs() (err error) {
-	return c.set.parse(c.args)
+	return c.internal.set().parse(c.internal.args())
 }
 
-func (c *Context) executeBefore() error {
+func (c *Context) initialize() error {
 	if c == nil {
 		return nil
 	}
 
-	switch tt := c.target.(type) {
-	case *App:
-		return hookExecute(Action(tt.Before), defaultBeforeApp(tt), c)
-	case *Command:
-		if err := c.Parent().executeBeforeHooks(tt); err != nil {
-			return err
-		}
-		if err := c.Parent().executeBeforeSubcommand(); err != nil {
-			return err
-		}
-		return hookExecute(Action(tt.Before), defaultBeforeCommand(tt), c)
-	case option:
-		return hookExecute(tt.before(), defaultBeforeOption(tt), c)
-	}
-
-	return nil
+	return c.internal.initialize(c)
 }
 
 func (c *Context) executeBeforeHooks(which *Command) error {
-	if c == nil {
-		return nil
-	}
-
-	if err := c.Parent().executeBeforeHooks(which); err != nil {
-		return err
-	}
-
-	return c.target.hooks().execBeforeHooks(c)
-}
-
-func (c *Context) executeBeforeSubcommand() error {
-	if c == nil {
-		return nil
-	}
-
-	if err := c.Parent().executeBeforeSubcommand(); err != nil {
-		return err
-	}
-
-	if tt, ok := c.target.(*Command); ok {
-		act := Action(tt.Before)
-		if act != nil {
-			return act.Execute(c)
-		}
-	}
-
-	return nil
-}
-
-func (c *Context) executeAfter() error {
-	if c == nil {
-		return nil
-	}
-
-	switch tt := c.target.(type) {
-	case *App:
-		return hookExecute(Action(tt.After), defaultAfterApp(tt), c)
-	case *Command:
-		if err := hookExecute(Action(tt.After), defaultAfterCommand(tt), c); err != nil {
-			return err
-		}
-		if err := c.Parent().executeAfterHooks(tt); err != nil {
-			return err
-		}
-		return c.Parent().executeAfterSubcommand()
-
-	case option:
-		return hookExecute(tt.after(), defaultAfterOption(tt), c)
-	}
-
-	return nil
+	return c.target().hooks().execBeforeHooks(c)
 }
 
 func (c *Context) executeAfterHooks(which *Command) error {
-	if c == nil {
-		return nil
-	}
-
-	if err := c.Parent().executeAfterHooks(which); err != nil {
-		return err
-	}
-
-	return c.target.hooks().execAfterHooks(c)
+	return c.target().hooks().execAfterHooks(c)
 }
 
-func (c *Context) executeAfterSubcommand() error {
-	if c == nil {
-		return nil
-	}
-
-	if tt, ok := c.target.(*Command); ok {
-		act := Action(tt.After)
-		if act != nil {
-			return act.Execute(c)
+func bubble(start *Context, self func(*Context) error, anc func(*Context) error) error {
+	current := start
+	fn := self
+	for current != nil {
+		if err := fn(current); err != nil {
+			return err
 		}
+		fn = anc
+		current = current.Parent()
 	}
-
-	return c.Parent().executeAfterSubcommand()
+	return nil
 }
 
-func (c *Context) executeCommand() error {
-	cmd := c.target.(*Command)
-
-	if err := c.executeBefore(); err != nil {
-		return err
-	}
-
-	var action ActionHandler
-
-	if !c.didSubcommandExecute {
-		// Only execute the command if one of its sub-commands did not run
-		action = Action(cmd.Action)
-	}
-
-	if action != nil {
-		if err := action.Execute(c); err != nil {
+func tunnel(start *Context, self func(*Context) error, anc func(*Context) error) error {
+	lineage := start.Lineage()
+	fn := anc
+	for i := len(lineage) - 1; i >= 0; i-- {
+		current := lineage[i]
+		if i == 0 {
+			fn = self
+		}
+		if err := fn(current); err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
-	return c.executeAfter()
+func (c *Context) executeCommand() error {
+	if err := bubble(
+		c,
+		func(c1 *Context) error { return c1.internal.executeBefore(c) },
+		func(c1 *Context) error { return c1.internal.executeBeforeDescendent(c) },
+	); err != nil {
+		return err
+	}
+
+	if err := c.internal.execute(c); err != nil {
+		return err
+	}
+
+	return tunnel(
+		c,
+		func(c1 *Context) error { return c1.internal.executeAfter(c) },
+		func(c1 *Context) error { return c1.internal.executeAfterDescendent(c) },
+	)
 }
 
 func (c *Context) executeOption() error {
-	var (
-		defaultAfter = emptyAction
-	)
-
-	return hookExecute(c.option().action(), defaultAfter, c)
+	return hookExecute(c.option().action(), defaultOption.After, c)
 }
 
 func (c *Context) lookupOption(name string) option {
@@ -771,71 +736,42 @@ func (c *Context) lookupOption(name string) option {
 }
 
 func (c *Context) option() option {
-	return c.target.(option)
+	return c.target().(option)
 }
 
-func (c *Context) andInitialize() *Context {
-	c.target.initialize(c)
-	return c
+func setupOptionFromOptions() ActionFunc {
+	return func(c *Context) error {
+		return c.Do(c.option().options())
+	}
 }
 
-func defaultBeforeOption(o option) ActionHandler {
-	return Pipeline(
-		o.options(),
-		ActionFunc(setupOptionFromEnv),
-	)
-}
-
-func defaultAfterOption(o option) ActionHandler {
-	return emptyAction
-}
-
-func defaultBeforeCommand(c *Command) ActionFunc {
-	return func(ctx *Context) error {
-		opts := ctx.flagsAndArgs(true)
-		for _, f := range opts {
-			if flag, ok := f.(*Flag); ok {
-				if flag.option.persistent {
-					// This is a persistent flag that was cloned into the flag set of the current
-					// command; don't process it again
-					continue
-				}
+func triggerFlagsAndArgs(ctx *Context) error {
+	opts := ctx.flagsAndArgs(true)
+	for _, f := range opts {
+		if flag, ok := f.(*Flag); ok {
+			if flag.option.persistent {
+				// This is a persistent flag that was cloned into the flag set of the current
+				// command; don't process it again
+				continue
 			}
-			err := hookExecute(f.before(), defaultBeforeOption(f), ctx.optionContext(f))
+		}
+		err := hookExecute(f.before(), defaultOption.Before, ctx.optionContext(f))
+		if err != nil {
+			return err
+		}
+	}
+
+	// Invoke the Before action on all flags and args, but only the actual
+	// Action when the flag or arg was set
+	for _, f := range opts {
+		if f.Seen() {
+			err := ctx.optionContext(f).executeOption()
 			if err != nil {
 				return err
 			}
 		}
-
-		// Invoke the Before action on all flags and args, but only the actual
-		// Action when the flag or arg was set
-		for _, f := range opts {
-			if f.Seen() {
-				err := ctx.optionContext(f).executeOption()
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
 	}
-}
-
-func defaultAfterCommand(a *Command) ActionHandler {
-	return emptyAction
-}
-
-func defaultBeforeApp(a *App) ActionHandler {
-	return Pipeline(
-		ActionFunc(setupDefaultIO),
-		ActionFunc(setupDefaultData),
-		ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
-		ActionFunc(addAppCommand("version", defaultVersionFlag(), defaultVersionCommand())),
-	)
-}
-
-func defaultAfterApp(a *App) ActionHandler {
-	return emptyAction
+	return nil
 }
 
 func reverse(arr []string) []string {
@@ -865,6 +801,10 @@ func guessWidth() int {
 }
 
 var (
-	_ hasArguments = &Expr{}
-	_ Lookup       = &Context{}
+	_ hasArguments    = &Expr{}
+	_ Lookup          = &Context{}
+	_ internalContext = &commandContext{}
+	_ internalContext = &optionContext{}
+	_ internalContext = &exprContext{}
+	_ internalContext = &appContext{}
 )

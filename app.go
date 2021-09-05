@@ -82,6 +82,12 @@ type App struct {
 	UsageText string
 
 	rootCommand *Command
+	appHooks    hooks
+}
+
+type appContext struct {
+	*commandContext
+	app_ *App
 }
 
 var (
@@ -95,14 +101,10 @@ func (a *App) Run(args []string) {
 }
 
 func (a *App) RunContext(c context.Context, args []string) error {
-	ctx := rootContext(c, a).andInitialize()
-	err := ctx.executeBefore()
-	if err != nil {
-		return err
-	}
-
+	ctx := rootContext(c, a, args)
+	ctx.initialize()
 	root := a.createRoot()
-	return root.parseAndExecute(ctx, args)
+	return root.parseAndExecuteSelf(ctx)
 }
 
 func (a *App) Command(name string) (*Command, bool) {
@@ -128,12 +130,9 @@ func (a *App) createRoot() *Command {
 			Action:      a.Action,
 			Description: a.Description,
 			Data:        a.Data,
-
-			After: a.After,
-
-			// Hooks are intentionally left nil because App handles its hooks
-			// from the root context
-			Before: nil,
+			After:       a.After,
+			Before:      a.Before,
+			cmdHooks:    a.appHooks,
 		}
 	}
 	return a.rootCommand
@@ -158,21 +157,6 @@ func (a *App) setData(name string, v interface{}) {
 	a.ensureData()[name] = v
 }
 
-func (a *App) initialize(c *Context) error {
-	if err := hookExecute(Action(a.Uses), nil, c); err != nil {
-		return err
-	}
-
-	for _, sub := range a.Commands {
-		err := sub.initialize(c.commandContext(sub, nil))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (a *App) ensureData() map[string]interface{} {
 	if a.Data == nil {
 		a.Data = map[string]interface{}{}
@@ -181,8 +165,35 @@ func (a *App) ensureData() map[string]interface{} {
 }
 
 func (a *App) hooks() *hooks {
-	return a.createRoot().hooks()
+	return &a.appHooks
 }
+
+func (a *appContext) initialize(c *Context) error {
+	if err := hookExecute(Action(a.app_.Uses), defaultApp.Uses, c); err != nil {
+		return err
+	}
+
+	a.commandContext.cmd = a.app_.createRoot()
+	for _, sub := range a.app_.Commands {
+		err := c.commandContext(sub, nil).initialize()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *appContext) hooks() *hooks {
+	return &a.app_.appHooks
+}
+
+func (a *appContext) app() (*App, bool) { return a.app_, true }
+func (a *appContext) target() target {
+	return a.commandContext.cmd
+}
+
+func (a *appContext) Name() string { return a.app_.Name }
 
 func exit(err error) {
 	if err == nil {
@@ -216,7 +227,7 @@ func buildDate() time.Time {
 }
 
 func setupDefaultData(c *Context) error {
-	a := c.target.(*App)
+	a := c.app()
 	if a.Name == "" {
 		a.Name = filepath.Base(os.Args[0])
 	}
@@ -230,7 +241,7 @@ func setupDefaultData(c *Context) error {
 }
 
 func setupDefaultIO(c *Context) error {
-	a := c.target.(*App)
+	a := c.app()
 	if a.Stdin == nil {
 		a.Stdin = os.Stdin
 	}
@@ -249,7 +260,7 @@ func setupDefaultIO(c *Context) error {
 
 func addAppCommand(name string, f *Flag, cmd *Command) ActionFunc {
 	return func(c *Context) error {
-		app := c.target.(*App)
+		app := c.app()
 		if len(app.Commands) > 0 {
 			if _, ok := app.Command(name); !ok {
 				app.Commands = append(app.Commands, cmd)
