@@ -49,6 +49,18 @@ var _ = Describe("DisplayHelpScreen", func() {
 		}
 	)
 
+	It("is the default action for an app with sub-commands", func() {
+		app := &cli.App{
+			Name: "demo",
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+				},
+			},
+		}
+		Expect(renderHelpScreen(app, "demo")).To(ContainSubstring("usage: demo"))
+	})
+
 	DescribeTable("examples",
 		func(app *cli.App, expected types.GomegaMatcher) {
 			Expect(renderHelpScreen(app, "app --help")).To(expected)

@@ -229,6 +229,9 @@ func (c *Command) ensureSubcommands() {
 			NArg:      -1,
 			Action:    ExecuteSubcommand(nil),
 		})
+		if c.Action == nil {
+			c.Action = DisplayHelpScreen()
+		}
 	}
 }
 
