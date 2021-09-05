@@ -97,6 +97,24 @@ var _ = Describe("DisplayHelpScreen", func() {
 		Entry("display action-like flags",
 			&cli.App{},
 			ContainSubstring("{--help | --version}")),
+		Entry("display sub-command",
+			&cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "ok",
+					},
+				},
+			},
+			ContainSubstring("<command> [<args>]")),
+		Entry("display expression",
+			&cli.App{
+				Exprs: []*cli.Expr{
+					{
+						Name: "expr",
+					},
+				},
+			},
+			ContainSubstring("<expression>...")),
 	)
 
 	DescribeTable("sub-command examples",
@@ -125,6 +143,22 @@ var _ = Describe("DisplayHelpScreen", func() {
 			},
 			"app help sub",
 			ContainSubstring("usage: app sub")),
+		Entry("display expression",
+			&cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+
+						Exprs: []*cli.Expr{
+							{
+								Name: "expr",
+							},
+						},
+					},
+				},
+			},
+			"app help sub",
+			ContainSubstring("<expression>...")),
 	)
 
 })

@@ -45,6 +45,7 @@ type Command struct {
 	UsageText string
 
 	cmdHooks hooks
+	didSetupDefaultArgs bool
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -208,8 +209,7 @@ func (c *Command) appendArg(arg *Arg) *Command {
 
 func (c *Command) parseAndExecute(ctx *Context, args []string) error {
 	ctx = ctx.commandContext(c, args)
-	c.ensureSubcommands()
-	c.ensureExprs()
+	c.setupDefaultArgs()
 	ctx.applySet()
 
 	if err := ctx.applyFlagsAndArgs(); err != nil {
@@ -217,6 +217,15 @@ func (c *Command) parseAndExecute(ctx *Context, args []string) error {
 	}
 
 	return ctx.executeCommand()
+}
+
+func (c *Command) setupDefaultArgs() {
+	if c.didSetupDefaultArgs {
+		return
+	}
+	c.didSetupDefaultArgs = true
+	c.ensureSubcommands()
+	c.ensureExprs()
 }
 
 func (c *Command) ensureSubcommands() {
@@ -331,6 +340,7 @@ func (c *Command) initialize(ctx *Context) error {
 			return err
 		}
 	}
+	c.setupDefaultArgs()
 	return nil
 }
 
