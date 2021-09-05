@@ -347,6 +347,10 @@ func (e *Expr) ensureData() map[string]interface{} {
 	return e.Data
 }
 
+func (e *Expr) hooks() *hooks {
+	return nil
+}
+
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
 	if e == nil {
 		return nil

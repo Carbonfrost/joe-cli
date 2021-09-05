@@ -196,6 +196,10 @@ func (f *Flag) ensureData() map[string]interface{} {
 	return f.Data
 }
 
+func (f *Flag) hooks() *hooks {
+	return nil
+}
+
 func (f *flagSynopsis) names(hideAlternates bool) string {
 	if len(f.long) == 0 {
 		return fmt.Sprintf("-%s", f.short)

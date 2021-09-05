@@ -43,6 +43,8 @@ type Command struct {
 
 	HelpText  string
 	UsageText string
+
+	cmdHooks hooks
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -337,6 +339,10 @@ func (c *Command) ensureData() map[string]interface{} {
 		c.Data = map[string]interface{}{}
 	}
 	return c.Data
+}
+
+func (c *Command) hooks() *hooks {
+	return &c.cmdHooks
 }
 
 func (c CommandsByName) Len() int {

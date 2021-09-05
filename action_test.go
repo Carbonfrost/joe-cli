@@ -117,6 +117,10 @@ var _ = Describe("events", func() {
 				Before: event("before app"),
 				Action: event("app"),
 				After:  event("after app"),
+				Uses: cli.Pipeline(
+					cli.HookBefore("*", event("app hook before")),
+					cli.HookAfter("*", event("app hook after")),
+				),
 				Flags: []*cli.Flag{
 					{
 						Name:   "global",
@@ -189,6 +193,16 @@ var _ = Describe("events", func() {
 			"nested command persistent flag is called",
 			"app sub --global ",
 			ContainElements("before --global", "--global"),
+		),
+		Entry(
+			"doubly nested command before hooks",
+			"app sub dom",
+			ContainElements("before app", "before sub", "before dom", "app hook before", "dom"),
+		),
+		Entry(
+			"doubly nested command after hooks",
+			"app sub dom",
+			ContainElements("dom", "after dom", "after sub", "app hook after", "after app"),
 		),
 	)
 })

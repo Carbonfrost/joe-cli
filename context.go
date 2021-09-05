@@ -37,13 +37,31 @@ type hasFlags interface {
 	actualFlags() []*Flag
 }
 
+type hook struct {
+	pat    contextPathPattern
+	action ActionHandler
+}
+
+type hooks struct {
+	before []*hook
+	after  []*hook
+}
+
 type ContextPath []string
+
+type contextPathPattern struct {
+	parts []string
+}
 
 // contextData provides data that is copied into child contexts
 type contextData struct {
 	Stdout io.Writer
 	Stderr io.Writer
 	Stdin  io.Reader
+}
+
+func newContextPathPattern(pat string) contextPathPattern {
+	return contextPathPattern{strings.Fields(pat)}
 }
 
 func (c *Context) Parent() *Context {
@@ -413,6 +431,11 @@ func (c *Context) logicalArg(index int) *Arg {
 	return c.target.(hasArguments).actualArgs()[index]
 }
 
+func (c *Context) demandInit() *hooks {
+	// TODO Might not always be available
+	return c.target.hooks()
+}
+
 func (c ContextPath) Last() string {
 	return c[len(c)-1]
 }
@@ -433,20 +456,58 @@ func (c ContextPath) String() string {
 	return strings.Join([]string(c), " ")
 }
 
+// Match determines if the path matches the given pattern.  Pattern elements:
+//
+//   *        any command
+//   command  a command matching the name "command"
+//   -        any flag
+//   -flag    a flag matching the flag name
+//   <>       any argument
+//   <arg>    an argument matching the arg name
+//
 func (c ContextPath) Match(pattern string) bool {
-	parts := strings.Fields(pattern)
-	if len(parts) == 0 {
+	return newContextPathPattern(pattern).Match(c)
+}
+
+func (cp contextPathPattern) Match(c ContextPath) bool {
+	if len(cp.parts) == 0 {
 		return true
 	}
-	if len(parts) == 1 && parts[0] == "*" {
+	if len(cp.parts) == 1 && cp.parts[0] == "*" {
 		return true
 	}
-	for i, j := len(parts)-1, len(c)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
-		if matchField(parts[i], c[j]) {
+	for i, j := len(cp.parts)-1, len(c)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
+		if matchField(cp.parts[i], c[j]) {
 			return true
 		}
 	}
 	return false
+}
+
+func (i *hooks) hookBefore(pat string, a ActionHandler) {
+	i.before = append(i.before, &hook{newContextPathPattern(pat), a})
+}
+
+func (i *hooks) execBeforeHooks(target *Context) error {
+	for _, b := range i.before {
+		if b.pat.Match(target.Path()) {
+			b.action.Execute(target)
+		}
+	}
+	return nil
+}
+
+func (i *hooks) hookAfter(pat string, a ActionHandler) {
+	i.after = append(i.after, &hook{newContextPathPattern(pat), a})
+}
+
+func (i *hooks) execAfterHooks(target *Context) error {
+	for _, b := range i.after {
+		if b.pat.Match(target.Path()) {
+			b.action.Execute(target)
+		}
+	}
+	return nil
 }
 
 func matchField(pattern, field string) bool {
@@ -574,6 +635,9 @@ func (c *Context) executeBefore() error {
 	case *App:
 		return hookExecute(Action(tt.Before), defaultBeforeApp(tt), c)
 	case *Command:
+		if err := c.Parent().executeBeforeHooks(tt); err != nil {
+			return err
+		}
 		if err := c.Parent().executeBeforeSubcommand(); err != nil {
 			return err
 		}
@@ -583,6 +647,18 @@ func (c *Context) executeBefore() error {
 	}
 
 	return nil
+}
+
+func (c *Context) executeBeforeHooks(which *Command) error {
+	if c == nil {
+		return nil
+	}
+
+	if err := c.Parent().executeBeforeHooks(which); err != nil {
+		return err
+	}
+
+	return c.target.hooks().execBeforeHooks(c)
 }
 
 func (c *Context) executeBeforeSubcommand() error {
@@ -616,6 +692,9 @@ func (c *Context) executeAfter() error {
 		if err := hookExecute(Action(tt.After), defaultAfterCommand(tt), c); err != nil {
 			return err
 		}
+		if err := c.Parent().executeAfterHooks(tt); err != nil {
+			return err
+		}
 		return c.Parent().executeAfterSubcommand()
 
 	case option:
@@ -623,6 +702,18 @@ func (c *Context) executeAfter() error {
 	}
 
 	return nil
+}
+
+func (c *Context) executeAfterHooks(which *Command) error {
+	if c == nil {
+		return nil
+	}
+
+	if err := c.Parent().executeAfterHooks(which); err != nil {
+		return err
+	}
+
+	return c.target.hooks().execAfterHooks(c)
 }
 
 func (c *Context) executeAfterSubcommand() error {

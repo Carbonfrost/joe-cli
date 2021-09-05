@@ -231,6 +231,10 @@ func (a *Arg) ensureData() map[string]interface{} {
 	return a.Data
 }
 
+func (a *Arg) hooks() *hooks {
+	return nil
+}
+
 func (d *discreteCounter) Take(arg string, possibleFlag bool) error {
 	if d.count == 0 {
 		return EndOfArguments

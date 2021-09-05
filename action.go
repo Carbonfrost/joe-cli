@@ -22,6 +22,7 @@ type ActionPipeline struct {
 
 type target interface {
 	initialize(*Context) error
+	hooks() *hooks
 	setCategory(name string)
 	setData(name string, v interface{})
 }
@@ -103,6 +104,24 @@ func Data(name string, value interface{}) ActionHandler {
 func Category(name string) ActionHandler {
 	return ActionFunc(func(c *Context) error {
 		c.target.setCategory(name)
+		return nil
+	})
+}
+
+// HookBefore registers a hook that runs for the matching elements.  See ContextPath for
+// the syntax of patterns and how they are matched.
+func HookBefore(pattern string, handler ActionHandler) ActionHandler {
+	return ActionFunc(func(c *Context) error {
+		c.demandInit().hookBefore(pattern, handler)
+		return nil
+	})
+}
+
+// HookAfter registers a hook that runs for the matching elements.  See ContextPath for
+// the syntax of patterns and how they are matched.
+func HookAfter(pattern string, handler ActionHandler) ActionHandler {
+	return ActionFunc(func(c *Context) error {
+		c.demandInit().hookAfter(pattern, handler)
 		return nil
 	})
 }

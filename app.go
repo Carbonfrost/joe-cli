@@ -180,6 +180,10 @@ func (a *App) ensureData() map[string]interface{} {
 	return a.Data
 }
 
+func (a *App) hooks() *hooks {
+	return a.createRoot().hooks()
+}
+
 func exit(err error) {
 	if err == nil {
 		return
