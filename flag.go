@@ -154,9 +154,7 @@ func GroupFlagsByCategory(flags []*Flag) FlagsByCategory {
 }
 
 func (f *Flag) applyToSet(s *set) {
-	for _, name := range f.Names() {
-		f.option = s.defineFlag(f.Name, name, f.value())
-	}
+	f.option = s.defineFlag(f.Name, f.Aliases, f.value())
 }
 
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
@@ -166,8 +164,7 @@ func (f *Flag) Synopsis() string {
 }
 
 func (f *Flag) newSynopsis() *flagSynopsis {
-	short := f.canonicalName(true)
-	long := f.canonicalName(false)
+	long, short := canonicalNames(f.Name, f.Aliases)
 	sep := "="
 
 	if len(long) == 0 {
@@ -175,8 +172,8 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 	}
 
 	return &flagSynopsis{
-		short: short,
-		long:  long,
+		short: shortName(short),
+		long:  longName(long),
 		sep:   sep,
 		value: getValueSynopsis(f),
 	}
@@ -310,16 +307,19 @@ func (f *Flag) Set(arg string) error {
 	return f.option.Value().Set(arg, f.option)
 }
 
-func (f *Flag) canonicalName(short bool) string {
-	if short == (len(f.Name) == 1) {
-		return f.Name
-	}
-	for _, s := range f.Aliases {
-		if short == (len(s) == 1) {
-			return s
+func canonicalNames(name string, aliases []string) (long []string, short []rune) {
+	long = make([]string, 0, len(aliases))
+	short = make([]rune, 0, len(aliases))
+	names := append([]string{name}, aliases...)
+
+	for _, nom := range names {
+		if len(nom) == 1 {
+			short = append(short, ([]rune(nom))[0])
+		} else {
+			long = append(long, nom)
 		}
 	}
-	return ""
+	return
 }
 
 func (f *Flag) SetHidden() {
@@ -383,12 +383,24 @@ func (f *Flag) helpText() string {
 	return f.HelpText
 }
 
+func (f *Flag) longNamePreferred() string {
+	if len(f.Name) > 1 {
+		return f.Name
+	}
+	for _, n := range f.Aliases {
+		if len(n) > 1 {
+			return n
+		}
+	}
+	return f.Name
+}
+
 func (f FlagsByName) Len() int {
 	return len(f)
 }
 
 func (f FlagsByName) Less(i, j int) bool {
-	return f[i].canonicalName(false) < f[j].canonicalName(false)
+	return f[i].longNamePreferred() < f[j].longNamePreferred()
 }
 
 func (f FlagsByName) Swap(i, j int) {
@@ -479,4 +491,18 @@ func findFlagByName(items []*Flag, name string) (*Flag, bool) {
 		}
 	}
 	return nil, false
+}
+
+func longName(s []string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return s[0]
+}
+
+func shortName(s []rune) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return string(s[0])
 }

@@ -155,13 +155,19 @@ func (c *Context) LookupFlag(name interface{}) *Flag {
 	case rune:
 		return c.LookupFlag(string(v))
 	case string:
+		if v == "" {
+			if c.isOption() {
+				return c.LookupFlag(c.option())
+			}
+			name = c.Name()
+		}
 		if aa, ok := c.target().(hasFlags); ok {
 			if f, found := findFlagByName(aa.actualFlags(), v); found {
 				return f
 			}
 		}
 	case *Flag:
-		return c.LookupFlag(v.Name)
+		return v
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
@@ -177,13 +183,19 @@ func (c *Context) LookupArg(name interface{}) *Arg {
 	case int:
 		return c.LookupArg(c.logicalArg(v))
 	case string:
+		if v == "" {
+			if c.isOption() {
+				return c.LookupArg(c.option())
+			}
+			name = c.Name()
+		}
 		if aa, ok := c.target().(hasArguments); ok {
 			if a, found := findArgByName(aa.actualArgs(), v); found {
 				return a
 			}
 		}
 	case *Arg:
-		return c.LookupArg(v.Name)
+		return v
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}

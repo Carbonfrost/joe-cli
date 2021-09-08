@@ -20,12 +20,12 @@ type argBinding struct {
 }
 
 type internalOption struct {
-	short      rune   // 0 means no short name
-	long       string // "" means no long name
-	isLong     bool   // True if they used the long name
-	flag       bool   // true if a boolean flag
-	optional   bool   // true if we take an optional value
-	where      string // file where the option was defined
+	short      []rune   // 0 means no short name
+	long       []string // "" means no long name
+	isLong     bool     // True if they used the long name
+	flag       bool     // true if a boolean flag
+	optional   bool     // true if we take an optional value
+	where      string   // file where the option was defined
 	value      *generic
 	count      int
 	uname      string
@@ -212,8 +212,8 @@ Parsing:
 	return bind.Done()
 }
 
-func (s *set) defineFlag(name string, alias string, p interface{}) *internalOption {
-	long, short := flagName(alias)
+func (s *set) defineFlag(name string, aliases []string, p interface{}) *internalOption {
+	long, short := canonicalNames(name, aliases)
 	res := &internalOption{
 		short: short,
 		long:  long,
@@ -227,16 +227,18 @@ func (s *set) defineFlag(name string, alias string, p interface{}) *internalOpti
 	}
 
 	res.where = calledFrom()
-	if res.short == 0 && res.long == "" {
+	if len(res.short) == 0 && len(res.long) == 0 {
 		fmt.Fprintf(os.Stderr, res.where+": invalid definition, missing name or alias")
 		os.Exit(1)
 	}
 
-	if len(long) == 0 {
+	for _, short := range res.short {
 		s.shortOptions[short] = res
-	} else {
+	}
+	for _, long := range res.long {
 		s.longOptions[long] = res
 	}
+
 	s.values[name] = p
 	return res
 }
@@ -334,10 +336,10 @@ func (o *internalOption) Set(arg string) error {
 }
 
 func (o *internalOption) Name() string {
-	if !o.isLong && o.short != 0 {
-		return "-" + string(o.short)
+	if !o.isLong && len(o.short) > 0 {
+		return "-" + string(o.short[0])
 	}
-	return "--" + o.long
+	return "--" + o.long[0]
 }
 
 func (o *internalOption) Value() *generic {
@@ -346,12 +348,4 @@ func (o *internalOption) Value() *generic {
 
 func (o *internalOption) Count() int {
 	return o.count
-}
-
-func flagName(name string) (string, rune) {
-	if len(name) == 1 {
-		return "", []rune(name)[0]
-	} else {
-		return name, 0
-	}
 }

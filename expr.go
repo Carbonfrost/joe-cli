@@ -304,12 +304,11 @@ func (e *Expr) newSynopsis() *exprSynopsis {
 			args[i] = a.newSynopsisCore(strings.ToUpper(a.Name))
 		}
 	}
-	short := e.canonicalName(true)
-	long := e.canonicalName(false)
+	long, short := canonicalNames(e.Name, e.Aliases)
 
 	return &exprSynopsis{
-		long:  long,
-		short: short,
+		long:  longName(long),
+		short: shortName(short),
 		usage: usage,
 		args:  args,
 	}
@@ -320,18 +319,6 @@ func (e *Expr) actualArgs() []*Arg {
 		return make([]*Arg, 0)
 	}
 	return e.Args
-}
-
-func (e *Expr) canonicalName(short bool) string {
-	if short == (len(e.Name) == 1) {
-		return e.Name
-	}
-	for _, s := range e.Aliases {
-		if short == (len(s) == 1) {
-			return s
-		}
-	}
-	return ""
 }
 
 func (e *Expr) setData(name string, v interface{}) {

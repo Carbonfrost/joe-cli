@@ -27,8 +27,9 @@ var _ = Describe("Flag", func() {
 				Name: "app",
 				Flags: []*cli.Flag{
 					{
-						Name:   "f",
-						Action: act,
+						Name:    "f",
+						Aliases: []string{"alias"},
+						Action:  act,
 					},
 				},
 			}
@@ -52,6 +53,60 @@ var _ = Describe("Flag", func() {
 		It("contains the value in the context", func() {
 			captured := act.ExecuteArgsForCall(0)
 			Expect(captured.Value("")).To(Equal("value"))
+		})
+
+		It("contains the correct Occurrences count", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Occurrences("")).To(Equal(1))
+		})
+
+		Context("when using the alias", func() {
+
+			BeforeEach(func() {
+				arguments = "app --alias value"
+			})
+
+			It("executes action on setting flag via its alias", func() {
+				Expect(act.ExecuteCallCount()).To(Equal(1))
+			})
+
+			It("provides properly initialized context", func() {
+				// The name is still -f despite using the alias
+				captured := act.ExecuteArgsForCall(0)
+				Expect(captured.Name()).To(Equal("-f"))
+				Expect(captured.Path().String()).To(Equal("app -f"))
+			})
+
+			It("contains the value in the context", func() {
+				captured := act.ExecuteArgsForCall(0)
+				Expect(captured.Value("")).To(Equal("value"))
+			})
+
+			It("contains the correct Occurrences count", func() {
+				captured := act.ExecuteArgsForCall(0)
+				Expect(captured.Occurrences("")).To(Equal(1))
+			})
+		})
+
+		Context("when using name and alias", func() {
+
+			BeforeEach(func() {
+				arguments = "app -f foo --alias bar -f baz"
+			})
+
+			It("executes action on setting flag via its alias", func() {
+				Expect(act.ExecuteCallCount()).To(Equal(1))
+			})
+
+			It("contains the value in the context", func() {
+				captured := act.ExecuteArgsForCall(0)
+				Expect(captured.Value("")).To(Equal("baz")) // winner due to being last
+			})
+
+			It("contains the correct Occurrences count", func() {
+				captured := act.ExecuteArgsForCall(0)
+				Expect(captured.Occurrences("")).To(Equal(3))
+			})
 		})
 
 		Context("for a persistent flag", func() {
