@@ -341,6 +341,10 @@ func (c *Context) File(name interface{}) *File {
 	return lookupFile(c, name)
 }
 
+func (c *Context) Map(name interface{}) map[string]string {
+	return lookupMap(c, name)
+}
+
 func (c *Context) Do(actions ...ActionHandler) error {
 	for _, a := range actions {
 		err := a.Execute(c)

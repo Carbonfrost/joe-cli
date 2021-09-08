@@ -15,6 +15,7 @@ type Lookup interface {
 	Int64(name interface{}) int64
 	Int8(name interface{}) int8
 	List(name interface{}) []string
+	Map(name interface{}) map[string]string
 	String(name interface{}) string
 	UInt(name interface{}) uint
 	UInt16(name interface{}) uint16
@@ -106,6 +107,10 @@ func (c LookupValues) Float64(name interface{}) float64 {
 // File obtains the file for the specified flag or argument.
 func (c LookupValues) File(name interface{}) *File {
 	return lookupFile(c, name)
+}
+
+func (c LookupValues) Map(name interface{}) map[string]string {
+	return lookupMap(c, name)
 }
 
 func lookupBool(c Lookup, name interface{}) (res bool) {
@@ -232,6 +237,14 @@ func lookupFile(c Lookup, name interface{}) (res *File) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*File)
+	}
+	return
+}
+
+func lookupMap(c Lookup, name interface{}) (res map[string]string) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(map[string]string)
 	}
 	return
 }

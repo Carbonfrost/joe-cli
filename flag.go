@@ -279,6 +279,10 @@ func placeholder(v interface{}) string {
 		return "VALUES"
 	case *time.Duration:
 		return "DURATION"
+	case *map[string]string:
+		return "NAME=VALUE"
+	case *File:
+		return "FILE"
 	default:
 		return "VALUE"
 	}

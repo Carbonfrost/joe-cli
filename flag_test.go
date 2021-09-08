@@ -231,6 +231,22 @@ var _ = Describe("Flag", func() {
 				},
 				"-o, --otown=USE",
 			),
+			Entry(
+				"map",
+				&cli.Flag{
+					Name:  "m",
+					Value: cli.Map(),
+				},
+				"-m NAME=VALUE",
+			),
+			Entry(
+				"file",
+				&cli.Flag{
+					Name:  "f",
+					Value: &cli.File{},
+				},
+				"-f FILE",
+			),
 		)
 
 	})

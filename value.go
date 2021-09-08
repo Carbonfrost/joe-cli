@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"reflect"
@@ -79,6 +80,10 @@ func Duration() *time.Duration {
 	return new(time.Duration)
 }
 
+func Map() *map[string]string {
+	return new(map[string]string)
+}
+
 func (g *generic) Set(value string, opt *internalOption) error {
 	strconvErr := func(err error) error {
 		if e, ok := err.(*strconv.NumError); ok {
@@ -109,12 +114,31 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		return nil
 	case *[]string:
 		a := strings.Split(value, ",")
-		// If this is the first time we are seen then nil out the
-		// default value.
+		// Reset on the first occurrence
 		if opt.Count() <= 1 {
 			*p = nil
 		}
 		*p = append(*p, a...)
+		return nil
+	case *map[string]string:
+		if opt.Count() <= 1 {
+			// Reset the map on the first occurrence
+			*p = map[string]string{}
+		}
+		for _, kvp := range strings.Split(value, ",") {
+			k := strings.SplitN(kvp, "=", 2)
+			var key, value string
+			switch len(k) {
+			case 2:
+				value = k[1]
+				fallthrough
+			case 1:
+				key = k[0]
+			}
+			m := *p
+			m[key] = value
+		}
+
 		return nil
 	case *int:
 		i64, err := strconv.ParseInt(value, 0, strconv.IntSize)
@@ -232,6 +256,8 @@ func (g *generic) String() string {
 		return genericString(*p)
 	case *time.Duration:
 		return genericString(*p)
+	case *map[string]string:
+		return genericString(*p)
 	case Value:
 		return genericString(p)
 	}
@@ -277,6 +303,8 @@ func genericString(v interface{}) string {
 		return strconv.FormatFloat(p, 'g', -1, 64)
 	case time.Duration:
 		return p.String()
+	case map[string]string:
+		return formatMap(p)
 	}
 	panic("unreachable!")
 }
@@ -296,6 +324,8 @@ func wrapGeneric(v interface{}) *generic {
 	case *float32, *float64:
 		return &generic{v}
 	case *time.Duration:
+		return &generic{v}
+	case *map[string]string:
 		return &generic{v}
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))
@@ -323,4 +353,21 @@ func dereference(v interface{}) interface{} {
 		return val.Elem().Interface()
 	}
 	return v
+}
+
+func formatMap(m map[string]string) string {
+	var (
+		b     bytes.Buffer
+		comma bool
+	)
+	for k, v := range m {
+		if comma {
+			b.WriteString(",")
+		}
+		comma = true
+		b.WriteString(k)
+		b.WriteString("=")
+		b.WriteString(v)
+	}
+	return b.String()
 }
