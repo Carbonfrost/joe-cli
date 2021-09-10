@@ -47,6 +47,31 @@ var _ = Describe("Command", func() {
 		})
 	})
 
+	Describe("SkipFlagParsing", func() {
+
+		It("disables parsing of flags", func() {
+			act := new(joeclifakes.FakeActionHandler)
+			app := &cli.App{
+				Name:    "app",
+				Options: cli.SkipFlagParsing,
+				Action:  act,
+				Args: []*cli.Arg{
+					{
+						Name: "args",
+						NArg: -1,
+					},
+				},
+			}
+
+			err := app.RunContext(nil, []string{"app", "-a", "-b"})
+			Expect(err).NotTo(HaveOccurred())
+			captured := act.ExecuteArgsForCall(0)
+
+			Expect(captured.List("args")).To(Equal([]string{"-a", "-b"}))
+		})
+
+	})
+
 	Describe("Synopsis", func() {
 		DescribeTable("examples",
 			func(cmd *cli.Command, expected string) {

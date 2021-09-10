@@ -177,6 +177,15 @@ var _ = Describe("RunContext", func() {
 				Arg:   "argument",
 			}),
 		),
+		Entry(
+			"double dash",
+			"-- --flag1",
+			Equal(mappedValues{
+				Flag1: false,
+				Flag2: false,
+				Arg:   "--flag1",
+			}),
+		),
 	)
 
 	DescribeTable("bind args and flags errors",

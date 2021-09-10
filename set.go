@@ -99,11 +99,11 @@ Parsing:
 		args = args[1:]
 
 		// end of options?
-		if arg == "" || arg[0] != '-' {
+		if arg == "" || arg[0] != '-' || state == argsOnly {
 			for {
 				err := bind.SetArg(arg, state == flagsOrArgs)
 				if err != nil {
-					// Not accepted as an argumnet, possibly a flag per usual out of
+					// Not accepted as an argument, possibly a flag per usual out of
 					// order
 					if arg[0] == '-' && state == flagsOrArgs {
 						break
@@ -132,6 +132,9 @@ Parsing:
 		// explicitly request end of options?
 		if arg == "--" {
 			state = argsOnly
+		}
+
+		if state == argsOnly {
 			continue Parsing
 		}
 

@@ -22,8 +22,11 @@ type ActionPipeline struct {
 
 type target interface {
 	hooks() *hooks
+	options() Option
 	setCategory(name string)
 	setData(name string, v interface{})
+	setInternalFlags(internalFlags)
+	internalFlags() internalFlags
 }
 
 type actionPipelines struct {
@@ -56,6 +59,7 @@ var (
 
 	defaultApp = actionPipelines{
 		Uses: Pipeline(
+			ActionFunc(setupFromOptions()),
 			ActionFunc(setupDefaultIO),
 			ActionFunc(setupDefaultData),
 			ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
@@ -64,12 +68,15 @@ var (
 	}
 
 	defaultCommand = actionPipelines{
-		Before: ActionFunc(triggerFlagsAndArgs),
+		Before: Pipeline(
+			ActionFunc(setupFromOptions()),
+			ActionFunc(triggerFlagsAndArgs),
+		),
 	}
 
 	defaultOption = actionPipelines{
 		Before: Pipeline(
-			ActionFunc(setupOptionFromOptions()),
+			ActionFunc(setupFromOptions()),
 			ActionFunc(setupOptionFromEnv),
 		),
 	}

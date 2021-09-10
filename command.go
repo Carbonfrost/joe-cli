@@ -41,11 +41,15 @@ type Command struct {
 	// middleware and it is made available to templates
 	Data map[string]interface{}
 
+	// Options sets common options for use with the command
+	Options Option
+
 	HelpText  string
 	UsageText string
 
 	cmdHooks            hooks
 	didSetupDefaultArgs bool
+	flags               internalFlags
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -333,6 +337,18 @@ func (c *Command) ensureData() map[string]interface{} {
 
 func (c *Command) hooks() *hooks {
 	return &c.cmdHooks
+}
+
+func (c *Command) setInternalFlags(f internalFlags) {
+	c.flags |= f
+}
+
+func (c *Command) internalFlags() internalFlags {
+	return c.flags
+}
+
+func (c *Command) options() Option {
+	return c.Options
 }
 
 func (c CommandsByName) Len() int {

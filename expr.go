@@ -42,6 +42,8 @@ type Expr struct {
 	// middleware and it is made available to templates
 	Data map[string]interface{}
 
+	Options Option
+
 	flags internalFlags
 }
 
@@ -338,6 +340,18 @@ func (e *Expr) ensureData() map[string]interface{} {
 
 func (e *Expr) hooks() *hooks {
 	return nil
+}
+
+func (e *Expr) setInternalFlags(f internalFlags) {
+	e.flags |= f
+}
+
+func (e *Expr) internalFlags() internalFlags {
+	return e.flags
+}
+
+func (e *Expr) options() Option {
+	return e.Options
 }
 
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {

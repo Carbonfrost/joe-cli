@@ -102,9 +102,6 @@ type option interface {
 
 	applyToSet(s *set)
 	wrapAction(func(ActionHandler) ActionFunc)
-	setInternalFlags(internalFlags)
-	options() Option
-	internalFlags() internalFlags
 	value() interface{}
 	name() string
 	envVars() []string

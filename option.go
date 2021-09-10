@@ -17,6 +17,12 @@ const (
 	// or path that exists.
 	MustExist
 
+	// SkipFlagParsing when applied to a Command causes everything submitted to the command
+	// to be treated as if they are arguments.  Generally with this option, you must either define
+	// an Arg that is a list that takes all the values or you must parse manually from the context
+	// args
+	SkipFlagParsing
+
 	maxOption
 
 	None Option = 0
@@ -26,14 +32,16 @@ const (
 	internalFlagHidden = internalFlags(1 << iota)
 	internalFlagRequired
 	internalFlagExits
+	internalFlagSkipFlagParsing
 )
 
 var (
 	optionMap = map[Option]ActionFunc{
-		Hidden:    hiddenOption,
-		Required:  requiredOption,
-		Exits:     wrapWithExit,
-		MustExist: mustExistOption,
+		Hidden:          hiddenOption,
+		Required:        requiredOption,
+		Exits:           wrapWithExit,
+		MustExist:       mustExistOption,
+		SkipFlagParsing: skipFlagParsingOption,
 	}
 )
 
@@ -53,6 +61,10 @@ func (f internalFlags) required() bool {
 
 func (f internalFlags) exits() bool {
 	return f&internalFlagExits == internalFlagExits
+}
+
+func (f internalFlags) skipFlagParsing() bool {
+	return f&internalFlagSkipFlagParsing == internalFlagSkipFlagParsing
 }
 
 func splitOptions(options int) []ActionHandler {
@@ -93,4 +105,9 @@ func mustExistOption(c *Context) error {
 	}
 	_, err := f.Stat()
 	return err
+}
+
+func skipFlagParsingOption(c *Context) error {
+	c.target().setInternalFlags(internalFlagSkipFlagParsing)
+	return nil
 }

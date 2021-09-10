@@ -78,12 +78,16 @@ type App struct {
 	// middleware and it is made available to templates
 	Data map[string]interface{}
 
+	// Options sets common options for use with the app
+	Options Option
+
 	HelpText  string
 	UsageText string
 
 	rootCommand *Command
 	appHooks    hooks
 	uses        *actionPipelines
+	flags       internalFlags
 }
 
 type appContext struct {
@@ -121,7 +125,17 @@ func (a *App) Arg(name string) (*Arg, bool) {
 }
 
 func (a *App) createRoot() *Command {
-	if a.rootCommand == nil {
+	return a._createRootCore(false)
+}
+
+func (a *App) _createRootCore(force bool) *Command {
+	if a.rootCommand == nil || force {
+		var flags internalFlags
+		if a.rootCommand != nil {
+			flags = a.rootCommand.flags
+		}
+		flags |= a.flags
+
 		a.rootCommand = &Command{
 			Name:        a.Name,
 			Flags:       a.Flags,
@@ -133,6 +147,8 @@ func (a *App) createRoot() *Command {
 			Data:        a.Data,
 			After:       a.After,
 			Before:      a.Before,
+			Options:     a.Options,
+			flags:       flags,
 			cmdHooks:    a.appHooks,
 		}
 	}
@@ -169,7 +185,20 @@ func (a *App) hooks() *hooks {
 	return &a.appHooks
 }
 
+func (a *App) setInternalFlags(f internalFlags) {
+	a.flags |= f
+}
+
+func (a *App) internalFlags() internalFlags {
+	return a.flags
+}
+
+func (a *App) options() Option {
+	return a.Options
+}
+
 func (a *appContext) initialize(c *Context) error {
+	a.commandContext.cmd = a.app_.createRoot()
 	rest, err := takeInitializers(Action(a.app_.Uses), c)
 	if err != nil {
 		return err
@@ -180,7 +209,9 @@ func (a *appContext) initialize(c *Context) error {
 		return err
 	}
 
-	a.commandContext.cmd = a.app_.createRoot()
+	// Re-create the root command because middleware may have changed things
+	a.commandContext.cmd = a.app_._createRootCore(true)
+
 	for _, sub := range a.app_.Commands {
 		err := c.commandContext(sub, nil).initialize()
 		if err != nil {

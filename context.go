@@ -687,7 +687,14 @@ func (c *Context) flagsAndArgs(persistent bool) []option {
 }
 
 func (c *Context) applyFlagsAndArgs() (err error) {
-	return c.internal.set().parse(c.internal.args())
+	args := make([]string, 0)
+	args = append(args, c.internal.args()...)
+
+	if c.Command().internalFlags().skipFlagParsing() {
+		args = append([]string{args[0], "--"}, args[1:]...)
+	}
+
+	return c.internal.set().parse(args)
 }
 
 func (c *Context) initialize() error {
@@ -770,9 +777,9 @@ func (c *Context) option() option {
 	return c.target().(option)
 }
 
-func setupOptionFromOptions() ActionFunc {
+func setupFromOptions() ActionFunc {
 	return func(c *Context) error {
-		return c.Do(c.option().options())
+		return c.Do(c.target().options())
 	}
 }
 
