@@ -2,9 +2,13 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
+	"net"
+	"net/url"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -82,6 +86,18 @@ func Duration() *time.Duration {
 
 func Map() *map[string]string {
 	return new(map[string]string)
+}
+
+func URL() **url.URL {
+	return new(*url.URL)
+}
+
+func Regexp() **regexp.Regexp {
+	return new(*regexp.Regexp)
+}
+
+func IP() *net.IP {
+	return new(net.IP)
 }
 
 func (g *generic) Set(value string, opt *internalOption) error {
@@ -218,6 +234,27 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			*p = v
 		}
 		return err
+	case **url.URL:
+		v, err := url.Parse(value)
+		if err == nil {
+			*p = v
+		}
+		return err
+
+	case *net.IP:
+		v := net.ParseIP(value)
+		if v != nil {
+			*p = v
+			return nil
+		}
+		return errors.New("not a valid IP address")
+
+	case **regexp.Regexp:
+		v, err := regexp.Compile(value)
+		if err == nil {
+			*p = v
+		}
+		return err
 	}
 	panic("unreachable!")
 }
@@ -257,6 +294,12 @@ func (g *generic) String() string {
 	case *time.Duration:
 		return genericString(*p)
 	case *map[string]string:
+		return genericString(*p)
+	case **url.URL:
+		return genericString(*p)
+	case *net.IP:
+		return genericString(*p)
+	case **regexp.Regexp:
 		return genericString(*p)
 	case Value:
 		return genericString(p)
@@ -305,6 +348,12 @@ func genericString(v interface{}) string {
 		return p.String()
 	case map[string]string:
 		return formatMap(p)
+	case *url.URL:
+		return fmt.Sprint(p)
+	case net.IP:
+		return fmt.Sprint(p)
+	case *regexp.Regexp:
+		return fmt.Sprint(p)
 	}
 	panic("unreachable!")
 }
@@ -326,6 +375,12 @@ func wrapGeneric(v interface{}) *generic {
 	case *time.Duration:
 		return &generic{v}
 	case *map[string]string:
+		return &generic{v}
+	case **url.URL:
+		return &generic{v}
+	case *net.IP:
+		return &generic{v}
+	case **regexp.Regexp:
 		return &generic{v}
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))

@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"go/doc"
 	"io"
+	"net"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -355,6 +358,18 @@ func (c *Context) File(name interface{}) *File {
 
 func (c *Context) Map(name interface{}) map[string]string {
 	return lookupMap(c, name)
+}
+
+func (c *Context) URL(name interface{}) *url.URL {
+	return lookupURL(c, name)
+}
+
+func (c *Context) Regexp(name interface{}) *regexp.Regexp {
+	return lookupRegexp(c, name)
+}
+
+func (c *Context) IP(name interface{}) *net.IP {
+	return lookupIP(c, name)
 }
 
 func (c *Context) Do(actions ...ActionHandler) error {

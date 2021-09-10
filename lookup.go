@@ -2,6 +2,9 @@ package cli
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"regexp"
 )
 
 type Lookup interface {
@@ -23,6 +26,9 @@ type Lookup interface {
 	UInt64(name interface{}) uint64
 	UInt8(name interface{}) uint8
 	Value(name interface{}) interface{}
+	URL(name interface{}) *url.URL
+	Regexp(name interface{}) *regexp.Regexp
+	IP(name interface{}) *net.IP
 }
 
 type LookupValues map[string]interface{}
@@ -111,6 +117,18 @@ func (c LookupValues) File(name interface{}) *File {
 
 func (c LookupValues) Map(name interface{}) map[string]string {
 	return lookupMap(c, name)
+}
+
+func (c LookupValues) URL(name interface{}) *url.URL {
+	return lookupURL(c, name)
+}
+
+func (c LookupValues) Regexp(name interface{}) *regexp.Regexp {
+	return lookupRegexp(c, name)
+}
+
+func (c LookupValues) IP(name interface{}) *net.IP {
+	return lookupIP(c, name)
 }
 
 func lookupBool(c Lookup, name interface{}) (res bool) {
@@ -245,6 +263,30 @@ func lookupMap(c Lookup, name interface{}) (res map[string]string) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(map[string]string)
+	}
+	return
+}
+
+func lookupURL(c Lookup, name interface{}) (res *url.URL) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*url.URL)
+	}
+	return
+}
+
+func lookupRegexp(c Lookup, name interface{}) (res *regexp.Regexp) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*regexp.Regexp)
+	}
+	return
+}
+
+func lookupIP(c Lookup, name interface{}) (res *net.IP) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*net.IP)
 	}
 	return
 }

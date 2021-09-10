@@ -1,6 +1,10 @@
 package cli_test
 
 import (
+	"net"
+	"net/url"
+	"regexp"
+
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo"
@@ -72,6 +76,28 @@ var _ = Describe("Value", func() {
 					"aloha":   "mars",
 				}),
 			),
+			Entry(
+				"URL",
+				&cli.Flag{Name: "o", Value: cli.URL()},
+				"app -o https://localhost.example:1619",
+				Equal(unwrap(url.Parse("https://localhost.example:1619"))),
+			),
+			Entry(
+				"Regexp",
+				&cli.Flag{Name: "o", Value: cli.Regexp()},
+				"app -o [CGAT]{512}",
+				Equal(regexp.MustCompile("[CGAT]{512}")),
+			),
+			Entry(
+				"IP",
+				&cli.Flag{Name: "o", Value: cli.IP()},
+				"app -o 127.0.0.1",
+				Equal(net.ParseIP("127.0.0.1")),
+			),
 		)
 	})
 })
+
+func unwrap(v, _ interface{}) interface{} {
+	return v
+}
