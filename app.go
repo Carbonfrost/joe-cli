@@ -83,6 +83,7 @@ type App struct {
 
 	rootCommand *Command
 	appHooks    hooks
+	uses        *actionPipelines
 }
 
 type appContext struct {
@@ -169,7 +170,13 @@ func (a *App) hooks() *hooks {
 }
 
 func (a *appContext) initialize(c *Context) error {
-	if err := hookExecute(Action(a.app_.Uses), defaultApp.Uses, c); err != nil {
+	rest, err := takeInitializers(Action(a.app_.Uses), c)
+	if err != nil {
+		return err
+	}
+	a.app_.uses = rest
+
+	if err := hookExecute(a.app_.uses.Uses, defaultApp.Uses, c); err != nil {
 		return err
 	}
 

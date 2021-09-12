@@ -27,10 +27,29 @@ type target interface {
 }
 
 type actionPipelines struct {
-	Uses   ActionHandler
+	Uses   ActionHandler // Must be strictly initializers (no automatic regrouping)
 	Before ActionHandler
 	After  ActionHandler
 }
+
+type actionHandlerTiming interface {
+	ActionHandler
+	timing() timing
+}
+
+type withTimingWrapper struct {
+	ActionHandler
+	t timing
+}
+
+type timing int
+
+const (
+	initialTiming timing = iota
+	beforeTiming
+	actionTiming
+	afterTiming
+)
 
 var (
 	emptyAction ActionHandler = ActionFunc(emptyActionImpl)
@@ -66,6 +85,33 @@ func Pipeline(actions ...interface{}) *ActionPipeline {
 	}
 
 	return &ActionPipeline{myActions}
+}
+
+func Before(a ActionHandler) ActionHandler {
+	return withTiming(a, beforeTiming)
+}
+
+func After(a ActionHandler) ActionHandler {
+	return withTiming(a, afterTiming)
+}
+
+// Initializer marks an action handler as being for the initialization phase.  When such a handler
+// is added to the Uses pipeline, it will automatically be associated correctly with the initialization
+// of the value.  Otherwise, this handler is not special
+func Initializer(a ActionHandler) ActionHandler {
+	return withTiming(a, initialTiming)
+}
+
+func timingOf(a ActionHandler, defaultTiming timing) timing {
+	switch val := a.(type) {
+	case actionHandlerTiming:
+		return val.timing()
+	}
+	return defaultTiming
+}
+
+func withTiming(a ActionHandler, t timing) ActionHandler {
+	return withTimingWrapper{a, t}
 }
 
 func Action(item interface{}) ActionHandler {
@@ -153,6 +199,20 @@ func HookAfter(pattern string, handler ActionHandler) ActionHandler {
 	})
 }
 
+func newActionPipelines(m map[timing][]ActionHandler) *actionPipelines {
+	var pipe = func(h []ActionHandler) ActionHandler {
+		if len(h) == 0 {
+			return emptyAction
+		}
+		return &ActionPipeline{h}
+	}
+	return &actionPipelines{
+		Uses:   pipe(m[initialTiming]),
+		Before: pipe(m[beforeTiming]),
+		After:  pipe(m[afterTiming]),
+	}
+}
+
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {
 		return nil
@@ -174,6 +234,34 @@ func (p *ActionPipeline) Execute(c *Context) (err error) {
 		}
 	}
 	return nil
+}
+
+func (p *ActionPipeline) takeInitializers(c *Context) (*actionPipelines, error) {
+	res := map[timing][]ActionHandler{}
+	var add = func(t timing, h ActionHandler) {
+		if _, ok := res[t]; ok {
+			res[t] = append(res[t], h)
+		} else {
+			res[t] = []ActionHandler{h}
+		}
+	}
+	for _, h := range p.items {
+		t := timingOf(h, initialTiming)
+		if t == initialTiming {
+			err := c.Do(h)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		add(t, h)
+	}
+	return newActionPipelines(res), nil
+}
+
+func (w *withTimingWrapper) timing() timing {
+	return w.t
 }
 
 func emptyActionImpl(*Context) error {
@@ -208,6 +296,14 @@ func pipeline(x, y ActionHandler) *ActionPipeline {
 	return &ActionPipeline{
 		items: append(unwind(x), unwind(y)...),
 	}
+}
+
+func takeInitializers(from ActionHandler, c *Context) (*actionPipelines, error) {
+	if p, ok := from.(*ActionPipeline); ok {
+		return p.takeInitializers(c)
+	}
+
+	return &actionPipelines{}, execute(from, c)
 }
 
 func unwind(x ActionHandler) []ActionHandler {

@@ -348,6 +348,7 @@ func (c CommandsByName) Swap(i, j int) {
 }
 
 func (c *commandContext) initialize(ctx *Context) error {
+	// FIXME takeInitializers(c.cmd.Uses)
 	if err := hookExecute(Action(c.cmd.Uses), defaultCommand.Uses, ctx); err != nil {
 		return err
 	}
