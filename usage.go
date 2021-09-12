@@ -168,7 +168,7 @@ func defaultVersionCommand() *Command {
 	return &Command{
 		Name:     "version",
 		HelpText: "Print the build version then exit",
-		Action:   doThenExit(PrintVersion()),
+		Action:   PrintVersion(),
 	}
 }
 
