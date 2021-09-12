@@ -1,6 +1,10 @@
 package cli_test
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -46,5 +50,47 @@ var _ = Describe("File", func() {
 		err := app.RunContext(nil, []string{"app", name})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring(name + ": no such file or directory"))
+	})
+
+	It("writes to the app output when - is used", func() {
+		var buf bytes.Buffer
+		act := new(joeclifakes.FakeActionHandler)
+		app := cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "f",
+					Value: &cli.File{},
+				},
+			},
+			Stdout: &buf,
+			Action: act,
+		}
+		_ = app.RunContext(nil, []string{"app", "-"})
+		context := act.ExecuteArgsForCall(0)
+
+		f, err := context.File("f").Open()
+		Expect(err).NotTo(HaveOccurred())
+		fmt.Fprint(f.(io.Writer), "hello")
+		Expect(buf.String()).To(Equal("hello"))
+	})
+
+	XIt("reads from the app input when - is used", func() {
+		var actual []byte
+		buf := bytes.NewBufferString("hello\n")
+		app := cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "f",
+					Value: &cli.File{},
+				},
+			},
+			Stdin: buf,
+			Action: func(c *cli.Context) {
+				f, _ := c.File("f").Open()
+				actual, _ = ioutil.ReadAll(f)
+			},
+		}
+		_ = app.RunContext(nil, []string{"app", "-"})
+		Expect(string(actual)).To(Equal("hello"))
 	})
 })

@@ -99,7 +99,7 @@ Parsing:
 		args = args[1:]
 
 		// end of options?
-		if arg == "" || arg[0] != '-' || state == argsOnly {
+		if arg == "" || arg == "-" || arg[0] != '-' || state == argsOnly {
 			for {
 				err := bind.SetArg(arg, state == flagsOrArgs)
 				if err != nil {
@@ -123,10 +123,6 @@ Parsing:
 				arg = args[0]
 				args = args[1:]
 			}
-		}
-
-		if arg == "-" {
-			goto ShortParsing
 		}
 
 		// explicitly request end of options?
@@ -176,7 +172,6 @@ Parsing:
 
 		// Short option processing
 		arg = arg[1:] // strip -
-	ShortParsing:
 		for i, c := range arg {
 			opt := s.shortOptions[c]
 			if opt == nil {

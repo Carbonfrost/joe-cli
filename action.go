@@ -76,6 +76,7 @@ var (
 
 	defaultOption = actionPipelines{
 		Before: Pipeline(
+			ActionFunc(setupOptionRequireFS),
 			ActionFunc(setupFromOptions()),
 			ActionFunc(setupOptionFromEnv),
 		),
