@@ -1,5 +1,10 @@
 package cli
 
+import (
+	"fmt"
+	"os"
+)
+
 type Option int
 type internalFlags int
 
@@ -23,6 +28,10 @@ const (
 	// args
 	SkipFlagParsing
 
+	// WorkingDirectory labels a flag or argument as specifying the process working directory.
+	// When used, the working directory will be changed to this path.
+	WorkingDirectory
+
 	maxOption
 
 	None Option = 0
@@ -37,11 +46,12 @@ const (
 
 var (
 	optionMap = map[Option]ActionFunc{
-		Hidden:          hiddenOption,
-		Required:        requiredOption,
-		Exits:           wrapWithExit,
-		MustExist:       mustExistOption,
-		SkipFlagParsing: skipFlagParsingOption,
+		Hidden:           hiddenOption,
+		Required:         requiredOption,
+		Exits:            wrapWithExit,
+		MustExist:        mustExistOption,
+		SkipFlagParsing:  skipFlagParsingOption,
+		WorkingDirectory: workingDirectoryOption,
 	}
 )
 
@@ -110,4 +120,9 @@ func mustExistOption(c *Context) error {
 func skipFlagParsingOption(c *Context) error {
 	c.target().setInternalFlags(internalFlagSkipFlagParsing)
 	return nil
+}
+
+func workingDirectoryOption(c *Context) error {
+	newDir := fmt.Sprint(c.Value(""))
+	return os.Chdir(newDir)
 }

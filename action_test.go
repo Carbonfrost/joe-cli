@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"os"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -55,6 +56,71 @@ var _ = Describe("middleware", func() {
 
 			It("can set and retrieve value", func() {
 				Expect(captured.Value("int")).To(Equal(420))
+			})
+		})
+
+	})
+
+	Describe("action", func() {
+		var (
+			flags     []*cli.Flag
+			arguments string
+		)
+
+		JustBeforeEach(func() {
+			act := new(joeclifakes.FakeActionHandler)
+			app := &cli.App{
+				Name:   "app",
+				Action: act,
+				Flags:  flags,
+			}
+			args, _ := cli.Split(arguments)
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("WorkingDirectory", func() {
+			var original string
+
+			AfterEach(func() {
+				os.Chdir(original)
+			})
+
+			BeforeEach(func() {
+				original, _ = os.Getwd()
+				arguments = "app --dir=/usr"
+			})
+
+			Context("string flag", func() {
+				BeforeEach(func() {
+					flags = []*cli.Flag{
+						{
+							Name:    "dir",
+							Value:   cli.String(),
+							Options: cli.WorkingDirectory,
+						},
+					}
+				})
+
+				It("WorkingDirectory sets the working directory", func() {
+					Expect(os.Getwd()).To(Equal("/usr"))
+				})
+			})
+
+			Context("File flag", func() {
+				BeforeEach(func() {
+					flags = []*cli.Flag{
+						{
+							Name:    "dir",
+							Value:   &cli.File{},
+							Options: cli.WorkingDirectory,
+						},
+					}
+				})
+
+				It("WorkingDirectory sets the working directory", func() {
+					Expect(os.Getwd()).To(Equal("/usr"))
+				})
 			})
 		})
 	})
