@@ -96,20 +96,22 @@ type appContext struct {
 }
 
 var (
-	ExitHandler func(string, int)
+	ExitHandler func(*Context, string, int)
 )
 
 // Run the application and exit using the exit handler.  This function exits using the
 // ExitHandler if an error occurs.  If you want to process the error yourself, use RunContext.
 func (a *App) Run(args []string) {
-	exit(a.RunContext(context.TODO(), args))
+	a.runContextCore(context.TODO(), args, func(c *Context, err error) error {
+		exit(c, err)
+		return nil
+	})
 }
 
 func (a *App) RunContext(c context.Context, args []string) error {
-	ctx := rootContext(c, a, args)
-	ctx.initialize()
-	root := a.createRoot()
-	return root.parseAndExecuteSelf(ctx)
+	return a.runContextCore(c, args, func(_ *Context, err error) error {
+		return err
+	})
 }
 
 func (a *App) Command(name string) (*Command, bool) {
@@ -197,6 +199,14 @@ func (a *App) options() Option {
 	return a.Options
 }
 
+func (a *App) runContextCore(c context.Context, args []string, exit func(*Context, error) error) error {
+	ctx := rootContext(c, a, args)
+	ctx.initialize()
+	root := a.createRoot()
+	err := root.parseAndExecuteSelf(ctx)
+	return exit(ctx, err)
+}
+
 func (a *appContext) initialize(c *Context) error {
 	a.commandContext.cmd = a.app_.createRoot()
 	rest, err := takeInitializers(Action(a.app_.Uses), c)
@@ -233,7 +243,7 @@ func (a *appContext) target() target {
 
 func (a *appContext) Name() string { return a.app_.Name }
 
-func exit(err error) {
+func exit(c *Context, err error) {
 	if err == nil {
 		return
 	}
@@ -246,12 +256,16 @@ func exit(err error) {
 	if coder, ok := err.(ExitCoder); ok {
 		code = coder.ExitCode()
 	}
-	handler(err.Error(), code)
+	handler(c, err.Error(), code)
 }
 
-func defaultExitHandler(message string, status int) {
+func defaultExitHandler(c *Context, message string, status int) {
+	stderr := c.Stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
 	if message != "" && status != 0 {
-		fmt.Fprintln(os.Stderr, message)
+		fmt.Fprintln(stderr, message)
 	}
 	os.Exit(status)
 }
