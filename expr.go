@@ -293,6 +293,10 @@ func (e *Expr) Synopsis() string {
 	return textUsage.expr(e.newSynopsis())
 }
 
+func (e *Expr) Arg(name string) (*Arg, bool) {
+	return findArgByName(e.Args, name)
+}
+
 func (e *Expr) newSynopsis() *exprSynopsis {
 	args := make([]*argSynopsis, len(e.actualArgs()))
 	usage := parseUsage(e.HelpText)
@@ -568,6 +572,15 @@ func (e *exprContext) Name() string { return e.expr.Name }
 
 func emptyYielder(interface{}) error {
 	return nil
+}
+
+func findExprByName(items []*Expr, name string) (*Expr, bool) {
+	for _, sub := range items {
+		if sub.Name == name {
+			return sub, true
+		}
+	}
+	return nil, false
 }
 
 var _ Expression = &exprPipeline{}

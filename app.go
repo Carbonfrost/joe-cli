@@ -126,6 +126,10 @@ func (a *App) Arg(name string) (*Arg, bool) {
 	return findArgByName(a.Args, name)
 }
 
+func (a *App) Expr(name string) (*Expr, bool) {
+	return findExprByName(a.Exprs, name)
+}
+
 func (a *App) createRoot() *Command {
 	return a._createRootCore(false)
 }

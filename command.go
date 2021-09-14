@@ -76,6 +76,7 @@ type command interface {
 	Command(string) (*Command, bool)
 	Flag(string) (*Flag, bool)
 	Arg(string) (*Arg, bool)
+	Expr(string) (*Expr, bool)
 }
 
 type commandContext struct {
@@ -175,6 +176,10 @@ func (c *Command) Flag(name string) (*Flag, bool) {
 
 func (c *Command) Arg(name string) (*Arg, bool) {
 	return findArgByName(c.Args, name)
+}
+
+func (c *Command) Expr(name string) (*Expr, bool) {
+	return findExprByName(c.Exprs, name)
 }
 
 func (c *Command) VisibleArgs() []*Arg {
