@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -80,6 +81,9 @@ type App struct {
 
 	// Options sets common options for use with the app
 	Options Option
+
+	// FS specifies the file system that is used by default for Files.
+	FS fs.FS
 
 	HelpText  string
 	UsageText string

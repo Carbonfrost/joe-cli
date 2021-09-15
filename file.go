@@ -8,9 +8,6 @@ import (
 	"os"
 )
 
-// FIXME add to App
-// FS specifies the file system that is used by default for Files.
-
 type fileExtension interface {
 	fs.File
 	io.Seeker
@@ -174,10 +171,15 @@ func (s *stdFile) Write(p []byte) (n int, err error) {
 }
 
 func setupOptionRequireFS(c *Context) error {
-	if f, ok := c.Value("").(*File); ok {
+	if f, ok := c.option().value().(*File); ok {
 		if f.FS == nil {
 			app := c.App()
-			f.FS = newDefaultFS(app.Stdin, app.Stdout)
+			fs := app.FS
+
+			if fs == nil {
+				fs = newDefaultFS(app.Stdin, app.Stdout)
+			}
+			f.FS = fs
 		}
 	}
 	return nil

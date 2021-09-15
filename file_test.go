@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,6 +14,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+type emptyFS struct{}
+
+func (emptyFS) Open(name string) (fs.File, error) { return nil, nil }
 
 var _ = Describe("File", func() {
 
@@ -74,7 +79,27 @@ var _ = Describe("File", func() {
 		Expect(buf.String()).To(Equal("hello"))
 	})
 
-	XIt("reads from the app input when - is used", func() {
+	It("sets FS from app", func() {
+		var actual *cli.File
+		globalFS := emptyFS{}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "f",
+					Value: &cli.File{},
+				},
+			},
+			Action: func(c *cli.Context) {
+				actual = c.File("f")
+			},
+			FS: globalFS,
+		}
+
+		_ = app.RunContext(nil, []string{"app"})
+		Expect(actual.FS).To(BeIdenticalTo(globalFS))
+	})
+
+	It("reads from the app input when - is used", func() {
 		var actual []byte
 		buf := bytes.NewBufferString("hello\n")
 		app := cli.App{
@@ -91,6 +116,6 @@ var _ = Describe("File", func() {
 			},
 		}
 		_ = app.RunContext(nil, []string{"app", "-"})
-		Expect(string(actual)).To(Equal("hello"))
+		Expect(string(actual)).To(Equal("hello\n"))
 	})
 })
