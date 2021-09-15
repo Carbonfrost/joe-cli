@@ -274,7 +274,7 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 			return &boundExpr{
 				expr:    e1,
 				set:     set,
-				Context: c.exprContext(e1, args, set),
+				Context: c.exprContext(e1, args, set).setTiming(actionTiming),
 			}
 		}
 		res.exprs[e.Name] = fac
@@ -537,7 +537,7 @@ func (e *exprSynopsis) names() string {
 }
 
 func (e *exprContext) initialize(c *Context) error {
-	return hookExecute(Action(e.expr.Uses), nil, c)
+	return executeAll(c, Action(e.expr.Uses), nil)
 }
 
 func (e *exprContext) hooks() *hooks {
@@ -545,11 +545,11 @@ func (e *exprContext) hooks() *hooks {
 }
 
 func (e *exprContext) executeBefore(ctx *Context) error {
-	return hookExecute(Action(e.expr.Before), defaultExpr.Before, ctx)
+	return executeAll(ctx, Action(e.expr.Before), defaultExpr.Before)
 }
 
 func (e *exprContext) executeAfter(ctx *Context) error {
-	return hookExecute(Action(e.expr.After), defaultExpr.After, ctx)
+	return executeAll(ctx, Action(e.expr.After), defaultExpr.After)
 }
 
 func (e *exprContext) executeBeforeDescendent(ctx *Context) error { return nil }

@@ -20,17 +20,17 @@ type argBinding struct {
 }
 
 type internalOption struct {
-	short      []rune   // 0 means no short name
-	long       []string // "" means no long name
-	isLong     bool     // True if they used the long name
-	flag       bool     // true if a boolean flag
-	optional   bool     // true if we take an optional value
-	where      string   // file where the option was defined
-	value      *generic
-	count      int
-	uname      string
-	narg       interface{}
-	persistent bool // true when the option is a clone of a persistent flag
+	short         []rune   // 0 means no short name
+	long          []string // "" means no long name
+	isLong        bool     // True if they used the long name
+	flag          bool     // true if a boolean flag
+	optional      bool     // true if we take an optional value
+	value         *generic
+	count         int
+	uname         string
+	narg          interface{}
+	persistent    bool        // true when the option is a clone of a persistent flag
+	optionalValue interface{} // set when blank and optional
 }
 
 type argCountError int
@@ -210,23 +210,9 @@ Parsing:
 	return bind.Done()
 }
 
-func (s *set) defineFlag(name string, aliases []string, p interface{}) *internalOption {
-	long, short := canonicalNames(name, aliases)
-	res := &internalOption{
-		short: short,
-		long:  long,
-		value: wrapGeneric(p),
-		uname: name,
-	}
-
-	switch p.(type) {
-	case *bool:
-		res.flag = true
-	}
-
-	res.where = calledFrom()
+func (s *set) defineFlag(res *internalOption) {
 	if len(res.short) == 0 && len(res.long) == 0 {
-		fmt.Fprintf(os.Stderr, res.where+": invalid definition, missing name or alias")
+		fmt.Fprintf(os.Stderr, "invalid flag definition, missing name or alias")
 		os.Exit(1)
 	}
 
@@ -237,8 +223,7 @@ func (s *set) defineFlag(name string, aliases []string, p interface{}) *internal
 		s.longOptions[long] = res
 	}
 
-	s.values[name] = p
-	return res
+	s.values[res.uname] = res.value.p
 }
 
 func (s *set) defineArg(name string, v interface{}, narg interface{}) *internalOption {

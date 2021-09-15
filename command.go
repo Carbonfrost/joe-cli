@@ -50,6 +50,7 @@ type Command struct {
 	cmdHooks            hooks
 	didSetupDefaultArgs bool
 	flags               internalFlags
+	uses                *actionPipelines
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -110,7 +111,7 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 			return err
 		}
 		c.Parent().internal.setDidSubcommandExecute()
-		newCtx := c.Parent().commandContext(cmd, invoke)
+		newCtx := c.Parent().commandContext(cmd, invoke).setTiming(actionTiming)
 		return cmd.parseAndExecuteSelf(newCtx)
 	}
 }
@@ -255,6 +256,10 @@ func (c *Command) ensureSubcommands() {
 			Value:     List(),
 			NArg:      -1,
 			Action:    ExecuteSubcommand(nil),
+
+			// This arg does not have an initialization pass, so its pipeline must
+			// be cached
+			uses: &actionPipelines{},
 		})
 		if c.Action == nil {
 			c.Action = DisplayHelpScreen()
@@ -272,6 +277,10 @@ func (c *Command) ensureExprs() {
 			Action: BindExpression(func(c *Context) ([]*Expr, error) {
 				return c.Command().Exprs, nil
 			}),
+
+			// This arg does not have an initialization pass, so its pipeline must
+			// be cached
+			uses: &actionPipelines{},
 		})
 	}
 }
@@ -369,19 +378,24 @@ func (c CommandsByName) Swap(i, j int) {
 }
 
 func (c *commandContext) initialize(ctx *Context) error {
-	// FIXME takeInitializers(c.cmd.Uses)
-	if err := hookExecute(Action(c.cmd.Uses), defaultCommand.Uses, ctx); err != nil {
+	rest, err := takeInitializers(Action(c.cmd.Uses), c.cmd.Options, ctx)
+	if err != nil {
+		return err
+	}
+	c.cmd.uses = rest
+
+	if err := executeAll(ctx, Action(c.cmd.uses.Uses), defaultCommand.Uses); err != nil {
 		return err
 	}
 
 	for _, sub := range c.cmd.Flags {
-		err := ctx.optionContext(sub).initialize()
+		err := ctx.flagContext(sub).initialize()
 		if err != nil {
 			return err
 		}
 	}
 	for _, sub := range c.cmd.Args {
-		err := ctx.optionContext(sub).initialize()
+		err := ctx.argContext(sub).initialize()
 		if err != nil {
 			return err
 		}
@@ -393,6 +407,14 @@ func (c *commandContext) initialize(ctx *Context) error {
 		}
 	}
 	c.cmd.setupDefaultArgs()
+
+	for _, sub := range c.cmd.Subcommands {
+		err := ctx.commandContext(sub, nil).initialize()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -404,14 +426,23 @@ func (c *commandContext) executeBefore(ctx *Context) error {
 	if err := ctx.executeBeforeHooks(c.cmd); err != nil {
 		return err
 	}
-	return hookExecute(Action(c.cmd.Before), defaultCommand.Before, ctx)
+	if c.cmd.uses != nil {
+		if err := execute(c.cmd.uses.Before, ctx); err != nil {
+			return err
+		}
+	}
+	return executeAll(ctx, Action(c.cmd.Before), defaultCommand.Before)
 }
 
 func (c *commandContext) executeAfter(ctx *Context) error {
 	if err := ctx.executeAfterHooks(c.cmd); err != nil {
 		return err
 	}
-	return hookExecute(Action(c.cmd.After), defaultCommand.After, ctx)
+	var aft ActionHandler
+	if c.cmd.uses != nil {
+		aft = c.cmd.uses.After
+	}
+	return executeAll(ctx, aft, Action(c.cmd.After), defaultCommand.After)
 }
 
 func (c *commandContext) executeAfterDescendent(ctx *Context) error {

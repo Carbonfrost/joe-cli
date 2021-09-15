@@ -170,6 +170,131 @@ var _ = Describe("middleware", func() {
 
 })
 
+type beforeContext struct {
+	IsInitializing bool
+	IsBefore       bool
+	Called         bool
+}
+
+type afterContext struct {
+	IsInitializing bool
+	IsAfter        bool
+	Called         bool
+}
+
+var _ = Describe("Before", func() {
+
+	DescribeTable("timing examples",
+		func(arguments string, actualApp func(cli.ActionHandler) *cli.App) {
+			var actual = new(beforeContext)
+			handler := cli.ActionFunc(func(c *cli.Context) error {
+				actual.IsInitializing = c.IsInitializing()
+				actual.IsBefore = c.IsBefore()
+				actual.Called = true
+				return nil
+			})
+			app := actualApp(handler)
+			args, _ := cli.Split(arguments)
+			_ = app.RunContext(nil, args)
+			Expect(actual.Called).To(BeTrue())
+			Expect(actual.IsInitializing).To(BeFalse())
+			Expect(actual.IsBefore).To(BeTrue())
+		},
+		Entry("app", "app", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Uses: cli.Before(h),
+			}
+		}),
+		Entry("command", "app r", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "r",
+						Uses: cli.Before(h),
+					},
+				},
+			}
+		}),
+		Entry("arg", "app a", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "r",
+						Uses: cli.Before(h),
+					},
+				},
+			}
+		}),
+		Entry("flag", "app -f", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  cli.Before(h),
+					},
+				},
+			}
+		}),
+	)
+})
+
+var _ = Describe("After", func() {
+	DescribeTable("timing examples",
+		func(arguments string, actualApp func(cli.ActionHandler) *cli.App) {
+			var actual = new(afterContext)
+			handler := cli.ActionFunc(func(c *cli.Context) error {
+				actual.IsInitializing = c.IsInitializing()
+				actual.IsAfter = c.IsAfter()
+				actual.Called = true
+				return nil
+			})
+			app := actualApp(handler)
+			args, _ := cli.Split(arguments)
+			_ = app.RunContext(nil, args)
+			Expect(actual.Called).To(BeTrue())
+			Expect(actual.IsInitializing).To(BeFalse())
+			Expect(actual.IsAfter).To(BeTrue())
+		},
+		Entry("app", "app", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Uses: cli.After(h),
+			}
+		}),
+		Entry("command", "app r", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "r",
+						Uses: cli.After(h),
+					},
+				},
+			}
+		}),
+		Entry("arg", "app a", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "r",
+						Uses: cli.After(h),
+					},
+				},
+			}
+		}),
+		Entry("flag", "app -f", func(h cli.ActionHandler) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  cli.After(h),
+					},
+				},
+			}
+		}),
+	)
+})
+
 var _ = Describe("events", func() {
 	DescribeTable("execution order of events",
 		func(arguments string, expected types.GomegaMatcher) {

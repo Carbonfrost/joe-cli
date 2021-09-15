@@ -37,6 +37,7 @@ type Arg struct {
 
 	option *internalOption
 	flags  internalFlags
+	uses   *actionPipelines
 }
 
 type ArgCounter interface {
@@ -45,6 +46,10 @@ type ArgCounter interface {
 	// taking argumens.  All other errors are treated as fatal.
 	Take(arg string, possibleFlag bool) error
 	Done() error
+}
+
+type argContext struct {
+	option *Arg
 }
 
 type discreteCounter struct {
@@ -185,10 +190,6 @@ func (a *Arg) action() ActionHandler {
 	return Action(a.Action)
 }
 
-func (a *Arg) uses() ActionHandler {
-	return Action(a.Uses)
-}
-
 func (a *Arg) before() ActionHandler {
 	return Action(a.Before)
 }
@@ -233,6 +234,46 @@ func (a *Arg) ensureData() map[string]interface{} {
 
 func (a *Arg) hooks() *hooks {
 	return nil
+}
+
+func (o *argContext) hooks() *hooks {
+	return nil
+}
+
+func (o *argContext) initialize(c *Context) error {
+	rest, err := takeInitializers(Action(o.option.Uses), o.option.Options, c)
+	if err != nil {
+		return err
+	}
+	o.option.uses = rest
+	return executeAll(c, rest.Uses, defaultOption.Uses)
+}
+
+func (o *argContext) executeBefore(ctx *Context) error {
+	tt := o.option
+	return executeAll(ctx, tt.uses.Before, tt.before(), defaultOption.Before)
+}
+
+func (o *argContext) executeBeforeDescendent(ctx *Context) error { return nil }
+func (o *argContext) executeAfterDescendent(ctx *Context) error  { return nil }
+func (o *argContext) executeAfter(ctx *Context) error {
+	tt := o.option
+	return executeAll(ctx, tt.uses.After, tt.after(), defaultOption.After)
+}
+func (o *argContext) execute(ctx *Context) error { return nil }
+func (o *argContext) app() (*App, bool)          { return nil, false }
+func (o *argContext) args() []string             { return nil }
+func (o *argContext) set() *set                  { return nil }
+func (o *argContext) target() target             { return o.option }
+func (o *argContext) setDidSubcommandExecute()   {}
+func (o *argContext) lookupValue(name string) (interface{}, bool) {
+	if name == "" {
+		return o.option.value(), true
+	}
+	return nil, false
+}
+func (o *argContext) Name() string {
+	return o.option.name()
 }
 
 func (d *discreteCounter) Take(arg string, possibleFlag bool) error {

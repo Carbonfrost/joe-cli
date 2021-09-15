@@ -3,7 +3,9 @@ package cli_test
 import (
 	"errors"
 	"flag"
+	"net"
 	"os"
+	"time"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -225,6 +227,73 @@ var _ = Describe("Flag", func() {
 			err := app.RunContext(nil, arguments)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("not supported"))
+		})
+	})
+
+	Context("when the value is Optional", func() {
+		DescribeTable("examples", func(flag interface{}, expected interface{}) {
+			var actual interface{}
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "s",
+						Value:   flag,
+						Options: cli.Optional,
+					},
+				},
+				Action: func(c *cli.Context) {
+					actual = c.Value("s")
+				},
+			}
+
+			arguments, _ := cli.Split("app -s")
+			err := app.RunContext(nil, arguments)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(expected))
+		},
+			Entry("bool", cli.Bool(), true),
+			Entry("float32", cli.Float32(), float32(1.0)),
+			Entry("float64", cli.Float64(), float64(1.0)),
+			Entry("int", cli.Int(), 1),
+			Entry("uint64", cli.UInt64(), uint64(1)),
+			Entry("IP", cli.IP(), net.ParseIP("127.0.0.1")),
+			Entry("Duration", cli.Duration(), time.Second),
+		)
+	})
+
+	Context("when the value is OptionalValue", func() {
+		It("applies the value when specified", func() {
+			t := new(temperature)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "s",
+						Value: t,
+						Uses:  cli.OptionalValue("Fahrenheit"),
+					},
+				},
+			}
+
+			arguments, _ := cli.Split("app -sC")
+			app.RunContext(nil, arguments)
+			Expect(*t).To(Equal(temperature("Celsius")))
+		})
+
+		It("applies the optional value when not specified", func() {
+			t := new(string)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "s",
+						Value: t,
+						Uses:  cli.OptionalValue("tls1.2"),
+					},
+				},
+			}
+
+			arguments, _ := cli.Split("app -s")
+			_ = app.RunContext(nil, arguments)
+			Expect(*t).To(Equal("tls1.2"))
 		})
 	})
 

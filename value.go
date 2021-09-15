@@ -112,10 +112,17 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		}
 		return err
 	}
+	trySetOptional := func() (interface{}, bool) {
+		return opt.optionalValue, (value == "" && opt.optional)
+	}
 	switch p := g.p.(type) {
 	case Value:
 		return p.Set(value)
 	case *bool:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(bool)
+			return nil
+		}
 		switch strings.ToLower(value) {
 		case "", "1", "true", "on", "t":
 			*p = true
@@ -126,9 +133,17 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		}
 		return nil
 	case *string:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(string)
+			return nil
+		}
 		*p = value
 		return nil
 	case *[]string:
+		if v, ok := trySetOptional(); ok {
+			*p = v.([]string)
+			return nil
+		}
 		a := strings.Split(value, ",")
 		// Reset on the first occurrence
 		if opt.Count() <= 1 {
@@ -137,6 +152,10 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		*p = append(*p, a...)
 		return nil
 	case *map[string]string:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(map[string]string)
+			return nil
+		}
 		if opt.Count() <= 1 {
 			// Reset the map on the first occurrence
 			*p = map[string]string{}
@@ -157,84 +176,140 @@ func (g *generic) Set(value string, opt *internalOption) error {
 
 		return nil
 	case *int:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int)
+			return nil
+		}
 		i64, err := strconv.ParseInt(value, 0, strconv.IntSize)
 		if err == nil {
 			*p = int(i64)
 		}
 		return strconvErr(err)
 	case *int8:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int8)
+			return nil
+		}
 		i64, err := strconv.ParseInt(value, 0, 8)
 		if err == nil {
 			*p = int8(i64)
 		}
 		return strconvErr(err)
 	case *int16:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int16)
+			return nil
+		}
 		i64, err := strconv.ParseInt(value, 0, 16)
 		if err == nil {
 			*p = int16(i64)
 		}
 		return strconvErr(err)
 	case *int32:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int32)
+			return nil
+		}
 		i64, err := strconv.ParseInt(value, 0, 32)
 		if err == nil {
 			*p = int32(i64)
 		}
 		return strconvErr(err)
 	case *int64:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int64)
+			return nil
+		}
 		i64, err := strconv.ParseInt(value, 0, 64)
 		if err == nil {
 			*p = i64
 		}
 		return strconvErr(err)
 	case *uint:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint)
+			return nil
+		}
 		u64, err := strconv.ParseUint(value, 0, strconv.IntSize)
 		if err == nil {
 			*p = uint(u64)
 		}
 		return strconvErr(err)
 	case *uint8:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint8)
+			return nil
+		}
 		u64, err := strconv.ParseUint(value, 0, 8)
 		if err == nil {
 			*p = uint8(u64)
 		}
 		return strconvErr(err)
 	case *uint16:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint16)
+			return nil
+		}
 		u64, err := strconv.ParseUint(value, 0, 16)
 		if err == nil {
 			*p = uint16(u64)
 		}
 		return strconvErr(err)
 	case *uint32:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint32)
+			return nil
+		}
 		u64, err := strconv.ParseUint(value, 0, 32)
 		if err == nil {
 			*p = uint32(u64)
 		}
 		return strconvErr(err)
 	case *uint64:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint64)
+			return nil
+		}
 		u64, err := strconv.ParseUint(value, 0, 64)
 		if err == nil {
 			*p = u64
 		}
 		return strconvErr(err)
 	case *float32:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(float32)
+			return nil
+		}
 		f64, err := strconv.ParseFloat(value, 32)
 		if err == nil {
 			*p = float32(f64)
 		}
 		return strconvErr(err)
 	case *float64:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(float64)
+			return nil
+		}
 		f64, err := strconv.ParseFloat(value, 64)
 		if err == nil {
 			*p = f64
 		}
 		return strconvErr(err)
 	case *time.Duration:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(time.Duration)
+			return nil
+		}
 		v, err := time.ParseDuration(value)
 		if err == nil {
 			*p = v
 		}
 		return err
 	case **url.URL:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*url.URL)
+			return nil
+		}
 		v, err := url.Parse(value)
 		if err == nil {
 			*p = v
@@ -242,6 +317,10 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		return err
 
 	case *net.IP:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(net.IP)
+			return nil
+		}
 		v := net.ParseIP(value)
 		if v != nil {
 			*p = v
@@ -250,6 +329,10 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		return errors.New("not a valid IP address")
 
 	case **regexp.Regexp:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*regexp.Regexp)
+			return nil
+		}
 		v, err := regexp.Compile(value)
 		if err == nil {
 			*p = v
@@ -305,6 +388,42 @@ func (g *generic) String() string {
 		return genericString(p)
 	}
 	panic("unreachable!")
+}
+
+func (g *generic) smartOptionalDefault() interface{} {
+	switch g.p.(type) {
+	case *bool:
+		return true
+	case *int:
+		return int(1)
+	case *int8:
+		return int8(1)
+	case *int16:
+		return int16(1)
+	case *int32:
+		return int32(1)
+	case *int64:
+		return int64(1)
+	case *uint:
+		return uint(1)
+	case *uint8:
+		return uint8(1)
+	case *uint16:
+		return uint16(1)
+	case *uint32:
+		return uint32(1)
+	case *uint64:
+		return uint64(1)
+	case *float32:
+		return float32(1)
+	case *float64:
+		return float64(1)
+	case *time.Duration:
+		return time.Second
+	case *net.IP:
+		return net.ParseIP("127.0.0.1")
+	}
+	return nil
 }
 
 func genericString(v interface{}) string {

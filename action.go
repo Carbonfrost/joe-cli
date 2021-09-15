@@ -32,6 +32,7 @@ type target interface {
 type actionPipelines struct {
 	Uses   ActionHandler // Must be strictly initializers (no automatic regrouping)
 	Before ActionHandler
+	Action ActionHandler
 	After  ActionHandler
 }
 
@@ -59,7 +60,6 @@ var (
 
 	defaultApp = actionPipelines{
 		Uses: Pipeline(
-			ActionFunc(setupFromOptions()),
 			ActionFunc(setupDefaultIO),
 			ActionFunc(setupDefaultData),
 			ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
@@ -69,15 +69,16 @@ var (
 
 	defaultCommand = actionPipelines{
 		Before: Pipeline(
-			ActionFunc(setupFromOptions()),
 			ActionFunc(triggerFlagsAndArgs),
+		),
+		After: Pipeline(
+			ActionFunc(triggerAfterFlagsAndArgs),
 		),
 	}
 
 	defaultOption = actionPipelines{
 		Before: Pipeline(
 			ActionFunc(setupOptionRequireFS),
-			ActionFunc(setupFromOptions()),
 			ActionFunc(setupOptionFromEnv),
 		),
 	}
@@ -207,6 +208,27 @@ func HookAfter(pattern string, handler ActionHandler) ActionHandler {
 	})
 }
 
+// OptionalValue makes the flag's value optional, and when its value is not specified, the implied value
+// is set to this value v.  Say that a flag is defined as:
+//
+//   &Flag {
+//     Name: "secure",
+//     Value: cli.String(),
+//     Uses: cli.Optional("TLS1.2"),
+//   }
+//
+// This example implies that --secure without a value is set to the value TLS1.2 (presumably other versions
+// are allowed).  This example is a fair use case of this feature: making a flag opt-in to some sort of default
+// configuration and allowing an expert configuration by using a value.
+// In general, making the value of a non-Boolean flag optional is not recommended when
+// the command also allows arguments because it can make the syntax ambiguous.
+func OptionalValue(v interface{}) ActionHandler {
+	return Initializer(ActionFunc(func(c *Context) error {
+		c.Flag().setOptionalValue(v)
+		return nil
+	}))
+}
+
 func newActionPipelines(m map[timing][]ActionHandler) *actionPipelines {
 	var pipe = func(h []ActionHandler) ActionHandler {
 		if len(h) == 0 {
@@ -235,6 +257,9 @@ func (p *ActionPipeline) Append(x ActionHandler) *ActionPipeline {
 }
 
 func (p *ActionPipeline) Execute(c *Context) (err error) {
+	if p == nil {
+		return nil
+	}
 	for _, a := range p.items {
 		err = a.Execute(c)
 		if err != nil {
@@ -245,30 +270,30 @@ func (p *ActionPipeline) Execute(c *Context) (err error) {
 }
 
 func (p *ActionPipeline) takeInitializers(c *Context) (*actionPipelines, error) {
-	res := map[timing][]ActionHandler{}
-	var add = func(t timing, h ActionHandler) {
-		if _, ok := res[t]; ok {
-			res[t] = append(res[t], h)
-		} else {
-			res[t] = []ActionHandler{h}
-		}
-	}
+	res := &actionPipelines{}
 	for _, h := range p.items {
-		t := timingOf(h, initialTiming)
-		if t == initialTiming {
-			err := c.Do(h)
-			if err != nil {
-				return nil, err
-			}
-			continue
-		}
-
-		add(t, h)
+		res.add(timingOf(h, initialTiming), h)
 	}
-	return newActionPipelines(res), nil
+
+	return res, nil
 }
 
-func (w *withTimingWrapper) timing() timing {
+func (p *actionPipelines) add(t timing, h ActionHandler) {
+	switch t {
+	case initialTiming:
+		p.Uses = pipeline(p.Uses, h)
+	case beforeTiming:
+		p.Before = pipeline(p.Before, h)
+	case actionTiming:
+		p.Action = pipeline(p.Action, h)
+	case afterTiming:
+		p.After = pipeline(p.After, h)
+	default:
+		panic("unreachable!")
+	}
+}
+
+func (w withTimingWrapper) timing() timing {
 	return w.t
 }
 
@@ -283,11 +308,13 @@ func execute(af ActionHandler, c *Context) error {
 	return af.Execute(c)
 }
 
-func hookExecute(x, y ActionHandler, c *Context) error {
-	if err := execute(x, c); err != nil {
-		return err
+func executeAll(c *Context, x ...ActionHandler) error {
+	for _, y := range x {
+		if err := execute(y, c); err != nil {
+			return err
+		}
 	}
-	return execute(y, c)
+	return nil
 }
 
 func doThenExit(a ActionHandler) ActionFunc {
@@ -306,19 +333,15 @@ func pipeline(x, y ActionHandler) *ActionPipeline {
 	}
 }
 
-func takeInitializers(from ActionHandler, c *Context) (*actionPipelines, error) {
-	if p, ok := from.(*ActionPipeline); ok {
-		return p.takeInitializers(c)
-	}
-
-	return &actionPipelines{}, execute(from, c)
+func takeInitializers(uses ActionHandler, opts Option, c *Context) (*actionPipelines, error) {
+	return pipeline(uses, opts.wrap()).takeInitializers(c)
 }
 
 func unwind(x ActionHandler) []ActionHandler {
 	if x == nil {
 		return nil
 	}
-	if pipe, ok := x.(*ActionPipeline); ok {
+	if pipe, ok := x.(*ActionPipeline); ok && pipe != nil {
 		return pipe.items
 	}
 	return []ActionHandler{x}
@@ -330,3 +353,7 @@ func actionOrEmpty(v interface{}) ActionHandler {
 	}
 	return Action(v)
 }
+
+var (
+	_ actionHandlerTiming = withTimingWrapper{}
+)

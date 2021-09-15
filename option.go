@@ -32,6 +32,25 @@ const (
 	// When used, the working directory will be changed to this path.
 	WorkingDirectory
 
+	// Optional makes the flag's value optional.  When this is set, the value of a flag is optional,
+	// and the following values are set when the flag is present but its value is omitted:
+	//
+	//   integers (int, int32, int64, etc.)     1
+	//   floats (float32, float64, etc.)        1.0
+	//   time.Time                              time.Now()
+	//   time.Duration                          1 second
+	//   bool                                   true
+	//   string                                 *
+	//   []string                               *
+	//   other Value                            *
+	//
+	//   * For string, []string, and any other Value implementation, using this option panics.
+	//
+	// This option is available to but not useful for bool because this is the default behavior
+	// for bool.  If you need more customization, then you can use OptionalValue middleware.
+	//
+	Optional
+
 	maxOption
 
 	None Option = 0
@@ -45,20 +64,24 @@ const (
 )
 
 var (
-	optionMap = map[Option]ActionFunc{
-		Hidden:           hiddenOption,
-		Required:         requiredOption,
-		Exits:            wrapWithExit,
-		MustExist:        mustExistOption,
-		SkipFlagParsing:  skipFlagParsingOption,
-		WorkingDirectory: workingDirectoryOption,
+	optionMap = map[Option]ActionHandler{
+		Hidden:           ActionFunc(hiddenOption),
+		Required:         ActionFunc(requiredOption),
+		Exits:            ActionFunc(wrapWithExit),
+		MustExist:        Before(ActionFunc(mustExistOption)),
+		SkipFlagParsing:  ActionFunc(skipFlagParsingOption),
+		WorkingDirectory: Before(ActionFunc(workingDirectoryOption)),
+		Optional:         ActionFunc(optionalOption),
 	}
 )
 
-func (o Option) Execute(c *Context) error {
+func (o Option) wrap() *ActionPipeline {
 	parts := splitOptions(int(o))
-	pipe := &ActionPipeline{parts}
-	return pipe.Execute(c)
+	if len(parts) == 0 {
+		return nil
+	}
+
+	return &ActionPipeline{parts}
 }
 
 func (f internalFlags) hidden() bool {
@@ -125,4 +148,9 @@ func skipFlagParsingOption(c *Context) error {
 func workingDirectoryOption(c *Context) error {
 	newDir := fmt.Sprint(c.Value(""))
 	return os.Chdir(newDir)
+}
+
+func optionalOption(c *Context) error {
+	c.Flag().setOptional()
+	return nil
 }

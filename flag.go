@@ -80,8 +80,10 @@ type Flag struct {
 	// Action executes if the flag was set.  Refer to cli.Action about the correct
 	// function signature to use.
 	Action interface{}
+
 	option *internalOption
 	flags  internalFlags
+	uses_  *actionPipelines
 }
 
 // FlagsByName is a sortable slice for flags
@@ -107,14 +109,13 @@ type option interface {
 	envVars() []string
 	filePath() string
 	helpText() string
-	uses() ActionHandler
 	before() ActionHandler
 	after() ActionHandler
 	action() ActionHandler
 }
 
-type optionContext struct {
-	option option
+type flagContext struct {
+	option *Flag
 }
 
 type flagSynopsis struct {
@@ -151,7 +152,7 @@ func GroupFlagsByCategory(flags []*Flag) FlagsByCategory {
 }
 
 func (f *Flag) applyToSet(s *set) {
-	f.option = s.defineFlag(f.Name, f.Aliases, f.value())
+	s.defineFlag(f.option)
 }
 
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
@@ -184,6 +185,15 @@ func (f *Flag) setCategory(name string) {
 	f.Category = name
 }
 
+func (f *Flag) setOptional() {
+	f.setOptionalValue(f.option.value.smartOptionalDefault())
+}
+
+func (f *Flag) setOptionalValue(v interface{}) {
+	f.option.optional = true
+	f.option.optionalValue = v
+}
+
 func (f *Flag) ensureData() map[string]interface{} {
 	if f.Data == nil {
 		f.Data = map[string]interface{}{}
@@ -208,35 +218,60 @@ func (f *flagSynopsis) names(hideAlternates bool) string {
 	return fmt.Sprintf("-%s, --%s", f.short, f.long)
 }
 
-func (o *optionContext) hooks() *hooks {
+func (o *flagContext) hooks() *hooks {
 	return nil
 }
 
-func (o *optionContext) initialize(c *Context) error {
-	return hookExecute(Action(o.option.uses()), nil, c)
+func (o *flagContext) initialize(c *Context) error {
+	f := o.option
+	p := f.value()
+	long, short := canonicalNames(f.Name, f.Aliases)
+	res := &internalOption{
+		short: short,
+		long:  long,
+		value: wrapGeneric(p),
+		uname: f.Name,
+	}
+
+	switch p.(type) {
+	case *bool:
+		res.flag = true
+	}
+	f.option = res
+
+	rest, err := takeInitializers(Action(f.Uses), f.Options, c)
+	if err != nil {
+		return err
+	}
+
+	f.uses_ = rest
+	return executeAll(c, rest.Uses, defaultOption.Uses)
 }
 
-func (o *optionContext) executeBefore(ctx *Context) error {
-	tt := o.target().(option)
-	return hookExecute(tt.before(), defaultOption.Before, ctx)
+func (o *flagContext) executeBefore(ctx *Context) error {
+	tt := o.option
+	return executeAll(ctx, tt.uses_.Before, tt.before(), defaultOption.Before)
 }
 
-func (o *optionContext) executeBeforeDescendent(ctx *Context) error { return nil }
-func (o *optionContext) executeAfterDescendent(ctx *Context) error  { return nil }
-func (o *optionContext) executeAfter(ctx *Context) error            { return nil }
-func (o *optionContext) execute(ctx *Context) error                 { return nil }
-func (o *optionContext) app() (*App, bool)                          { return nil, false }
-func (o *optionContext) args() []string                             { return nil }
-func (o *optionContext) set() *set                                  { return nil }
-func (o *optionContext) target() target                             { return o.option }
-func (o *optionContext) setDidSubcommandExecute()                   {}
-func (o *optionContext) lookupValue(name string) (interface{}, bool) {
+func (o *flagContext) executeBeforeDescendent(ctx *Context) error { return nil }
+func (o *flagContext) executeAfterDescendent(ctx *Context) error  { return nil }
+func (o *flagContext) executeAfter(ctx *Context) error {
+	tt := o.option
+	return executeAll(ctx, tt.uses_.After, tt.after(), defaultOption.After)
+}
+func (o *flagContext) execute(ctx *Context) error { return nil }
+func (o *flagContext) app() (*App, bool)          { return nil, false }
+func (o *flagContext) args() []string             { return nil }
+func (o *flagContext) set() *set                  { return nil }
+func (o *flagContext) target() target             { return o.option }
+func (o *flagContext) setDidSubcommandExecute()   {}
+func (o *flagContext) lookupValue(name string) (interface{}, bool) {
 	if name == "" {
 		return o.option.value(), true
 	}
 	return nil, false
 }
-func (o *optionContext) Name() string {
+func (o *flagContext) Name() string {
 	return o.option.name()
 }
 
@@ -345,10 +380,6 @@ func (f *Flag) wrapAction(fn func(ActionHandler) ActionFunc) {
 
 func (f *Flag) action() ActionHandler {
 	return Action(f.Action)
-}
-
-func (f *Flag) uses() ActionHandler {
-	return Action(f.Uses)
 }
 
 func (f *Flag) before() ActionHandler {

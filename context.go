@@ -21,6 +21,7 @@ type Context struct {
 	context.Context
 	*contextData
 	internal internalContext
+	timing   timing
 
 	parent *Context
 }
@@ -140,6 +141,10 @@ func (c *Context) IsFlag() bool {
 	_, ok := c.target().(*Flag)
 	return ok
 }
+
+func (c *Context) IsInitializing() bool { return c.timing == initialTiming }
+func (c *Context) IsBefore() bool       { return c.timing == beforeTiming }
+func (c *Context) IsAfter() bool        { return c.timing == afterTiming }
 
 func (c *Context) isOption() bool {
 	_, ok := c.target().(option)
@@ -542,6 +547,9 @@ func (i *hooks) hookBefore(pat string, a ActionHandler) {
 }
 
 func (i *hooks) execBeforeHooks(target *Context) error {
+	if i == nil {
+		return nil
+	}
 	for _, b := range i.before {
 		if b.pat.Match(target.Path()) {
 			b.action.Execute(target)
@@ -555,6 +563,9 @@ func (i *hooks) hookAfter(pat string, a ActionHandler) {
 }
 
 func (i *hooks) execAfterHooks(target *Context) error {
+	if i == nil {
+		return nil
+	}
 	for _, b := range i.after {
 		if b.pat.Match(target.Path()) {
 			b.action.Execute(target)
@@ -605,15 +616,33 @@ func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	}
 }
 
-func (c *Context) optionContext(opt option) *Context {
+func (c *Context) flagContext(opt *Flag) *Context {
 	return &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
-		internal: &optionContext{
+		internal: &flagContext{
 			option: opt,
 		},
 		parent: c,
 	}
+}
+
+func (c *Context) argContext(opt *Arg) *Context {
+	return &Context{
+		Context:     c.Context,
+		contextData: c.contextData,
+		internal: &argContext{
+			option: opt,
+		},
+		parent: c,
+	}
+}
+
+func (c *Context) optionContext(opt option) *Context {
+	if f, ok := opt.(*Flag); ok {
+		return c.flagContext(f)
+	}
+	return c.argContext(opt.(*Arg))
 }
 
 func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
@@ -627,6 +656,11 @@ func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
 		},
 		parent: c,
 	}
+}
+
+func (c *Context) setTiming(t timing) *Context {
+	c.timing = t
+	return c
 }
 
 func (c *Context) applySet() {
@@ -701,7 +735,7 @@ func (c *Context) initialize() error {
 	if c == nil {
 		return nil
 	}
-
+	c.timing = initialTiming
 	return c.internal.initialize(c)
 }
 
@@ -741,19 +775,17 @@ func tunnel(start *Context, self func(*Context) error, anc func(*Context) error)
 	return nil
 }
 
-func (c *Context) executeCommand() error {
-	if err := bubble(
+func (c *Context) executeBefore() error {
+	c.setTiming(beforeTiming)
+	return bubble(
 		c,
 		func(c1 *Context) error { return c1.internal.executeBefore(c) },
 		func(c1 *Context) error { return c1.internal.executeBeforeDescendent(c) },
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	if err := c.internal.execute(c); err != nil {
-		return err
-	}
-
+func (c *Context) executeAfter() error {
+	c.setTiming(afterTiming)
 	return tunnel(
 		c,
 		func(c1 *Context) error { return c1.internal.executeAfter(c) },
@@ -761,8 +793,21 @@ func (c *Context) executeCommand() error {
 	)
 }
 
+func (c *Context) executeCommand() error {
+	if err := c.executeBefore(); err != nil {
+		return err
+	}
+
+	c.setTiming(actionTiming)
+	if err := c.internal.execute(c); err != nil {
+		return err
+	}
+
+	return c.executeAfter()
+}
+
 func (c *Context) executeOption() error {
-	return hookExecute(c.option().action(), defaultOption.After, c)
+	return executeAll(c, c.option().action())
 }
 
 func (c *Context) lookupOption(name string) option {
@@ -777,12 +822,6 @@ func (c *Context) option() option {
 	return c.target().(option)
 }
 
-func setupFromOptions() ActionFunc {
-	return func(c *Context) error {
-		return c.Do(c.target().options())
-	}
-}
-
 func triggerFlagsAndArgs(ctx *Context) error {
 	opts := ctx.flagsAndArgs(true)
 	for _, f := range opts {
@@ -793,7 +832,8 @@ func triggerFlagsAndArgs(ctx *Context) error {
 				continue
 			}
 		}
-		err := hookExecute(f.before(), defaultOption.Before, ctx.optionContext(f))
+
+		err := ctx.optionContext(f).setTiming(beforeTiming).executeBefore()
 		if err != nil {
 			return err
 		}
@@ -803,10 +843,29 @@ func triggerFlagsAndArgs(ctx *Context) error {
 	// Action when the flag or arg was set
 	for _, f := range opts {
 		if f.Seen() {
-			err := ctx.optionContext(f).executeOption()
+			err := ctx.optionContext(f).setTiming(actionTiming).executeOption()
 			if err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func triggerAfterFlagsAndArgs(ctx *Context) error {
+	opts := ctx.flagsAndArgs(true)
+	for _, f := range opts {
+		if flag, ok := f.(*Flag); ok {
+			if flag.option.persistent {
+				// This is a persistent flag that was cloned into the flag set of the current
+				// command; don't process it again
+				continue
+			}
+		}
+
+		err := ctx.optionContext(f).setTiming(afterTiming).executeAfter()
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -842,7 +901,8 @@ var (
 	_ hasArguments    = &Expr{}
 	_ Lookup          = &Context{}
 	_ internalContext = &commandContext{}
-	_ internalContext = &optionContext{}
+	_ internalContext = &flagContext{}
+	_ internalContext = &argContext{}
 	_ internalContext = &exprContext{}
 	_ internalContext = &appContext{}
 )
