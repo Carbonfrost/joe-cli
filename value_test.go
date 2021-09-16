@@ -95,6 +95,60 @@ var _ = Describe("Value", func() {
 				Equal(net.ParseIP("127.0.0.1")),
 			),
 		)
+
+		DescribeTable("List flag examples", func(arguments string, expected types.GomegaMatcher) {
+			act := new(joeclifakes.FakeActionHandler)
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name:  "s",
+						Value: cli.List(),
+					},
+				},
+				Action: act,
+			}
+
+			args, _ := cli.Split(arguments)
+			app.RunContext(nil, args)
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.List("s")).To(expected)
+		},
+			Entry("escaped comma", "app -s 'A\\,B,C'", ContainElements("A,B", "C")),
+		)
+
+		DescribeTable("Map flag examples", func(arguments string, expected types.GomegaMatcher) {
+			act := new(joeclifakes.FakeActionHandler)
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name:  "s",
+						Value: cli.Map(),
+					},
+				},
+				Action: act,
+			}
+
+			args, _ := cli.Split(arguments)
+			app.RunContext(nil, args)
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Map("s")).To(expected)
+		},
+			Entry("escaped comma", "app -s 'L=A\\,B'", HaveKeyWithValue("L", "A,B")),
+			Entry("escaped comma multiple", "app -s 'L=A\\,B,M=Y\\,Z,N=W\\,X'",
+				And(
+					HaveKeyWithValue("L", "A,B"),
+					HaveKeyWithValue("M", "Y,Z"),
+					HaveKeyWithValue("N", "W,X"),
+				)),
+			Entry("escaped comma trailing", "app -s 'L=A\\,'", HaveKeyWithValue("L", "A,")),
+			// Comma is implied as escaped because there is no other KVP after it
+			Entry("implied escaped comma", "app -s 'L=A,B,C'", HaveKeyWithValue("L", "A,B,C")),
+			Entry("escaped equal", "app -s 'L\\=A=B'", HaveKeyWithValue("L=A", "B")),
+			Entry("escaped equal trailing", "app -s 'L\\==B'", HaveKeyWithValue("L=", "B")),
+		)
+
 	})
 })
 

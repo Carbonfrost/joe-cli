@@ -144,7 +144,7 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			*p = v.([]string)
 			return nil
 		}
-		a := strings.Split(value, ",")
+		a := splitWithEscapes(value, ",", -1)
 		// Reset on the first occurrence
 		if opt.Count() <= 1 {
 			*p = nil
@@ -160,15 +160,18 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			// Reset the map on the first occurrence
 			*p = map[string]string{}
 		}
-		for _, kvp := range strings.Split(value, ",") {
-			k := strings.SplitN(kvp, "=", 2)
-			var key, value string
+		text := value
+		var key, value string
+		for _, kvp := range splitWithEscapes(text, ",", -1) {
+			k := splitWithEscapes(kvp, "=", 2)
 			switch len(k) {
 			case 2:
-				value = k[1]
-				fallthrough
-			case 1:
 				key = k[0]
+				value = k[1]
+			case 1:
+				// Implies comma was meant to be escaped
+				// -m key=value,s,t  --> interpreted as key=value,s,t rather than s and t keys
+				value = value + "," + k[0]
 			}
 			m := *p
 			m[key] = value
@@ -544,4 +547,31 @@ func formatMap(m map[string]string) string {
 		b.WriteString(v)
 	}
 	return b.String()
+}
+
+// splitWithEscapes considers escape sequences when splitting.  sep must not
+// be empty string
+func splitWithEscapes(s, sep string, n int) []string {
+	if strings.Index(s, "\\") >= 0 {
+		regex := regexp.MustCompile(`(^|[^\\])` + regexp.QuoteMeta(sep))
+		matches := regex.FindAllStringSubmatchIndex(s, n)
+
+		if len(matches) == 0 {
+			return []string{s}
+		}
+
+		unquote := func(x string) string {
+			return strings.ReplaceAll(x, "\\", "")
+		}
+		res := make([]string, 0)
+
+		var last int
+		for _, match := range matches {
+			res = append(res, unquote(s[last:match[1]-1]))
+			res = append(res, unquote(s[match[2]+1+1:]))
+			last = match[2] + 1 + 1
+		}
+		return res
+	}
+	return strings.SplitN(s, sep, n)
 }
