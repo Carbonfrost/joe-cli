@@ -23,6 +23,16 @@ type commanderValues struct {
 	Command string
 }
 
+var _ = Describe("Quote", func() {
+	DescribeTable("examples", func(in, out string) {
+		actual := cli.Quote(in)
+		Expect(actual).To(Equal(out))
+	},
+		Entry("b", "$'b", `'$'"'"'b'`),
+		Entry("empty", "", `''`),
+	)
+})
+
 var _ = Describe("RunContext", func() {
 	DescribeTable("bind subcommand",
 		func(arguments string, expectedGlobal types.GomegaMatcher, expectedSub types.GomegaMatcher) {
