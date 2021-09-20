@@ -3,8 +3,11 @@ package cli
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -312,6 +315,12 @@ func placeholder(v interface{}) string {
 		return "NAME=VALUE"
 	case *File:
 		return "FILE"
+	case **url.URL:
+		return "URL"
+	case *net.IP:
+		return "IP"
+	case **regexp.Regexp:
+		return "PATTERN"
 	default:
 		return "VALUE"
 	}

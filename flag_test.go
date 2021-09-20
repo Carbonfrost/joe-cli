@@ -371,6 +371,30 @@ var _ = Describe("Flag", func() {
 				},
 				"-f FILE",
 			),
+			Entry(
+				"URL",
+				&cli.Flag{
+					Name:  "f",
+					Value: cli.URL(),
+				},
+				"-f URL",
+			),
+			Entry(
+				"IP",
+				&cli.Flag{
+					Name:  "f",
+					Value: cli.IP(),
+				},
+				"-f IP",
+			),
+			Entry(
+				"Regexp",
+				&cli.Flag{
+					Name:  "f",
+					Value: cli.Regexp(),
+				},
+				"-f PATTERN",
+			),
 		)
 
 	})
