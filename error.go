@@ -33,6 +33,7 @@ const (
 	ExpectedArgument
 	UnknownExpr
 	ArgsMustPrecedeExprs
+	FlagUsedAfterArgs
 )
 
 // Exit formats an error message using the default formats for each of the arguments,
@@ -110,6 +111,8 @@ func (e ErrorCode) String() string {
 		return "unknown expression"
 	case ArgsMustPrecedeExprs:
 		return "arguments must precede expressions"
+	case FlagUsedAfterArgs:
+		return "flag used after arguments"
 	}
 	return "unknown error"
 }
@@ -149,24 +152,20 @@ func expectedArgument(count int) *Error {
 }
 
 func unknownOption(name interface{}) error {
-	nameStr := func() string {
-		switch n := name.(type) {
-		case rune:
-			if n == '-' {
-				return "-"
-			} else {
-				return "-" + string(n)
-			}
-		case string:
-			return "--" + n
-		}
-		panic("unreachable!")
-	}()
-
+	nameStr := optionName(name)
 	return &Error{
 		Code: UnknownOption,
 		Name: nameStr,
 		Err:  fmt.Errorf("unknown option: %s", nameStr),
+	}
+}
+
+func flagAfterArgError(name interface{}) error {
+	nameStr := optionName(name)
+	return &Error{
+		Code: FlagUsedAfterArgs,
+		Name: nameStr,
+		Err:  fmt.Errorf("can't use %s after arguments", nameStr),
 	}
 }
 
@@ -209,4 +208,18 @@ func wrapExprError(name string, err error) error {
 		Name: name,
 		Err:  err,
 	}
+}
+
+func optionName(name interface{}) string {
+	switch n := name.(type) {
+	case rune:
+		if n == '-' {
+			return "-"
+		} else {
+			return "-" + string(n)
+		}
+	case string:
+		return "--" + n
+	}
+	panic("unreachable!")
 }

@@ -28,6 +28,13 @@ const (
 	// args
 	SkipFlagParsing
 
+	// DisallowFlagsAfterArgs option when used on a Command prevents flags from being specified after args.
+	// To ease ergonomics, flags can be specified after arguments by default; however, to stop this, this
+	// option can be set, which causes the first occurrence of an argument to indicate that the rest of the
+	// command line consists only of arguments.  This option is implicitly set if any expressions or
+	// sub-commands are defined.
+	DisallowFlagsAfterArgs
+
 	// WorkingDirectory labels a flag or argument as specifying the process working directory.
 	// When used, the working directory will be changed to this path.
 	WorkingDirectory
@@ -61,17 +68,19 @@ const (
 	internalFlagRequired
 	internalFlagExits
 	internalFlagSkipFlagParsing
+	internalFlagDisallowFlagsAfterArgs
 )
 
 var (
 	optionMap = map[Option]ActionHandler{
-		Hidden:           ActionFunc(hiddenOption),
-		Required:         ActionFunc(requiredOption),
-		Exits:            ActionFunc(wrapWithExit),
-		MustExist:        Before(ActionFunc(mustExistOption)),
-		SkipFlagParsing:  ActionFunc(skipFlagParsingOption),
-		WorkingDirectory: Before(ActionFunc(workingDirectoryOption)),
-		Optional:         ActionFunc(optionalOption),
+		Hidden:                 ActionFunc(hiddenOption),
+		Required:               ActionFunc(requiredOption),
+		Exits:                  ActionFunc(wrapWithExit),
+		MustExist:              Before(ActionFunc(mustExistOption)),
+		SkipFlagParsing:        ActionFunc(skipFlagParsingOption),
+		WorkingDirectory:       Before(ActionFunc(workingDirectoryOption)),
+		Optional:               ActionFunc(optionalOption),
+		DisallowFlagsAfterArgs: ActionFunc(disallowFlagsAfterArgsOption),
 	}
 )
 
@@ -98,6 +107,10 @@ func (f internalFlags) exits() bool {
 
 func (f internalFlags) skipFlagParsing() bool {
 	return f&internalFlagSkipFlagParsing == internalFlagSkipFlagParsing
+}
+
+func (f internalFlags) disallowFlagsAfterArgs() bool {
+	return f&internalFlagDisallowFlagsAfterArgs == internalFlagDisallowFlagsAfterArgs
 }
 
 func splitOptions(options int) []ActionHandler {
@@ -152,5 +165,10 @@ func workingDirectoryOption(c *Context) error {
 
 func optionalOption(c *Context) error {
 	c.Flag().setOptional()
+	return nil
+}
+
+func disallowFlagsAfterArgsOption(c *Context) error {
+	c.target().setInternalFlags(internalFlagDisallowFlagsAfterArgs)
 	return nil
 }

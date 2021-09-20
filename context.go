@@ -727,8 +727,7 @@ func (c *Context) applyFlagsAndArgs() (err error) {
 	if c.Command().internalFlags().skipFlagParsing() {
 		args = append([]string{args[0], "--"}, args[1:]...)
 	}
-
-	return c.internal.set().parse(args)
+	return c.internal.set().parse(args, c.Command().internalFlags().disallowFlagsAfterArgs())
 }
 
 func (c *Context) initialize() error {

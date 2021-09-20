@@ -7,10 +7,11 @@ import (
 )
 
 type set struct {
-	shortOptions      map[rune]*internalOption
-	longOptions       map[string]*internalOption
-	positionalOptions []*internalOption
-	values            map[string]interface{}
+	shortOptions           map[rune]*internalOption
+	longOptions            map[string]*internalOption
+	positionalOptions      []*internalOption
+	values                 map[string]interface{}
+	disallowFlagsAfterArgs bool
 }
 
 type argBinding struct {
@@ -82,13 +83,16 @@ func (s *set) lookupValue(name string) (interface{}, bool) {
 	return v, ok
 }
 
-func (s *set) parse(args []string) error {
+func (s *set) parse(args []string, disallowFlagsAfterArgs bool) error {
 	if len(args) == 0 {
 		return nil
 	}
 
 	bind := newArgBinding(s.positionalOptions)
-	var state parserState = flagsOrArgs
+	var (
+		state   parserState = flagsOrArgs
+		anyArgs bool
+	)
 
 	// Skip program name
 	args = args[1:]
@@ -122,6 +126,7 @@ Parsing:
 
 				arg = args[0]
 				args = args[1:]
+				anyArgs = true
 			}
 		}
 
@@ -151,6 +156,9 @@ Parsing:
 			}
 			if opt == nil {
 				return unknownOption(arg[2:])
+			}
+			if disallowFlagsAfterArgs && anyArgs {
+				return flagAfterArgError(arg[2:])
 			}
 			opt.isLong = true
 			// If we require an option and did not have an =
