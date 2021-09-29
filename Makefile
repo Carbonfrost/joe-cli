@@ -13,5 +13,5 @@ build: generate
 watch:
 	@ find Makefile . -name '*.go' | entr -c cli --version --plus --time generate
 
-generate: -check-command-gucci
+generate:
 	$(Q) go generate ./...
