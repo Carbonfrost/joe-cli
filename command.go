@@ -383,8 +383,11 @@ func (c *commandContext) initialize(ctx *Context) error {
 		return err
 	}
 	c.cmd.uses = rest
+	return c.initializeCore(ctx)
+}
 
-	if err := executeAll(ctx, Action(c.cmd.uses.Uses), defaultCommand.Uses); err != nil {
+func (c *commandContext) initializeCore(ctx *Context) error {
+	if err := executeAll(ctx, Action(c.cmd.uses.Initializers), defaultCommand.Initializers); err != nil {
 		return err
 	}
 

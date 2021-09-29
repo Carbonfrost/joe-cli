@@ -222,13 +222,19 @@ func (a *appContext) initialize(c *Context) error {
 		return err
 	}
 
-	if err := executeAll(c, rest.Uses, defaultApp.Uses); err != nil {
+	if err := executeAll(c, rest.Initializers, defaultApp.Initializers); err != nil {
 		return err
 	}
 
-	// Re-create the root command because middleware may have changed things
+	// Re-create the root command because middleware may have changed things.
 	a.commandContext.cmd = a.app_._createRootCore(true)
-	a.commandContext.initialize(c)
+
+	// We must also pierce the encapsulation of command context initialization here
+	// (by calling initializeCore instead of initialize) because we
+	// don't want to calculate separating out action pipelines again, and we
+	// don't want to invoke app's initializers twice
+	a.commandContext.cmd.uses = rest.exceptInitializers()
+	a.commandContext.initializeCore(c)
 
 	for _, sub := range a.app_.Commands {
 		err := c.commandContext(sub, nil).initialize()

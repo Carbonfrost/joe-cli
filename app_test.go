@@ -19,6 +19,7 @@ var _ = Describe("App", func() {
 		var (
 			act       *joeclifakes.FakeActionHandler
 			beforeAct *joeclifakes.FakeActionHandler
+			usesAct   *joeclifakes.FakeActionHandler
 			arguments string
 
 			app *cli.App
@@ -27,6 +28,7 @@ var _ = Describe("App", func() {
 		JustBeforeEach(func() {
 			act = new(joeclifakes.FakeActionHandler)
 			beforeAct = new(joeclifakes.FakeActionHandler)
+			usesAct = new(joeclifakes.FakeActionHandler)
 
 			app = &cli.App{
 				Commands: []*cli.Command{
@@ -41,10 +43,29 @@ var _ = Describe("App", func() {
 				},
 				Action: act,
 				Before: beforeAct,
+				Uses:   usesAct,
 			}
 
 			args, _ := cli.Split(arguments)
 			app.RunContext(nil, args)
+		})
+
+		Context("when executing itself", func() {
+			BeforeEach(func() {
+				arguments = "cli"
+			})
+
+			It("executes action", func() {
+				Expect(act.ExecuteCallCount()).To(Equal(1))
+			})
+
+			It("executes before action", func() {
+				Expect(beforeAct.ExecuteCallCount()).To(Equal(1))
+			})
+
+			It("executes uses action", func() {
+				Expect(usesAct.ExecuteCallCount()).To(Equal(1))
+			})
 		})
 
 		Context("when executing a sub-command", func() {
@@ -63,8 +84,9 @@ var _ = Describe("App", func() {
 
 		Context("when setting a flag", func() {
 			BeforeEach(func() {
-				arguments = "cli"
+				arguments = "cli -f a"
 			})
+
 			It("executes before action on executing self", func() {
 				Expect(beforeAct.ExecuteCallCount()).To(Equal(1))
 			})

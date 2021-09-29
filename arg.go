@@ -246,7 +246,7 @@ func (o *argContext) initialize(c *Context) error {
 		return err
 	}
 	o.option.uses = rest
-	return executeAll(c, rest.Uses, defaultOption.Uses)
+	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }
 
 func (o *argContext) executeBefore(ctx *Context) error {

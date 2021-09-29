@@ -30,10 +30,10 @@ type target interface {
 }
 
 type actionPipelines struct {
-	Uses   ActionHandler // Must be strictly initializers (no automatic regrouping)
-	Before ActionHandler
-	Action ActionHandler
-	After  ActionHandler
+	Initializers ActionHandler // Must be strictly initializers (no automatic regrouping)
+	Before       ActionHandler
+	Action       ActionHandler
+	After        ActionHandler
 }
 
 type actionHandlerTiming interface {
@@ -59,7 +59,7 @@ var (
 	emptyAction ActionHandler = ActionFunc(emptyActionImpl)
 
 	defaultApp = actionPipelines{
-		Uses: Pipeline(
+		Initializers: Pipeline(
 			ActionFunc(setupDefaultIO),
 			ActionFunc(setupDefaultData),
 			ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
@@ -237,9 +237,10 @@ func newActionPipelines(m map[timing][]ActionHandler) *actionPipelines {
 		return &ActionPipeline{h}
 	}
 	return &actionPipelines{
-		Uses:   pipe(m[initialTiming]),
-		Before: pipe(m[beforeTiming]),
-		After:  pipe(m[afterTiming]),
+		Initializers: pipe(m[initialTiming]),
+		Before:       pipe(m[beforeTiming]),
+		Action:       pipe(m[actionTiming]),
+		After:        pipe(m[afterTiming]),
 	}
 }
 
@@ -281,7 +282,7 @@ func (p *ActionPipeline) takeInitializers(c *Context) (*actionPipelines, error) 
 func (p *actionPipelines) add(t timing, h ActionHandler) {
 	switch t {
 	case initialTiming:
-		p.Uses = pipeline(p.Uses, h)
+		p.Initializers = pipeline(p.Initializers, h)
 	case beforeTiming:
 		p.Before = pipeline(p.Before, h)
 	case actionTiming:
@@ -290,6 +291,14 @@ func (p *actionPipelines) add(t timing, h ActionHandler) {
 		p.After = pipeline(p.After, h)
 	default:
 		panic("unreachable!")
+	}
+}
+
+func (p *actionPipelines) exceptInitializers() *actionPipelines {
+	return &actionPipelines{
+		Before: p.Before,
+		Action: p.Action,
+		After:  p.After,
 	}
 }
 
@@ -341,8 +350,16 @@ func unwind(x ActionHandler) []ActionHandler {
 	if x == nil {
 		return nil
 	}
-	if pipe, ok := x.(*ActionPipeline); ok && pipe != nil {
-		return pipe.items
+	switch pipe := x.(type) {
+	case *ActionPipeline:
+		if pipe == nil {
+			return nil
+		}
+		res := make([]ActionHandler, 0, len(pipe.items))
+		for _, p := range pipe.items {
+			res = append(res, unwind(p)...)
+		}
+		return res
 	}
 	return []ActionHandler{x}
 }

@@ -248,7 +248,7 @@ func (o *flagContext) initialize(c *Context) error {
 	}
 
 	f.uses_ = rest
-	return executeAll(c, rest.Uses, defaultOption.Uses)
+	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }
 
 func (o *flagContext) executeBefore(ctx *Context) error {
