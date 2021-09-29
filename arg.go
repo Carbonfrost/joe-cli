@@ -236,6 +236,10 @@ func (a *Arg) hooks() *hooks {
 	return nil
 }
 
+func (a *Arg) appendAction(t timing, ah ActionHandler) {
+	a.uses.add(t, ah)
+}
+
 func (o *argContext) hooks() *hooks {
 	return nil
 }

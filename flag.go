@@ -208,6 +208,10 @@ func (f *Flag) hooks() *hooks {
 	return nil
 }
 
+func (f *Flag) appendAction(t timing, ah ActionHandler) {
+	f.uses_.add(t, ah)
+}
+
 func (f *flagSynopsis) names(hideAlternates bool) string {
 	if len(f.long) == 0 {
 		return fmt.Sprintf("-%s", f.short)

@@ -23,6 +23,7 @@ type ActionPipeline struct {
 type target interface {
 	hooks() *hooks
 	options() Option
+	appendAction(timing, ActionHandler)
 	setCategory(name string)
 	setData(name string, v interface{})
 	setInternalFlags(internalFlags)

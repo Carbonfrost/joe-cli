@@ -365,6 +365,10 @@ func (c *Command) options() Option {
 	return c.Options
 }
 
+func (c *Command) appendAction(t timing, ah ActionHandler) {
+	c.uses.add(t, ah)
+}
+
 func (c CommandsByName) Len() int {
 	return len(c)
 }

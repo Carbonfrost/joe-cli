@@ -98,6 +98,51 @@ var _ = Describe("Context", func() {
 		})
 	})
 
+	Describe("Before", func() {
+
+		It("defers when set from initializer", func() {
+			act := new(joeclifakes.FakeActionHandler)
+			act.ExecuteCalls(func(c *cli.Context) error {
+				Expect(c.IsBefore()).To(BeTrue())
+				return nil
+			})
+			app := &cli.App{
+				Uses: func(c *cli.Context) {
+					c.Before(act)
+
+					Expect(act.ExecuteCallCount()).To(Equal(0))
+				},
+			}
+
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
+
+		It("invokes immediately in the before context", func() {
+			ctx := &cli.Context{}
+			act := new(joeclifakes.FakeActionHandler)
+			cli.SetBeforeTiming(ctx)
+
+			_ = ctx.Before(act)
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+			capturedContext := act.ExecuteArgsForCall(0)
+			Expect(capturedContext.IsBefore()).To(BeTrue())
+		})
+
+		DescribeTable("error when timing after",
+			func(timing func(*cli.Context)) {
+				act := new(joeclifakes.FakeActionHandler)
+				ctx := &cli.Context{}
+				timing(ctx)
+
+				err := ctx.Before(act)
+				Expect(err).To(HaveOccurred())
+			},
+			Entry("action timing", cli.SetActionTiming),
+			Entry("after timing", cli.SetAfterTiming),
+		)
+	})
+
 })
 
 var _ = Describe("ContextPath", func() {

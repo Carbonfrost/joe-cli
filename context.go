@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"go/doc"
 	"io"
@@ -146,6 +147,8 @@ func (c *Context) IsInitializing() bool { return c.timing == initialTiming }
 func (c *Context) IsBefore() bool       { return c.timing == beforeTiming }
 func (c *Context) IsAfter() bool        { return c.timing == afterTiming }
 
+func (c *Context) Timing() int { return int(c.timing) }
+
 func (c *Context) isOption() bool {
 	_, ok := c.target().(option)
 	return ok
@@ -277,6 +280,42 @@ func (c *Context) Value(name interface{}) interface{} {
 	default:
 		return c.Context.Value(name)
 	}
+}
+
+// Action either stores or executes the action. When called from the initialization or before pipelines, this
+// appends the action to the pipeline for the current flag, arg, or command/app.
+// When called from the action or after pipelines, this simply causes the action to be invoked immediately.
+func (c *Context) Action(v interface{}) error {
+	return c.act(v, actionTiming)
+}
+
+// Before either stores or executes the action.  When called from the initialization pipeline, this appends
+// the action to the Before pipeline for the current flag, arg, expression, or command/app.  If called
+// from the Before pipeline, this causes the action to be invoked immeidately.  If called
+// at any other time, this causes the action to be ignored and an error to be returned.
+func (c *Context) Before(v interface{}) error {
+	return c.act(v, beforeTiming)
+}
+
+// After either stores or executes the action.  When called from the initialization, before, or action pipelines,
+// this appends the action to the After pipeline for the current flag, arg, expression, or command/app.  If called
+// from the After pipeline itself, the action is invoked immediately
+func (c *Context) After(v interface{}) error {
+	return c.act(v, afterTiming)
+}
+
+func (c *Context) act(v interface{}, desired timing) error {
+	if c.timing < desired {
+		c.target().appendAction(desired, Action(v))
+		return nil
+	}
+	if c.timing == desired {
+		return Action(v).Execute(c)
+	}
+	if c.timing > desired {
+		return errors.New("too late to exec action")
+	}
+	return nil
 }
 
 func (c *Context) target() target {

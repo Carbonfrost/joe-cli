@@ -358,6 +358,9 @@ func (e *Expr) options() Option {
 	return e.Options
 }
 
+func (e *Expr) appendAction(t timing, ah ActionHandler) {
+}
+
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
 	if e == nil {
 		return nil
