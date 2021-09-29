@@ -245,8 +245,18 @@ func (c *Context) Values() []interface{} {
 }
 
 // Value obtains the value of the flag or argument with the specified name.  If name
-// is the empty string, this is interpreted as using the name of whatever is the
-// current context flag or argument.
+// is the empty string or nil, this is interpreted as using the name of whatever is the
+// current context flag or argument.  The name can also be one of several other types:
+//
+//  * rune - corresponds to the short name of a flag
+//  * int - obtain the argument by index
+//  * *Arg - get value of the arg
+//  * *Flag - get value of the flag
+//
+// All other types are delegated to the underlying Context.  This implies that you can only
+// use your own (usually unexported) hashable type when setting up keys in the
+// context.Context.  (This is the recommended practice in any case, but it is made explicit
+// by how this method works.)
 func (c *Context) Value(name interface{}) interface{} {
 	if c == nil {
 		return nil
@@ -264,8 +274,9 @@ func (c *Context) Value(name interface{}) interface{} {
 		return c.valueCore(v.Name)
 	case *Flag:
 		return c.valueCore(v.Name)
+	default:
+		return c.Context.Value(name)
 	}
-	panic(fmt.Sprintf("unexpected type: %T", name))
 }
 
 func (c *Context) target() target {

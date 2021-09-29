@@ -33,14 +33,19 @@ var _ = Describe("middleware", func() {
 		})
 
 		Context("ContextValue", func() {
+			type privateKey string
+
 			BeforeEach(func() {
-				before = cli.ContextValue("mykey", "context value")
+				before = cli.ContextValue(privateKey("mykey"), "context value")
 			})
 
 			It("ContextValue can set and retrieve context value", func() {
-				Expect(captured.Context.Value("mykey")).To(BeIdenticalTo("context value"))
+				Expect(captured.Context.Value(privateKey("mykey"))).To(BeIdenticalTo("context value"))
 			})
 
+			It("ContextValue can set and retrieve context value via Value", func() {
+				Expect(captured.Value(privateKey("mykey"))).To(BeIdenticalTo("context value"))
+			})
 		})
 
 		Context("SetValue", func() {
