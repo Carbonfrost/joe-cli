@@ -123,13 +123,10 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			*p = v.(bool)
 			return nil
 		}
-		switch strings.ToLower(value) {
-		case "", "1", "true", "on", "t":
-			*p = true
-		case "0", "false", "off", "f":
-			*p = false
-		default:
-			return fmt.Errorf("invalid value for bool %q", value)
+		var err error
+		*p, err = parseBool(value)
+		if err != nil {
+			return err
 		}
 		return nil
 	case *string:
@@ -547,6 +544,18 @@ func formatMap(m map[string]string) string {
 		b.WriteString(v)
 	}
 	return b.String()
+}
+
+func parseBool(value string) (bool, error) {
+	switch strings.ToLower(value) {
+
+	case "", "1", "true", "on", "t":
+		return true, nil
+	case "0", "false", "off", "f":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid value for bool %q", value)
+	}
 }
 
 // splitWithEscapes considers escape sequences when splitting.  sep must not

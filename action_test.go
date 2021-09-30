@@ -16,9 +16,10 @@ var _ = Describe("middleware", func() {
 
 	Describe("before", func() {
 		var (
-			captured *cli.Context
-			before   cli.Action
-			flags    []*cli.Flag
+			captured  *cli.Context
+			before    cli.Action
+			flags     []*cli.Flag
+			arguments []string
 		)
 		JustBeforeEach(func() {
 			act := new(joeclifakes.FakeAction)
@@ -28,7 +29,7 @@ var _ = Describe("middleware", func() {
 				Action: act,
 				Flags:  flags,
 			}
-			app.RunContext(context.TODO(), []string{"app"})
+			app.RunContext(context.TODO(), arguments)
 			captured = act.ExecuteArgsForCall(0)
 		})
 
@@ -36,6 +37,7 @@ var _ = Describe("middleware", func() {
 			type privateKey string
 
 			BeforeEach(func() {
+				arguments = []string{"app"}
 				before = cli.ContextValue(privateKey("mykey"), "context value")
 			})
 
@@ -50,6 +52,7 @@ var _ = Describe("middleware", func() {
 
 		Context("SetValue", func() {
 			BeforeEach(func() {
+				arguments = []string{"app"}
 				flags = []*cli.Flag{
 					{
 						Name:   "int",
@@ -62,6 +65,36 @@ var _ = Describe("middleware", func() {
 			It("can set and retrieve value", func() {
 				Expect(captured.Value("int")).To(Equal(420))
 			})
+		})
+
+		Describe("No", func() {
+			BeforeEach(func() {
+				initial := true
+				flags = []*cli.Flag{
+					{
+						Name:    "flag",
+						Aliases: []string{"f"},
+						Options: cli.No,
+						Value:   &initial,
+					},
+				}
+				arguments = []string{"app", "--no-flag"}
+			})
+
+			It("sets negative value", func() {
+				Expect(captured.Value("flag")).To(BeFalse())
+			})
+
+			It("creates secondary flag", func() {
+				s := captured.LookupFlag("no-flag")
+				Expect(s.Name).To(Equal("no-flag"))
+			})
+
+			It("sets custom synopsis on original flag", func() {
+				s := captured.LookupFlag("flag")
+				Expect(s.Synopsis()).To(Equal("-f, --[no-]flag"))
+			})
+
 		})
 
 	})

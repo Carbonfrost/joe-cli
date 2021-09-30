@@ -161,7 +161,21 @@ func (f *Flag) applyToSet(s *set) {
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
 // is inferred from the HelpText.  Up to one short and one long name will be used.
 func (f *Flag) Synopsis() string {
-	return textUsage.flag(f.newSynopsis(), false)
+	return textUsage.flag(f.synopsis(), false)
+}
+
+func (f *Flag) cacheSynopsis(syn *flagSynopsis) *flagSynopsis {
+	f.SetData("_Synopsis", syn)
+	return syn
+}
+
+func (f *Flag) synopsis() *flagSynopsis {
+	if f.Data != nil {
+		if a, ok := f.Data["_Synopsis"]; ok {
+			return a.(*flagSynopsis)
+		}
+	}
+	return f.cacheSynopsis(f.newSynopsis())
 }
 
 func (f *Flag) newSynopsis() *flagSynopsis {

@@ -58,6 +58,9 @@ const (
 	//
 	Optional
 
+	// No introduces an alias to a Boolean flag that provides the false value.
+	No
+
 	maxOption
 
 	None Option = 0
@@ -81,6 +84,7 @@ var (
 		WorkingDirectory:       Before(ActionFunc(workingDirectoryOption)),
 		Optional:               ActionFunc(optionalOption),
 		DisallowFlagsAfterArgs: ActionFunc(disallowFlagsAfterArgsOption),
+		No:                     ActionFunc(noOption),
 	}
 )
 
@@ -170,5 +174,26 @@ func optionalOption(c *Context) error {
 
 func disallowFlagsAfterArgsOption(c *Context) error {
 	c.target().setInternalFlags(internalFlagDisallowFlagsAfterArgs)
+	return nil
+}
+
+func noOption(c *Context) error {
+	f := c.Flag()
+
+	syn := f.synopsis()
+	syn.long = "[no-]" + syn.long
+
+	cmd := c.Command()
+	cmd.Flags = append(cmd.Flags, &Flag{
+		HelpText:  f.HelpText,
+		UsageText: f.UsageText,
+		Name:      "no-" + f.Name,
+		Category:  f.Category,
+		Value:     Bool(),
+		Options:   Hidden,
+		Action: func() {
+			f.Set("false")
+		},
+	})
 	return nil
 }

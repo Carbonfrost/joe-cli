@@ -395,6 +395,17 @@ var _ = Describe("Flag", func() {
 				},
 				"-f PATTERN",
 			),
+			Entry(
+				"Synopsis data",
+				&cli.Flag{
+					Name: "reason",
+					Data: map[string]interface{}{
+						"_Synopsis": cli.NewFlagSynopsis("[no-]reason"),
+					},
+					Value: cli.Bool(),
+				},
+				"--[no-]reason",
+			),
 		)
 
 	})

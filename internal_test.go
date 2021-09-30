@@ -21,3 +21,10 @@ func SetAfterTiming(c *Context) {
 func SetActionTiming(c *Context) {
 	c.timing = actionTiming
 }
+
+func NewFlagSynopsis(long string) *flagSynopsis {
+	return &flagSynopsis{
+		long:  long,
+		value: &valueSynopsis{},
+	}
+}

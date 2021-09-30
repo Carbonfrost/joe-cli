@@ -395,12 +395,28 @@ func (c *commandContext) initializeCore(ctx *Context) error {
 		return err
 	}
 
-	for _, sub := range c.cmd.Flags {
-		err := ctx.flagContext(sub).initialize()
-		if err != nil {
-			return err
+	var (
+		initFlags = func(flags []*Flag) error {
+			for _, sub := range flags {
+				err := ctx.flagContext(sub).initialize()
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		}
+	)
+
+	flagCount := len(c.cmd.Flags)
+	if err := initFlags(c.cmd.Flags); err != nil {
+		return err
 	}
+
+	// New flags may have been introduced, so allow these to also initialize.
+	if err := initFlags(c.cmd.Flags[flagCount:]); err != nil {
+		return err
+	}
+
 	for _, sub := range c.cmd.Args {
 		err := ctx.argContext(sub).initialize()
 		if err != nil {
