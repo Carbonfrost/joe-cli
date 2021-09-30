@@ -118,7 +118,7 @@ type exprContext struct {
 	set_  *set
 }
 
-func BindExpression(exprFunc func(*Context) ([]*Expr, error)) ActionHandler {
+func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
 	return ActionFunc(func(c *Context) error {
 		exprs, err := exprFunc(c)
 		if err != nil {
@@ -358,7 +358,7 @@ func (e *Expr) options() Option {
 	return e.Options
 }
 
-func (e *Expr) appendAction(t timing, ah ActionHandler) {
+func (e *Expr) appendAction(t timing, ah Action) {
 }
 
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
@@ -540,7 +540,7 @@ func (e *exprSynopsis) names() string {
 }
 
 func (e *exprContext) initialize(c *Context) error {
-	return executeAll(c, Action(e.expr.Uses), nil)
+	return executeAll(c, ActionOf(e.expr.Uses), nil)
 }
 
 func (e *exprContext) hooks() *hooks {
@@ -548,11 +548,11 @@ func (e *exprContext) hooks() *hooks {
 }
 
 func (e *exprContext) executeBefore(ctx *Context) error {
-	return executeAll(ctx, Action(e.expr.Before), defaultExpr.Before)
+	return executeAll(ctx, ActionOf(e.expr.Before), defaultExpr.Before)
 }
 
 func (e *exprContext) executeAfter(ctx *Context) error {
-	return executeAll(ctx, Action(e.expr.After), defaultExpr.After)
+	return executeAll(ctx, ActionOf(e.expr.After), defaultExpr.After)
 }
 
 func (e *exprContext) executeBeforeDescendent(ctx *Context) error { return nil }

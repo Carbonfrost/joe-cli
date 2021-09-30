@@ -54,7 +54,7 @@ type hasFlags interface {
 
 type hook struct {
 	pat    contextPathPattern
-	action ActionHandler
+	action Action
 }
 
 type hooks struct {
@@ -306,11 +306,11 @@ func (c *Context) After(v interface{}) error {
 
 func (c *Context) act(v interface{}, desired timing) error {
 	if c.timing < desired {
-		c.target().appendAction(desired, Action(v))
+		c.target().appendAction(desired, ActionOf(v))
 		return nil
 	}
 	if c.timing == desired {
-		return Action(v).Execute(c)
+		return ActionOf(v).Execute(c)
 	}
 	if c.timing > desired {
 		return errors.New("too late to exec action")
@@ -427,7 +427,7 @@ func (c *Context) IP(name interface{}) *net.IP {
 	return lookupIP(c, name)
 }
 
-func (c *Context) Do(actions ...ActionHandler) error {
+func (c *Context) Do(actions ...Action) error {
 	for _, a := range actions {
 		err := a.Execute(c)
 		if err != nil {
@@ -592,7 +592,7 @@ func (cp contextPathPattern) Match(c ContextPath) bool {
 	return false
 }
 
-func (i *hooks) hookBefore(pat string, a ActionHandler) {
+func (i *hooks) hookBefore(pat string, a Action) {
 	i.before = append(i.before, &hook{newContextPathPattern(pat), a})
 }
 
@@ -608,7 +608,7 @@ func (i *hooks) execBeforeHooks(target *Context) error {
 	return nil
 }
 
-func (i *hooks) hookAfter(pat string, a ActionHandler) {
+func (i *hooks) hookAfter(pat string, a Action) {
 	i.after = append(i.after, &hook{newContextPathPattern(pat), a})
 }
 

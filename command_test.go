@@ -14,15 +14,15 @@ var _ = Describe("Command", func() {
 	Describe("actions", func() {
 
 		var (
-			act       *joeclifakes.FakeActionHandler
-			beforeAct *joeclifakes.FakeActionHandler
+			act       *joeclifakes.FakeAction
+			beforeAct *joeclifakes.FakeAction
 
 			app *cli.App
 		)
 
 		BeforeEach(func() {
-			act = new(joeclifakes.FakeActionHandler)
-			beforeAct = new(joeclifakes.FakeActionHandler)
+			act = new(joeclifakes.FakeAction)
+			beforeAct = new(joeclifakes.FakeAction)
 
 			app = &cli.App{
 				Commands: []*cli.Command{
@@ -50,7 +50,7 @@ var _ = Describe("Command", func() {
 	Describe("SkipFlagParsing", func() {
 
 		It("disables parsing of flags", func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Name:    "app",
 				Options: cli.SkipFlagParsing,

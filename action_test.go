@@ -17,11 +17,11 @@ var _ = Describe("middleware", func() {
 	Describe("before", func() {
 		var (
 			captured *cli.Context
-			before   cli.ActionHandler
+			before   cli.Action
 			flags    []*cli.Flag
 		)
 		JustBeforeEach(func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Name:   "app",
 				Before: before,
@@ -73,7 +73,7 @@ var _ = Describe("middleware", func() {
 		)
 
 		JustBeforeEach(func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Name:   "app",
 				Action: act,
@@ -133,10 +133,10 @@ var _ = Describe("middleware", func() {
 	Describe("initialization", func() {
 		var (
 			captured    *cli.Context
-			initializer cli.ActionHandler
+			initializer cli.Action
 		)
 		JustBeforeEach(func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Name: "app",
 				Commands: []*cli.Command{
@@ -190,7 +190,7 @@ type afterContext struct {
 var _ = Describe("Before", func() {
 
 	DescribeTable("timing examples",
-		func(arguments string, actualApp func(cli.ActionHandler) *cli.App) {
+		func(arguments string, actualApp func(cli.Action) *cli.App) {
 			var actual = new(beforeContext)
 			handler := cli.ActionFunc(func(c *cli.Context) error {
 				actual.IsInitializing = c.IsInitializing()
@@ -205,12 +205,12 @@ var _ = Describe("Before", func() {
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsBefore).To(BeTrue())
 		},
-		Entry("app", "app", func(h cli.ActionHandler) *cli.App {
+		Entry("app", "app", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Uses: cli.Before(h),
 			}
 		}),
-		Entry("command", "app r", func(h cli.ActionHandler) *cli.App {
+		Entry("command", "app r", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Commands: []*cli.Command{
 					{
@@ -220,7 +220,7 @@ var _ = Describe("Before", func() {
 				},
 			}
 		}),
-		Entry("arg", "app a", func(h cli.ActionHandler) *cli.App {
+		Entry("arg", "app a", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Args: []*cli.Arg{
 					{
@@ -230,7 +230,7 @@ var _ = Describe("Before", func() {
 				},
 			}
 		}),
-		Entry("flag", "app -f", func(h cli.ActionHandler) *cli.App {
+		Entry("flag", "app -f", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -246,7 +246,7 @@ var _ = Describe("Before", func() {
 
 var _ = Describe("After", func() {
 	DescribeTable("timing examples",
-		func(arguments string, actualApp func(cli.ActionHandler) *cli.App) {
+		func(arguments string, actualApp func(cli.Action) *cli.App) {
 			var actual = new(afterContext)
 			handler := cli.ActionFunc(func(c *cli.Context) error {
 				actual.IsInitializing = c.IsInitializing()
@@ -261,12 +261,12 @@ var _ = Describe("After", func() {
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsAfter).To(BeTrue())
 		},
-		Entry("app", "app", func(h cli.ActionHandler) *cli.App {
+		Entry("app", "app", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Uses: cli.After(h),
 			}
 		}),
-		Entry("command", "app r", func(h cli.ActionHandler) *cli.App {
+		Entry("command", "app r", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Commands: []*cli.Command{
 					{
@@ -276,7 +276,7 @@ var _ = Describe("After", func() {
 				},
 			}
 		}),
-		Entry("arg", "app a", func(h cli.ActionHandler) *cli.App {
+		Entry("arg", "app a", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Args: []*cli.Arg{
 					{
@@ -286,7 +286,7 @@ var _ = Describe("After", func() {
 				},
 			}
 		}),
-		Entry("flag", "app -f", func(h cli.ActionHandler) *cli.App {
+		Entry("flag", "app -f", func(h cli.Action) *cli.App {
 			return &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -304,8 +304,8 @@ var _ = Describe("events", func() {
 	DescribeTable("execution order of events",
 		func(arguments string, expected types.GomegaMatcher) {
 			result := make([]string, 0)
-			event := func(name string) cli.ActionHandler {
-				return cli.Action(func() {
+			event := func(name string) cli.Action {
+				return cli.ActionOf(func() {
 					result = append(result, name)
 				})
 			}

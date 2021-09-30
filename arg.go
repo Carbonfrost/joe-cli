@@ -178,24 +178,24 @@ func (a *Arg) options() Option {
 	return a.Options
 }
 
-func (a *Arg) wrapAction(fn func(ActionHandler) ActionFunc) {
-	a.Action = fn(Action(a.Action))
+func (a *Arg) wrapAction(fn func(Action) ActionFunc) {
+	a.Action = fn(ActionOf(a.Action))
 }
 
 func (a *Arg) applyToSet(s *set) {
 	a.option = s.defineArg(a.Name, a.value(), a.NArg)
 }
 
-func (a *Arg) action() ActionHandler {
-	return Action(a.Action)
+func (a *Arg) action() Action {
+	return ActionOf(a.Action)
 }
 
-func (a *Arg) before() ActionHandler {
-	return Action(a.Before)
+func (a *Arg) before() Action {
+	return ActionOf(a.Before)
 }
 
-func (a *Arg) after() ActionHandler {
-	return Action(a.After)
+func (a *Arg) after() Action {
+	return ActionOf(a.After)
 }
 
 func (a *Arg) name() string {
@@ -236,7 +236,7 @@ func (a *Arg) hooks() *hooks {
 	return nil
 }
 
-func (a *Arg) appendAction(t timing, ah ActionHandler) {
+func (a *Arg) appendAction(t timing, ah Action) {
 	a.uses.add(t, ah)
 }
 
@@ -245,7 +245,7 @@ func (o *argContext) hooks() *hooks {
 }
 
 func (o *argContext) initialize(c *Context) error {
-	rest, err := takeInitializers(Action(o.option.Uses), o.option.Options, c)
+	rest, err := takeInitializers(ActionOf(o.option.Uses), o.option.Options, c)
 	if err != nil {
 		return err
 	}

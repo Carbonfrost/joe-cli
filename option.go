@@ -72,7 +72,7 @@ const (
 )
 
 var (
-	optionMap = map[Option]ActionHandler{
+	optionMap = map[Option]Action{
 		Hidden:                 ActionFunc(hiddenOption),
 		Required:               ActionFunc(requiredOption),
 		Exits:                  ActionFunc(wrapWithExit),
@@ -113,8 +113,8 @@ func (f internalFlags) disallowFlagsAfterArgs() bool {
 	return f&internalFlagDisallowFlagsAfterArgs == internalFlagDisallowFlagsAfterArgs
 }
 
-func splitOptions(options int) []ActionHandler {
-	var res []ActionHandler
+func splitOptions(options int) []Action {
+	var res []Action
 	for current := 1; options != 0 && current < int(maxOption); current = current << 1 {
 		if options&current == current {
 			res = append(res, optionMap[Option(current)])

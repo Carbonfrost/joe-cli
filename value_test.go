@@ -19,7 +19,7 @@ var _ = Describe("Value", func() {
 
 		DescribeTable("generic values",
 			func(f *cli.Flag, arguments string, expected types.GomegaMatcher) {
-				act := new(joeclifakes.FakeActionHandler)
+				act := new(joeclifakes.FakeAction)
 				app := &cli.App{
 					Name: "app",
 					Flags: []*cli.Flag{
@@ -97,7 +97,7 @@ var _ = Describe("Value", func() {
 		)
 
 		DescribeTable("List flag examples", func(arguments string, expected types.GomegaMatcher) {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Name: "app",
 				Flags: []*cli.Flag{
@@ -118,7 +118,7 @@ var _ = Describe("Value", func() {
 		)
 
 		DescribeTable("Map flag examples", func(arguments string, expected types.GomegaMatcher) {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Name: "app",
 				Flags: []*cli.Flag{

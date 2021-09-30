@@ -7,7 +7,7 @@ import (
 	cli "github.com/Carbonfrost/joe-cli"
 )
 
-type FakeActionHandler struct {
+type FakeAction struct {
 	ExecuteStub        func(*cli.Context) error
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
@@ -23,7 +23,7 @@ type FakeActionHandler struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeActionHandler) Execute(arg1 *cli.Context) error {
+func (fake *FakeAction) Execute(arg1 *cli.Context) error {
 	fake.executeMutex.Lock()
 	ret, specificReturn := fake.executeReturnsOnCall[len(fake.executeArgsForCall)]
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
@@ -42,26 +42,26 @@ func (fake *FakeActionHandler) Execute(arg1 *cli.Context) error {
 	return fakeReturns.result1
 }
 
-func (fake *FakeActionHandler) ExecuteCallCount() int {
+func (fake *FakeAction) ExecuteCallCount() int {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *FakeActionHandler) ExecuteCalls(stub func(*cli.Context) error) {
+func (fake *FakeAction) ExecuteCalls(stub func(*cli.Context) error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = stub
 }
 
-func (fake *FakeActionHandler) ExecuteArgsForCall(i int) *cli.Context {
+func (fake *FakeAction) ExecuteArgsForCall(i int) *cli.Context {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	argsForCall := fake.executeArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeActionHandler) ExecuteReturns(result1 error) {
+func (fake *FakeAction) ExecuteReturns(result1 error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = nil
@@ -70,7 +70,7 @@ func (fake *FakeActionHandler) ExecuteReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeActionHandler) ExecuteReturnsOnCall(i int, result1 error) {
+func (fake *FakeAction) ExecuteReturnsOnCall(i int, result1 error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = nil
@@ -84,7 +84,7 @@ func (fake *FakeActionHandler) ExecuteReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeActionHandler) Invocations() map[string][][]interface{} {
+func (fake *FakeAction) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.executeMutex.RLock()
@@ -96,7 +96,7 @@ func (fake *FakeActionHandler) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *FakeActionHandler) recordInvocation(key string, args []interface{}) {
+func (fake *FakeAction) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -108,4 +108,4 @@ func (fake *FakeActionHandler) recordInvocation(key string, args []interface{}) 
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ cli.ActionHandler = new(FakeActionHandler)
+var _ cli.Action = new(FakeAction)

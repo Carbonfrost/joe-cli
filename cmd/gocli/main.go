@@ -35,7 +35,7 @@ func main() {
 						Name: "kind",
 					},
 				},
-				Action: cli.Action(func() error {
+				Action: cli.ActionOf(func() error {
 					fmt.Println("TODO: handle generating")
 					return nil
 				}),

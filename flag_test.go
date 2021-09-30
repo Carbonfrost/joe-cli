@@ -18,13 +18,13 @@ var _ = Describe("Flag", func() {
 
 	Describe("Action", func() {
 		var (
-			act       *joeclifakes.FakeActionHandler
+			act       *joeclifakes.FakeAction
 			app       *cli.App
 			arguments = "app -f value"
 		)
 
 		BeforeEach(func() {
-			act = new(joeclifakes.FakeActionHandler)
+			act = new(joeclifakes.FakeAction)
 			app = &cli.App{
 				Name: "app",
 				Flags: []*cli.Flag{
@@ -113,7 +113,7 @@ var _ = Describe("Flag", func() {
 
 		Context("for a persistent flag", func() {
 			BeforeEach(func() {
-				act = new(joeclifakes.FakeActionHandler)
+				act = new(joeclifakes.FakeAction)
 				app = &cli.App{
 					Name: "app",
 					Commands: []*cli.Command{

@@ -15,7 +15,7 @@ import (
 var _ = Describe("Expr", func() {
 
 	It("context contains the expression", func() {
-		act := new(joeclifakes.FakeActionHandler)
+		act := new(joeclifakes.FakeAction)
 		app := &cli.App{
 			Action: act,
 			Args: []*cli.Arg{

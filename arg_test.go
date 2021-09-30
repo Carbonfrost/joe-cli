@@ -16,13 +16,13 @@ var _ = Describe("Arg", func() {
 
 	Describe("Action", func() {
 		var (
-			act       *joeclifakes.FakeActionHandler
+			act       *joeclifakes.FakeAction
 			app       *cli.App
 			arguments = "app f"
 		)
 
 		BeforeEach(func() {
-			act = new(joeclifakes.FakeActionHandler)
+			act = new(joeclifakes.FakeAction)
 			app = &cli.App{
 				Name: "app",
 				Args: []*cli.Arg{
@@ -55,7 +55,7 @@ var _ = Describe("Arg", func() {
 		DescribeTable(
 			"inferred type",
 			func(count int, expected interface{}) {
-				act := new(joeclifakes.FakeActionHandler)
+				act := new(joeclifakes.FakeAction)
 				app := &cli.App{
 					Name: "app",
 					Args: []*cli.Arg{

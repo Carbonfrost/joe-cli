@@ -22,7 +22,7 @@ func (emptyFS) Open(name string) (fs.File, error) { return nil, nil }
 var _ = Describe("File", func() {
 
 	It("as an argument can be retrieved", func() {
-		act := new(joeclifakes.FakeActionHandler)
+		act := new(joeclifakes.FakeAction)
 		app := &cli.App{
 			Args: []*cli.Arg{
 				{
@@ -59,7 +59,7 @@ var _ = Describe("File", func() {
 
 	It("writes to the app output when - is used", func() {
 		var buf bytes.Buffer
-		act := new(joeclifakes.FakeActionHandler)
+		act := new(joeclifakes.FakeAction)
 		app := cli.App{
 			Args: []*cli.Arg{
 				{

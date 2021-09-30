@@ -15,7 +15,7 @@ var _ = Describe("Context", func() {
 
 	Describe("Value", func() {
 		It("contains flag value at the app level", func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -34,7 +34,7 @@ var _ = Describe("Context", func() {
 		})
 
 		It("contains flag value from inherited context", func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -58,7 +58,7 @@ var _ = Describe("Context", func() {
 		})
 
 		It("contains flag value set using one of its aliases", func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -78,7 +78,7 @@ var _ = Describe("Context", func() {
 		})
 
 		It("contains arg value", func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Args: []*cli.Arg{
 					{
@@ -101,7 +101,7 @@ var _ = Describe("Context", func() {
 	Describe("Before", func() {
 
 		It("defers when set from initializer", func() {
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			act.ExecuteCalls(func(c *cli.Context) error {
 				Expect(c.IsBefore()).To(BeTrue())
 				return nil
@@ -120,7 +120,7 @@ var _ = Describe("Context", func() {
 
 		It("invokes immediately in the before context", func() {
 			ctx := &cli.Context{}
-			act := new(joeclifakes.FakeActionHandler)
+			act := new(joeclifakes.FakeAction)
 			cli.SetBeforeTiming(ctx)
 
 			_ = ctx.Before(act)
@@ -131,7 +131,7 @@ var _ = Describe("Context", func() {
 
 		DescribeTable("error when timing after",
 			func(timing func(*cli.Context)) {
-				act := new(joeclifakes.FakeActionHandler)
+				act := new(joeclifakes.FakeAction)
 				ctx := &cli.Context{}
 				timing(ctx)
 

@@ -17,18 +17,18 @@ var _ = Describe("App", func() {
 	Describe("actions", func() {
 
 		var (
-			act       *joeclifakes.FakeActionHandler
-			beforeAct *joeclifakes.FakeActionHandler
-			usesAct   *joeclifakes.FakeActionHandler
+			act       *joeclifakes.FakeAction
+			beforeAct *joeclifakes.FakeAction
+			usesAct   *joeclifakes.FakeAction
 			arguments string
 
 			app *cli.App
 		)
 
 		JustBeforeEach(func() {
-			act = new(joeclifakes.FakeActionHandler)
-			beforeAct = new(joeclifakes.FakeActionHandler)
-			usesAct = new(joeclifakes.FakeActionHandler)
+			act = new(joeclifakes.FakeAction)
+			beforeAct = new(joeclifakes.FakeAction)
+			usesAct = new(joeclifakes.FakeAction)
 
 			app = &cli.App{
 				Commands: []*cli.Command{

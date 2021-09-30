@@ -133,7 +133,7 @@ func (a *App) Expr(name string) (*Expr, bool) {
 	return findExprByName(a.Exprs, name)
 }
 
-func (a *App) appendAction(t timing, ah ActionHandler) {
+func (a *App) appendAction(t timing, ah Action) {
 	a.rootCommand.uses.add(t, ah)
 }
 
@@ -220,7 +220,7 @@ func (a *App) runContextCore(c context.Context, args []string, exit func(*Contex
 }
 
 func (a *appContext) initialize(c *Context) error {
-	rest, err := takeInitializers(Action(a.app_.Uses), a.app_.Options, c)
+	rest, err := takeInitializers(ActionOf(a.app_.Uses), a.app_.Options, c)
 
 	a.commandContext.cmd = a.app_.createRoot()
 	a.commandContext.cmd.uses = rest

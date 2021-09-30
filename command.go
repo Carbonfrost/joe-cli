@@ -365,7 +365,7 @@ func (c *Command) options() Option {
 	return c.Options
 }
 
-func (c *Command) appendAction(t timing, ah ActionHandler) {
+func (c *Command) appendAction(t timing, ah Action) {
 	c.uses.add(t, ah)
 }
 
@@ -382,7 +382,7 @@ func (c CommandsByName) Swap(i, j int) {
 }
 
 func (c *commandContext) initialize(ctx *Context) error {
-	rest, err := takeInitializers(Action(c.cmd.Uses), c.cmd.Options, ctx)
+	rest, err := takeInitializers(ActionOf(c.cmd.Uses), c.cmd.Options, ctx)
 	if err != nil {
 		return err
 	}
@@ -391,7 +391,7 @@ func (c *commandContext) initialize(ctx *Context) error {
 }
 
 func (c *commandContext) initializeCore(ctx *Context) error {
-	if err := executeAll(ctx, Action(c.cmd.uses.Initializers), defaultCommand.Initializers); err != nil {
+	if err := executeAll(ctx, ActionOf(c.cmd.uses.Initializers), defaultCommand.Initializers); err != nil {
 		return err
 	}
 
@@ -438,18 +438,18 @@ func (c *commandContext) executeBefore(ctx *Context) error {
 			return err
 		}
 	}
-	return executeAll(ctx, Action(c.cmd.Before), defaultCommand.Before)
+	return executeAll(ctx, ActionOf(c.cmd.Before), defaultCommand.Before)
 }
 
 func (c *commandContext) executeAfter(ctx *Context) error {
 	if err := ctx.executeAfterHooks(c.cmd); err != nil {
 		return err
 	}
-	var aft ActionHandler
+	var aft Action
 	if c.cmd.uses != nil {
 		aft = c.cmd.uses.After
 	}
-	return executeAll(ctx, aft, Action(c.cmd.After), defaultCommand.After)
+	return executeAll(ctx, aft, ActionOf(c.cmd.After), defaultCommand.After)
 }
 
 func (c *commandContext) executeAfterDescendent(ctx *Context) error {

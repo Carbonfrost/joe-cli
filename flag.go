@@ -106,15 +106,15 @@ type option interface {
 	SetRequired()
 
 	applyToSet(s *set)
-	wrapAction(func(ActionHandler) ActionFunc)
+	wrapAction(func(Action) ActionFunc)
 	value() interface{}
 	name() string
 	envVars() []string
 	filePath() string
 	helpText() string
-	before() ActionHandler
-	after() ActionHandler
-	action() ActionHandler
+	before() Action
+	after() Action
+	action() Action
 }
 
 type flagContext struct {
@@ -208,7 +208,7 @@ func (f *Flag) hooks() *hooks {
 	return nil
 }
 
-func (f *Flag) appendAction(t timing, ah ActionHandler) {
+func (f *Flag) appendAction(t timing, ah Action) {
 	f.uses_.add(t, ah)
 }
 
@@ -246,7 +246,7 @@ func (o *flagContext) initialize(c *Context) error {
 	}
 	f.option = res
 
-	rest, err := takeInitializers(Action(f.Uses), f.Options, c)
+	rest, err := takeInitializers(ActionOf(f.Uses), f.Options, c)
 	if err != nil {
 		return err
 	}
@@ -387,20 +387,20 @@ func (f *Flag) options() Option {
 	return f.Options
 }
 
-func (f *Flag) wrapAction(fn func(ActionHandler) ActionFunc) {
-	f.Action = fn(Action(f.Action))
+func (f *Flag) wrapAction(fn func(Action) ActionFunc) {
+	f.Action = fn(ActionOf(f.Action))
 }
 
-func (f *Flag) action() ActionHandler {
-	return Action(f.Action)
+func (f *Flag) action() Action {
+	return ActionOf(f.Action)
 }
 
-func (f *Flag) before() ActionHandler {
-	return Action(f.Before)
+func (f *Flag) before() Action {
+	return ActionOf(f.Before)
 }
 
-func (f *Flag) after() ActionHandler {
-	return Action(f.After)
+func (f *Flag) after() Action {
+	return ActionOf(f.After)
 }
 
 func (f *Flag) name() string {

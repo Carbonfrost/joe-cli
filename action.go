@@ -8,22 +8,22 @@ import (
 // ActionFunc provides the basic function for
 type ActionFunc func(*Context) error
 
-//counterfeiter:generate . ActionHandler
+//counterfeiter:generate . Action
 
-// ActionHandler represents the building block of the various actions
+// Action represents the building block of the various actions
 // to perform when an app, command, flag, or argument is being evaluated.
-type ActionHandler interface {
+type Action interface {
 	Execute(*Context) error
 }
 
 type ActionPipeline struct {
-	items []ActionHandler
+	items []Action
 }
 
 type target interface {
 	hooks() *hooks
 	options() Option
-	appendAction(timing, ActionHandler)
+	appendAction(timing, Action)
 	setCategory(name string)
 	setData(name string, v interface{})
 	setInternalFlags(internalFlags)
@@ -31,19 +31,19 @@ type target interface {
 }
 
 type actionPipelines struct {
-	Initializers ActionHandler // Must be strictly initializers (no automatic regrouping)
-	Before       ActionHandler
-	Action       ActionHandler
-	After        ActionHandler
+	Initializers Action // Must be strictly initializers (no automatic regrouping)
+	Before       Action
+	Action       Action
+	After        Action
 }
 
-type actionHandlerTiming interface {
-	ActionHandler
+type ActionTiming interface {
+	Action
 	timing() timing
 }
 
 type withTimingWrapper struct {
-	ActionHandler
+	Action
 	t timing
 }
 
@@ -57,7 +57,7 @@ const (
 )
 
 var (
-	emptyAction ActionHandler = ActionFunc(emptyActionImpl)
+	emptyAction Action = ActionFunc(emptyActionImpl)
 
 	defaultApp = actionPipelines{
 		Initializers: Pipeline(
@@ -89,48 +89,48 @@ var (
 
 // Pipeline combines various actions into a single action
 func Pipeline(actions ...interface{}) *ActionPipeline {
-	myActions := make([]ActionHandler, len(actions))
+	myActions := make([]Action, len(actions))
 	for i, a := range actions {
-		myActions[i] = Action(a)
+		myActions[i] = ActionOf(a)
 	}
 
 	return &ActionPipeline{myActions}
 }
 
-func Before(a ActionHandler) ActionHandler {
+func Before(a Action) Action {
 	return withTiming(a, beforeTiming)
 }
 
-func After(a ActionHandler) ActionHandler {
+func After(a Action) Action {
 	return withTiming(a, afterTiming)
 }
 
 // Initializer marks an action handler as being for the initialization phase.  When such a handler
 // is added to the Uses pipeline, it will automatically be associated correctly with the initialization
 // of the value.  Otherwise, this handler is not special
-func Initializer(a ActionHandler) ActionHandler {
+func Initializer(a Action) Action {
 	return withTiming(a, initialTiming)
 }
 
-func timingOf(a ActionHandler, defaultTiming timing) timing {
+func timingOf(a Action, defaultTiming timing) timing {
 	switch val := a.(type) {
-	case actionHandlerTiming:
+	case ActionTiming:
 		return val.timing()
 	}
 	return defaultTiming
 }
 
-func withTiming(a ActionHandler, t timing) ActionHandler {
+func withTiming(a Action, t timing) Action {
 	return withTimingWrapper{a, t}
 }
 
-func Action(item interface{}) ActionHandler {
+func ActionOf(item interface{}) Action {
 	switch a := item.(type) {
 	case nil:
 		return nil
 	case func(*Context) error:
 		return ActionFunc(a)
-	case ActionHandler:
+	case Action:
 		return a
 	case func(*Context):
 		return ActionFunc(func(c *Context) error {
@@ -175,7 +175,7 @@ func SetValue(v interface{}) ActionFunc {
 
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
 // set up inside a Uses pipeline.
-func Data(name string, value interface{}) ActionHandler {
+func Data(name string, value interface{}) Action {
 	return ActionFunc(func(c *Context) error {
 		c.target().setData(name, value)
 		return nil
@@ -184,7 +184,7 @@ func Data(name string, value interface{}) ActionHandler {
 
 // Category sets the category of a command, flag, or expression.  This handler is generally
 // set up inside a Uses pipeline.
-func Category(name string) ActionHandler {
+func Category(name string) Action {
 	return ActionFunc(func(c *Context) error {
 		c.target().setCategory(name)
 		return nil
@@ -193,7 +193,7 @@ func Category(name string) ActionHandler {
 
 // HookBefore registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
-func HookBefore(pattern string, handler ActionHandler) ActionHandler {
+func HookBefore(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
 		c.demandInit().hookBefore(pattern, handler)
 		return nil
@@ -202,7 +202,7 @@ func HookBefore(pattern string, handler ActionHandler) ActionHandler {
 
 // HookAfter registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
-func HookAfter(pattern string, handler ActionHandler) ActionHandler {
+func HookAfter(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
 		c.demandInit().hookAfter(pattern, handler)
 		return nil
@@ -223,15 +223,15 @@ func HookAfter(pattern string, handler ActionHandler) ActionHandler {
 // configuration and allowing an expert configuration by using a value.
 // In general, making the value of a non-Boolean flag optional is not recommended when
 // the command also allows arguments because it can make the syntax ambiguous.
-func OptionalValue(v interface{}) ActionHandler {
+func OptionalValue(v interface{}) Action {
 	return Initializer(ActionFunc(func(c *Context) error {
 		c.Flag().setOptionalValue(v)
 		return nil
 	}))
 }
 
-func newActionPipelines(m map[timing][]ActionHandler) *actionPipelines {
-	var pipe = func(h []ActionHandler) ActionHandler {
+func newActionPipelines(m map[timing][]Action) *actionPipelines {
+	var pipe = func(h []Action) Action {
 		if len(h) == 0 {
 			return emptyAction
 		}
@@ -252,7 +252,7 @@ func (af ActionFunc) Execute(c *Context) error {
 	return af(c)
 }
 
-func (p *ActionPipeline) Append(x ActionHandler) *ActionPipeline {
+func (p *ActionPipeline) Append(x Action) *ActionPipeline {
 	return &ActionPipeline{
 		items: append(p.items, unwind(x)...),
 	}
@@ -280,7 +280,7 @@ func (p *ActionPipeline) takeInitializers(c *Context) (*actionPipelines, error) 
 	return res, nil
 }
 
-func (p *actionPipelines) add(t timing, h ActionHandler) {
+func (p *actionPipelines) add(t timing, h Action) {
 	switch t {
 	case initialTiming:
 		p.Initializers = pipeline(p.Initializers, h)
@@ -311,14 +311,14 @@ func emptyActionImpl(*Context) error {
 	return nil
 }
 
-func execute(af ActionHandler, c *Context) error {
+func execute(af Action, c *Context) error {
 	if af == nil {
 		return nil
 	}
 	return af.Execute(c)
 }
 
-func executeAll(c *Context, x ...ActionHandler) error {
+func executeAll(c *Context, x ...Action) error {
 	for _, y := range x {
 		if err := execute(y, c); err != nil {
 			return err
@@ -327,7 +327,7 @@ func executeAll(c *Context, x ...ActionHandler) error {
 	return nil
 }
 
-func doThenExit(a ActionHandler) ActionFunc {
+func doThenExit(a Action) ActionFunc {
 	return func(c *Context) error {
 		err := a.Execute(c)
 		if err != nil {
@@ -337,17 +337,17 @@ func doThenExit(a ActionHandler) ActionFunc {
 	}
 }
 
-func pipeline(x, y ActionHandler) *ActionPipeline {
+func pipeline(x, y Action) *ActionPipeline {
 	return &ActionPipeline{
 		items: append(unwind(x), unwind(y)...),
 	}
 }
 
-func takeInitializers(uses ActionHandler, opts Option, c *Context) (*actionPipelines, error) {
+func takeInitializers(uses Action, opts Option, c *Context) (*actionPipelines, error) {
 	return pipeline(uses, opts.wrap()).takeInitializers(c)
 }
 
-func unwind(x ActionHandler) []ActionHandler {
+func unwind(x Action) []Action {
 	if x == nil {
 		return nil
 	}
@@ -356,22 +356,22 @@ func unwind(x ActionHandler) []ActionHandler {
 		if pipe == nil {
 			return nil
 		}
-		res := make([]ActionHandler, 0, len(pipe.items))
+		res := make([]Action, 0, len(pipe.items))
 		for _, p := range pipe.items {
 			res = append(res, unwind(p)...)
 		}
 		return res
 	}
-	return []ActionHandler{x}
+	return []Action{x}
 }
 
-func actionOrEmpty(v interface{}) ActionHandler {
+func actionOrEmpty(v interface{}) Action {
 	if v == nil {
 		return emptyAction
 	}
-	return Action(v)
+	return ActionOf(v)
 }
 
 var (
-	_ actionHandlerTiming = withTimingWrapper{}
+	_ ActionTiming = withTimingWrapper{}
 )
