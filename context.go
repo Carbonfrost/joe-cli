@@ -666,33 +666,35 @@ func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	}
 }
 
-func (c *Context) flagContext(opt *Flag) *Context {
+func (c *Context) flagContext(opt *Flag, args []string) *Context {
 	return &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
 		internal: &flagContext{
 			option: opt,
+			args_:  args,
 		},
 		parent: c,
 	}
 }
 
-func (c *Context) argContext(opt *Arg) *Context {
+func (c *Context) argContext(opt *Arg, args []string) *Context {
 	return &Context{
 		Context:     c.Context,
 		contextData: c.contextData,
 		internal: &argContext{
 			option: opt,
+			args_:  args,
 		},
 		parent: c,
 	}
 }
 
-func (c *Context) optionContext(opt option) *Context {
+func (c *Context) optionContext(opt option, args []string) *Context {
 	if f, ok := opt.(*Flag); ok {
-		return c.flagContext(f)
+		return c.flagContext(f, args)
 	}
-	return c.argContext(opt.(*Arg))
+	return c.argContext(opt.(*Arg), args)
 }
 
 func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
@@ -873,6 +875,7 @@ func (c *Context) option() option {
 
 func triggerFlagsAndArgs(ctx *Context) error {
 	opts := ctx.flagsAndArgs(true)
+	bindings := ctx.internal.set().bindings
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
 			if flag.option.persistent {
@@ -882,7 +885,7 @@ func triggerFlagsAndArgs(ctx *Context) error {
 			}
 		}
 
-		err := ctx.optionContext(f).setTiming(beforeTiming).executeBefore()
+		err := ctx.optionContext(f, bindings[f.name()]).setTiming(beforeTiming).executeBefore()
 		if err != nil {
 			return err
 		}
@@ -892,7 +895,7 @@ func triggerFlagsAndArgs(ctx *Context) error {
 	// Action when the flag or arg was set
 	for _, f := range opts {
 		if f.Seen() {
-			err := ctx.optionContext(f).setTiming(actionTiming).executeOption()
+			err := ctx.optionContext(f, bindings[f.name()]).setTiming(actionTiming).executeOption()
 			if err != nil {
 				return err
 			}
@@ -903,6 +906,7 @@ func triggerFlagsAndArgs(ctx *Context) error {
 
 func triggerAfterFlagsAndArgs(ctx *Context) error {
 	opts := ctx.flagsAndArgs(true)
+	bindings := ctx.internal.set().bindings
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
 			if flag.option.persistent {
@@ -912,7 +916,7 @@ func triggerAfterFlagsAndArgs(ctx *Context) error {
 			}
 		}
 
-		err := ctx.optionContext(f).setTiming(afterTiming).executeAfter()
+		err := ctx.optionContext(f, bindings[f.name()]).setTiming(afterTiming).executeAfter()
 		if err != nil {
 			return err
 		}

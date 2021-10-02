@@ -85,6 +85,7 @@ type commandContext struct {
 	args_                []string
 	set_                 *set
 	didSubcommandExecute bool
+	bindings             map[string][]string
 }
 
 const (
@@ -398,7 +399,7 @@ func (c *commandContext) initializeCore(ctx *Context) error {
 	var (
 		initFlags = func(flags []*Flag) error {
 			for _, sub := range flags {
-				err := ctx.flagContext(sub).initialize()
+				err := ctx.flagContext(sub, nil).initialize()
 				if err != nil {
 					return err
 				}
@@ -418,7 +419,7 @@ func (c *commandContext) initializeCore(ctx *Context) error {
 	}
 
 	for _, sub := range c.cmd.Args {
-		err := ctx.argContext(sub).initialize()
+		err := ctx.argContext(sub, nil).initialize()
 		if err != nil {
 			return err
 		}

@@ -7,11 +7,11 @@ import (
 )
 
 type set struct {
-	shortOptions           map[rune]*internalOption
-	longOptions            map[string]*internalOption
-	positionalOptions      []*internalOption
-	values                 map[string]interface{}
-	disallowFlagsAfterArgs bool
+	shortOptions      map[rune]*internalOption
+	longOptions       map[string]*internalOption
+	positionalOptions []*internalOption
+	values            map[string]interface{}
+	bindings          map[string][]string
 }
 
 type argBinding struct {
@@ -89,9 +89,18 @@ func (s *set) parse(args []string, disallowFlagsAfterArgs bool) error {
 	}
 
 	bind := newArgBinding(s.positionalOptions)
+	s.bindings = map[string][]string{}
+
 	var (
-		state   parserState = flagsOrArgs
-		anyArgs bool
+		state        parserState = flagsOrArgs
+		anyArgs      bool
+		appendOutput = func(n, a string) {
+			if e, ok := s.bindings[n]; ok {
+				s.bindings[n] = append(e, a)
+			} else {
+				s.bindings[n] = []string{a}
+			}
+		}
 	)
 
 	// Skip program name
@@ -116,6 +125,7 @@ Parsing:
 						return err
 					}
 				}
+				appendOutput(bind.name(), arg)
 
 				if len(args) == 0 {
 					if err := bind.Done(); err != nil {
@@ -175,6 +185,8 @@ Parsing:
 			if err := opt.value.Set(value, opt); err != nil {
 				return setFlagError(opt, value, err)
 			}
+			appendOutput(opt.uname, "--"+arg[2:])
+			appendOutput(opt.uname, arg)
 			continue Parsing
 		}
 
@@ -192,6 +204,8 @@ Parsing:
 				}
 				return unknownOption(c)
 			}
+
+			appendOutput(opt.uname, "-"+arg)
 			opt.isLong = false
 			opt.count++
 			var value string
@@ -208,6 +222,7 @@ Parsing:
 			if err := opt.value.Set(value, opt); err != nil {
 				return setFlagError(opt, value, err)
 			}
+			appendOutput(opt.uname, value)
 
 			if !opt.flag {
 				continue Parsing
@@ -238,6 +253,7 @@ func (s *set) defineArg(name string, v interface{}, narg interface{}) *internalO
 	opt := &internalOption{
 		value: wrapGeneric(v),
 		narg:  narg,
+		uname: name,
 	}
 
 	s.values[name] = v
@@ -255,6 +271,10 @@ func (s *set) withArgs(args []*Arg) *set {
 func (a *argBinding) next() bool {
 	a.index += 1
 	return a.index < len(a.items)
+}
+
+func (a *argBinding) name() string {
+	return a.items[a.index].uname
 }
 
 func (a *argBinding) current() (*internalOption, ArgCounter) {

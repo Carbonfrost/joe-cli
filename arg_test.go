@@ -43,6 +43,11 @@ var _ = Describe("Arg", func() {
 			Expect(act.ExecuteCallCount()).To(Equal(1))
 		})
 
+		It("contains args in captured context", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Args()).To(Equal([]string{"f"}))
+		})
+
 		It("provides properly initialized context", func() {
 			captured := act.ExecuteArgsForCall(0)
 			Expect(captured.Name()).To(Equal("<f>"))

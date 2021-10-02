@@ -119,6 +119,7 @@ type option interface {
 
 type flagContext struct {
 	option *Flag
+	args_  []string
 }
 
 type flagSynopsis struct {
@@ -282,7 +283,7 @@ func (o *flagContext) executeAfter(ctx *Context) error {
 }
 func (o *flagContext) execute(ctx *Context) error { return nil }
 func (o *flagContext) app() (*App, bool)          { return nil, false }
-func (o *flagContext) args() []string             { return nil }
+func (o *flagContext) args() []string             { return o.args_ }
 func (o *flagContext) set() *set                  { return nil }
 func (o *flagContext) target() target             { return o.option }
 func (o *flagContext) setDidSubcommandExecute()   {}

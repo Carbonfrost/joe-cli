@@ -30,16 +30,27 @@ var _ = Describe("Command", func() {
 						Name:   "c",
 						Action: act,
 						Before: beforeAct,
+						Args: []*cli.Arg{
+							{
+								Name: "a",
+								NArg: -1,
+							},
+						},
 					},
 				},
 			}
 
-			args, _ := cli.Split("app c")
+			args, _ := cli.Split("app c args args")
 			app.RunContext(nil, args)
 		})
 
 		It("executes action on executing sub-command", func() {
 			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
+
+		It("contains args in captured context", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Args()).To(Equal([]string{"c", "args", "args"}))
 		})
 
 		It("executes before action on executing sub-command", func() {
