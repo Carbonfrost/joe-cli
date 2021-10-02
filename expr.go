@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type ExprEvaluator interface {
+type Evaluator interface {
 	Evaluate(c *Context, v interface{}, yield func(interface{}) error) error
 }
 
@@ -22,7 +22,7 @@ type Expr struct {
 	Category  string
 
 	// Evaluate provides the evaluation behavior for the expression.  The value should
-	// implement ExprEvaluator or support runtime conversion to that interface via
+	// implement Evaluator or support runtime conversion to that interface via
 	// the rules provided by the cli.Evaluator function.
 	Evaluate interface{}
 
@@ -69,7 +69,7 @@ type Expression interface {
 // ExprBinding provides the relationship between an evaluator and the evaluation
 // context.  Optionally, the original Expr is made available
 type ExprBinding interface {
-	ExprEvaluator
+	Evaluator
 	Lookup
 	Expr() *Expr
 }
@@ -107,7 +107,7 @@ type boundExpr struct {
 }
 
 type exprBinding struct {
-	ExprEvaluator
+	Evaluator
 	Lookup
 	expr *Expr
 }
@@ -131,7 +131,7 @@ func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
 	})
 }
 
-func NewExprBinding(ev ExprEvaluator, exprlookup ...interface{}) ExprBinding {
+func NewExprBinding(ev Evaluator, exprlookup ...interface{}) ExprBinding {
 	var (
 		expr   *Expr
 		lookup Lookup = LookupValues{}
@@ -144,17 +144,17 @@ func NewExprBinding(ev ExprEvaluator, exprlookup ...interface{}) ExprBinding {
 		expr = exprlookup[0].(*Expr)
 	}
 	return &exprBinding{
-		ExprEvaluator: ev,
-		Lookup:        lookup,
-		expr:          expr,
+		Evaluator: ev,
+		Lookup:    lookup,
+		expr:      expr,
 	}
 }
 
-// Evaluator creates an expression evaluator for a given value.  The
+// EvaluatorOf creates an expression evaluator for a given value.  The
 // value must be bool or a function.  If a bool, then it works as a predicate
 // for the corresponding invariant (i.e. false filters out all values, and true
 // includes all values).  If a function, the signature must match either the
-// ExprEvaluator.Evaluate function signature or a  variation that excludes
+// Evaluator.Evaluate function signature or a  variation that excludes
 // the context and/or yielder.
 // You can also use bool as a return type as in the same signature used by
 // Predicate.  These are valid signatures:
@@ -168,11 +168,11 @@ func NewExprBinding(ev ExprEvaluator, exprlookup ...interface{}) ExprBinding {
 //   * func(interface{}) error
 //   * func(interface{})
 //
-func Evaluator(v interface{}) ExprEvaluator {
+func EvaluatorOf(v interface{}) Evaluator {
 	switch a := v.(type) {
 	case nil:
-		return Evaluator(true)
-	case ExprEvaluator:
+		return EvaluatorOf(true)
+	case Evaluator:
 		return a
 	case func(*Context, interface{}, func(interface{}) error) error:
 		return EvaluatorFunc(a)
@@ -417,7 +417,7 @@ func (b *boundExpr) Expr() *Expr {
 }
 
 func (b *boundExpr) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
-	return Evaluator(b.expr.Evaluate).Evaluate(b.Context, v, yield)
+	return EvaluatorOf(b.expr.Evaluate).Evaluate(b.Context, v, yield)
 }
 
 func (p *exprPipeline) Set(arg string) error {
