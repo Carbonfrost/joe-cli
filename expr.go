@@ -327,7 +327,7 @@ func (e *Expr) actualArgs() []*Arg {
 	return e.Args
 }
 
-func (e *Expr) setData(name string, v interface{}) {
+func (e *Expr) SetData(name string, v interface{}) {
 	e.ensureData()[name] = v
 }
 

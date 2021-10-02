@@ -25,7 +25,7 @@ type target interface {
 	options() Option
 	appendAction(timing, Action)
 	setCategory(name string)
-	setData(name string, v interface{})
+	SetData(name string, v interface{})
 	setInternalFlags(internalFlags)
 	internalFlags() internalFlags
 }
@@ -177,7 +177,7 @@ func SetValue(v interface{}) ActionFunc {
 // set up inside a Uses pipeline.
 func Data(name string, value interface{}) Action {
 	return ActionFunc(func(c *Context) error {
-		c.target().setData(name, value)
+		c.target().SetData(name, value)
 		return nil
 	})
 }

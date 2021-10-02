@@ -180,7 +180,7 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 	}
 }
 
-func (f *Flag) setData(name string, v interface{}) {
+func (f *Flag) SetData(name string, v interface{}) {
 	f.ensureData()[name] = v
 }
 

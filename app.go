@@ -184,7 +184,7 @@ func (a *App) actualFlags() []*Flag {
 }
 
 func (a *App) setCategory(name string) {}
-func (a *App) setData(name string, v interface{}) {
+func (a *App) SetData(name string, v interface{}) {
 	a.ensureData()[name] = v
 }
 

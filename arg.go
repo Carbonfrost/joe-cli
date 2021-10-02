@@ -219,7 +219,7 @@ func (a *Arg) value() interface{} {
 	return a.Value
 }
 
-func (a *Arg) setData(name string, v interface{}) {
+func (a *Arg) SetData(name string, v interface{}) {
 	a.ensureData()[name] = v
 }
 

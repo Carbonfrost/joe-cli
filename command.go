@@ -334,7 +334,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 	}
 }
 
-func (c *Command) setData(name string, v interface{}) {
+func (c *Command) SetData(name string, v interface{}) {
 	c.ensureData()[name] = v
 }
 
