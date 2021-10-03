@@ -20,6 +20,15 @@ var (
 	controlCodes = regexp.MustCompile("\u001B\\[\\d+m")
 )
 
+// Template provides a wrapper around text templates to support some additional configuration
+type Template struct {
+	*template.Template
+
+	// Debug when set will render errors to stderr.  This value is typically activated via the
+	// environment variable CLI_DEBUG_TEMPLATES=1
+	Debug bool
+}
+
 type usage struct {
 	exprs []expr
 }
@@ -106,27 +115,44 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 
 		w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
 
-		executeTemplate(tpl, w, data)
+		_ = tpl.Execute(w, data)
 		_ = w.Flush()
 		return nil
 	}
 }
 
 func PrintVersion() ActionFunc {
-	return func(c *Context) error {
-		tpl := c.Template("version")
-		data := struct {
+	return RenderTemplate("version", func(c *Context) interface{} {
+		return struct {
 			App *App
 		}{
-			App: c.App(),
+			c.App(),
 		}
+	})
+}
 
-		w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', 0)
-
-		executeTemplate(tpl, w, data)
-		_ = w.Flush()
+func RenderTemplate(name string, data func(*Context) interface{}) ActionFunc {
+	return func(c *Context) error {
+		tpl := c.Template(name)
+		_ = tpl.Execute(c.Stdout, data(c))
 		return nil
 	}
+}
+
+// RegisterTemplate will register the specified template by name.
+func RegisterTemplate(name string, template string) Action {
+	return ActionFunc(func(c *Context) error {
+		c.App().ensureTemplates()[name] = template
+		return nil
+	})
+}
+
+// RegisterTemplateFunc will register the specified function for use in template rendering.
+func RegisterTemplateFunc(name string, fn interface{}) Action {
+	return ActionFunc(func(c *Context) error {
+		c.App().ensureTemplateFuncs()[name] = fn
+		return nil
+	})
 }
 
 func defaultHelpCommand() *Command {
@@ -170,6 +196,14 @@ func defaultVersionCommand() *Command {
 		HelpText: "Print the build version then exit",
 		Action:   PrintVersion(),
 	}
+}
+
+func (t *Template) Execute(wr io.Writer, data interface{}) error {
+	err := t.Template.Execute(wr, data)
+	if err != nil && t.Debug {
+		log.Fatal(err)
+	}
+	return err
 }
 
 func (u *usage) Placeholders() []string {
@@ -339,13 +373,6 @@ func (t *termFormatter) Underline(s string) string {
 		return s
 	}
 	return underline.Open + s + underline.Close
-}
-
-func executeTemplate(tpl *template.Template, w io.Writer, d interface{}) {
-	err := tpl.Execute(w, d)
-	if err != nil && os.Getenv("DEBUG_TEMPLATES") == "1" {
-		log.Fatal(err)
-	}
 }
 
 // namedCSPair provides the ANSI control scheme pair for a formatting sequence.

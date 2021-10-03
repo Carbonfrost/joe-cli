@@ -1,12 +1,16 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"go/doc"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 	"time"
 )
 
@@ -88,9 +92,11 @@ type App struct {
 	HelpText  string
 	UsageText string
 
-	rootCommand *Command
-	appHooks    hooks
-	flags       internalFlags
+	rootCommand   *Command
+	appHooks      hooks
+	flags         internalFlags
+	templateFuncs map[string]interface{}
+	templates     map[string]string
 }
 
 type appContext struct {
@@ -100,6 +106,15 @@ type appContext struct {
 
 var (
 	ExitHandler func(*Context, string, int)
+
+	defaultTemplates = map[string]func() string{
+		"help": func() string {
+			return HelpTemplate
+		},
+		"version": func() string {
+			return VersionTemplate
+		},
+	}
 )
 
 // Run the application and exit using the exit handler.  This function exits using the
@@ -219,6 +234,20 @@ func (a *App) runContextCore(c context.Context, args []string, exit func(*Contex
 	return exit(ctx, err)
 }
 
+func (a *App) ensureTemplates() map[string]string {
+	if a.templates == nil {
+		a.templates = map[string]string{}
+	}
+	return a.templates
+}
+
+func (a *App) ensureTemplateFuncs() map[string]interface{} {
+	if a.templateFuncs == nil {
+		a.templateFuncs = map[string]interface{}{}
+	}
+	return a.templateFuncs
+}
+
 func (a *appContext) initialize(c *Context) error {
 	rest, err := takeInitializers(ActionOf(a.app_.Uses), a.app_.Options, c)
 
@@ -327,6 +356,71 @@ func setupDefaultIO(c *Context) error {
 	c.contextData.Stdin = a.Stdin
 	c.contextData.Stdout = a.Stdout
 	c.contextData.Stderr = a.Stderr
+	return nil
+}
+
+func setupDefaultTemplateFuncs(c *Context) error {
+	width := guessWidth()
+
+	funcMap := template.FuncMap{
+		"Join": func(v string, args []string) string {
+			return strings.Join(args, v)
+		},
+		"Trim": strings.TrimSpace,
+		"Wrap": func(indent int, s string) string {
+			buf := bytes.NewBuffer(nil)
+			indentText := strings.Repeat(" ", indent)
+			doc.ToText(buf, s, indentText, "  "+indentText, width-indent)
+			return buf.String()
+		},
+		"BoldFirst": func(args []string) []string {
+			args[0] = bold.Open + args[0] + bold.Close
+			return args
+		},
+		"SynopsisHangingIndent": func(d *commandData) string {
+			var buf bytes.Buffer
+			hang := strings.Repeat(
+				" ",
+				len("usage:")+lenIgnoringCSI(d.Lineage)+len(d.Name)+1,
+			)
+
+			buf.WriteString(d.Lineage)
+
+			limit := width - len("usage:") - lenIgnoringCSI(d.Lineage) - 1
+			for _, t := range d.Synopsis {
+				tLength := lenIgnoringCSI(t)
+				if limit-tLength < 0 {
+					buf.WriteString("\n")
+					buf.WriteString(hang)
+					limit = width - len(hang)
+				}
+
+				buf.WriteString(" ")
+				buf.WriteString(t)
+				limit = limit - 1 - tLength
+			}
+			return buf.String()
+		},
+	}
+
+	a := c.app()
+	funcs := a.ensureTemplateFuncs()
+	for k, v := range funcMap {
+		if _, ok := funcs[k]; !ok {
+			funcs[k] = v
+		}
+	}
+	return nil
+}
+
+func setupDefaultTemplates(c *Context) error {
+	a := c.app()
+	templates := a.ensureTemplates()
+	for k, v := range defaultTemplates {
+		if _, ok := templates[k]; !ok {
+			templates[k] = v()
+		}
+	}
 	return nil
 }
 

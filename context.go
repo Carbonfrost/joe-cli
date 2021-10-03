@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"go/doc"
 	"io"
 	"net"
 	"net/url"
@@ -437,57 +435,15 @@ func (c *Context) Do(actions ...Action) error {
 	return nil
 }
 
-func (c *Context) Template(name string) *template.Template {
-	width := guessWidth()
-
-	switch name {
-	case "help", "version":
-		funcMap := template.FuncMap{
-			"Join": func(v string, args []string) string {
-				return strings.Join(args, v)
-			},
-			"Trim": strings.TrimSpace,
-			"Wrap": func(indent int, s string) string {
-				buf := bytes.NewBuffer(nil)
-				indentText := strings.Repeat(" ", indent)
-				doc.ToText(buf, s, indentText, "  "+indentText, width-indent)
-				return buf.String()
-			},
-			"BoldFirst": func(args []string) []string {
-				args[0] = bold.Open + args[0] + bold.Close
-				return args
-			},
-			"SynopsisHangingIndent": func(d *commandData) string {
-				var buf bytes.Buffer
-				hang := strings.Repeat(
-					" ",
-					len("usage:")+lenIgnoringCSI(d.Lineage)+len(d.Name)+1,
-				)
-
-				buf.WriteString(d.Lineage)
-
-				limit := width - len("usage:") - lenIgnoringCSI(d.Lineage) - 1
-				for _, t := range d.Synopsis {
-					tLength := lenIgnoringCSI(t)
-					if limit-tLength < 0 {
-						buf.WriteString("\n")
-						buf.WriteString(hang)
-						limit = width - len(hang)
-					}
-
-					buf.WriteString(" ")
-					buf.WriteString(t)
-					limit = limit - 1 - tLength
-				}
-				return buf.String()
-			},
-		}
-
-		return template.Must(
-			template.New(name).Funcs(funcMap).Parse(templateString(name)),
-		)
+func (c *Context) Template(name string) *Template {
+	str := c.App().ensureTemplates()[name]
+	funcMap := c.App().ensureTemplateFuncs()
+	return &Template{
+		Template: template.Must(
+			template.New(name).Funcs(funcMap).Parse(str),
+		),
+		Debug: os.Getenv("CLI_DEBUG_TEMPLATES") == "1",
 	}
-	return nil
 }
 
 func (c *Context) Name() string {

@@ -146,7 +146,7 @@ var _ = Describe("App", func() {
 			app := &cli.App{
 				Name:    "hunter",
 				Version: "1.619",
-				Stderr:  &capture,
+				Stdout:  &capture, // Python 2 -> 3 changed from stderr to stdout
 			}
 
 			_ = app.RunContext(nil, []string{"app", "--version"})
@@ -199,5 +199,4 @@ var _ = Describe("App", func() {
 			Expect(err).To(Equal(os.Stderr))
 		})
 	})
-
 })

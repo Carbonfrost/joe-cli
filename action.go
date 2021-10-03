@@ -63,6 +63,8 @@ var (
 		Initializers: Pipeline(
 			ActionFunc(setupDefaultIO),
 			ActionFunc(setupDefaultData),
+			ActionFunc(setupDefaultTemplateFuncs),
+			ActionFunc(setupDefaultTemplates),
 			ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
 			ActionFunc(addAppCommand("version", defaultVersionFlag(), defaultVersionCommand())),
 		),

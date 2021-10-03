@@ -36,19 +36,41 @@ var _ = Describe("usage", func() {
 	})
 })
 
-var _ = Describe("DisplayHelpScreen", func() {
-	var (
-		renderHelpScreen = func(app *cli.App, args string) string {
-			defer disableConsoleColor()()
-
-			arguments, _ := cli.Split(args)
-			var buffer bytes.Buffer
-			app.Stderr = &buffer
-			_ = app.RunContext(nil, arguments)
-			return buffer.String()
+var _ = Describe("RenderTemplate", func() {
+	It("uses the template and custom funcs", func() {
+		app := &cli.App{
+			Name: "demo",
+			Before: cli.Pipeline(
+				cli.RegisterTemplateFunc("CustomFunc", func() string {
+					return "customFunc result"
+				}),
+				cli.RegisterTemplate("custom", "template {{ CustomFunc }} {{ .Data }}"),
+			),
+			Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
+				return struct{ Data int }{1}
+			}),
 		}
-	)
+		Expect(renderScreen(app, "app")).To(ContainSubstring("template customFunc result 1"))
+	})
+})
 
+var _ = Describe("PrintVersion", func() {
+	It("uses the version template", func() {
+		app := &cli.App{
+			Name:    "demo",
+			Version: "hello.5.0",
+			Before:  cli.RegisterTemplate("version", "custom template {{ .App.Name }} {{ .App.Version }}"),
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+				},
+			},
+		}
+		Expect(renderScreen(app, "app --version")).To(ContainSubstring("custom template demo hello.5.0"))
+	})
+})
+
+var _ = Describe("DisplayHelpScreen", func() {
 	It("is the default action for an app with sub-commands", func() {
 		app := &cli.App{
 			Name: "demo",
@@ -58,12 +80,25 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 		}
-		Expect(renderHelpScreen(app, "demo")).To(ContainSubstring("usage: demo"))
+		Expect(renderScreen(app, "demo")).To(ContainSubstring("usage: demo"))
+	})
+
+	It("uses the help template", func() {
+		app := &cli.App{
+			Name:   "demo",
+			Before: cli.RegisterTemplate("help", "custom help template"),
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+				},
+			},
+		}
+		Expect(renderScreen(app, "app help")).To(ContainSubstring("custom help template"))
 	})
 
 	DescribeTable("examples",
 		func(app *cli.App, expected types.GomegaMatcher) {
-			Expect(renderHelpScreen(app, "app --help")).To(expected)
+			Expect(renderScreen(app, "app --help")).To(expected)
 		},
 		Entry("shows normal flags",
 			&cli.App{
@@ -119,7 +154,7 @@ var _ = Describe("DisplayHelpScreen", func() {
 
 	DescribeTable("sub-command examples",
 		func(app *cli.App, args string, expected types.GomegaMatcher) {
-			Expect(renderHelpScreen(app, args)).To(expected)
+			Expect(renderScreen(app, args)).To(expected)
 		},
 		Entry("shows sub-command using help switch",
 			&cli.App{
@@ -168,4 +203,15 @@ func disableConsoleColor() func() {
 	return func() {
 		os.Setenv("NO_COLOR", "0")
 	}
+}
+
+func renderScreen(app *cli.App, args string) string {
+	defer disableConsoleColor()()
+
+	arguments, _ := cli.Split(args)
+	var buffer bytes.Buffer
+	app.Stderr = &buffer
+	app.Stdout = &buffer
+	_ = app.RunContext(nil, arguments)
+	return buffer.String()
 }

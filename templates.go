@@ -272,13 +272,3 @@ func exprAdapter(val *Expr, gen usageGenerator) *flagData {
 		Data:     val.Data,
 	}
 }
-
-func templateString(name string) string {
-	switch name {
-	case "version":
-		return VersionTemplate
-	case "help":
-		return HelpTemplate
-	}
-	return ""
-}
