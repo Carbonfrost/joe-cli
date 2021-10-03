@@ -71,6 +71,11 @@ type argSynopsis struct {
 	multi bool
 }
 
+const (
+	TakeRemaining     = -1
+	TakeUntilNextFlag = -2
+)
+
 // Args provides a simple initializer for positional arguments.  You specify each argument name and value
 // in order to this function.    It generates the corresponding list of required positional arguments.
 // A panic occurs when this function is not called properly: when a name is blank, when names and values
@@ -95,8 +100,8 @@ func Args(namevalue ...interface{}) []*Arg {
 //
 //  >= 1   take exactly n number of arguments, though if they look like flags treat as an error
 //     0   take argument if it does not look like a flag
-//    -1   take all remaining arguments (even when they look like flags)
-//    -2   take all remaining arguments but stop before taking one that looks like a flag
+//    -1   take all remaining arguments (even when they look like flags) (TakeRemaining)
+//    -2   take all remaining arguments but stop before taking one that looks like a flag (TakeUntilNextFlag)
 //
 // Any other negative value uses the behavior of -1.
 //
