@@ -37,7 +37,7 @@ type actionPipelines struct {
 	After        Action
 }
 
-type ActionTiming interface {
+type actionWithTiming interface {
 	Action
 	timing() timing
 }
@@ -116,7 +116,7 @@ func Initializer(a Action) Action {
 
 func timingOf(a Action, defaultTiming timing) timing {
 	switch val := a.(type) {
-	case ActionTiming:
+	case actionWithTiming:
 		return val.timing()
 	}
 	return defaultTiming
@@ -375,5 +375,5 @@ func actionOrEmpty(v interface{}) Action {
 }
 
 var (
-	_ ActionTiming = withTimingWrapper{}
+	_ actionWithTiming = withTimingWrapper{}
 )
