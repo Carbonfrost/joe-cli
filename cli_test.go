@@ -48,7 +48,7 @@ var _ = Describe("RunContext", func() {
 					},
 				},
 				Commands: []*cli.Command{
-					&cli.Command{
+					{
 						Name: "sub",
 						Flags: []*cli.Flag{
 							{
@@ -208,19 +208,43 @@ var _ = Describe("RunContext", func() {
 		},
 		Entry(
 			"too many arguments",
-			app("<arg>"),
+			&cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "a",
+					},
+				},
+			},
 			"a b c",
 			Equal("unexpected argument \"b\""),
 		),
-		XEntry( // TODO Required arguments
+		Entry(
 			"required argument",
-			app("<FILE>"),
+			&cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "FILE",
+						NArg: 1,
+					},
+				},
+			},
 			"",
-			Equal("argument FILE required"),
+			Equal("expected argument"),
 		),
 		Entry(
 			"missing command",
-			app("sub"),
+			&cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "flag1",
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+					},
+				},
+			},
 			"unknown",
 			Equal(`"unknown" is not a command`),
 		),
