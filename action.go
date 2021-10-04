@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// ActionFunc provides the basic function for
+// ActionFunc provides the basic function for an Action
 type ActionFunc func(*Context) error
 
 //counterfeiter:generate . Action
@@ -13,9 +13,15 @@ type ActionFunc func(*Context) error
 // Action represents the building block of the various actions
 // to perform when an app, command, flag, or argument is being evaluated.
 type Action interface {
+
+	// Execute will execute the action.  If the action returns an error, this
+	// may cause subsequent actions in the pipeline not to be run and cause
+	// the app to exit with an error exit status.
 	Execute(*Context) error
 }
 
+// ActionPipeline represents an action composed of several steps.  To create
+// this value, use the Pipeline function
 type ActionPipeline struct {
 	items []Action
 }
@@ -99,10 +105,16 @@ func Pipeline(actions ...interface{}) *ActionPipeline {
 	return &ActionPipeline{myActions}
 }
 
+// Before revises the timing of the action so that it runs in the Before pipeline.
+// This function is used to wrap actions in the initialization pipeline that will be
+// deferred until later.
 func Before(a Action) Action {
 	return withTiming(a, beforeTiming)
 }
 
+// After revises the timing of the action so that it runs in the After pipeline.
+// This function is used to wrap actions in the initialization pipeline that will be
+// deferred until later.
 func After(a Action) Action {
 	return withTiming(a, afterTiming)
 }
@@ -126,10 +138,21 @@ func withTiming(a Action, t timing) Action {
 	return withTimingWrapper{a, t}
 }
 
+// ActionOf converts a value to an Action.  Any of the following types can be converted:
+//
+//   * func(*Context) error  (same signature as Action.Execute)
+//   * func(*Context)
+//   * func(context.Context) error
+//   * func(context.Context)
+//   * func() error
+//   * func()
+//   * Action
+//
+// Any other type causes a panic
 func ActionOf(item interface{}) Action {
 	switch a := item.(type) {
 	case nil:
-		return nil
+		return emptyAction
 	case func(*Context) error:
 		return ActionFunc(a)
 	case Action:
@@ -161,18 +184,21 @@ func ActionOf(item interface{}) Action {
 	panic(fmt.Sprintf("unexpected type: %T", item))
 }
 
-func ContextValue(key, value interface{}) ActionFunc {
-	return func(c *Context) error {
+// ContextValue provides an action which updates the context with a
+// value.
+func ContextValue(key, value interface{}) Action {
+	return ActionFunc(func(c *Context) error {
 		c.Context = context.WithValue(c.Context, key, value)
 		return nil
-	}
+	})
 }
 
-func SetValue(v interface{}) ActionFunc {
-	return func(c *Context) error {
+// SetValue provides an action which sets the value of the flag or argument.
+func SetValue(v interface{}) Action {
+	return ActionFunc(func(c *Context) error {
 		c.target().(option).Set(genericString(dereference(v)))
 		return nil
-	}
+	})
 }
 
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
@@ -247,6 +273,7 @@ func newActionPipelines(m map[timing][]Action) *actionPipelines {
 	}
 }
 
+// Execute the action by calling the function
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {
 		return nil
@@ -254,12 +281,14 @@ func (af ActionFunc) Execute(c *Context) error {
 	return af(c)
 }
 
+// Append appends an action to the pipeline
 func (p *ActionPipeline) Append(x Action) *ActionPipeline {
 	return &ActionPipeline{
 		items: append(p.items, unwind(x)...),
 	}
 }
 
+// Execute the pipeline by calling each action successively
 func (p *ActionPipeline) Execute(c *Context) (err error) {
 	if p == nil {
 		return nil

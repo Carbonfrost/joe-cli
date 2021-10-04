@@ -23,6 +23,7 @@ type fsExtension interface {
 	OpenFile(string, int, os.FileMode) (*os.File, error)
 }
 
+// File provides a value that can be used to represent a file path in flags or arguments.
 type File struct {
 	v string
 
@@ -58,27 +59,33 @@ func (f *File) String() string {
 	return f.v
 }
 
+// Open the file
 func (f *File) Open() (fs.File, error) {
 	return f.actualFS().Open(f.v)
 }
 
+// OpenFile will open the file using the specified flags and permissions
 func (f *File) OpenFile(flag int, perm os.FileMode) (*os.File, error) {
 	return f.actualFS().OpenFile(f.Name(), flag, perm)
 }
 
+// Create the file
 func (f *File) Create() (*os.File, error) {
 	return f.OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 }
 
+// Name of the file
 func (f *File) Name() string {
 	return f.v
 }
 
+// Exists tests whether the file exists
 func (f *File) Exists() bool {
 	_, err := f.Stat()
 	return err == nil || !errors.Is(err, fs.ErrNotExist)
 }
 
+// Stat obtains information about the file
 func (f *File) Stat() (fs.FileInfo, error) {
 	return f.actualFS().Stat(f.v)
 }

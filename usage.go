@@ -75,6 +75,8 @@ var (
 	underline = namedCSPair(4, 24)
 )
 
+// DisplayHelpScreen displays the help screen for the specified command.  If the command
+// is nested, each sub-command is named.
 func DisplayHelpScreen(command ...string) ActionFunc {
 	return func(c *Context) error {
 		current := c.App().createRoot()
@@ -121,6 +123,7 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 	}
 }
 
+// PrintVersion displays the version string.  The VersionTemplate provides the Go template
 func PrintVersion() ActionFunc {
 	return RenderTemplate("version", func(c *Context) interface{} {
 		return struct {
@@ -131,6 +134,8 @@ func PrintVersion() ActionFunc {
 	})
 }
 
+// RenderTemplate provides an action that renders the specified template using the factory function that
+// creates the data that is passed to the template
 func RenderTemplate(name string, data func(*Context) interface{}) ActionFunc {
 	return func(c *Context) error {
 		tpl := c.Template(name)
@@ -198,6 +203,7 @@ func defaultVersionCommand() *Command {
 	}
 }
 
+// Execute the template
 func (t *Template) Execute(wr io.Writer, data interface{}) error {
 	err := t.Template.Execute(wr, data)
 	if err != nil && t.Debug {
@@ -406,7 +412,7 @@ func parseUsage(text string) *usage {
 		index = loc[1]
 	}
 	if index < len(content) {
-		result = append(result, newLiteral(content[index:len(content)]))
+		result = append(result, newLiteral(content[index:]))
 	}
 
 	return &usage{

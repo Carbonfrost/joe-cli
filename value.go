@@ -14,88 +14,110 @@ import (
 	"time"
 )
 
+// Value provides the interface for custom handling of arg and flag values.  This is the
+// same as flag.Value
 type Value = flag.Value
 
 type generic struct {
 	p interface{}
 }
 
+// Bool creates a bool value.  This is for convenience to obtain the right pointer.
 func Bool() *bool {
 	return new(bool)
 }
 
+// String creates a string value.  This is for convenience to obtain the right pointer.
 func String() *string {
 	return new(string)
 }
 
+// List creates a string slice value.  This is for convenience to obtain the right pointer.
 func List() *[]string {
 	return new([]string)
 }
 
+// Int creates an int value.  This is for convenience to obtain the right pointer.
 func Int() *int {
 	return new(int)
 }
 
+// Int8 creates an int8 value.  This is for convenience to obtain the right pointer.
 func Int8() *int8 {
 	return new(int8)
 }
 
+// Int16 creates an int16 value.  This is for convenience to obtain the right pointer.
 func Int16() *int16 {
 	return new(int16)
 }
 
+// Int32 creates an int32 value.  This is for convenience to obtain the right pointer.
 func Int32() *int32 {
 	return new(int32)
 }
 
+// Int64 creates an int64 value.  This is for convenience to obtain the right pointer.
 func Int64() *int64 {
 	return new(int64)
 }
 
+// UInt creates an uint value.  This is for convenience to obtain the right pointer.
 func UInt() *uint {
 	return new(uint)
 }
 
+// UInt8 creates an uint8 value.  This is for convenience to obtain the right pointer.
 func UInt8() *uint8 {
 	return new(uint8)
 }
 
+// UInt16 creates an uint16 value.  This is for convenience to obtain the right pointer.
 func UInt16() *uint16 {
 	return new(uint16)
 }
 
+// UInt32 creates an uint32 value.  This is for convenience to obtain the right pointer.
 func UInt32() *uint32 {
 	return new(uint32)
 }
 
+// UInt64 creates an uint64 value.  This is for convenience to obtain the right pointer.
 func UInt64() *uint64 {
 	return new(uint64)
 }
 
+// Float32 creates a float32 value.  This is for convenience to obtain the right pointer.
 func Float32() *float32 {
 	return new(float32)
 }
 
+// Float64 creates a float64 value.  This is for convenience to obtain the right pointer.
 func Float64() *float64 {
 	return new(float64)
 }
 
+// Duration creates a time.Duration value.  This is for convenience to obtain the right pointer.
 func Duration() *time.Duration {
 	return new(time.Duration)
 }
 
+// Map creates a map value.  This is for convenience to obtain the right pointer.
 func Map() *map[string]string {
 	return new(map[string]string)
 }
 
+// URL creates a URL value.  This is for convenience to obtain the right pointer.
 func URL() **url.URL {
 	return new(*url.URL)
 }
 
+// Regexp creates a Regexp value.  This is for convenience to obtain the right pointer.
 func Regexp() **regexp.Regexp {
 	return new(*regexp.Regexp)
 }
 
+// IP creates an IP value.  This is for convenience to obtain the right pointer.
 func IP() *net.IP {
 	return new(net.IP)
 }

@@ -6,24 +6,55 @@ import (
 	"strings"
 )
 
+// Evaluator provides the evluation function for an expression operator.
 type Evaluator interface {
+	// Evaluate performs the evaluation.  The v argument is the value of the prior
+	// expression operator.  The yield argument is used to pass one or more additional
+	// values to the next expression operator.
 	Evaluate(c *Context, v interface{}, yield func(interface{}) error) error
 }
 
+// EvaluatorFunc provides the basic function for an Evaluator
 type EvaluatorFunc func(*Context, interface{}, func(interface{}) error) error
 
+// Expr represents an operator in an expression.  An expression is composed of an
+// ordered series of operators meant to describe how to process one or more values.
+// A well-known implementation of an expression is in the Unix `find` command where
+// each file is processed through a series of operands to filter a list of files.
 type Expr struct {
-	Name    string
-	Aliases []string
-	Args    []*Arg
+	// Name provides the name of the expression operator. This value must be set, and it is used to access
+	// the expression operator's value via the context
+	Name string
 
-	HelpText  string
+	// Aliases provides a list of alternative names for the expression operator.  In general, Name should
+	// be used for the long name of the expression operator, and Aliases should contain the short name.
+	// If there are additional names for compatibility reasons, they should be included
+	// with Aliases but listed after the preferred names. Note that only one short name
+	// and one long name is displayed on help screens by default.
+	Aliases []string
+
+	// Args contains each of the arguments that are processed for the expression operators.  Expression
+	// operators don't contain values directly; they process one or more arguments.
+	Args []*Arg
+
+	// HelpText contains text which briefly describes the usage of the expression operator.
+	// For style, generally the usage text should be limited to about 40 characters.
+	// Sentence case is recommended for the usage text.    Uppercase is recommended for the
+	// text of placeholders.  The placeholder is used in the synoposis for the expression operator as well
+	// as error messages.
+	HelpText string
+
+	// UsageText provides the usage for the expression operator.  If left blank, a succint synopsis
+	// is generated from the type of the expression operator's arguments
 	UsageText string
-	Category  string
+
+	// Category specifies the expression operator category.  When categories are used, operators are grouped
+	// together on the help screen
+	Category string
 
 	// Evaluate provides the evaluation behavior for the expression.  The value should
 	// implement Evaluator or support runtime conversion to that interface via
-	// the rules provided by the cli.Evaluator function.
+	// the rules provided by the cli.EvaluatorOf function.
 	Evaluate interface{}
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
@@ -42,6 +73,8 @@ type Expr struct {
 	// middleware and it is made available to templates
 	Data map[string]interface{}
 
+	// Options sets various options about how to treat the expression operator.  For example, options can
+	// hide the expression operator.
 	Options Option
 
 	flags internalFlags
@@ -71,15 +104,25 @@ type Expression interface {
 type ExprBinding interface {
 	Evaluator
 	Lookup
+
+	// Expr retrieves the expression operator if it is available
 	Expr() *Expr
 }
 
 // ExprsByName is a sortable slice for exprs
 type ExprsByName []*Expr
+
+// ExprsByCategory provides a slice that can sort on category names and the expression operators
+// themselves
 type ExprsByCategory []*ExprCategory
+
+// ExprCategory names a category and the expression operators it contains
 type ExprCategory struct {
+	// Category is the name of the category
 	Category string
-	Exprs    []*Expr
+
+	// Exprs contains the expression operators in the category
+	Exprs []*Expr
 }
 
 type yielder = func(interface{}) error
@@ -118,6 +161,8 @@ type exprContext struct {
 	set_  *set
 }
 
+// BindExpression is an action that binds expression handling to an argument.  This
+// is set up automatically when a command defines any expression operators.
 func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
 	return ActionFunc(func(c *Context) error {
 		exprs, err := exprFunc(c)
@@ -131,6 +176,11 @@ func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
 	})
 }
 
+// NewExprBinding creates an expression binding.  The ev parameter is how
+// the expression is evaluated.  The remaining arguments specify the *Expr
+// expression operator to use and optionally a Lookup.   The main use case
+// for this function is to create a custom evaluation step that is appended to
+// the expression pipeline
 func NewExprBinding(ev Evaluator, exprlookup ...interface{}) ExprBinding {
 	var (
 		expr   *Expr
@@ -231,7 +281,9 @@ func EvaluatorOf(v interface{}) Evaluator {
 	panic(fmt.Sprintf("unexpected type: %T", v))
 }
 
-// Predicate provides a simple predicate which filters values.
+// Predicate provides a simple predicate which filters values.  The filter function
+// takes the prior operand and returns true or false depending upon whether the
+// operand should be yielded to the next step in the expression pipeline.
 func Predicate(filter func(v interface{}) bool) EvaluatorFunc {
 	return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
 		if ok := filter(v); ok {
@@ -241,6 +293,7 @@ func Predicate(filter func(v interface{}) bool) EvaluatorFunc {
 	})
 }
 
+// GroupExprsByCategory groups together expression operators by category and sorts the groupings.
 func GroupExprsByCategory(exprs []*Expr) ExprsByCategory {
 	res := ExprsByCategory{}
 	all := map[string]*ExprCategory{}
@@ -285,14 +338,17 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 	return res
 }
 
+// Names obtains the name of the expression operator and its aliases
 func (e *Expr) Names() []string {
 	return append([]string{e.Name}, e.Aliases...)
 }
 
+// Synopsis retrieves the synopsis for the expression operator.
 func (e *Expr) Synopsis() string {
 	return textUsage.expr(e.newSynopsis())
 }
 
+// Arg gets the expression operator by name
 func (e *Expr) Arg(name string) (*Arg, bool) {
 	return findArgByName(e.Args, name)
 }
@@ -327,6 +383,7 @@ func (e *Expr) actualArgs() []*Arg {
 	return e.Args
 }
 
+// SetData sets the specified metadata on the expression operator
 func (e *Expr) SetData(name string, v interface{}) {
 	e.ensureData()[name] = v
 }
@@ -361,6 +418,7 @@ func (e *Expr) options() Option {
 func (e *Expr) appendAction(t timing, ah Action) {
 }
 
+// Evaluate provides the evaluation of the function and implements the Evaluator interface
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
 	if e == nil {
 		return nil
@@ -380,6 +438,8 @@ func (e ExprsByName) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
 }
 
+// VisibleExprs filters all operatorss in the expression operators category by whether
+// they are not hidden
 func (f *ExprCategory) VisibleExprs() []*Expr {
 	res := make([]*Expr, 0, len(f.Exprs))
 	for _, o := range f.Exprs {
@@ -391,6 +451,8 @@ func (f *ExprCategory) VisibleExprs() []*Expr {
 	return res
 }
 
+// Undocumented determines whether the category is undocumented (i.e. has no HelpText set
+// on any of its expression operators)
 func (e *ExprCategory) Undocumented() bool {
 	for _, x := range e.Exprs {
 		if x.HelpText != "" {

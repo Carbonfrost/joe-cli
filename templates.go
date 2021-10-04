@@ -52,6 +52,8 @@ type exprCategory struct {
 }
 
 var (
+	// HelpTemplate provides the default help Go template that is rendered on the help
+	// screen
 	HelpTemplate = `
 {{- define "Subcommands" -}}
 {{ range .CommandsByCategory }}

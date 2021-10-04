@@ -5,13 +5,25 @@ import (
 	"strings"
 )
 
+// Command represents a command with arguments, flags, and expressions
 type Command struct {
-	Name        string
+	// Name of the command
+	Name string
+
+	// Subcommands provides sub-commands that compose the command.
 	Subcommands []*Command
-	Flags       []*Flag
-	Args        []*Arg
-	Exprs       []*Expr
-	Aliases     []string
+
+	// Flags that the command supports
+	Flags []*Flag
+
+	// Args that the command supports
+	Args []*Arg
+
+	// Exprs identifies the expression operators that are allowed for the command.
+	Exprs []*Expr
+
+	// Aliases indicates alternate names that can be used
+	Aliases []string
 
 	// Action specifies the action to run for the command, assuming no other more specific command
 	// has been selected.  Refer to cli.Action about the correct function signature to use.
@@ -44,7 +56,11 @@ type Command struct {
 	// Options sets common options for use with the command
 	Options Option
 
-	HelpText  string
+	// HelpText describes the help text displayed for commands
+	HelpText string
+
+	// UsageText provides the usage for the command.  If left blank, a succint synopsis
+	// is generated that lists each visible flag and arg
 	UsageText string
 
 	cmdHooks            hooks
@@ -56,11 +72,16 @@ type Command struct {
 // CommandsByName provides a slice that can sort on name
 type CommandsByName []*Command
 
+// CommandCategory names a category and the commands it contains
 type CommandCategory struct {
+	// Category is the name of the category
 	Category string
+	// Commands in the category
 	Commands []*Command
 }
 
+// CommandsByCategory provides a slice that can sort on category names and the commands
+// themselves
 type CommandsByCategory []*CommandCategory
 
 type commandSynopsis struct {
@@ -117,6 +138,7 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 	}
 }
 
+// GroupedByCategory will group the commands by category and sort the commands
 func GroupedByCategory(cmds []*Command) CommandsByCategory {
 	res := CommandsByCategory{}
 	for _, command := range cmds {
@@ -134,6 +156,7 @@ func GroupedByCategory(cmds []*Command) CommandsByCategory {
 	return res
 }
 
+// Category gets a category by name
 func (c CommandsByCategory) Category(name string) *CommandCategory {
 	for _, cc := range c {
 		if cc.Category == name {
@@ -143,6 +166,8 @@ func (c CommandsByCategory) Category(name string) *CommandCategory {
 	return nil
 }
 
+// Undocumented determines whether the category is undocumented (i.e. has no HelpText set
+// on any of its commands)
 func (e *CommandCategory) Undocumented() bool {
 	for _, x := range e.Commands {
 		if x.HelpText != "" {
@@ -164,26 +189,33 @@ func (c CommandsByCategory) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
 }
 
+// Synopsis returns the UsageTexzt for the command or produces a succint representation
+// that names each flag and arg
 func (c *Command) Synopsis() string {
 	return strings.Join(textUsage.command(c.newSynopsis()), " ")
 }
 
+// Command tries to obtain a sub-command by name or alias
 func (c *Command) Command(name string) (*Command, bool) {
 	return findCommandByName(c.Subcommands, name)
 }
 
+// Flag tries to obtain a flag by name or alias
 func (c *Command) Flag(name string) (*Flag, bool) {
 	return findFlagByName(c.Flags, name)
 }
 
+// Arg tries to obtain a arg by name or alias
 func (c *Command) Arg(name string) (*Arg, bool) {
 	return findArgByName(c.Args, name)
 }
 
+// Expr tries to obtain an expression operator by name or alias
 func (c *Command) Expr(name string) (*Expr, bool) {
 	return findExprByName(c.Exprs, name)
 }
 
+// VisibleArgs filters all arguments in the command by whether they are not hidden
 func (c *Command) VisibleArgs() []*Arg {
 	res := make([]*Arg, 0, len(c.actualArgs()))
 	for _, o := range c.actualArgs() {
@@ -195,6 +227,7 @@ func (c *Command) VisibleArgs() []*Arg {
 	return res
 }
 
+// VisibleFlags filters all flags in the command by whether they are not hidden
 func (c *Command) VisibleFlags() []*Flag {
 	res := make([]*Flag, 0, len(c.actualFlags()))
 	for _, o := range c.actualFlags() {
@@ -206,6 +239,7 @@ func (c *Command) VisibleFlags() []*Flag {
 	return res
 }
 
+// VisibleExprs filters all expression operators in the command by whether they are not hidden
 func (c *Command) VisibleExprs() []*Expr {
 	res := make([]*Expr, 0, len(c.actualExprs()))
 	for _, o := range c.actualExprs() {
@@ -217,6 +251,7 @@ func (c *Command) VisibleExprs() []*Expr {
 	return res
 }
 
+// Names obtains the name of the command and its aliases
 func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
 }
@@ -309,12 +344,12 @@ func (c *Command) actualFlags() []*Flag {
 
 func (c *Command) newSynopsis() *commandSynopsis {
 	groups := map[optionGroup][]*flagSynopsis{
-		onlyShortNoValue:         []*flagSynopsis{},
-		onlyShortNoValueOptional: []*flagSynopsis{},
-		onlyBoolLong:             []*flagSynopsis{},
-		hidden:                   []*flagSynopsis{},
-		otherOptional:            []*flagSynopsis{},
-		other:                    []*flagSynopsis{},
+		onlyShortNoValue:         {},
+		onlyShortNoValueOptional: {},
+		onlyBoolLong:             {},
+		hidden:                   {},
+		otherOptional:            {},
+		other:                    {},
 	}
 	args := make([]*argSynopsis, 0)
 	for _, f := range c.actualFlags() {
@@ -335,6 +370,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 	}
 }
 
+// SetData sets the specified metadata on the command
 func (c *Command) SetData(name string, v interface{}) {
 	c.ensureData()[name] = v
 }

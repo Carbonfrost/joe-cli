@@ -15,7 +15,7 @@ import (
 	"golang.org/x/term"
 )
 
-// Context provides the context in which the app, command, or flag is executing
+// Context provides the context in which the app, command, or flag is executing or initializing
 type Context struct {
 	context.Context
 	*contextData
@@ -60,6 +60,13 @@ type hooks struct {
 	after  []*hook
 }
 
+// ContextPath provides a list of strings that name each one of the parent components
+// in the context.  Each string follows the form:
+//
+//   command  a command matching the name "command"
+//   -flag    a flag matching the flag name
+//   <arg>    an argument matching the arg name
+//
 type ContextPath []string
 
 type contextPathPattern struct {
@@ -77,6 +84,7 @@ func newContextPathPattern(pat string) contextPathPattern {
 	return contextPathPattern{strings.Fields(pat)}
 }
 
+// Parent obtains the parent context or nil if the root context
 func (c *Context) Parent() *Context {
 	if c == nil {
 		return nil
@@ -84,6 +92,7 @@ func (c *Context) Parent() *Context {
 	return c.parent
 }
 
+// App obtains the app
 func (c *Context) App() *App {
 	if cmd, ok := c.internal.app(); ok {
 		return cmd
@@ -91,6 +100,8 @@ func (c *Context) App() *App {
 	return c.Parent().App()
 }
 
+// Command obtains the command.  The command could be a synthetic command that was
+// created to represent the root command of the app.
 func (c *Context) Command() *Command {
 	if cmd, ok := c.target().(*Command); ok {
 		return cmd
@@ -98,6 +109,7 @@ func (c *Context) Command() *Command {
 	return c.Parent().Command()
 }
 
+// Arg retrieves the argument in scope if any
 func (c *Context) Arg() *Arg {
 	if a, ok := c.target().(*Arg); ok {
 		return a
@@ -105,10 +117,12 @@ func (c *Context) Arg() *Arg {
 	return c.Parent().Arg()
 }
 
+// Expr retrieves the expression operator in scope if any
 func (c *Context) Expr() *Expr {
 	return c.target().(*Expr)
 }
 
+// Flag retrieves the flag in scope if any
 func (c *Context) Flag() *Flag {
 	if f, ok := c.target().(*Flag); ok {
 		return f
@@ -141,10 +155,16 @@ func (c *Context) IsFlag() bool {
 	return ok
 }
 
+// IsInitializing returns true if the context represents initialization
 func (c *Context) IsInitializing() bool { return c.timing == initialTiming }
-func (c *Context) IsBefore() bool       { return c.timing == beforeTiming }
-func (c *Context) IsAfter() bool        { return c.timing == afterTiming }
 
+// IsBefore returns true if the context represents actions running before executing the command
+func (c *Context) IsBefore() bool { return c.timing == beforeTiming }
+
+// IsAfter returns true if the context represents actions running after executing the command
+func (c *Context) IsAfter() bool { return c.timing == afterTiming }
+
+// Timing retrieves the timing
 func (c *Context) Timing() int { return int(c.timing) }
 
 func (c *Context) isOption() bool {
@@ -152,10 +172,14 @@ func (c *Context) isOption() bool {
 	return ok
 }
 
+// Args retrieves the arguments.  IF the context corresponds to a command, these
+// represent the name of the command plus the arguments passed to it.  For flags and arguments,
+// this is the value passed to them
 func (c *Context) Args() []string {
 	return c.internal.args()
 }
 
+// LookupFlag finds the flag by name.  The name can be a string, rune, or *Flag
 func (c *Context) LookupFlag(name interface{}) *Flag {
 	if c == nil {
 		return nil
@@ -184,6 +208,7 @@ func (c *Context) LookupFlag(name interface{}) *Flag {
 	return c.Parent().LookupFlag(name)
 }
 
+// LookupArg finds the arg by name.  The name can be a string, rune, or *Arg
 func (c *Context) LookupArg(name interface{}) *Arg {
 	if c == nil {
 		return nil
@@ -211,11 +236,13 @@ func (c *Context) LookupArg(name interface{}) *Arg {
 	return c.Parent().LookupArg(name)
 }
 
+// Seen returns true if the specified flag or argument has been used at least once
 func (c *Context) Seen(name string) bool {
 	f := c.lookupOption(name)
 	return f != nil && f.Seen()
 }
 
+// Occurrences returns the number of times the specified flag or argument has been used
 func (c *Context) Occurrences(name string) int {
 	f := c.lookupOption(name)
 	if f != nil {
@@ -224,6 +251,7 @@ func (c *Context) Occurrences(name string) int {
 	return -1
 }
 
+// Expression obtains the expression from the context
 func (c *Context) Expression() Expression {
 	return c.Value("expression").(Expression)
 }
@@ -344,87 +372,108 @@ func (c *Context) valueCore(name string) interface{} {
 	return c.Parent().Value(name)
 }
 
+// Bool obtains the value and converts it to a bool
 func (c *Context) Bool(name interface{}) bool {
 	return lookupBool(c, name)
 }
 
+// String obtains the value and converts it to a string
 func (c *Context) String(name interface{}) string {
 	return lookupString(c, name)
 }
 
+// List obtains the value and converts it to a string slice
 func (c *Context) List(name interface{}) []string {
 	return lookupList(c, name)
 }
 
+// Int obtains the int for the specified name
 func (c *Context) Int(name interface{}) int {
 	return lookupInt(c, name)
 }
 
+// Int8 obtains the int8 for the specified name
 func (c *Context) Int8(name interface{}) int8 {
 	return lookupInt8(c, name)
 }
 
+// Int16 obtains the int16 for the specified name
 func (c *Context) Int16(name interface{}) int16 {
 	return lookupInt16(c, name)
 }
 
+// Int32 obtains the int32 for the specified name
 func (c *Context) Int32(name interface{}) int32 {
 	return lookupInt32(c, name)
 }
 
+// Int64 obtains the int64 for the specified name
 func (c *Context) Int64(name interface{}) int64 {
 	return lookupInt64(c, name)
 }
 
+// UInt obtains the uint for the specified name
 func (c *Context) UInt(name interface{}) uint {
 	return lookupUInt(c, name)
 }
 
+// UInt8 obtains the uint8 for the specified name
 func (c *Context) UInt8(name interface{}) uint8 {
 	return lookupUInt8(c, name)
 }
 
+// UInt16 obtains the uint16 for the specified name
 func (c *Context) UInt16(name interface{}) uint16 {
 	return lookupUInt16(c, name)
 }
 
+// UInt32 obtains the uint32 for the specified name
 func (c *Context) UInt32(name interface{}) uint32 {
 	return lookupUInt32(c, name)
 }
 
+// UInt64 obtains the uint64 for the specified name
 func (c *Context) UInt64(name interface{}) uint64 {
 	return lookupUInt64(c, name)
 }
 
+// Float32 obtains the float32 for the specified name
 func (c *Context) Float32(name interface{}) float32 {
 	return lookupFloat32(c, name)
 }
 
+// Float64 obtains the float64 for the specified name
 func (c *Context) Float64(name interface{}) float64 {
 	return lookupFloat64(c, name)
 }
 
-// File obtains the file for the specified flag or argument.
+// File obtains the File for the specified name
 func (c *Context) File(name interface{}) *File {
 	return lookupFile(c, name)
 }
 
+// Map obtains the map for the specified name
 func (c *Context) Map(name interface{}) map[string]string {
 	return lookupMap(c, name)
 }
 
+// URL obtains the URL for the specified name
 func (c *Context) URL(name interface{}) *url.URL {
 	return lookupURL(c, name)
 }
 
+// Regexp obtains the Regexp for the specified name
 func (c *Context) Regexp(name interface{}) *regexp.Regexp {
 	return lookupRegexp(c, name)
 }
 
+// IP obtains the IP for the specified name
 func (c *Context) IP(name interface{}) *net.IP {
 	return lookupIP(c, name)
 }
 
+// Do executes the specified actions in succession.  If an action returns an error, that
+// error is returned and the rest of the actions aren't run
 func (c *Context) Do(actions ...Action) error {
 	for _, a := range actions {
 		err := a.Execute(c)
@@ -435,6 +484,7 @@ func (c *Context) Do(actions ...Action) error {
 	return nil
 }
 
+// Template retrieves a template by name
 func (c *Context) Template(name string) *Template {
 	str := c.App().ensureTemplates()[name]
 	funcMap := c.App().ensureTemplateFuncs()
@@ -446,6 +496,8 @@ func (c *Context) Template(name string) *Template {
 	}
 }
 
+// Name gets the name of the context, which is the name of the command, arg, flag, or expression
+// operator in use
 func (c *Context) Name() string {
 	switch t := c.target().(type) {
 	case *Arg:
@@ -461,6 +513,7 @@ func (c *Context) Name() string {
 	return ""
 }
 
+// Path retrieves all of the names on the context and its ancetors to the root
 func (c *Context) Path() ContextPath {
 	res := make([]string, 0)
 	c.lineageFunc(func(ctx *Context) {
@@ -475,6 +528,7 @@ func (c *Context) Path() ContextPath {
 	return ContextPath(res)
 }
 
+// Lineage retrieves all of the ancestor contexts up to the root
 func (c *Context) Lineage() []*Context {
 	res := make([]*Context, 0)
 	c.lineageFunc(func(ctx *Context) {
@@ -500,22 +554,27 @@ func (c *Context) demandInit() *hooks {
 	return c.internal.hooks()
 }
 
+// Last gets the last name in the path
 func (c ContextPath) Last() string {
 	return c[len(c)-1]
 }
 
+// IsCommand tests whether the last segment of the path represents a command
 func (c ContextPath) IsCommand() bool {
 	return !(c.IsFlag() || c.IsArg())
 }
 
+// IsFlag tests whether the last segment of the path represents a flag
 func (c ContextPath) IsFlag() bool {
 	return []rune(c.Last())[0] == '-'
 }
 
+// IsArg tests whether the last segment of the path represents an argument
 func (c ContextPath) IsArg() bool {
 	return []rune(c.Last())[0] == '<'
 }
 
+// String converts the context path to a string
 func (c ContextPath) String() string {
 	return strings.Join([]string(c), " ")
 }

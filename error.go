@@ -5,17 +5,30 @@ import (
 	"fmt"
 )
 
+// ErrorCode provides common error codes in the CLI framework.
 type ErrorCode int
 
+// Error provides the common representation of errors
 type Error struct {
-	Code  ErrorCode
-	Err   error
-	Name  string
+	// Code is the code to use.
+	Code ErrorCode
+
+	// Err is the internal error, if any
+	Err error
+
+	// Name specifies the name of the flag, arg, command, or expression that
+	// caused the rorr
+	Name string
+
+	// Value is the value that caused the error
 	Value interface{}
 }
 
+// ExitCoder is an error that knows how to convert to its exit code
 type ExitCoder interface {
 	error
+
+	// ExitCode obtains the exit code for the error
 	ExitCode() int
 }
 
@@ -84,6 +97,7 @@ func exitCore(message string, code int) ExitCoder {
 	}
 }
 
+// ExitCode always returns 2
 func (e *Error) ExitCode() int {
 	return 2
 }
@@ -95,10 +109,12 @@ func (e *Error) Error() string {
 	return e.Err.Error()
 }
 
+// Unwrap returns the internal error
 func (e *Error) Unwrap() error {
 	return e.Err
 }
 
+// String produces a textual representation of error code
 func (e ErrorCode) String() string {
 	switch e {
 	case UnexpectedArgument:

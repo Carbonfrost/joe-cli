@@ -105,6 +105,9 @@ type appContext struct {
 }
 
 var (
+	// ExitHandler defines how to handle exiting the process.  This function
+	// takes the context, error message, and exit status.  By default, text is
+	// written to stderr and the exit status is returned via os.Exit
 	ExitHandler func(*Context, string, int)
 
 	defaultTemplates = map[string]func() string{
@@ -126,30 +129,32 @@ func (a *App) Run(args []string) {
 	})
 }
 
+// RunContext runs the application with the specified context and returns any error
+// that occurred.
 func (a *App) RunContext(c context.Context, args []string) error {
 	return a.runContextCore(c, args, func(_ *Context, err error) error {
 		return err
 	})
 }
 
+// Command gets the command by name
 func (a *App) Command(name string) (*Command, bool) {
 	return findCommandByName(a.Commands, name)
 }
 
+// Flag gets the flag by name
 func (a *App) Flag(name string) (*Flag, bool) {
 	return findFlagByName(a.Flags, name)
 }
 
+// Arg gets the argument by name
 func (a *App) Arg(name string) (*Arg, bool) {
 	return findArgByName(a.Args, name)
 }
 
+// Expr  gets the expression by name
 func (a *App) Expr(name string) (*Expr, bool) {
 	return findExprByName(a.Exprs, name)
-}
-
-func (a *App) appendAction(t timing, ah Action) {
-	a.rootCommand.uses.add(t, ah)
 }
 
 func (a *App) createRoot() *Command {

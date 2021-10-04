@@ -32,11 +32,9 @@ import (
 // In this case, you can  obtain value of the --age=21 flag using Context.Int("flag"), which may be
 // necessary when you don't use your own variable.
 //
-// A pointer to any of the following types is possible for Value: string, bool,
-// int (and any variant of all sizes and/or unsigned), float32, float64, []string, time.Duration,
-// and any implementer of the Value interface.
-//
 type Flag struct {
+	// Name provides the name of the flag. This value must be set, and it is used to access
+	// the flag's value via the context
 	Name string
 
 	// Aliases provides a list of alternative names for the flag.  In general, Name should
@@ -55,14 +53,58 @@ type Flag struct {
 	// Sentence case is recommended for the usage text.    Uppercase is recommended for the
 	// text of placeholders.  The placeholder is used in the synoposis for the flag as well
 	// as error messages.
-	HelpText    string
-	UsageText   string
-	EnvVars     []string
-	FilePath    string
-	Value       interface{}
+	HelpText string
+
+	// UsageText provides the usage for the flag.  If left blank, a succint synopsis
+	// is generated from the type of the flag's value
+	UsageText string
+
+	// EnvVars specifies the name of environment variables that are read to provide the
+	// default value of the flag.
+	EnvVars []string
+
+	// FilePath specifies a file that is loaded to provide the default value of the flag.
+	FilePath string
+
+	// Value provides the value of the flag.  Any of the following types are valid for the
+	// value:
+	//
+	//   * *bool
+	//   * *time.Duration
+	//   * *float32
+	//   * *float64
+	//   * *int
+	//   * *int16
+	//   * *int32
+	//   * *int64
+	//   * *int8
+	//   * *net.IP
+	//   * *[]string
+	//   * *map[string]string
+	//   * **regexp.Regexp
+	//   * *string
+	//   * *uint
+	//   * *uint16
+	//   * *uint32
+	//   * *uint64
+	//   * *uint8
+	//   * **url.URL
+	//   * an implementation of Value interface
+	//
+	// If unspecified, the value will be a string pointer.
+	Value interface{}
+
+	// DefaultText provides a description of the detault value for the flag.  This is displayed
+	// on help screens but is otherwise unused
 	DefaultText string
-	Options     Option
-	Category    string
+
+	// Options sets various options about how to treat the flag.  For example, options can
+	// hide the flag or make its value optional.
+	Options Option
+
+	// Category specifies the flag category.  When categories are used, flags are grouped
+	// together on the help screen
+	Category string
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
@@ -91,10 +133,18 @@ type Flag struct {
 
 // FlagsByName is a sortable slice for flags
 type FlagsByName []*Flag
+
+// FlagsByCategory provides a slice that can sort on category names and the flags
+// themselves
 type FlagsByCategory []*FlagCategory
+
+// FlagCategory names a category and the flags it contains
 type FlagCategory struct {
+	// Category is the name of the category
 	Category string
-	Flags    []*Flag
+
+	// Flags in the category
+	Flags []*Flag
 }
 
 type option interface {
@@ -135,6 +185,7 @@ type valueSynopsis struct {
 	usage       *usage
 }
 
+// GroupFlagsByCategory groups together flags by category and sorts the groupings.
 func GroupFlagsByCategory(flags []*Flag) FlagsByCategory {
 	res := FlagsByCategory{}
 	all := map[string]*FlagCategory{}
@@ -195,6 +246,7 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 	}
 }
 
+// SetData sets the specified metadata on the flag
 func (f *Flag) SetData(name string, v interface{}) {
 	f.ensureData()[name] = v
 }
@@ -345,6 +397,7 @@ func placeholder(v interface{}) string {
 	}
 }
 
+// Seen returns true if the flag was used on the command line at least once
 func (f *Flag) Seen() bool {
 	if f.option == nil {
 		return false
@@ -352,6 +405,7 @@ func (f *Flag) Seen() bool {
 	return f.option.Seen()
 }
 
+// Occurrences returns the number of times the flag was specified on the command line
 func (f *Flag) Occurrences() int {
 	if f.option == nil {
 		return 0
@@ -359,10 +413,12 @@ func (f *Flag) Occurrences() int {
 	return f.option.Count()
 }
 
+// Names obtains the name of the flag and its aliases
 func (f *Flag) Names() []string {
 	return append([]string{f.Name}, f.Aliases...)
 }
 
+// Set will update the value of the flag
 func (f *Flag) Set(arg string) error {
 	return f.option.Value().Set(arg, f.option)
 }
@@ -382,10 +438,12 @@ func canonicalNames(name string, aliases []string) (long []string, short []rune)
 	return
 }
 
+// SetHidden causes the flag to be hidden
 func (f *Flag) SetHidden() {
 	f.flags |= internalFlagHidden
 }
 
+// SetRequired causes the flag to be required
 func (f *Flag) SetRequired() {
 	f.flags |= internalFlagRequired
 }
@@ -463,6 +521,7 @@ func (f FlagsByName) Swap(i, j int) {
 	f[i], f[j] = f[j], f[i]
 }
 
+// VisibleFlags filters all flags in the flag category by whether they are not hidden
 func (f *FlagCategory) VisibleFlags() []*Flag {
 	res := make([]*Flag, 0, len(f.Flags))
 	for _, o := range f.Flags {
@@ -474,6 +533,8 @@ func (f *FlagCategory) VisibleFlags() []*Flag {
 	return res
 }
 
+// Undocumented determines whether the category is undocumented (i.e. has no HelpText set
+// on any of its flags)
 func (e *FlagCategory) Undocumented() bool {
 	for _, x := range e.Flags {
 		if x.HelpText != "" {

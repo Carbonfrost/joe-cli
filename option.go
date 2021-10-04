@@ -5,11 +5,15 @@ import (
 	"os"
 )
 
+// Option provides a built-in convenience configuration for flags, args, and commands.
 type Option int
 type internalFlags int
 
 const (
 	Hidden = Option(1 << iota)
+
+	// Required marks a flag as required.  When set, an error is generated if the flag is  not
+	// specified
 	Required
 
 	// Exits marks a flag that causes the app to exit.  This value is added to the options of flags

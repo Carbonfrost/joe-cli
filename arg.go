@@ -5,21 +5,72 @@ import (
 )
 
 type Arg struct {
-	Name        string
-	EnvVars     []string
-	FilePath    string
-	HelpText    string
-	UsageText   string
-	Value       interface{}
+	// Name provides the name of the argument. This value must be set, and it is used to access
+	// the argument's value via the context
+	Name string
+
+	// EnvVars specifies the name of environment variables that are read to provide the
+	// default value of the argument.
+	EnvVars []string
+
+	// FilePath specifies a file that is loaded to provide the default value of the argument.
+	FilePath string
+
+	// HelpText contains text which briefly describes the usage of the argument.
+	// For style, generally the usage text should be limited to about 40 characters.
+	// Sentence case is recommended for the usage text.    Uppercase is recommended for the
+	// text of placeholders.  The placeholder is used in the synoposis for the argument as well
+	// as error messages.
+	HelpText string
+
+	// UsageText provides the usage for the argument.  If left blank, a succint synopsis
+	// is generated from the type of the argument's value
+	UsageText string
+
+	// Value provides the value of the argument.  Any of the following types are valid for the
+	// value:
+	//
+	//   * *bool
+	//   * *time.Duration
+	//   * *float32
+	//   * *float64
+	//   * *int
+	//   * *int16
+	//   * *int32
+	//   * *int64
+	//   * *int8
+	//   * *net.IP
+	//   * *[]string
+	//   * *map[string]string
+	//   * **regexp.Regexp
+	//   * *string
+	//   * *uint
+	//   * *uint16
+	//   * *uint32
+	//   * *uint64
+	//   * *uint8
+	//   * **url.URL
+	//   * an implementation of Value interface
+	//
+	// If unspecified, the value will be a string pointer.
+	Value interface{}
+
+	// DefaultText provides a description of the detault value for the argument.  This is displayed
+	// on help screens but is otherwise unused
 	DefaultText string
-	NArg        interface{}
-	Options     Option
+
+	// NArg describes how many values are passed to the argument.  For a description, see
+	// ArgCount function
+	NArg interface{}
+
+	// Options sets various options about how to treat the argument.
+	Options Option
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
 	Before interface{}
 
-	// Action executes if the flag was set.  Refer to cli.Action about the correct
+	// Action executes if the argument was set.  Refer to cli.Action about the correct
 	// function signature to use.
 	Action interface{}
 
@@ -40,11 +91,14 @@ type Arg struct {
 	uses   *actionPipelines
 }
 
+// ArgCounter provides the behavior of counting
 type ArgCounter interface {
 	// Take considers the argument and and returns whether it can be used.
 	// If the error EndOfArguments is returned, then the arg counter is done with
 	// taking argumens.  All other errors are treated as fatal.
 	Take(arg string, possibleFlag bool) error
+
+	// Done is invoked to signal the end of arguments
 	Done() error
 }
 
@@ -72,7 +126,12 @@ type argSynopsis struct {
 }
 
 const (
-	TakeRemaining     = -1
+	// TakeRemaining is the value to use for Arg.NArg to indicate that an argument takes
+	// all the remaining tokens from the command line
+	TakeRemaining = -1
+
+	// TakeRemaining is the value to use for Arg.NArg to indicate that an argument takes
+	// tokens from the command line until one looks like a flag.
 	TakeUntilNextFlag = -2
 )
 
@@ -126,6 +185,7 @@ func ArgCount(v interface{}) ArgCounter {
 	}
 }
 
+// Occurrences counts the number of times that the argument has occurred on the command line
 func (a *Arg) Occurrences() int {
 	if a == nil || a.option == nil {
 		return 0
@@ -133,6 +193,7 @@ func (a *Arg) Occurrences() int {
 	return a.option.Count()
 }
 
+// Seen reports true if the argument is used at least once.
 func (a *Arg) Seen() bool {
 	if a == nil || a.option == nil {
 		return false
@@ -140,14 +201,17 @@ func (a *Arg) Seen() bool {
 	return a.option.Count() > 0
 }
 
+// Set will set the value of the argument
 func (a *Arg) Set(arg string) error {
 	return a.option.Value().Set(arg, a.option)
 }
 
+// SetHidden causes the argument to be hidden from the help screen
 func (a *Arg) SetHidden() {
 	a.flags |= internalFlagHidden
 }
 
+// SetRequired will indicate that the argument is required.
 func (a *Arg) SetRequired() {
 	a.flags |= internalFlagRequired
 }
@@ -225,6 +289,7 @@ func (a *Arg) value() interface{} {
 	return a.Value
 }
 
+// SetData sets the specified metadata on the argument
 func (a *Arg) SetData(name string, v interface{}) {
 	a.ensureData()[name] = v
 }
