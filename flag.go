@@ -313,11 +313,7 @@ func (o *flagContext) initialize(c *Context) error {
 	}
 	f.option = res
 
-	rest, err := takeInitializers(ActionOf(f.Uses), f.Options, c)
-	if err != nil {
-		return err
-	}
-
+	rest := takeInitializers(ActionOf(f.Uses), f.Options, c)
 	f.uses_ = rest
 	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }

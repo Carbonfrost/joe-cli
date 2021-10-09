@@ -316,10 +316,7 @@ func (o *argContext) hooks() *hooks {
 }
 
 func (o *argContext) initialize(c *Context) error {
-	rest, err := takeInitializers(ActionOf(o.option.Uses), o.option.Options, c)
-	if err != nil {
-		return err
-	}
+	rest := takeInitializers(ActionOf(o.option.Uses), o.option.Options, c)
 	o.option.uses = rest
 	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }

@@ -287,13 +287,13 @@ func (p *ActionPipeline) Execute(c *Context) (err error) {
 	return nil
 }
 
-func (p *ActionPipeline) takeInitializers(c *Context) (*actionPipelines, error) {
+func (p *ActionPipeline) takeInitializers(c *Context) *actionPipelines {
 	res := &actionPipelines{}
 	for _, h := range p.items {
 		res.add(timingOf(h, initialTiming), h)
 	}
 
-	return res, nil
+	return res
 }
 
 func (p *actionPipelines) add(t timing, h Action) {
@@ -359,7 +359,7 @@ func pipeline(x, y Action) *ActionPipeline {
 	}
 }
 
-func takeInitializers(uses Action, opts Option, c *Context) (*actionPipelines, error) {
+func takeInitializers(uses Action, opts Option, c *Context) *actionPipelines {
 	return pipeline(uses, opts.wrap()).takeInitializers(c)
 }
 

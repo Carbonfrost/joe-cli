@@ -418,10 +418,7 @@ func (c CommandsByName) Swap(i, j int) {
 }
 
 func (c *commandContext) initialize(ctx *Context) error {
-	rest, err := takeInitializers(ActionOf(c.cmd.Uses), c.cmd.Options, ctx)
-	if err != nil {
-		return err
-	}
+	rest := takeInitializers(ActionOf(c.cmd.Uses), c.cmd.Options, ctx)
 	c.cmd.uses = rest
 	return c.initializeCore(ctx)
 }

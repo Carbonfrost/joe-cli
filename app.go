@@ -223,13 +223,10 @@ func (a *App) ensureTemplateFuncs() map[string]interface{} {
 }
 
 func (a *appContext) initialize(c *Context) error {
-	rest, err := takeInitializers(ActionOf(a.app_.Uses), a.app_.Options, c)
+	rest := takeInitializers(ActionOf(a.app_.Uses), a.app_.Options, c)
 
 	a.commandContext.cmd = a.app_.createRoot()
 	a.commandContext.cmd.uses = rest
-	if err != nil {
-		return err
-	}
 
 	if err := executeAll(c, rest.Initializers, defaultApp.Initializers); err != nil {
 		return err
