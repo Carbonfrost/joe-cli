@@ -258,21 +258,6 @@ func OptionalValue(v interface{}) Action {
 	}))
 }
 
-func newActionPipelines(m map[timing][]Action) *actionPipelines {
-	var pipe = func(h []Action) Action {
-		if len(h) == 0 {
-			return emptyAction
-		}
-		return &ActionPipeline{h}
-	}
-	return &actionPipelines{
-		Initializers: pipe(m[initialTiming]),
-		Before:       pipe(m[beforeTiming]),
-		Action:       pipe(m[actionTiming]),
-		After:        pipe(m[afterTiming]),
-	}
-}
-
 // Execute the action by calling the function
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {

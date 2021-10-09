@@ -106,7 +106,6 @@ type commandContext struct {
 	args_                []string
 	set_                 *set
 	didSubcommandExecute bool
-	bindings             map[string][]string
 }
 
 const (

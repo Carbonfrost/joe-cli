@@ -528,17 +528,6 @@ func wrapGeneric(v interface{}) *generic {
 	}
 }
 
-// wrapFlagLong will wrap the simple flag.Value with the one
-// required by getopt if necessary
-func wrapFlagLong(v interface{}) interface{} {
-	switch v.(type) {
-	case Value:
-		return wrapGeneric(v)
-	default:
-		return v
-	}
-}
-
 func dereference(v interface{}) interface{} {
 	if _, ok := v.(Value); ok {
 		return v

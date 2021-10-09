@@ -189,21 +189,6 @@ func (a *App) _createRootCore(force bool) *Command {
 	return a.rootCommand
 }
 
-func (a *App) actualArgs() []*Arg {
-	if a.Args == nil {
-		return make([]*Arg, 0)
-	}
-	return a.Args
-}
-
-func (a *App) actualFlags() []*Flag {
-	if a.Flags == nil {
-		return make([]*Flag, 0)
-	}
-	return a.Flags
-}
-
-func (a *App) setCategory(name string) {}
 func (a *App) SetData(name string, v interface{}) {
 	a.ensureData()[name] = v
 }
@@ -213,22 +198,6 @@ func (a *App) ensureData() map[string]interface{} {
 		a.Data = map[string]interface{}{}
 	}
 	return a.Data
-}
-
-func (a *App) hooks() *hooks {
-	return &a.appHooks
-}
-
-func (a *App) setInternalFlags(f internalFlags) {
-	a.flags |= f
-}
-
-func (a *App) internalFlags() internalFlags {
-	return a.flags
-}
-
-func (a *App) options() Option {
-	return a.Options
 }
 
 func (a *App) runContextCore(c context.Context, args []string, exit func(*Context, error) error) error {
@@ -444,5 +413,3 @@ func addAppCommand(name string, f *Flag, cmd *Command) ActionFunc {
 		return nil
 	}
 }
-
-var _ command = &App{}
