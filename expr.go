@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+//counterfeiter:generate . Evaluator
+
 // Evaluator provides the evluation function for an expression operator.
 type Evaluator interface {
 	// Evaluate performs the evaluation.  The v argument is the value of the prior
@@ -125,7 +127,11 @@ type ExprCategory struct {
 	Exprs []*Expr
 }
 
-type yielder = func(interface{}) error
+//counterfeiter:generate . Yielder
+
+// Yielder provides the signature of the function used to yield
+// values to the expression pipeline
+type Yielder func(interface{}) error
 
 type exprPipelineFactory struct {
 	exprs map[string]func(*Context) *boundExpr
@@ -495,8 +501,8 @@ func (p *exprPipeline) String() string {
 }
 
 func (p *exprPipeline) Evaluate(ctx *Context, items ...interface{}) error {
-	yielders := make([]yielder, len(p.items))
-	yielderThunk := func(i int) yielder {
+	yielders := make([]Yielder, len(p.items))
+	yielderThunk := func(i int) Yielder {
 		if i >= len(yielders) || yielders[i] == nil {
 			return emptyYielder
 		}

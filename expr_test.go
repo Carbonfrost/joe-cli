@@ -39,6 +39,41 @@ var _ = Describe("Expr", func() {
 
 	})
 
+	Describe("EvaluatorOf", func() {
+
+		var called bool
+		act := func() { called = true }
+
+		DescribeTable("examples",
+			func(thunk interface{}) {
+				var handler cli.Evaluator
+				Expect(func() {
+					handler = cli.EvaluatorOf(thunk)
+				}).NotTo(Panic())
+
+				called = false
+				handler.Evaluate(&cli.Context{}, nil, new(joeclifakes.FakeYielder).Spy)
+				Expect(called).To(BeTrue())
+			},
+			Entry("func(*Context, interface{}, func(interface{}) error) error", func(*cli.Context, interface{}, func(interface{}) error) error { act(); return nil }),
+			Entry("func(*Context, interface{}) error", func(*cli.Context, interface{}) error { act(); return nil }),
+			Entry("func(*Context, interface{}) bool", func(*cli.Context, interface{}) bool { act(); return false }),
+			Entry("func(*Context, interface{})", func(*cli.Context, interface{}) { act() }),
+			Entry("func(interface{}, func(interface{}) error) error", func(interface{}, func(interface{}) error) error { act(); return nil }),
+			Entry("func(interface{}) error", func(interface{}) error { act(); return nil }),
+			Entry("func(interface{}) bool", func(interface{}) bool { act(); return false }),
+			Entry("func(interface{})", func(interface{}) { act() }),
+		)
+
+		It("always yields from boolean", func() {
+			ev := cli.EvaluatorOf(true)
+			yield := new(joeclifakes.FakeYielder)
+			err := ev.Evaluate(&cli.Context{}, nil, yield.Spy)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(yield.CallCount()).To(Equal(1))
+		})
+	})
+
 	Describe("parsing", func() {
 		DescribeTable(
 			"errors",

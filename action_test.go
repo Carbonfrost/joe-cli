@@ -333,6 +333,30 @@ var _ = Describe("After", func() {
 	)
 })
 
+var _ = Describe("ActionOf", func() {
+
+	var called bool
+	act := func() { called = true }
+
+	DescribeTable("examples",
+		func(thunk interface{}) {
+			var handler cli.Action
+			Expect(func() {
+				handler = cli.ActionOf(thunk)
+			}).NotTo(Panic())
+
+			called = false
+			handler.Execute(&cli.Context{})
+			Expect(called).To(BeTrue())
+		},
+		Entry("func(*cli.Context) error", func(*cli.Context) error { act(); return nil }),
+		Entry("func(*cli.Context)", func(*cli.Context) { act() }),
+		Entry("func(context.Context) error", func(context.Context) error { act(); return nil }),
+		Entry("func(context.Context)", func(context.Context) { act() }),
+		Entry("func() error", func() error { act(); return nil }),
+	)
+})
+
 var _ = Describe("events", func() {
 	DescribeTable("execution order of events",
 		func(arguments string, expected types.GomegaMatcher) {
