@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 
@@ -47,7 +48,7 @@ var _ = Describe("App", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 		})
 
 		Context("when executing itself", func() {
@@ -105,7 +106,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(nil, []string{"app"})
+			app.RunContext(context.TODO(), []string{"app"})
 			Expect(help).ToNot(BeNil())
 		})
 
@@ -119,7 +120,7 @@ var _ = Describe("App", func() {
 				Stderr: &capture,
 			}
 
-			_ = app.RunContext(nil, []string{"app", "--help"})
+			_ = app.RunContext(context.TODO(), []string{"app", "--help"})
 			Expect(capture.String()).To(HavePrefix("usage: hunter "))
 		})
 	})
@@ -135,7 +136,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(nil, []string{"app"})
+			app.RunContext(context.TODO(), []string{"app"})
 			Expect(version).ToNot(BeNil())
 		})
 
@@ -149,7 +150,7 @@ var _ = Describe("App", func() {
 				Stdout:  &capture, // Python 2 -> 3 changed from stderr to stdout
 			}
 
-			_ = app.RunContext(nil, []string{"app", "--version"})
+			_ = app.RunContext(context.TODO(), []string{"app", "--version"})
 			Expect(capture.String()).To(HavePrefix("hunter, version 1.619"))
 		})
 	})
@@ -168,7 +169,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(nil, []string{"app"})
+			app.RunContext(context.TODO(), []string{"app"})
 
 			Expect(in).To(Equal(os.Stdin))
 			Expect(out).To(Equal(os.Stdout))
@@ -192,7 +193,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(nil, []string{"app", "s"})
+			app.RunContext(context.TODO(), []string{"app", "s"})
 
 			Expect(in).To(Equal(os.Stdin))
 			Expect(out).To(Equal(os.Stdout))

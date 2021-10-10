@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -212,6 +213,6 @@ func renderScreen(app *cli.App, args string) string {
 	var buffer bytes.Buffer
 	app.Stderr = &buffer
 	app.Stdout = &buffer
-	_ = app.RunContext(nil, arguments)
+	_ = app.RunContext(context.TODO(), arguments)
 	return buffer.String()
 }

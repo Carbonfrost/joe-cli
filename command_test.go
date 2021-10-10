@@ -1,6 +1,8 @@
 package cli_test
 
 import (
+	"context"
+
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 
@@ -41,7 +43,7 @@ var _ = Describe("Command", func() {
 			}
 
 			args, _ := cli.Split("app c args args")
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 		})
 
 		It("executes action on executing sub-command", func() {
@@ -74,7 +76,7 @@ var _ = Describe("Command", func() {
 				},
 			}
 
-			err := app.RunContext(nil, []string{"app", "-a", "-b"})
+			err := app.RunContext(context.TODO(), []string{"app", "-a", "-b"})
 			Expect(err).NotTo(HaveOccurred())
 			captured := act.ExecuteArgsForCall(0)
 
@@ -101,7 +103,7 @@ var _ = Describe("Command", func() {
 			}
 			arguments := "app arg --whitespace"
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(nil, args)
+			err := app.RunContext(context.TODO(), args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("can't use --whitespace after arguments"))
 		})

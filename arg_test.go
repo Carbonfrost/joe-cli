@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -36,7 +37,7 @@ var _ = Describe("Arg", func() {
 
 		JustBeforeEach(func() {
 			args, _ := cli.Split(arguments)
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 		})
 
 		It("executes action on setting Arg", func() {
@@ -76,7 +77,7 @@ var _ = Describe("Arg", func() {
 					arguments = strings.Repeat(" g", count)
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(nil, args)
+				err := app.RunContext(context.TODO(), args)
 				Expect(err).NotTo(HaveOccurred())
 
 				captured := act.ExecuteArgsForCall(0)
@@ -109,7 +110,7 @@ var _ = Describe("Arg", func() {
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(nil, args)
+				err := app.RunContext(context.TODO(), args)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(items).To(match)
 			},
@@ -133,7 +134,7 @@ var _ = Describe("Arg", func() {
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(nil, args)
+				err := app.RunContext(context.TODO(), args)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(match)
 			},
@@ -193,7 +194,7 @@ var _ = Describe("Arg", func() {
 
 			os.Setenv("_GOCLI_F", "environment value")
 			args, _ := cli.Split(arguments)
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 		})
 
 		It("sets up value from environment", func() {

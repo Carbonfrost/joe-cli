@@ -233,7 +233,7 @@ var _ = Describe("Before", func() {
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
-			_ = app.RunContext(nil, args)
+			_ = app.RunContext(context.TODO(), args)
 			Expect(actual.Called).To(BeTrue())
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsBefore).To(BeTrue())
@@ -289,7 +289,7 @@ var _ = Describe("After", func() {
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
-			_ = app.RunContext(nil, args)
+			_ = app.RunContext(context.TODO(), args)
 			Expect(actual.Called).To(BeTrue())
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsAfter).To(BeTrue())
@@ -425,7 +425,7 @@ var _ = Describe("events", func() {
 				},
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(nil, args)
+			err := app.RunContext(context.TODO(), args)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(expected)
 		},

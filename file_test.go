@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -33,7 +34,7 @@ var _ = Describe("File", func() {
 			Action: act,
 		}
 		tmpFileLocation, _ := os.CreateTemp("", "example.*.txt")
-		_ = app.RunContext(nil, []string{"app", tmpFileLocation.Name()})
+		_ = app.RunContext(context.TODO(), []string{"app", tmpFileLocation.Name()})
 
 		context := act.ExecuteArgsForCall(0)
 		Expect(context.File("f")).NotTo(BeNil())
@@ -52,7 +53,7 @@ var _ = Describe("File", func() {
 			},
 		}
 		name := filepath.Join(os.TempDir(), "nonexistent")
-		err := app.RunContext(nil, []string{"app", name})
+		err := app.RunContext(context.TODO(), []string{"app", name})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring(name + ": no such file or directory"))
 	})
@@ -70,7 +71,7 @@ var _ = Describe("File", func() {
 			Stdout: &buf,
 			Action: act,
 		}
-		_ = app.RunContext(nil, []string{"app", "-"})
+		_ = app.RunContext(context.TODO(), []string{"app", "-"})
 		context := act.ExecuteArgsForCall(0)
 
 		f, err := context.File("f").Open()
@@ -95,7 +96,7 @@ var _ = Describe("File", func() {
 			FS: globalFS,
 		}
 
-		_ = app.RunContext(nil, []string{"app"})
+		_ = app.RunContext(context.TODO(), []string{"app"})
 		Expect(actual.FS).To(BeIdenticalTo(globalFS))
 	})
 
@@ -115,7 +116,7 @@ var _ = Describe("File", func() {
 				actual, _ = ioutil.ReadAll(f)
 			},
 		}
-		_ = app.RunContext(nil, []string{"app", "-"})
+		_ = app.RunContext(context.TODO(), []string{"app", "-"})
 		Expect(string(actual)).To(Equal("hello\n"))
 	})
 })

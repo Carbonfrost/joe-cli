@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"net"
@@ -39,7 +40,7 @@ var _ = Describe("Flag", func() {
 
 		JustBeforeEach(func() {
 			args, _ := cli.Split(arguments)
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 		})
 
 		It("executes action on setting flag", func() {
@@ -181,7 +182,7 @@ var _ = Describe("Flag", func() {
 
 			os.Setenv("_GOCLI_F", "environment value")
 			args, _ := cli.Split(arguments)
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 		})
 
 		It("sets up value from environment", func() {
@@ -213,7 +214,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -sC")
-			app.RunContext(nil, arguments)
+			app.RunContext(context.TODO(), arguments)
 			Expect(*t).To(Equal(temperature("Celsius")))
 		})
 
@@ -229,7 +230,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -sK")
-			err := app.RunContext(nil, arguments)
+			err := app.RunContext(context.TODO(), arguments)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("not supported"))
 		})
@@ -252,7 +253,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -s")
-			err := app.RunContext(nil, arguments)
+			err := app.RunContext(context.TODO(), arguments)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(expected))
 		},
@@ -280,7 +281,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -sC")
-			app.RunContext(nil, arguments)
+			app.RunContext(context.TODO(), arguments)
 			Expect(*t).To(Equal(temperature("Celsius")))
 		})
 
@@ -297,7 +298,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -s")
-			_ = app.RunContext(nil, arguments)
+			_ = app.RunContext(context.TODO(), arguments)
 			Expect(*t).To(Equal("tls1.2"))
 		})
 	})

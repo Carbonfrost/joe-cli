@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -32,7 +33,7 @@ var _ = Describe("Expr", func() {
 			},
 		}
 		args, _ := cli.Split("app x -expr true")
-		app.RunContext(nil, args)
+		app.RunContext(context.TODO(), args)
 
 		captured := act.ExecuteArgsForCall(0)
 		Expect(captured.Expression())
@@ -103,7 +104,7 @@ var _ = Describe("Expr", func() {
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(nil, args)
+				err := app.RunContext(context.TODO(), args)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(match)
@@ -155,7 +156,7 @@ var _ = Describe("Expr", func() {
 				Stdout: &captured,
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(nil, args)
+			err := app.RunContext(context.TODO(), args)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

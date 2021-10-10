@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"context"
 	"net"
 	"net/url"
 	"regexp"
@@ -29,7 +30,7 @@ var _ = Describe("Value", func() {
 				}
 
 				args, _ := cli.Split(arguments)
-				app.RunContext(nil, args)
+				app.RunContext(context.TODO(), args)
 				captured := act.ExecuteArgsForCall(0)
 				Expect(captured.Value("o")).To(expected)
 			},
@@ -110,7 +111,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 			captured := act.ExecuteArgsForCall(0)
 			Expect(captured.List("s")).To(expected)
 		},
@@ -131,7 +132,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			app.RunContext(nil, args)
+			app.RunContext(context.TODO(), args)
 			captured := act.ExecuteArgsForCall(0)
 			Expect(captured.Map("s")).To(expected)
 		},
