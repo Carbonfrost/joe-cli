@@ -33,6 +33,17 @@ var _ = Describe("Quote", func() {
 	)
 })
 
+var _ = Describe("Join", func() {
+	DescribeTable("examples", func(in []string, expected string) {
+		actual := cli.Join(in)
+		Expect(actual).To(Equal(expected))
+	},
+		Entry("nominal", []string{"s"}, `s`),
+		Entry("empty", []string{}, ""),
+		Entry("whitespace", []string{"a b", "c d"}, "'a b' 'c d'"),
+	)
+})
+
 var _ = Describe("RunContext", func() {
 	DescribeTable("bind subcommand",
 		func(arguments string, expectedGlobal types.GomegaMatcher, expectedSub types.GomegaMatcher) {
