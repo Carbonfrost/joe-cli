@@ -130,31 +130,6 @@ func (c *Context) Flag() *Flag {
 	return c.Parent().Flag()
 }
 
-func (c *Context) IsApp() bool {
-	_, ok := c.internal.app()
-	return ok
-}
-
-func (c *Context) IsCommand() bool {
-	_, ok := c.target().(*Command)
-	return ok
-}
-
-func (c *Context) IsExpr() bool {
-	_, ok := c.target().(*Expr)
-	return ok
-}
-
-func (c *Context) IsArg() bool {
-	_, ok := c.target().(*Arg)
-	return ok
-}
-
-func (c *Context) IsFlag() bool {
-	_, ok := c.target().(*Flag)
-	return ok
-}
-
 // IsInitializing returns true if the context represents initialization
 func (c *Context) IsInitializing() bool { return c.timing == initialTiming }
 
@@ -342,6 +317,12 @@ func (c *Context) act(v interface{}, desired timing) error {
 		return errors.New("too late to exec action")
 	}
 	return nil
+}
+
+// Target retrieves the target of the context, which is *App, *Command, *Flag, *Arg,
+// or *Expr
+func (c *Context) Target() interface{} {
+	return c.target()
 }
 
 func (c *Context) target() target {
