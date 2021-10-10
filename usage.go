@@ -125,13 +125,17 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 
 // PrintVersion displays the version string.  The VersionTemplate provides the Go template
 func PrintVersion() ActionFunc {
-	return RenderTemplate("version", func(c *Context) interface{} {
-		return struct {
-			App *App
-		}{
-			c.App(),
-		}
-	})
+	return RenderTemplate("version", nil)
+}
+
+func defaultData(c *Context) interface{} {
+	return struct {
+		App     *App
+		Command *Command
+	}{
+		App:     c.App(),
+		Command: c.Command(),
+	}
 }
 
 // RenderTemplate provides an action that renders the specified template using the factory function that
@@ -139,6 +143,9 @@ func PrintVersion() ActionFunc {
 func RenderTemplate(name string, data func(*Context) interface{}) ActionFunc {
 	return func(c *Context) error {
 		tpl := c.Template(name)
+		if data == nil {
+			data = defaultData
+		}
 		_ = tpl.Execute(c.Stdout, data(c))
 		return nil
 	}
