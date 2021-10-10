@@ -91,6 +91,8 @@ type Arg struct {
 	uses   *actionPipelines
 }
 
+//counterfeiter:generate . ArgCounter
+
 // ArgCounter provides the behavior of counting
 type ArgCounter interface {
 	// Take considers the argument and and returns whether it can be used.

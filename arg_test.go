@@ -212,3 +212,16 @@ var _ = Describe("Arg", func() {
 		})
 	})
 })
+
+var _ = Describe("ArgCount", func() {
+	DescribeTable("examples", func(value interface{}, expected types.GomegaMatcher) {
+		Expect(func() {
+			cli.ArgCount(value)
+		}).To(expected)
+	},
+		Entry("ArgCounter", new(joeclifakes.FakeArgCounter), Not(Panic())),
+		Entry("1", 1, Not(Panic())),
+		Entry("nil", nil, Not(Panic())),
+		Entry("bad", "", Panic()),
+	)
+})
