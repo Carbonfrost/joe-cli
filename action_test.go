@@ -459,3 +459,16 @@ var _ = Describe("events", func() {
 		),
 	)
 })
+
+var _ = Describe("Pipeline", func() {
+	It("invokes all actions in pipeline", func() {
+		act1 := new(joeclifakes.FakeAction)
+		act2 := new(joeclifakes.FakeAction)
+
+		pipe := cli.Pipeline().Append(act1).Append(act2)
+		pipe.Execute(&cli.Context{})
+
+		Expect(act1.ExecuteCallCount()).To(Equal(1))
+		Expect(act2.ExecuteCallCount()).To(Equal(1))
+	})
+})
