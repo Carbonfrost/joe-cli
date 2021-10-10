@@ -449,7 +449,7 @@ func (c *Context) Regexp(name interface{}) *regexp.Regexp {
 }
 
 // IP obtains the IP for the specified name
-func (c *Context) IP(name interface{}) *net.IP {
+func (c *Context) IP(name interface{}) net.IP {
 	return lookupIP(c, name)
 }
 

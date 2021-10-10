@@ -52,7 +52,7 @@ type Lookup interface {
 	// Regexp obtains the value and converts it to a Regexp
 	Regexp(name interface{}) *regexp.Regexp
 	// IP obtains the value and converts it to a IP
-	IP(name interface{}) *net.IP
+	IP(name interface{}) net.IP
 }
 
 // LookupValues provides a Lookup backed by a map
@@ -65,13 +65,13 @@ func (c LookupValues) Value(name interface{}) interface{} {
 	}
 	switch v := name.(type) {
 	case rune:
-		return c[string(v)]
+		return dereference(c[string(v)])
 	case string:
-		return c[v]
+		return dereference(c[v])
 	case *Arg:
-		return c[v.Name]
+		return dereference(c[v.Name])
 	case *Flag:
-		return c[v.Name]
+		return dereference(c[v.Name])
 	}
 	panic(fmt.Sprintf("unexpected type: %T", name))
 }
@@ -172,7 +172,7 @@ func (c LookupValues) Regexp(name interface{}) *regexp.Regexp {
 }
 
 // IP obtains the IP for the specified name
-func (c LookupValues) IP(name interface{}) *net.IP {
+func (c LookupValues) IP(name interface{}) net.IP {
 	return lookupIP(c, name)
 }
 
@@ -328,10 +328,10 @@ func lookupRegexp(c Lookup, name interface{}) (res *regexp.Regexp) {
 	return
 }
 
-func lookupIP(c Lookup, name interface{}) (res *net.IP) {
+func lookupIP(c Lookup, name interface{}) (res net.IP) {
 	val := c.Value(name)
 	if val != nil {
-		res = val.(*net.IP)
+		res = val.(net.IP)
 	}
 	return
 }

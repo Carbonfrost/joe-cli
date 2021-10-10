@@ -1,5 +1,9 @@
 package cli // Intentional
 
+import (
+	"context"
+)
+
 // Expose some members for testing
 
 func ParseUsage(text string) *usage {
@@ -27,4 +31,16 @@ func NewFlagSynopsis(long string) *flagSynopsis {
 		long:  long,
 		value: &valueSynopsis{},
 	}
+}
+
+func InitializeFlag(f *Flag) *Context {
+	c := &Context{
+		Context: context.TODO(),
+		internal: &flagContext{
+			option: f,
+			args_:  []string{},
+		},
+	}
+	c.initialize()
+	return c
 }
