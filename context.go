@@ -155,9 +155,9 @@ func (c *Context) Args() []string {
 }
 
 // LookupFlag finds the flag by name.  The name can be a string, rune, or *Flag
-func (c *Context) LookupFlag(name interface{}) *Flag {
+func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
 	if c == nil {
-		return nil
+		return nil, false
 	}
 	switch v := name.(type) {
 	case rune:
@@ -171,11 +171,11 @@ func (c *Context) LookupFlag(name interface{}) *Flag {
 		}
 		if aa, ok := c.target().(hasFlags); ok {
 			if f, found := findFlagByName(aa.actualFlags(), v); found {
-				return f
+				return f, true
 			}
 		}
 	case *Flag:
-		return v
+		return v, true
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
@@ -184,9 +184,9 @@ func (c *Context) LookupFlag(name interface{}) *Flag {
 }
 
 // LookupArg finds the arg by name.  The name can be a string, rune, or *Arg
-func (c *Context) LookupArg(name interface{}) *Arg {
+func (c *Context) LookupArg(name interface{}) (*Arg, bool) {
 	if c == nil {
-		return nil
+		return nil, false
 	}
 	switch v := name.(type) {
 	case int:
@@ -200,11 +200,11 @@ func (c *Context) LookupArg(name interface{}) *Arg {
 		}
 		if aa, ok := c.target().(hasArguments); ok {
 			if a, found := findArgByName(aa.actualArgs(), v); found {
-				return a
+				return a, true
 			}
 		}
 	case *Arg:
-		return v
+		return v, true
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
@@ -213,14 +213,13 @@ func (c *Context) LookupArg(name interface{}) *Arg {
 
 // Seen returns true if the specified flag or argument has been used at least once
 func (c *Context) Seen(name string) bool {
-	f := c.lookupOption(name)
-	return f != nil && f.Seen()
+	f, ok := c.lookupOption(name)
+	return ok && f.Seen()
 }
 
 // Occurrences returns the number of times the specified flag or argument has been used
 func (c *Context) Occurrences(name string) int {
-	f := c.lookupOption(name)
-	if f != nil {
+	if f, ok := c.lookupOption(name); ok {
 		return f.Occurrences()
 	}
 	return -1
@@ -857,10 +856,9 @@ func (c *Context) executeOption() error {
 	return executeAll(c, c.option().action())
 }
 
-func (c *Context) lookupOption(name string) option {
-	f := c.LookupFlag(name)
-	if f != nil {
-		return f
+func (c *Context) lookupOption(name string) (option, bool) {
+	if f, ok := c.LookupFlag(name); ok {
+		return f, true
 	}
 	return c.LookupArg(name)
 }

@@ -86,12 +86,12 @@ var _ = Describe("middleware", func() {
 			})
 
 			It("creates secondary flag", func() {
-				s := captured.LookupFlag("no-flag")
+				s, _ := captured.LookupFlag("no-flag")
 				Expect(s.Name).To(Equal("no-flag"))
 			})
 
 			It("sets custom synopsis on original flag", func() {
-				s := captured.LookupFlag("flag")
+				s, _ := captured.LookupFlag("flag")
 				Expect(s.Synopsis()).To(Equal("-f, --[no-]flag"))
 			})
 

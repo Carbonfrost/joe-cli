@@ -81,7 +81,8 @@ var _ = Describe("Arg", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				captured := act.ExecuteArgsForCall(0)
-				Expect(captured.LookupArg("f").Value).To(BeAssignableToTypeOf(expected))
+				arg, _ := captured.LookupArg("f")
+				Expect(arg.Value).To(BeAssignableToTypeOf(expected))
 			},
 			Entry("list when 0", 0, cli.String()),
 			Entry("string when 1", 1, cli.String()),
