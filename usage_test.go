@@ -142,6 +142,11 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 			ContainSubstring("<command> [<args>]")),
+		Entry("display description",
+			&cli.App{
+				Description: "description text",
+			},
+			ContainSubstring("description text")),
 		Entry("display expression",
 			&cli.App{
 				Exprs: []*cli.Expr{
