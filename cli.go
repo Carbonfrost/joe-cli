@@ -1,3 +1,21 @@
+// Package cli is a framework for command line applications.  joe-cli is designed to be
+// easy to use and to extend.  It features a declarative model for organizing the app and
+// a robust middleware/hook system to customize the app with reusable logic.
+//
+// This is the minimal, useful application:
+//
+//    func main() {
+//      app := &cli.App{
+//              Name: "greet",
+//              Action: func(c *cli.Context) error {
+//                  fmt.Println("Hello, world!")
+//                  return nil
+//              },
+//          }
+//
+//      app.Run(os.Args)
+//    }
+//
 package cli
 
 import (

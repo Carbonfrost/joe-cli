@@ -531,8 +531,8 @@ func (f *FlagCategory) VisibleFlags() []*Flag {
 
 // Undocumented determines whether the category is undocumented (i.e. has no HelpText set
 // on any of its flags)
-func (e *FlagCategory) Undocumented() bool {
-	for _, x := range e.Flags {
+func (f *FlagCategory) Undocumented() bool {
+	for _, x := range f.Flags {
 		if x.HelpText != "" {
 			return false
 		}

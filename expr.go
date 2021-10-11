@@ -446,9 +446,9 @@ func (e ExprsByName) Swap(i, j int) {
 
 // VisibleExprs filters all operatorss in the expression operators category by whether
 // they are not hidden
-func (f *ExprCategory) VisibleExprs() []*Expr {
-	res := make([]*Expr, 0, len(f.Exprs))
-	for _, o := range f.Exprs {
+func (e *ExprCategory) VisibleExprs() []*Expr {
+	res := make([]*Expr, 0, len(e.Exprs))
+	for _, o := range e.Exprs {
 		if o.flags.hidden() {
 			continue
 		}

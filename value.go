@@ -572,7 +572,7 @@ func parseBool(value string) (bool, error) {
 // splitWithEscapes considers escape sequences when splitting.  sep must not
 // be empty string
 func splitWithEscapes(s, sep string, n int) []string {
-	if strings.Index(s, "\\") >= 0 {
+	if strings.Contains(s, "\\") {
 		regex := regexp.MustCompile(`(^|[^\\])` + regexp.QuoteMeta(sep))
 		matches := regex.FindAllStringSubmatchIndex(s, n)
 

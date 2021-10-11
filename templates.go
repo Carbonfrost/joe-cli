@@ -173,7 +173,7 @@ func visibleFlagCategories(items FlagsByCategory, gen usageGenerator) []*flagCat
 
 func commandAdapter(val *Command) *commandData {
 	var (
-		gen usageGenerator = getUsageGenerator()
+		gen = getUsageGenerator()
 
 		visibleArgs = func(items []*Arg) []*flagData {
 			res := make([]*flagData, 0, len(items))

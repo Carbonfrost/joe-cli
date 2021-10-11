@@ -92,7 +92,7 @@ func (s *set) parse(args []string, disallowFlagsAfterArgs bool) error {
 	s.bindings = map[string][]string{}
 
 	var (
-		state        parserState = flagsOrArgs
+		state        = flagsOrArgs
 		anyArgs      bool
 		appendOutput = func(n, a string) {
 			if e, ok := s.bindings[n]; ok {
