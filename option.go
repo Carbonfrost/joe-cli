@@ -62,7 +62,12 @@ const (
 	//
 	Optional
 
-	// No introduces an alias to a Boolean flag that provides the false value.
+	// No introduces a mirror flag to a Boolean flag that provides the false value.
+	// When set as the option on a flag, this causes a mirror flag to be created with the
+	// prefix no-.  For example, for the flag --color, --no-color gets generated.  In addition,
+	// the mirror flag is hidden and the help screen provides a concise summary.  The mirror
+	// flag inherits the Before, After, and Action middleware pipelines; however, the Value
+	// for the flag in the context always matches the original flag.
 	No
 
 	maxOption
@@ -186,6 +191,17 @@ func noOption(c *Context) error {
 
 	syn := f.synopsis()
 	syn.long = "[no-]" + syn.long
+	wrapAction := func(v Action) ActionFunc {
+		return func(c *Context) error {
+			return execute(v, c.copy(
+				&wrapLookupContext{
+					flagContext: c.internal.(*flagContext),
+					actual:      f,
+				},
+				false,
+			))
+		}
+	}
 
 	cmd := c.Command()
 	cmd.Flags = append(cmd.Flags, &Flag{
@@ -195,8 +211,11 @@ func noOption(c *Context) error {
 		Category:  f.Category,
 		Value:     Bool(),
 		Options:   Hidden,
-		Action: func() {
+		Before:    wrapAction(ActionOf(f.Before)),
+		After:     wrapAction(ActionOf(f.After)),
+		Action: func(c *Context) error {
 			f.Set("false")
+			return execute(wrapAction(ActionOf(f.Action)), c)
 		},
 	})
 	return nil

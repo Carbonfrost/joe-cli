@@ -172,6 +172,11 @@ type flagContext struct {
 	args_  []string
 }
 
+type wrapLookupContext struct {
+	*flagContext
+	actual *Flag
+}
+
 type flagSynopsis struct {
 	short string
 	long  string
@@ -346,6 +351,17 @@ func (o *flagContext) Name() string {
 		return fmt.Sprintf("-%s", o.option.Name)
 	}
 	return fmt.Sprintf("--%s", o.option.Name)
+}
+
+func (o *wrapLookupContext) lookupValue(name string) (interface{}, bool) {
+	if name == "" {
+		return o.actual.value(), true
+	}
+	return nil, false
+}
+
+func (o *wrapLookupContext) Name() string {
+	return o.actual.Name
 }
 
 func getValueSynopsis(o option) *valueSynopsis {

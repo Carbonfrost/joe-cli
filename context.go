@@ -337,13 +337,6 @@ func (c *Context) app() *App {
 }
 
 func (c *Context) valueCore(name string) interface{} {
-	if name == "" {
-		if c.isOption() {
-			return dereference(c.option().value())
-		}
-		name = c.Name()
-	}
-
 	// Strip possible decorators --flag, <arg>
 	name = strings.Trim(name, "-<>")
 	if v, ok := c.internal.lookupValue(name); ok {
@@ -639,39 +632,24 @@ func rootContext(cctx context.Context, app *App, args []string) *Context {
 }
 
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
-	return &Context{
-		Context:     c.Context,
-		contextData: c.contextData,
-		internal: &commandContext{
-			cmd:   cmd,
-			args_: args,
-		},
-		parent: c,
-	}
+	return c.copy(&commandContext{
+		cmd:   cmd,
+		args_: args,
+	}, true)
 }
 
 func (c *Context) flagContext(opt *Flag, args []string) *Context {
-	return &Context{
-		Context:     c.Context,
-		contextData: c.contextData,
-		internal: &flagContext{
-			option: opt,
-			args_:  args,
-		},
-		parent: c,
-	}
+	return c.copy(&flagContext{
+		option: opt,
+		args_:  args,
+	}, true)
 }
 
 func (c *Context) argContext(opt *Arg, args []string) *Context {
-	return &Context{
-		Context:     c.Context,
-		contextData: c.contextData,
-		internal: &argContext{
-			option: opt,
-			args_:  args,
-		},
-		parent: c,
-	}
+	return c.copy(&argContext{
+		option: opt,
+		args_:  args,
+	}, true)
 }
 
 func (c *Context) optionContext(opt option, args []string) *Context {
@@ -780,6 +758,19 @@ func (c *Context) executeBeforeHooks(which *Command) error {
 
 func (c *Context) executeAfterHooks(which *Command) error {
 	return c.target().hooks().execAfterHooks(c)
+}
+
+func (c *Context) copy(t internalContext, reparent bool) *Context {
+	p := c.parent
+	if reparent {
+		p = c
+	}
+	return &Context{
+		Context:     c.Context,
+		contextData: c.contextData,
+		internal:    t,
+		parent:      p,
+	}
 }
 
 func bubble(start *Context, self func(*Context) error, anc func(*Context) error) error {

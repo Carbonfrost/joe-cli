@@ -68,14 +68,20 @@ var _ = Describe("middleware", func() {
 		})
 
 		Describe("No", func() {
+			var (
+				flagAct *joeclifakes.FakeAction
+			)
+
 			BeforeEach(func() {
 				initial := true
+				flagAct = new(joeclifakes.FakeAction)
 				flags = []*cli.Flag{
 					{
 						Name:    "flag",
 						Aliases: []string{"f"},
 						Options: cli.No,
 						Value:   &initial,
+						Action:  flagAct,
 					},
 				}
 				arguments = []string{"app", "--no-flag"}
@@ -95,6 +101,42 @@ var _ = Describe("middleware", func() {
 				Expect(s.Synopsis()).To(Equal("-f, --[no-]flag"))
 			})
 
+			Context("when invoking mirror flag", func() {
+				BeforeEach(func() {
+					arguments = []string{"app", "--no-flag"}
+				})
+
+				It("invokes action", func() {
+					Expect(flagAct.ExecuteCallCount()).To(Equal(1))
+				})
+
+				It("action has expected value", func() {
+					context := flagAct.ExecuteArgsForCall(0)
+					Expect(context.Value("")).To(BeFalse())
+				})
+
+				It("action has expected name", func() {
+					context := flagAct.ExecuteArgsForCall(0)
+					Expect(context.Name()).To(Equal("flag"))
+				})
+
+			})
+
+			Context("when invoking flag", func() {
+				BeforeEach(func() {
+					arguments = []string{"app", "--flag"}
+				})
+
+				It("invokes action", func() {
+					Expect(flagAct.ExecuteCallCount()).To(Equal(1))
+				})
+
+				It("has expected value", func() {
+					context := flagAct.ExecuteArgsForCall(0)
+					Expect(context.Value("")).To(BeTrue())
+				})
+
+			})
 		})
 
 	})
