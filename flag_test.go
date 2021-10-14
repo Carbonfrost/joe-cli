@@ -402,6 +402,14 @@ var _ = Describe("Flag", func() {
 				"-f PATTERN",
 			),
 			Entry(
+				"Synopsis provider",
+				&cli.Flag{
+					Name:  "f",
+					Value: new(temperature),
+				},
+				"-f {Fahrenheit|Celsius}",
+			),
+			Entry(
 				"Synopsis data",
 				&cli.Flag{
 					Name: "reason",
@@ -434,6 +442,10 @@ func (t *temperature) Set(s string) error {
 
 func (t *temperature) String() string {
 	return string(*t)
+}
+
+func (*temperature) Synopsis() string {
+	return "{Fahrenheit|Celsius}"
 }
 
 var _ flag.Value = new(temperature)

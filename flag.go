@@ -363,7 +363,7 @@ func getValueSynopsis(o option) *valueSynopsis {
 }
 
 func placeholder(v interface{}) string {
-	switch v.(type) {
+	switch m := v.(type) {
 	case *bool:
 		return ""
 	case *int, *int8, *int16, *int32, *int64:
@@ -388,6 +388,8 @@ func placeholder(v interface{}) string {
 		return "IP"
 	case **regexp.Regexp:
 		return "PATTERN"
+	case interface{ Synopsis() string }:
+		return m.Synopsis()
 	default:
 		return "VALUE"
 	}
