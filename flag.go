@@ -342,7 +342,10 @@ func (o *flagContext) lookupValue(name string) (interface{}, bool) {
 	return nil, false
 }
 func (o *flagContext) Name() string {
-	return o.option.name()
+	if len(o.option.Name) == 1 {
+		return fmt.Sprintf("-%s", o.option.Name)
+	}
+	return fmt.Sprintf("--%s", o.option.Name)
 }
 
 func getValueSynopsis(o option) *valueSynopsis {

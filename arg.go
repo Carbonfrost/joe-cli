@@ -347,7 +347,7 @@ func (o *argContext) lookupValue(name string) (interface{}, bool) {
 	return nil, false
 }
 func (o *argContext) Name() string {
-	return o.option.name()
+	return fmt.Sprintf("<%s>", o.option.Name)
 }
 
 func (d *discreteCounter) Take(arg string, possibleFlag bool) error {

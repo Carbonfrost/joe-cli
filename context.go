@@ -479,18 +479,7 @@ func (c *Context) Template(name string) *Template {
 // Name gets the name of the context, which is the name of the command, arg, flag, or expression
 // operator in use
 func (c *Context) Name() string {
-	switch t := c.target().(type) {
-	case *Arg:
-		return fmt.Sprintf("<%s>", t.Name)
-	case *Flag:
-		if len(t.Name) == 1 {
-			return fmt.Sprintf("-%s", t.Name)
-		}
-		return fmt.Sprintf("--%s", t.Name)
-	case *Command:
-		return t.Name
-	}
-	return ""
+	return c.internal.Name()
 }
 
 // Path retrieves all of the names on the context and its ancetors to the root
