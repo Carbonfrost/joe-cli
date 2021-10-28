@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"encoding"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Option provides a built-in convenience configuration for flags, args, and commands.
@@ -10,6 +12,7 @@ type Option int
 type internalFlags int
 
 const (
+	// Hidden causes the option to be Hidden
 	Hidden = Option(1 << iota)
 
 	// Required marks a flag as required.  When set, an error is generated if the flag is  not
@@ -72,6 +75,7 @@ const (
 
 	maxOption
 
+	// None represents no options
 	None Option = 0
 )
 
@@ -95,10 +99,49 @@ var (
 		DisallowFlagsAfterArgs: ActionFunc(disallowFlagsAfterArgsOption),
 		No:                     ActionFunc(noOption),
 	}
+
+	optionNames = map[Option]string{
+		DisallowFlagsAfterArgs: "DISALLOW_FLAGS_AFTER_ARGS",
+		Exits:                  "EXITS",
+		Hidden:                 "HIDDEN",
+		MustExist:              "MUST_EXIST",
+		No:                     "NO",
+		Optional:               "OPTIONAL",
+		Required:               "REQUIRED",
+		SkipFlagParsing:        "SKIP_FLAG_PARSING",
+		WorkingDirectory:       "WORKING_DIRECTORY",
+	}
 )
 
+func (o Option) MarshalText() ([]byte, error) {
+	var res []string
+	splitOptionsHO(o, func(current Option) {
+		res = append(res, optionNames[current])
+	})
+	return []byte(strings.Join(res, ", ")), nil
+}
+
+func (o *Option) UnmarshalText(b []byte) error {
+	res := *o
+	for _, s := range strings.Split(string(b), ",") {
+		token := strings.TrimSpace(s)
+		for k, v := range optionNames {
+			if token == v {
+				res |= k
+				break
+			}
+		}
+	}
+
+	*o = res
+	return nil
+}
+
 func (o Option) wrap() *ActionPipeline {
-	parts := splitOptions(int(o))
+	var parts []Action
+	splitOptionsHO(o, func(current Option) {
+		parts = append(parts, optionMap[current])
+	})
 	if len(parts) == 0 {
 		return nil
 	}
@@ -126,15 +169,14 @@ func (f internalFlags) disallowFlagsAfterArgs() bool {
 	return f&internalFlagDisallowFlagsAfterArgs == internalFlagDisallowFlagsAfterArgs
 }
 
-func splitOptions(options int) []Action {
-	var res []Action
+func splitOptionsHO(opts Option, fn func(Option)) {
+	options := int(opts)
 	for current := 1; options != 0 && current < int(maxOption); current = current << 1 {
 		if options&current == current {
-			res = append(res, optionMap[Option(current)])
+			fn(Option(current))
 			options = options &^ current
 		}
 	}
-	return res
 }
 
 func hiddenOption(c *Context) error {
@@ -220,3 +262,6 @@ func noOption(c *Context) error {
 	})
 	return nil
 }
+
+var _ encoding.TextMarshaler = (Option)(0)
+var _ encoding.TextUnmarshaler = (*Option)(nil)

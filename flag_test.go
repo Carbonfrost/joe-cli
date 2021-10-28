@@ -448,4 +448,4 @@ func (*temperature) Synopsis() string {
 	return "{Fahrenheit|Celsius}"
 }
 
-var _ flag.Value = new(temperature)
+var _ flag.Value = (*temperature)(nil)

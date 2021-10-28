@@ -654,4 +654,4 @@ func findExprByName(items []*Expr, name string) (*Expr, bool) {
 	return nil, false
 }
 
-var _ Expression = &exprPipeline{}
+var _ Expression = (*exprPipeline)(nil)

@@ -589,4 +589,4 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 	return nil, commandMissing(sub)
 }
 
-var _ command = &Command{}
+var _ command = (*Command)(nil)
