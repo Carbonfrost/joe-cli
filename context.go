@@ -240,7 +240,7 @@ func (c *Context) NValue() int {
 
 // Values gets all the values from the context .
 func (c *Context) Values() []interface{} {
-	res := make([]interface{}, 0, c.NValue())
+	res := make([]interface{}, c.NValue())
 	for i := 0; i < len(res); i++ {
 		res[i] = c.Value(i)
 	}
@@ -925,11 +925,11 @@ func guessWidth() int {
 }
 
 var (
-	_ hasArguments    = &Expr{}
-	_ Lookup          = &Context{}
-	_ internalContext = &commandContext{}
-	_ internalContext = &flagContext{}
-	_ internalContext = &argContext{}
-	_ internalContext = &exprContext{}
-	_ internalContext = &appContext{}
+	_ hasArguments    = (*Expr)(nil)
+	_ Lookup          = (*Context)(nil)
+	_ internalContext = (*commandContext)(nil)
+	_ internalContext = (*flagContext)(nil)
+	_ internalContext = (*argContext)(nil)
+	_ internalContext = (*exprContext)(nil)
+	_ internalContext = (*appContext)(nil)
 )

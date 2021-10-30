@@ -40,6 +40,81 @@ var _ = Describe("Expr", func() {
 
 	})
 
+	Describe("Evaluate", func() {
+		var (
+			act *joeclifakes.FakeEvaluator
+			app *cli.App
+		)
+
+		BeforeEach(func() {
+			act = new(joeclifakes.FakeEvaluator)
+			app = &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						Name: "f",
+						NArg: 0,
+					},
+				},
+				Action: func(c *cli.Context) {
+					c.Expression().Evaluate(c, "items")
+				},
+				Exprs: []*cli.Expr{
+					{
+						Name: "expr",
+						Args: []*cli.Arg{
+							{
+								Name:  "f",
+								Value: new(bool),
+								NArg:  1,
+							},
+							{
+								Name:  "g",
+								Value: new(int),
+								NArg:  2,
+							},
+							{
+								Name:  "h",
+								Value: new([]string),
+								NArg:  -2,
+							},
+						},
+						Evaluate: act,
+					},
+				},
+			}
+		})
+
+		JustBeforeEach(func() {
+			args, _ := cli.Split("app arg -expr true 1 2 a b c")
+			app.RunContext(context.TODO(), args)
+		})
+
+		It("executes action on setting Arg", func() {
+			Expect(act.EvaluateCallCount()).To(Equal(1))
+		})
+
+		XIt("contains args in captured context", func() {
+			captured, _, _ := act.EvaluateArgsForCall(0)
+			Expect(captured.Args()).To(Equal([]string{"true", "1", "2", "a", "b", "c"}))
+		})
+
+		It("contains values in captured context", func() {
+			captured, _, _ := act.EvaluateArgsForCall(0)
+			Expect(captured.Values()).To(Equal([]interface{}{true, 2, []string{"a", "b", "c"}}))
+		})
+
+		It("provides context Name", func() {
+			captured, _, _ := act.EvaluateArgsForCall(0)
+			Expect(captured.Name()).To(Equal("-expr"))
+		})
+
+		It("provides context Path", func() {
+			captured, _, _ := act.EvaluateArgsForCall(0)
+			Expect(captured.Path().String()).To(Equal("app <expression> -expr"))
+		})
+	})
+
 	Describe("EvaluatorOf", func() {
 
 		var called bool
@@ -76,6 +151,71 @@ var _ = Describe("Expr", func() {
 	})
 
 	Describe("parsing", func() {
+		DescribeTable(
+			"examples",
+			func(arguments string, match types.GomegaMatcher) {
+				var captured bytes.Buffer
+				evaluator := func(c *cli.Context, in interface{}, yield func(interface{}) error) error {
+					fmt.Fprintf(c.Stdout, "-> %s=%v ", c.Name(), c.Values())
+					return yield(in)
+				}
+
+				app := &cli.App{
+					Name: "app",
+					Action: func(c *cli.Context) {
+						items := make([]interface{}, 0)
+						for _, v := range c.List("f") {
+							items = append(items, v)
+						}
+						c.Expression().Evaluate(c, items...)
+					},
+					Stdout: &captured,
+					Args: []*cli.Arg{
+						{
+							Name: "f",
+							NArg: -2,
+						},
+					},
+					Exprs: []*cli.Expr{
+						{
+							Name: "offset",
+							Args: []*cli.Arg{
+								{
+									Name:  "value",
+									Value: new(int),
+									NArg:  1,
+								},
+							},
+							Evaluate: evaluator,
+						},
+						{
+							Name: "multi",
+							Args: []*cli.Arg{
+								{
+									NArg: 1,
+								},
+								{
+									NArg: 1,
+								},
+							},
+							Evaluate: evaluator,
+						},
+					},
+				}
+				args, _ := cli.Split("app " + arguments)
+				err := app.RunContext(context.TODO(), args)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(captured.String()).To(match)
+
+			},
+			Entry(
+				"end argument list",
+				"arg -multi a b -offset 2",
+				Equal(`-> -multi=[a b] -> -offset=[2] `),
+			),
+		)
+
 		DescribeTable(
 			"errors",
 			func(arguments string, match types.GomegaMatcher) {

@@ -250,6 +250,9 @@ func (s *set) defineFlag(res *internalOption) {
 }
 
 func (s *set) defineArg(name string, v interface{}, narg interface{}) *internalOption {
+	if name == "" {
+		name = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
+	}
 	opt := &internalOption{
 		value: wrapGeneric(v),
 		narg:  narg,
@@ -277,6 +280,10 @@ func (a *argBinding) name() string {
 	return a.items[a.index].uname
 }
 
+func (a *argBinding) hasCurrent() bool {
+	return a.index < len(a.items)
+}
+
 func (a *argBinding) current() (*internalOption, ArgCounter) {
 	if a.index < len(a.items) {
 		return a.items[a.index], a.takers[a.index]
@@ -292,7 +299,6 @@ func (a *argBinding) Done() error {
 }
 
 func (a *argBinding) SetArg(arg string, possibleFlag bool) error {
-
 	for {
 		c, t := a.current()
 		if c == nil {
@@ -331,6 +337,16 @@ func isHardArgCountErr(e error) bool {
 		return f < _argStartSoftErrors
 	}
 	return true
+}
+
+func isNextExpr(arg string, err error) bool {
+	// HACK This should not unwrap the Error type, which is a bit fragile
+	if e, ok := err.(*Error); ok {
+		if e.Code == UnexpectedArgument {
+			return arg[0] == '-'
+		}
+	}
+	return false
 }
 
 func allowFlag(arg string, possibleFlag bool) bool {

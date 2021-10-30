@@ -557,6 +557,7 @@ Parsing:
 			return nil, argsMustPrecedeExprs(arg)
 		}
 
+	ParseExprFlag:
 		s, ok := e.exprs[arg[1:]]
 		if !ok {
 			return nil, unknownExpr(arg)
@@ -575,9 +576,15 @@ Parsing:
 
 			err := bind.SetArg(arg, true)
 			if err != nil {
+				if isNextExpr(arg, err) {
+					goto ParseExprFlag
+				}
 				if isHardArgCountErr(err) {
 					return nil, wrapExprError(set.expr.Name, err)
 				}
+			}
+			if !bind.hasCurrent() {
+				break
 			}
 		}
 		if err := bind.Done(); err != nil {
@@ -639,7 +646,9 @@ func (e *exprContext) target() target           { return e.expr }
 func (e *exprContext) lookupValue(name string) (interface{}, bool) {
 	return e.set_.lookupValue(name)
 }
-func (e *exprContext) Name() string { return e.expr.Name }
+func (e *exprContext) Name() string {
+	return "-" + e.expr.Name
+}
 
 func emptyYielder(interface{}) error {
 	return nil

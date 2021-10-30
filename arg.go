@@ -256,6 +256,7 @@ func (a *Arg) wrapAction(fn func(Action) ActionFunc) {
 
 func (a *Arg) applyToSet(s *set) {
 	a.option = s.defineArg(a.Name, a.value(), a.NArg)
+	a.Name = a.option.uname
 }
 
 func (a *Arg) action() Action {

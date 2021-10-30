@@ -15,6 +15,20 @@ import (
 
 var _ = Describe("Arg", func() {
 
+	It("sets default name by index", func() {
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					NArg: 1,
+				},
+			},
+		}
+		app.RunContext(context.TODO(), []string{"app"})
+
+		Expect(app.Args[0].Name).To(Equal("_1"))
+	})
+
 	Describe("Action", func() {
 		var (
 			act       *joeclifakes.FakeAction
