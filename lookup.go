@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 	"net/url"
 	"regexp"
@@ -59,6 +60,10 @@ type Lookup interface {
 	Regexp(name interface{}) *regexp.Regexp
 	// IP obtains the value and converts it to a IP
 	IP(name interface{}) net.IP
+	// BigInt obtains the value and converts it to a BigInt
+	BigInt(name interface{}) *big.Int
+	// BigFloat obtains the value and converts it to a BigFloat
+	BigFloat(name interface{}) *big.Float
 }
 
 // LookupValues provides a Lookup backed by a map
@@ -202,6 +207,16 @@ func (c LookupValues) IP(name interface{}) net.IP {
 	return lookupIP(c, name)
 }
 
+// BigInt obtains the BigInt for the specified name
+func (c LookupValues) BigInt(name interface{}) *big.Int {
+	return lookupBigInt(c, name)
+}
+
+// BigFloat obtains the BigFloat for the specified name
+func (c LookupValues) BigFloat(name interface{}) *big.Float {
+	return lookupBigFloat(c, name)
+}
+
 func (c *lookupSupport) Bool(name interface{}) bool {
 	return lookupBool(c, name)
 }
@@ -288,6 +303,14 @@ func (c *lookupSupport) Regexp(name interface{}) *regexp.Regexp {
 
 func (c *lookupSupport) IP(name interface{}) net.IP {
 	return lookupIP(c, name)
+}
+
+func (c *lookupSupport) BigInt(name interface{}) *big.Int {
+	return lookupBigInt(c, name)
+}
+
+func (c *lookupSupport) BigFloat(name interface{}) *big.Float {
+	return lookupBigFloat(c, name)
 }
 
 func (c *lookupSupport) Value(name interface{}) interface{} {
@@ -511,6 +534,22 @@ func lookupIP(c Lookup, name interface{}) (res net.IP) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(net.IP)
+	}
+	return
+}
+
+func lookupBigInt(c Lookup, name interface{}) (res *big.Int) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*big.Int)
+	}
+	return
+}
+
+func lookupBigFloat(c Lookup, name interface{}) (res *big.Float) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*big.Float)
 	}
 	return
 }

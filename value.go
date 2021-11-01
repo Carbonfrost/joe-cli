@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math/big"
 	"net"
 	"net/url"
 	"reflect"
@@ -151,6 +152,14 @@ func Regexp() **regexp.Regexp {
 // IP creates an IP value.  This is for convenience to obtain the right pointer.
 func IP() *net.IP {
 	return new(net.IP)
+}
+
+func BigInt() **big.Int {
+	return new(*big.Int)
+}
+
+func BigFloat() **big.Float {
+	return new(*big.Float)
 }
 
 func (g *generic) Set(value string, opt *internalOption) error {
@@ -387,6 +396,27 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			*p = v
 		}
 		return err
+	case **big.Int:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*big.Int)
+			return nil
+		}
+		v := new(big.Int)
+		if _, ok := v.SetString(value, 10); ok {
+			*p = v
+			return nil
+		}
+		return strconvErr(errors.New("conversion failed"))
+	case **big.Float:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*big.Float)
+			return nil
+		}
+		v, _, err := big.ParseFloat(value, 10, 53, big.ToZero)
+		if err == nil {
+			*p = v
+		}
+		return strconvErr(err)
 	}
 	panic("unreachable!")
 }
@@ -432,6 +462,10 @@ func (g *generic) String() string {
 	case *net.IP:
 		return genericString(*p)
 	case **regexp.Regexp:
+		return genericString(*p)
+	case **big.Float:
+		return genericString(*p)
+	case **big.Int:
 		return genericString(*p)
 	case Value:
 		return genericString(p)
@@ -543,6 +577,10 @@ func genericString(v interface{}) string {
 		return fmt.Sprint(p)
 	case *regexp.Regexp:
 		return fmt.Sprint(p)
+	case *big.Int:
+		return fmt.Sprint(p)
+	case *big.Float:
+		return fmt.Sprint(p)
 	}
 	panic("unreachable!")
 }
@@ -570,6 +608,10 @@ func wrapGeneric(v interface{}) *generic {
 	case *net.IP:
 		return &generic{v}
 	case **regexp.Regexp:
+		return &generic{v}
+	case **big.Int:
+		return &generic{v}
+	case **big.Float:
 		return &generic{v}
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))

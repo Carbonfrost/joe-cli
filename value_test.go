@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"math/big"
 	"net"
 	"net/url"
 	"regexp"
@@ -173,6 +174,21 @@ var _ = Describe("Value", func() {
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Files": Equal([]string{"default", "a"}),
 				})),
+			),
+			Entry(
+				"BigInt",
+				&cli.Flag{Name: "o", Value: cli.BigInt()},
+				"app -o 15000",
+				Equal(big.NewInt(15000)),
+			),
+			Entry(
+				"BigFloat",
+				&cli.Flag{Name: "o", Value: cli.BigFloat()},
+				"app -o 150.2",
+				WithTransform(func(v interface{}) interface{} {
+					f, _ := v.(*big.Float).Float64()
+					return f
+				}, Equal(float64(150.2))),
 			),
 		)
 
@@ -411,6 +427,18 @@ var _ = Describe("Lookup", func() {
 				cli.IP(),
 				func(lk cli.Lookup) interface{} { return lk.IP("a") },
 				BeAssignableToTypeOf(net.IP{}),
+			),
+			Entry(
+				"BigFloat",
+				cli.BigFloat(),
+				func(lk cli.Lookup) interface{} { return lk.BigFloat("a") },
+				BeAssignableToTypeOf(&big.Float{}),
+			),
+			Entry(
+				"BigInt",
+				cli.BigInt(),
+				func(lk cli.Lookup) interface{} { return lk.BigInt("a") },
+				BeAssignableToTypeOf(&big.Int{}),
 			),
 		)
 	})
