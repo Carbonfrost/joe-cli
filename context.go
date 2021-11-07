@@ -425,6 +425,11 @@ func (c *Context) File(name interface{}) *File {
 	return lookupFile(c, name)
 }
 
+// FileSet obtains the FileSet for the specified name
+func (c *Context) FileSet(name interface{}) *FileSet {
+	return lookupFileSet(c, name)
+}
+
 // Map obtains the map for the specified name
 func (c *Context) Map(name interface{}) map[string]string {
 	return lookupMap(c, name)

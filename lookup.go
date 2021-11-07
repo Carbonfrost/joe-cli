@@ -15,6 +15,8 @@ type Lookup interface {
 	Bool(name interface{}) bool
 	// File obtains the value and converts it to a File
 	File(name interface{}) *File
+	// FileSet obtains the value and converts it to a FileSet
+	FileSet(name interface{}) *FileSet
 	// Float32 obtains the value and converts it to a float32
 	Float32(name interface{}) float32
 	// Float64 obtains the value and converts it to a float64
@@ -154,6 +156,11 @@ func (c LookupValues) Float64(name interface{}) float64 {
 // File obtains the File for the specified name
 func (c LookupValues) File(name interface{}) *File {
 	return lookupFile(c, name)
+}
+
+// FileSet obtains the FileSet for the specified name
+func (c LookupValues) FileSet(name interface{}) *FileSet {
+	return lookupFileSet(c, name)
 }
 
 // Map obtains the map for the specified name
@@ -300,6 +307,14 @@ func lookupFile(c Lookup, name interface{}) (res *File) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*File)
+	}
+	return
+}
+
+func lookupFileSet(c Lookup, name interface{}) (res *FileSet) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*FileSet)
 	}
 	return
 }

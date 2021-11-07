@@ -13,7 +13,9 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/afero"
 )
 
 type emptyFS struct{}
@@ -118,5 +120,61 @@ var _ = Describe("File", func() {
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "-"})
 		Expect(string(actual)).To(Equal("hello\n"))
+	})
+})
+
+var _ = Describe("FileSet", func() {
+
+	It("as an argument can be retrieved", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "f",
+					Value: &cli.FileSet{},
+				},
+			},
+			Action: act,
+		}
+		_ = app.RunContext(context.TODO(), []string{"app", "fiche"})
+
+		context := act.ExecuteArgsForCall(0)
+		Expect(context.FileSet("f")).NotTo(BeNil())
+		Expect(context.FileSet("f").String()).To(Equal("fiche"))
+	})
+
+	var testFileSystem = func() fs.FS {
+		appFS := afero.NewMemMapFs()
+
+		appFS.MkdirAll("src/a", 0755)
+		afero.WriteFile(appFS, "src/a/b.txt", []byte("b"), 0644)
+		afero.WriteFile(appFS, "src/c.txt", []byte("c"), 0644)
+
+		return afero.NewIOFS(appFS)
+	}()
+
+	Describe("Do", func() {
+
+		DescribeTable("examples",
+			func(set *cli.FileSet, expected string) {
+				var buf bytes.Buffer
+				set.Do(func(d *cli.File, _ error) error {
+					stat, _ := d.Stat()
+					if stat.IsDir() {
+						return nil
+					}
+					r, _ := d.Open()
+					text, _ := ioutil.ReadAll(r)
+					buf.Write(text)
+					return nil
+				})
+				Expect(buf.String()).To(Equal(expected))
+			},
+
+			Entry("process file",
+				&cli.FileSet{FS: testFileSystem, Files: []string{"src/a/b.txt"}}, "b"),
+			Entry("process files recursive",
+				&cli.FileSet{FS: testFileSystem, Recursive: true, Files: []string{"src"}}, "bc"),
+		)
 	})
 })

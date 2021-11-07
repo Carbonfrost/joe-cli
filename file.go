@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -31,6 +32,18 @@ type File struct {
 	// default file system based upon the os package, which has the additional behavior that it treats the name "-"
 	// specially as a file that reads and seeks from Stdin and writes to Stdout,
 	FS fs.FS
+}
+
+// FileSet provides a list of files and/or directories and whether the scope of the
+// file set is recursive
+type FileSet struct {
+	Recursive bool
+
+	// Files provides the files named in the file set.  These can be files or
+	// directories
+	Files      []string
+	FS         fs.FS
+	initialSet bool
 }
 
 type stdFile struct {
@@ -90,6 +103,11 @@ func (f *File) Stat() (fs.FileInfo, error) {
 	return f.actualFS().Stat(f.v)
 }
 
+// Walk walks the file tree, calling fn for each file or directory in the tree, including the root.
+func (f *File) Walk(fn fs.WalkDirFunc) error {
+	return walkFile(f.actualFS(), f.v, fn)
+}
+
 func (f *File) actualFS() fsExtension {
 	if f.FS == nil {
 		return newDefaultFS(os.Stdin, os.Stdout)
@@ -97,15 +115,61 @@ func (f *File) actualFS() fsExtension {
 	return fsExtensionWrapper{f.FS}
 }
 
+func (f *FileSet) Set(arg string) error {
+	if f.initialSet {
+		f.Files = []string{}
+		f.initialSet = true
+	}
+
+	f.Files = append(f.Files, arg)
+	return nil
+}
+
+func (f *FileSet) String() string {
+	return Join(f.Files)
+}
+
+// Do will invoke the given function on each file in the set.  If recursion is
+// enabled, it will recurse directories and process on each file encountered.
+func (f *FileSet) Do(fn func(*File, error) error) error {
+	ff := f.actualFS()
+	if f.Recursive {
+		for _, file := range f.Files {
+			err := walkFile(ff, file, func(path string, _ fs.DirEntry, walkErr error) error {
+				return fn(&File{path, ff}, walkErr)
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, file := range f.Files {
+		if err := fn(&File{file, ff}, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *FileSet) actualFS() fsExtension {
+	if f.FS == nil {
+		// Handling of - does not apply to file set
+		return &defaultFS{}
+	}
+	return fsExtensionWrapper{f.FS}
+}
+
 func (d defaultFS) Open(name string) (fs.File, error) {
-	if name == "-" {
+	if name == "-" && d.std != nil {
 		return d.std, nil
 	}
 	return os.Open(name)
 }
 
 func (d defaultFS) Stat(name string) (fs.FileInfo, error) {
-	if name == "-" {
+	if name == "-" && d.std != nil {
 		return d.std.Stat()
 	}
 	return os.Stat(name)
@@ -192,7 +256,13 @@ func setupOptionRequireFS(c *Context) error {
 	return nil
 }
 
+func walkFile(ff fsExtension, name string, fn fs.WalkDirFunc) error {
+	return fs.WalkDir(ff, name, fn)
+}
+
 var (
 	_ fileExtension = &stdFile{}
 	_ fs.FS         = &defaultFS{}
+	_ flag.Value    = (*File)(nil)
+	_ flag.Value    = (*FileSet)(nil)
 )
