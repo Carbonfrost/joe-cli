@@ -25,6 +25,9 @@ type Context struct {
 	parent *Context
 }
 
+// WalkFunc provides the callback for the Walk function
+type WalkFunc func(cmd *Context) error
+
 type internalContext interface {
 	initialize(*Context) error
 	executeBeforeDescendent(*Context) error
@@ -79,6 +82,9 @@ type contextData struct {
 	Stderr io.Writer
 	Stdin  io.Reader
 }
+
+// SkipCommand is used as a return value from WalkFunc to indicate that the command in the call is to be skipped.
+var SkipCommand = errors.New("skip this command")
 
 func newContextPathPattern(pat string) contextPathPattern {
 	return contextPathPattern{strings.Fields(pat)}
@@ -329,6 +335,32 @@ func (c *Context) target() target {
 		return nil
 	}
 	return c.internal.target()
+}
+
+// Walk traverses the hierarchy of commands.  The provided function fn is called once for each command
+// that is encountered.  If fn returns an error, the traversal stops and the error is returned; however, the
+// specialized return value SkipCommand indicates that traversal skips the sub-commands of the current
+// command and continues.
+func (c *Context) Walk(fn WalkFunc) error {
+	return c.walkCore(fn)
+}
+
+func (c *Context) walkCore(fn WalkFunc) error {
+	current := c.Command()
+	err := fn(c)
+	switch err {
+	case nil:
+		for _, sub := range current.Subcommands {
+			if err := c.commandContext(sub, nil).walkCore(fn); err != nil {
+				return err
+			}
+		}
+		return nil
+	case SkipCommand:
+		return nil
+	default:
+		return err
+	}
 }
 
 func (c *Context) app() *App {

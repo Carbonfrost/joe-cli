@@ -143,6 +143,109 @@ var _ = Describe("Context", func() {
 		)
 	})
 
+	Describe("Walk", func() {
+
+		var (
+			walker   func(*cli.Context) error
+			app      *cli.App
+			paths    []string
+			commands []string
+
+			walkHelper = func(cmd *cli.Context) {
+				// Don't worry about "help" and "version" in this test
+				if cmd.Name() == "help" || cmd.Name() == "version" {
+					return
+				}
+
+				commands = append(commands, cmd.Name())
+				paths = append(paths, cmd.Path().String())
+			}
+		)
+
+		BeforeEach(func() {
+			walker = func(cmd *cli.Context) error {
+				walkHelper(cmd)
+				return nil
+			}
+		})
+
+		JustBeforeEach(func() {
+			commands = make([]string, 0, 5)
+			paths = make([]string, 0, 5)
+			app = &cli.App{
+				Name: "_",
+				Action: func(c *cli.Context) {
+					c.Walk(walker)
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "p",
+						Subcommands: []*cli.Command{
+							{
+								Name: "c",
+								Subcommands: []*cli.Command{
+									{
+										Name: "g",
+									},
+									{
+										Name: "h",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "q",
+					},
+				},
+			}
+
+			_ = app.RunContext(context.TODO(), nil)
+		})
+
+		It("provides the expected traversal", func() {
+			Expect(commands).To(Equal([]string{
+				"_",
+				"p",
+				"c",
+				"g",
+				"h",
+				"q",
+			}))
+			Expect(paths).To(Equal([]string{
+				"_",
+				"_ p",
+				"_ p c",
+				"_ p c g",
+				"_ p c h",
+				"_ q",
+			}))
+
+		})
+
+		Context("when SkipCommand", func() {
+
+			BeforeEach(func() {
+				walker = func(cmd *cli.Context) error {
+					walkHelper(cmd)
+					if cmd.Name() == "c" {
+						return cli.SkipCommand
+					}
+					return nil
+				}
+			})
+
+			It("", func() {
+				Expect(commands).To(Equal([]string{
+					"_",
+					"p",
+					"c",
+					"q",
+				}))
+			})
+		})
+
+	})
 })
 
 var _ = Describe("ContextPath", func() {
