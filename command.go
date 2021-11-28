@@ -132,7 +132,7 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 			return err
 		}
 		c.Parent().internal.setDidSubcommandExecute()
-		newCtx := c.Parent().commandContext(cmd, invoke).setTiming(actionTiming)
+		newCtx := c.Parent().commandContext(cmd, invoke).setTiming(ActionTiming)
 		return cmd.parseAndExecuteSelf(newCtx)
 	}
 }
@@ -401,7 +401,7 @@ func (c *Command) options() Option {
 	return c.Options
 }
 
-func (c *Command) appendAction(t timing, ah Action) {
+func (c *Command) appendAction(t Timing, ah Action) {
 	c.uses.add(t, ah)
 }
 

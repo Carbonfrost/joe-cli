@@ -280,7 +280,7 @@ func (f *Flag) hooks() *hooks {
 	return nil
 }
 
-func (f *Flag) appendAction(t timing, ah Action) {
+func (f *Flag) appendAction(t Timing, ah Action) {
 	f.uses_.add(t, ah)
 }
 

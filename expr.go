@@ -333,7 +333,7 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 			return &boundExpr{
 				expr:    e1,
 				set:     set,
-				Context: c.exprContext(e1, args, set).setTiming(actionTiming),
+				Context: c.exprContext(e1, args, set).setTiming(ActionTiming),
 			}
 		}
 		res.exprs[e.Name] = fac
@@ -421,7 +421,7 @@ func (e *Expr) options() Option {
 	return e.Options
 }
 
-func (e *Expr) appendAction(t timing, ah Action) {
+func (e *Expr) appendAction(t Timing, ah Action) {
 }
 
 // Evaluate provides the evaluation of the function and implements the Evaluator interface

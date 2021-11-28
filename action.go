@@ -29,7 +29,7 @@ type ActionPipeline struct {
 type target interface {
 	hooks() *hooks
 	options() Option
-	appendAction(timing, Action)
+	appendAction(Timing, Action)
 	setCategory(name string)
 	SetData(name string, v interface{})
 	setInternalFlags(internalFlags)
@@ -45,21 +45,26 @@ type actionPipelines struct {
 
 type actionWithTiming interface {
 	Action
-	timing() timing
+	timing() Timing
 }
 
 type withTimingWrapper struct {
 	Action
-	t timing
+	t Timing
 }
 
-type timing int
+// Timing enumerates the timing of an action
+type Timing int
 
 const (
-	initialTiming timing = iota
-	beforeTiming
-	actionTiming
-	afterTiming
+	// InitialTiming which occurs during the Uses pipeline
+	InitialTiming Timing = iota
+	// BeforeTiming which occurs before the command executes
+	BeforeTiming
+	// ActionTiming which occurs for the primary action
+	ActionTiming
+	// AfterTiming which occurs after the command executes
+	AfterTiming
 )
 
 var (
@@ -109,24 +114,24 @@ func Pipeline(actions ...interface{}) *ActionPipeline {
 // This function is used to wrap actions in the initialization pipeline that will be
 // deferred until later.
 func Before(a Action) Action {
-	return withTiming(a, beforeTiming)
+	return withTiming(a, BeforeTiming)
 }
 
 // After revises the timing of the action so that it runs in the After pipeline.
 // This function is used to wrap actions in the initialization pipeline that will be
 // deferred until later.
 func After(a Action) Action {
-	return withTiming(a, afterTiming)
+	return withTiming(a, AfterTiming)
 }
 
 // Initializer marks an action handler as being for the initialization phase.  When such a handler
 // is added to the Uses pipeline, it will automatically be associated correctly with the initialization
 // of the value.  Otherwise, this handler is not special
 func Initializer(a Action) Action {
-	return withTiming(a, initialTiming)
+	return withTiming(a, InitialTiming)
 }
 
-func timingOf(a Action, defaultTiming timing) timing {
+func timingOf(a Action, defaultTiming Timing) Timing {
 	switch val := a.(type) {
 	case actionWithTiming:
 		return val.timing()
@@ -134,7 +139,7 @@ func timingOf(a Action, defaultTiming timing) timing {
 	return defaultTiming
 }
 
-func withTiming(a Action, t timing) Action {
+func withTiming(a Action, t Timing) Action {
 	return withTimingWrapper{a, t}
 }
 
@@ -290,21 +295,21 @@ func (p *ActionPipeline) Execute(c *Context) (err error) {
 func (p *ActionPipeline) takeInitializers(c *Context) *actionPipelines {
 	res := &actionPipelines{}
 	for _, h := range p.items {
-		res.add(timingOf(h, initialTiming), h)
+		res.add(timingOf(h, InitialTiming), h)
 	}
 
 	return res
 }
 
-func (p *actionPipelines) add(t timing, h Action) {
+func (p *actionPipelines) add(t Timing, h Action) {
 	switch t {
-	case initialTiming:
+	case InitialTiming:
 		p.Initializers = pipeline(p.Initializers, h)
-	case beforeTiming:
+	case BeforeTiming:
 		p.Before = pipeline(p.Before, h)
-	case actionTiming:
+	case ActionTiming:
 		p.Action = pipeline(p.Action, h)
-	case afterTiming:
+	case AfterTiming:
 		p.After = pipeline(p.After, h)
 	default:
 		panic("unreachable!")
@@ -319,7 +324,7 @@ func (p *actionPipelines) exceptInitializers() *actionPipelines {
 	}
 }
 
-func (w withTimingWrapper) timing() timing {
+func (w withTimingWrapper) timing() Timing {
 	return w.t
 }
 

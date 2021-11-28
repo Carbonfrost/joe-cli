@@ -11,19 +11,19 @@ func ParseUsage(text string) *usage {
 }
 
 func SetInitialTiming(c *Context) {
-	c.timing = initialTiming
+	c.timing = InitialTiming
 }
 
 func SetBeforeTiming(c *Context) {
-	c.timing = beforeTiming
+	c.timing = BeforeTiming
 }
 
 func SetAfterTiming(c *Context) {
-	c.timing = afterTiming
+	c.timing = AfterTiming
 }
 
 func SetActionTiming(c *Context) {
-	c.timing = actionTiming
+	c.timing = ActionTiming
 }
 
 func NewFlagSynopsis(long string) *flagSynopsis {

@@ -310,7 +310,7 @@ func (a *Arg) hooks() *hooks {
 	return nil
 }
 
-func (a *Arg) appendAction(t timing, ah Action) {
+func (a *Arg) appendAction(t Timing, ah Action) {
 	a.uses.add(t, ah)
 }
 

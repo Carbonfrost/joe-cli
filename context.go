@@ -20,7 +20,7 @@ type Context struct {
 	context.Context
 	*contextData
 	internal internalContext
-	timing   timing
+	timing   Timing
 
 	parent *Context
 }
@@ -137,16 +137,18 @@ func (c *Context) Flag() *Flag {
 }
 
 // IsInitializing returns true if the context represents initialization
-func (c *Context) IsInitializing() bool { return c.timing == initialTiming }
+func (c *Context) IsInitializing() bool { return c.timing == InitialTiming }
 
 // IsBefore returns true if the context represents actions running before executing the command
-func (c *Context) IsBefore() bool { return c.timing == beforeTiming }
+func (c *Context) IsBefore() bool { return c.timing == BeforeTiming }
 
 // IsAfter returns true if the context represents actions running after executing the command
-func (c *Context) IsAfter() bool { return c.timing == afterTiming }
+func (c *Context) IsAfter() bool { return c.timing == AfterTiming }
 
 // Timing retrieves the timing
-func (c *Context) Timing() int { return int(c.timing) }
+func (c *Context) Timing() Timing {
+	return c.timing
+}
 
 func (c *Context) isOption() bool {
 	_, ok := c.target().(option)
@@ -292,7 +294,7 @@ func (c *Context) Value(name interface{}) interface{} {
 // appends the action to the pipeline for the current flag, arg, or command/app.
 // When called from the action or after pipelines, this simply causes the action to be invoked immediately.
 func (c *Context) Action(v interface{}) error {
-	return c.act(v, actionTiming)
+	return c.act(v, ActionTiming)
 }
 
 // Before either stores or executes the action.  When called from the initialization pipeline, this appends
@@ -300,17 +302,17 @@ func (c *Context) Action(v interface{}) error {
 // from the Before pipeline, this causes the action to be invoked immeidately.  If called
 // at any other time, this causes the action to be ignored and an error to be returned.
 func (c *Context) Before(v interface{}) error {
-	return c.act(v, beforeTiming)
+	return c.act(v, BeforeTiming)
 }
 
 // After either stores or executes the action.  When called from the initialization, before, or action pipelines,
 // this appends the action to the After pipeline for the current flag, arg, expression, or command/app.  If called
 // from the After pipeline itself, the action is invoked immediately
 func (c *Context) After(v interface{}) error {
-	return c.act(v, afterTiming)
+	return c.act(v, AfterTiming)
 }
 
-func (c *Context) act(v interface{}, desired timing) error {
+func (c *Context) act(v interface{}, desired Timing) error {
 	if c.timing < desired {
 		c.target().appendAction(desired, ActionOf(v))
 		return nil
@@ -709,7 +711,7 @@ func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
 	}
 }
 
-func (c *Context) setTiming(t timing) *Context {
+func (c *Context) setTiming(t Timing) *Context {
 	c.timing = t
 	return c
 }
@@ -785,7 +787,7 @@ func (c *Context) initialize() error {
 	if c == nil {
 		return nil
 	}
-	c.timing = initialTiming
+	c.timing = InitialTiming
 	return c.internal.initialize(c)
 }
 
@@ -839,7 +841,7 @@ func tunnel(start *Context, self func(*Context) error, anc func(*Context) error)
 }
 
 func (c *Context) executeBefore() error {
-	c.setTiming(beforeTiming)
+	c.setTiming(BeforeTiming)
 	return bubble(
 		c,
 		func(c1 *Context) error { return c1.internal.executeBefore(c) },
@@ -848,7 +850,7 @@ func (c *Context) executeBefore() error {
 }
 
 func (c *Context) executeAfter() error {
-	c.setTiming(afterTiming)
+	c.setTiming(AfterTiming)
 	return tunnel(
 		c,
 		func(c1 *Context) error { return c1.internal.executeAfter(c) },
@@ -861,7 +863,7 @@ func (c *Context) executeCommand() error {
 		return err
 	}
 
-	c.setTiming(actionTiming)
+	c.setTiming(ActionTiming)
 	if err := c.internal.execute(c); err != nil {
 		return err
 	}
@@ -896,7 +898,7 @@ func triggerFlagsAndArgs(ctx *Context) error {
 			}
 		}
 
-		err := ctx.optionContext(f, bindings[f.name()]).setTiming(beforeTiming).executeBefore()
+		err := ctx.optionContext(f, bindings[f.name()]).setTiming(BeforeTiming).executeBefore()
 		if err != nil {
 			return err
 		}
@@ -906,7 +908,7 @@ func triggerFlagsAndArgs(ctx *Context) error {
 	// Action when the flag or arg was set
 	for _, f := range opts {
 		if f.Seen() {
-			err := ctx.optionContext(f, bindings[f.name()]).setTiming(actionTiming).executeOption()
+			err := ctx.optionContext(f, bindings[f.name()]).setTiming(ActionTiming).executeOption()
 			if err != nil {
 				return err
 			}
@@ -927,7 +929,7 @@ func triggerAfterFlagsAndArgs(ctx *Context) error {
 			}
 		}
 
-		err := ctx.optionContext(f, bindings[f.name()]).setTiming(afterTiming).executeAfter()
+		err := ctx.optionContext(f, bindings[f.name()]).setTiming(AfterTiming).executeAfter()
 		if err != nil {
 			return err
 		}
