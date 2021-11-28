@@ -308,6 +308,66 @@ var _ = Describe("Uses", func() {
 	)
 })
 
+var _ = Describe("Action", func() {
+	DescribeTable("timing examples",
+		func(arguments string, actualApp func(cli.Action) *cli.App) {
+			var actual = new(struct {
+				IsInitializing bool
+				IsAction       bool
+				CallCount      int
+			})
+			handler := cli.ActionFunc(func(c *cli.Context) error {
+				actual.IsInitializing = c.IsInitializing()
+				actual.IsAction = c.Timing() == cli.ActionTiming
+				actual.CallCount += 1
+				return nil
+			})
+			app := actualApp(handler)
+			args, _ := cli.Split(arguments)
+			_ = app.RunContext(context.TODO(), args)
+			Expect(actual.CallCount).To(Equal(1))
+			Expect(actual.IsInitializing).To(BeFalse())
+			Expect(actual.IsAction).To(BeTrue())
+		},
+		Entry("app", "app", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Uses: func(c *cli.Context) { c.Action(h) },
+			}
+		}),
+		Entry("command", "app r", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "r",
+						Uses: func(c *cli.Context) { c.Action(h) },
+					},
+				},
+			}
+		}),
+		Entry("arg", "app a", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "r",
+						Uses: func(c *cli.Context) { c.Action(h) },
+					},
+				},
+			}
+		}),
+		Entry("flag", "app -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  func(c *cli.Context) { c.Action(h) },
+					},
+				},
+			}
+		}),
+	)
+})
+
 var _ = Describe("Before", func() {
 
 	DescribeTable("timing examples",

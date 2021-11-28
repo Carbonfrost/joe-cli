@@ -863,16 +863,16 @@ func (c *Context) executeCommand() error {
 		return err
 	}
 
-	c.setTiming(ActionTiming)
-	if err := c.internal.execute(c); err != nil {
+	if err := c.executeSelf(); err != nil {
 		return err
 	}
 
 	return c.executeAfter()
 }
 
-func (c *Context) executeOption() error {
-	return executeAll(c, c.option().action())
+func (c *Context) executeSelf() error {
+	c.setTiming(ActionTiming)
+	return c.internal.execute(c)
 }
 
 func (c *Context) lookupOption(name string) (option, bool) {
@@ -908,7 +908,7 @@ func triggerFlagsAndArgs(ctx *Context) error {
 	// Action when the flag or arg was set
 	for _, f := range opts {
 		if f.Seen() {
-			err := ctx.optionContext(f, bindings[f.name()]).setTiming(ActionTiming).executeOption()
+			err := ctx.optionContext(f, bindings[f.name()]).setTiming(ActionTiming).executeSelf()
 			if err != nil {
 				return err
 			}

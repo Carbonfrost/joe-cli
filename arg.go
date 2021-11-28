@@ -259,18 +259,6 @@ func (a *Arg) applyToSet(s *set) {
 	a.Name = a.option.uname
 }
 
-func (a *Arg) action() Action {
-	return ActionOf(a.Action)
-}
-
-func (a *Arg) before() Action {
-	return ActionOf(a.Before)
-}
-
-func (a *Arg) after() Action {
-	return ActionOf(a.After)
-}
-
 func (a *Arg) name() string {
 	return a.Name
 }
@@ -326,21 +314,23 @@ func (o *argContext) initialize(c *Context) error {
 
 func (o *argContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses.Before, tt.before(), defaultOption.Before)
+	return executeAll(ctx, tt.uses.Before, ActionOf(tt.Before), defaultOption.Before)
 }
 
 func (o *argContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *argContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *argContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses.After, tt.after(), defaultOption.After)
+	return executeAll(ctx, tt.uses.After, ActionOf(tt.After), defaultOption.After)
 }
-func (o *argContext) execute(ctx *Context) error { return nil }
-func (o *argContext) app() (*App, bool)          { return nil, false }
-func (o *argContext) args() []string             { return o.args_ }
-func (o *argContext) set() *set                  { return nil }
-func (o *argContext) target() target             { return o.option }
-func (o *argContext) setDidSubcommandExecute()   {}
+func (o *argContext) execute(ctx *Context) error {
+	return executeAll(ctx, o.option.uses.Action, ActionOf(o.option.Action))
+}
+func (o *argContext) app() (*App, bool)        { return nil, false }
+func (o *argContext) args() []string           { return o.args_ }
+func (o *argContext) set() *set                { return nil }
+func (o *argContext) target() target           { return o.option }
+func (o *argContext) setDidSubcommandExecute() {}
 func (o *argContext) lookupValue(name string) (interface{}, bool) {
 	if name == "" {
 		return o.option.value(), true

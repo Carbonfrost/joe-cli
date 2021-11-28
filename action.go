@@ -386,13 +386,6 @@ func unwind(x Action) []Action {
 	return []Action{x}
 }
 
-func actionOrEmpty(v interface{}) Action {
-	if v == nil {
-		return emptyAction
-	}
-	return ActionOf(v)
-}
-
 var (
 	_ actionWithTiming = withTimingWrapper{}
 )

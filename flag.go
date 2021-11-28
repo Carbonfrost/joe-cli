@@ -162,9 +162,6 @@ type option interface {
 	envVars() []string
 	filePath() string
 	helpText() string
-	before() Action
-	after() Action
-	action() Action
 }
 
 type flagContext struct {
@@ -325,21 +322,23 @@ func (o *flagContext) initialize(c *Context) error {
 
 func (o *flagContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses_.Before, tt.before(), defaultOption.Before)
+	return executeAll(ctx, tt.uses_.Before, ActionOf(tt.Before), defaultOption.Before)
 }
 
 func (o *flagContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *flagContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *flagContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses_.After, tt.after(), defaultOption.After)
+	return executeAll(ctx, tt.uses_.After, ActionOf(tt.After), defaultOption.After)
 }
-func (o *flagContext) execute(ctx *Context) error { return nil }
-func (o *flagContext) app() (*App, bool)          { return nil, false }
-func (o *flagContext) args() []string             { return o.args_ }
-func (o *flagContext) set() *set                  { return nil }
-func (o *flagContext) target() target             { return o.option }
-func (o *flagContext) setDidSubcommandExecute()   {}
+func (o *flagContext) execute(ctx *Context) error {
+	return executeAll(ctx, o.option.uses_.Action, ActionOf(o.option.Action))
+}
+func (o *flagContext) app() (*App, bool)        { return nil, false }
+func (o *flagContext) args() []string           { return o.args_ }
+func (o *flagContext) set() *set                { return nil }
+func (o *flagContext) target() target           { return o.option }
+func (o *flagContext) setDidSubcommandExecute() {}
 func (o *flagContext) lookupValue(name string) (interface{}, bool) {
 	if name == "" {
 		return o.option.value(), true
@@ -479,18 +478,6 @@ func (f *Flag) options() Option {
 
 func (f *Flag) wrapAction(fn func(Action) ActionFunc) {
 	f.Action = fn(ActionOf(f.Action))
-}
-
-func (f *Flag) action() Action {
-	return ActionOf(f.Action)
-}
-
-func (f *Flag) before() Action {
-	return ActionOf(f.Before)
-}
-
-func (f *Flag) after() Action {
-	return ActionOf(f.After)
 }
 
 func (f *Flag) name() string {

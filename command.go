@@ -507,7 +507,7 @@ func (c *commandContext) executeAfterDescendent(ctx *Context) error {
 
 func (c *commandContext) execute(ctx *Context) error {
 	if !c.didSubcommandExecute {
-		return actionOrEmpty(c.cmd.Action).Execute(ctx)
+		return executeAll(ctx, c.cmd.uses.Action, ActionOf(c.cmd.Action))
 	}
 	return nil
 }
