@@ -115,6 +115,8 @@ Expressions:
 usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 {{ if .SelectedCommand.Description }}
 {{ .SelectedCommand.Description | Wrap 4 }}
+{{ else if .SelectedCommand.HelpText }}
+{{ .SelectedCommand.HelpText | Wrap 4 }}
 {{- end -}}
 {{- template "Flags" .SelectedCommand -}}
 {{- template "Expressions" .SelectedCommand -}}
