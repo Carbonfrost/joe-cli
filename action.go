@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -27,13 +28,22 @@ type ActionPipeline struct {
 }
 
 type target interface {
-	hooks() *hooks
-	options() Option
+	hookAfter(pattern string, handler Action) error
+	hookBefore(pattern string, handler Action) error
 	appendAction(Timing, Action)
 	setCategory(name string)
 	SetData(name string, v interface{})
 	setInternalFlags(internalFlags)
 	internalFlags() internalFlags
+}
+
+type hooksSupport struct {
+	before []*hook
+	after  []*hook
+}
+
+type pipelinesSupport struct {
+	p *actionPipelines
 }
 
 type actionPipelines struct {
@@ -98,6 +108,8 @@ var (
 	}
 
 	defaultExpr = actionPipelines{}
+
+	cantHookError = errors.New("hooks are not supported in this context")
 )
 
 // Pipeline combines various actions into a single action
@@ -228,8 +240,7 @@ func Category(name string) Action {
 // the syntax of patterns and how they are matched.
 func HookBefore(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
-		c.demandInit().hookBefore(pattern, handler)
-		return nil
+		return c.target().hookBefore(pattern, handler)
 	})
 }
 
@@ -237,8 +248,7 @@ func HookBefore(pattern string, handler Action) Action {
 // the syntax of patterns and how they are matched.
 func HookAfter(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
-		c.demandInit().hookAfter(pattern, handler)
-		return nil
+		return c.target().hookAfter(pattern, handler)
 	})
 }
 
@@ -292,7 +302,7 @@ func (p *ActionPipeline) Execute(c *Context) (err error) {
 	return nil
 }
 
-func (p *ActionPipeline) takeInitializers(c *Context) *actionPipelines {
+func (p *ActionPipeline) groupByTiming(c *Context) *actionPipelines {
 	res := &actionPipelines{}
 	for _, h := range p.items {
 		res.add(timingOf(h, InitialTiming), h)
@@ -326,6 +336,53 @@ func (p *actionPipelines) exceptInitializers() *actionPipelines {
 
 func (w withTimingWrapper) timing() Timing {
 	return w.t
+}
+
+func (i *hooksSupport) hookBefore(pat string, a Action) error {
+	i.before = append(i.before, &hook{newContextPathPattern(pat), a})
+	return nil
+}
+
+func (i *hooksSupport) executeBeforeHooks(target *Context) error {
+	for _, b := range i.before {
+		if b.pat.Match(target.Path()) {
+			b.action.Execute(target)
+		}
+	}
+	return nil
+}
+
+func (i *hooksSupport) hookAfter(pat string, a Action) error {
+	i.after = append(i.after, &hook{newContextPathPattern(pat), a})
+	return nil
+}
+
+func (i *hooksSupport) executeAfterHooks(target *Context) error {
+	for _, b := range i.after {
+		if b.pat.Match(target.Path()) {
+			b.action.Execute(target)
+		}
+	}
+	return nil
+}
+
+func (i *hooksSupport) append(other *hooksSupport) hooksSupport {
+	return hooksSupport{
+		before: append(i.before, other.before...),
+		after:  append(i.after, other.after...),
+	}
+}
+
+func (s *pipelinesSupport) uses() *actionPipelines {
+	return s.p
+}
+
+func (s *pipelinesSupport) setPipelines(p *actionPipelines) {
+	s.p = p
+}
+
+func (s *pipelinesSupport) appendAction(t Timing, ah Action) {
+	s.p.add(t, ah)
 }
 
 func emptyActionImpl(*Context) error {
@@ -364,8 +421,8 @@ func pipeline(x, y Action) *ActionPipeline {
 	}
 }
 
-func takeInitializers(uses Action, opts Option, c *Context) *actionPipelines {
-	return pipeline(uses, opts.wrap()).takeInitializers(c)
+func newPipelines(uses Action, opts Option, c *Context) *actionPipelines {
+	return pipeline(uses, opts.wrap()).groupByTiming(c)
 }
 
 func unwind(x Action) []Action {

@@ -41,7 +41,6 @@ type internalContext interface {
 	target() target // *Command, *Arg, *Flag, or *Expr
 	lookupValue(string) (interface{}, bool)
 	setDidSubcommandExecute()
-	hooks() *hooks
 	Name() string
 }
 
@@ -56,11 +55,6 @@ type hasFlags interface {
 type hook struct {
 	pat    contextPathPattern
 	action Action
-}
-
-type hooks struct {
-	before []*hook
-	after  []*hook
 }
 
 // ContextPath provides a list of strings that name each one of the parent components
@@ -550,11 +544,6 @@ func (c *Context) logicalArg(index int) *Arg {
 	return c.target().(hasArguments).actualArgs()[index]
 }
 
-func (c *Context) demandInit() *hooks {
-	// TODO Might not always be available
-	return c.internal.hooks()
-}
-
 // Last gets the last name in the path
 func (c ContextPath) Last() string {
 	return c[len(c)-1]
@@ -606,38 +595,6 @@ func (cp contextPathPattern) Match(c ContextPath) bool {
 		}
 	}
 	return false
-}
-
-func (i *hooks) hookBefore(pat string, a Action) {
-	i.before = append(i.before, &hook{newContextPathPattern(pat), a})
-}
-
-func (i *hooks) execBeforeHooks(target *Context) error {
-	if i == nil {
-		return nil
-	}
-	for _, b := range i.before {
-		if b.pat.Match(target.Path()) {
-			b.action.Execute(target)
-		}
-	}
-	return nil
-}
-
-func (i *hooks) hookAfter(pat string, a Action) {
-	i.after = append(i.after, &hook{newContextPathPattern(pat), a})
-}
-
-func (i *hooks) execAfterHooks(target *Context) error {
-	if i == nil {
-		return nil
-	}
-	for _, b := range i.after {
-		if b.pat.Match(target.Path()) {
-			b.action.Execute(target)
-		}
-	}
-	return nil
 }
 
 func matchField(pattern, field string) bool {
@@ -789,14 +746,6 @@ func (c *Context) initialize() error {
 	}
 	c.timing = InitialTiming
 	return c.internal.initialize(c)
-}
-
-func (c *Context) executeBeforeHooks(which *Command) error {
-	return c.target().hooks().execBeforeHooks(c)
-}
-
-func (c *Context) executeAfterHooks(which *Command) error {
-	return c.target().hooks().execAfterHooks(c)
 }
 
 func (c *Context) copy(t internalContext, reparent bool) *Context {

@@ -5,6 +5,8 @@ import (
 )
 
 type Arg struct {
+	pipelinesSupport
+
 	// Name provides the name of the argument. This value must be set, and it is used to access
 	// the argument's value via the context
 	Name string
@@ -88,7 +90,6 @@ type Arg struct {
 
 	option *internalOption
 	flags  internalFlags
-	uses   *actionPipelines
 }
 
 //counterfeiter:generate . ArgCounter
@@ -246,10 +247,6 @@ func (a *Arg) setInternalFlags(i internalFlags) {
 	a.flags |= i
 }
 
-func (a *Arg) options() Option {
-	return a.Options
-}
-
 func (a *Arg) wrapAction(fn func(Action) ActionFunc) {
 	a.Action = fn(ActionOf(a.Action))
 }
@@ -294,37 +291,33 @@ func (a *Arg) ensureData() map[string]interface{} {
 	return a.Data
 }
 
-func (a *Arg) hooks() *hooks {
-	return nil
+func (*Arg) hookAfter(string, Action) error {
+	return cantHookError
 }
 
-func (a *Arg) appendAction(t Timing, ah Action) {
-	a.uses.add(t, ah)
-}
-
-func (o *argContext) hooks() *hooks {
-	return nil
+func (*Arg) hookBefore(string, Action) error {
+	return cantHookError
 }
 
 func (o *argContext) initialize(c *Context) error {
-	rest := takeInitializers(ActionOf(o.option.Uses), o.option.Options, c)
-	o.option.uses = rest
+	rest := newPipelines(ActionOf(o.option.Uses), o.option.Options, c)
+	o.option.setPipelines(rest)
 	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }
 
 func (o *argContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses.Before, ActionOf(tt.Before), defaultOption.Before)
+	return executeAll(ctx, tt.uses().Before, ActionOf(tt.Before), defaultOption.Before)
 }
 
 func (o *argContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *argContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *argContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses.After, ActionOf(tt.After), defaultOption.After)
+	return executeAll(ctx, tt.uses().After, ActionOf(tt.After), defaultOption.After)
 }
 func (o *argContext) execute(ctx *Context) error {
-	return executeAll(ctx, o.option.uses.Action, ActionOf(o.option.Action))
+	return executeAll(ctx, o.option.uses().Action, ActionOf(o.option.Action))
 }
 func (o *argContext) app() (*App, bool)        { return nil, false }
 func (o *argContext) args() []string           { return o.args_ }

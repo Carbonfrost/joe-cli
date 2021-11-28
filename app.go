@@ -16,6 +16,7 @@ import (
 
 // App provides the definition of an app, which is composed of commands, flags, and arguments.
 type App struct {
+	hooksSupport
 
 	// Name provides the name of the app.  This value is inferred from the base name of the entry process if
 	// it is explicitly not set.  It will be displayed on the help screen and other templates.
@@ -93,7 +94,6 @@ type App struct {
 	UsageText string
 
 	rootCommand   *Command
-	appHooks      hooks
 	flags         internalFlags
 	templateFuncs map[string]interface{}
 	templates     map[string]string
@@ -163,27 +163,31 @@ func (a *App) createRoot() *Command {
 
 func (a *App) _createRootCore(force bool) *Command {
 	if a.rootCommand == nil || force {
-		var flags internalFlags
+		var (
+			flags internalFlags
+			hooks hooksSupport
+		)
 		if a.rootCommand != nil {
 			flags = a.rootCommand.flags
+			hooks = a.rootCommand.hooksSupport
 		}
 		flags |= a.flags
 
 		a.rootCommand = &Command{
-			Name:        a.Name,
-			Flags:       a.Flags,
-			Args:        a.Args,
-			Exprs:       a.Exprs,
-			Subcommands: a.Commands,
-			Action:      a.Action,
-			Description: a.Description,
-			Data:        a.Data,
-			After:       a.After,
-			Uses:        a.Uses,
-			Before:      a.Before,
-			Options:     a.Options,
-			flags:       flags,
-			cmdHooks:    a.appHooks,
+			Name:         a.Name,
+			Flags:        a.Flags,
+			Args:         a.Args,
+			Exprs:        a.Exprs,
+			Subcommands:  a.Commands,
+			Action:       a.Action,
+			Description:  a.Description,
+			Data:         a.Data,
+			After:        a.After,
+			Uses:         a.Uses,
+			Before:       a.Before,
+			Options:      a.Options,
+			flags:        flags,
+			hooksSupport: hooks.append(&a.hooksSupport),
 		}
 	}
 	return a.rootCommand
@@ -223,10 +227,10 @@ func (a *App) ensureTemplateFuncs() map[string]interface{} {
 }
 
 func (a *appContext) initialize(c *Context) error {
-	rest := takeInitializers(ActionOf(a.app_.Uses), a.app_.Options, c)
+	rest := newPipelines(ActionOf(a.app_.Uses), a.app_.Options, c)
 
 	a.commandContext.cmd = a.app_.createRoot()
-	a.commandContext.cmd.uses = rest
+	a.commandContext.cmd.setPipelines(rest)
 
 	if err := executeAll(c, rest.Initializers, defaultApp.Initializers); err != nil {
 		return err
@@ -239,13 +243,9 @@ func (a *appContext) initialize(c *Context) error {
 	// (by calling initializeCore instead of initialize) because we
 	// don't want to calculate separating out action pipelines again, and we
 	// don't want to invoke app's initializers twice
-	a.commandContext.cmd.uses = rest.exceptInitializers()
+	a.commandContext.cmd.setPipelines(rest.exceptInitializers())
 	a.commandContext.initializeCore(c)
 	return nil
-}
-
-func (a *appContext) hooks() *hooks {
-	return &a.app_.appHooks
 }
 
 func (a *appContext) app() (*App, bool) { return a.app_, true }

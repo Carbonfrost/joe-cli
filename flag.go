@@ -33,6 +33,8 @@ import (
 // necessary when you don't use your own variable.
 //
 type Flag struct {
+	pipelinesSupport
+
 	// Name provides the name of the flag. This value must be set, and it is used to access
 	// the flag's value via the context
 	Name string
@@ -128,7 +130,6 @@ type Flag struct {
 
 	option *internalOption
 	flags  internalFlags
-	uses_  *actionPipelines
 }
 
 // FlagsByName is a sortable slice for flags
@@ -273,12 +274,12 @@ func (f *Flag) ensureData() map[string]interface{} {
 	return f.Data
 }
 
-func (f *Flag) hooks() *hooks {
-	return nil
+func (*Flag) hookAfter(string, Action) error {
+	return cantHookError
 }
 
-func (f *Flag) appendAction(t Timing, ah Action) {
-	f.uses_.add(t, ah)
+func (*Flag) hookBefore(string, Action) error {
+	return cantHookError
 }
 
 func (f *flagSynopsis) names(hideAlternates bool) string {
@@ -292,10 +293,6 @@ func (f *flagSynopsis) names(hideAlternates bool) string {
 		return fmt.Sprintf("--%s", f.long)
 	}
 	return fmt.Sprintf("-%s, --%s", f.short, f.long)
-}
-
-func (o *flagContext) hooks() *hooks {
-	return nil
 }
 
 func (o *flagContext) initialize(c *Context) error {
@@ -315,24 +312,24 @@ func (o *flagContext) initialize(c *Context) error {
 	}
 	f.option = res
 
-	rest := takeInitializers(ActionOf(f.Uses), f.Options, c)
-	f.uses_ = rest
+	rest := newPipelines(ActionOf(f.Uses), f.Options, c)
+	f.setPipelines(rest)
 	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }
 
 func (o *flagContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses_.Before, ActionOf(tt.Before), defaultOption.Before)
+	return executeAll(ctx, tt.uses().Before, ActionOf(tt.Before), defaultOption.Before)
 }
 
 func (o *flagContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *flagContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *flagContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses_.After, ActionOf(tt.After), defaultOption.After)
+	return executeAll(ctx, tt.uses().After, ActionOf(tt.After), defaultOption.After)
 }
 func (o *flagContext) execute(ctx *Context) error {
-	return executeAll(ctx, o.option.uses_.Action, ActionOf(o.option.Action))
+	return executeAll(ctx, o.option.uses().Action, ActionOf(o.option.Action))
 }
 func (o *flagContext) app() (*App, bool)        { return nil, false }
 func (o *flagContext) args() []string           { return o.args_ }
@@ -470,10 +467,6 @@ func (f *Flag) internalFlags() internalFlags {
 
 func (f *Flag) setInternalFlags(i internalFlags) {
 	f.flags |= i
-}
-
-func (f *Flag) options() Option {
-	return f.Options
 }
 
 func (f *Flag) wrapAction(fn func(Action) ActionFunc) {

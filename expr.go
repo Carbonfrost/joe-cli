@@ -24,6 +24,8 @@ type EvaluatorFunc func(*Context, interface{}, func(interface{}) error) error
 // A well-known implementation of an expression is in the Unix `find` command where
 // each file is processed through a series of operands to filter a list of files.
 type Expr struct {
+	pipelinesSupport
+
 	// Name provides the name of the expression operator. This value must be set, and it is used to access
 	// the expression operator's value via the context
 	Name string
@@ -405,10 +407,6 @@ func (e *Expr) ensureData() map[string]interface{} {
 	return e.Data
 }
 
-func (e *Expr) hooks() *hooks {
-	return nil
-}
-
 func (e *Expr) setInternalFlags(f internalFlags) {
 	e.flags |= f
 }
@@ -417,11 +415,12 @@ func (e *Expr) internalFlags() internalFlags {
 	return e.flags
 }
 
-func (e *Expr) options() Option {
-	return e.Options
+func (*Expr) hookAfter(string, Action) error {
+	return cantHookError
 }
 
-func (e *Expr) appendAction(t Timing, ah Action) {
+func (*Expr) hookBefore(string, Action) error {
+	return cantHookError
 }
 
 // Evaluate provides the evaluation of the function and implements the Evaluator interface
@@ -616,10 +615,6 @@ func (e *exprSynopsis) names() string {
 
 func (e *exprContext) initialize(c *Context) error {
 	return executeAll(c, ActionOf(e.expr.Uses), nil)
-}
-
-func (e *exprContext) hooks() *hooks {
-	return nil
 }
 
 func (e *exprContext) executeBefore(ctx *Context) error {
