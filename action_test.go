@@ -250,33 +250,83 @@ var _ = Describe("middleware", func() {
 
 })
 
-type beforeContext struct {
-	IsInitializing bool
-	IsBefore       bool
-	Called         bool
-}
-
-type afterContext struct {
-	IsInitializing bool
-	IsAfter        bool
-	Called         bool
-}
-
-var _ = Describe("Before", func() {
+var _ = Describe("Uses", func() {
 
 	DescribeTable("timing examples",
 		func(arguments string, actualApp func(cli.Action) *cli.App) {
-			var actual = new(beforeContext)
+			var actual = new(struct {
+				IsInitializing bool
+				CallCount      int
+			})
 			handler := cli.ActionFunc(func(c *cli.Context) error {
 				actual.IsInitializing = c.IsInitializing()
-				actual.IsBefore = c.IsBefore()
-				actual.Called = true
+				actual.CallCount += 1
 				return nil
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
 			_ = app.RunContext(context.TODO(), args)
-			Expect(actual.Called).To(BeTrue())
+			Expect(actual.CallCount).To(Equal(1))
+			Expect(actual.IsInitializing).To(BeTrue())
+		},
+		Entry("app", "app", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Uses: h,
+			}
+		}),
+		Entry("command", "app r", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "r",
+						Uses: h,
+					},
+				},
+			}
+		}),
+		Entry("arg", "app a", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "r",
+						Uses: h,
+					},
+				},
+			}
+		}),
+		Entry("flag", "app -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  h,
+					},
+				},
+			}
+		}),
+	)
+})
+
+var _ = Describe("Before", func() {
+
+	DescribeTable("timing examples",
+		func(arguments string, actualApp func(cli.Action) *cli.App) {
+			var actual = new(struct {
+				IsInitializing bool
+				IsBefore       bool
+				CallCount      int
+			})
+			handler := cli.ActionFunc(func(c *cli.Context) error {
+				actual.IsInitializing = c.IsInitializing()
+				actual.IsBefore = c.IsBefore()
+				actual.CallCount += 1
+				return nil
+			})
+			app := actualApp(handler)
+			args, _ := cli.Split(arguments)
+			_ = app.RunContext(context.TODO(), args)
+			Expect(actual.CallCount).To(Equal(1))
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsBefore).To(BeTrue())
 		},
@@ -322,17 +372,21 @@ var _ = Describe("Before", func() {
 var _ = Describe("After", func() {
 	DescribeTable("timing examples",
 		func(arguments string, actualApp func(cli.Action) *cli.App) {
-			var actual = new(afterContext)
+			var actual = new(struct {
+				IsInitializing bool
+				IsAfter        bool
+				CallCount      int
+			})
 			handler := cli.ActionFunc(func(c *cli.Context) error {
 				actual.IsInitializing = c.IsInitializing()
 				actual.IsAfter = c.IsAfter()
-				actual.Called = true
+				actual.CallCount += 1
 				return nil
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
 			_ = app.RunContext(context.TODO(), args)
-			Expect(actual.Called).To(BeTrue())
+			Expect(actual.CallCount).To(Equal(1))
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsAfter).To(BeTrue())
 		},

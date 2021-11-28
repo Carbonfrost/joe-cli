@@ -241,14 +241,6 @@ func (a *appContext) initialize(c *Context) error {
 	// don't want to invoke app's initializers twice
 	a.commandContext.cmd.uses = rest.exceptInitializers()
 	a.commandContext.initializeCore(c)
-
-	for _, sub := range a.app_.Commands {
-		err := c.commandContext(sub, nil).initialize()
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
