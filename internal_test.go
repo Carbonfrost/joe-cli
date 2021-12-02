@@ -26,6 +26,10 @@ func SetActionTiming(c *Context) {
 	c.timing = ActionTiming
 }
 
+func (a *Arg) ActualArgCounter() ArgCounter {
+	return a.option.actualArgCounter()
+}
+
 func NewFlagSynopsis(long string) *flagSynopsis {
 	return &flagSynopsis{
 		long:  long,

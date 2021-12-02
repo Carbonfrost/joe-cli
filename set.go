@@ -68,7 +68,7 @@ func newArgBinding(args []*internalOption) *argBinding {
 
 	for i, x := range args {
 		items[i] = x
-		takers[i] = ArgCount(x.narg)
+		takers[i] = x.actualArgCounter()
 	}
 	return &argBinding{
 		items, takers, 0,
@@ -375,4 +375,16 @@ func (o *internalOption) Value() *generic {
 
 func (o *internalOption) Count() int {
 	return o.count
+}
+
+func (o *internalOption) actualArgCounter() ArgCounter {
+	if o.narg == nil {
+		switch value := o.value.p.(type) {
+		case *[]string:
+			return ArgCount(TakeUntilNextFlag)
+		case providesCounter:
+			return value.NewCounter()
+		}
+	}
+	return ArgCount(o.narg)
 }

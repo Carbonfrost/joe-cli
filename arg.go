@@ -54,7 +54,9 @@ type Arg struct {
 	//   * **url.URL
 	//   * an implementation of Value interface
 	//
-	// If unspecified, the value will be a string pointer.
+	// If unspecified, the value will depend upon NArg if it is a number, in which case either
+	// a pointer to a string or a string slice will be used depending upon the semantics of the
+	// ArgCount function.
 	Value interface{}
 
 	// DefaultText provides a description of the detault value for the argument.  This is displayed
@@ -62,7 +64,8 @@ type Arg struct {
 	DefaultText string
 
 	// NArg describes how many values are passed to the argument.  For a description, see
-	// ArgCount function
+	// ArgCount function. By convention, if the flag Value provides the method NewCounter() ArgCounter,
+	// this method is consulted to obtain the arg counter.
 	NArg interface{}
 
 	// Options sets various options about how to treat the argument.
@@ -103,6 +106,10 @@ type ArgCounter interface {
 
 	// Done is invoked to signal the end of arguments
 	Done() error
+}
+
+type providesCounter interface {
+	NewCounter() ArgCounter
 }
 
 type argContext struct {

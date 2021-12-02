@@ -70,10 +70,10 @@ var _ = Describe("Arg", func() {
 		})
 	})
 
-	Describe("NArg", func() {
+	Describe("Value", func() {
 
 		DescribeTable(
-			"inferred type",
+			"inferred from NArg",
 			func(count int, expected interface{}) {
 				act := new(joeclifakes.FakeAction)
 				app := &cli.App{
@@ -102,6 +102,37 @@ var _ = Describe("Arg", func() {
 			Entry("string when 1", 1, cli.String()),
 			Entry("list when 2", 2, cli.List()),
 			Entry("list when -2", -2, cli.List()),
+		)
+
+	})
+
+	Describe("NArg", func() {
+
+		DescribeTable(
+			"inferred from Value",
+			func(value interface{}, validArgs string, expected types.GomegaMatcher) {
+				act := new(joeclifakes.FakeAction)
+				app := &cli.App{
+					Name: "app",
+					Args: []*cli.Arg{
+						{
+							Name:  "f",
+							Value: value,
+						},
+					},
+					Action: act,
+				}
+				args, _ := cli.Split("app " + validArgs)
+				err := app.RunContext(context.TODO(), args)
+				Expect(err).NotTo(HaveOccurred())
+
+				captured := act.ExecuteArgsForCall(0)
+				arg, _ := captured.LookupArg("f")
+				Expect(arg.ActualArgCounter()).To(expected)
+			},
+			Entry("string", new(string), "_", Equal(cli.ArgCount(0))),
+			Entry("[]string", new([]string), "_", Equal(cli.ArgCount(-2))),
+			Entry("value counter convention", &valueHasCounter{}, "_", BeAssignableToTypeOf(argCounterImpl{})),
 		)
 
 		DescribeTable(
@@ -240,3 +271,14 @@ var _ = Describe("ArgCount", func() {
 		Entry("bad", "", Panic()),
 	)
 })
+
+type valueHasCounter struct{}
+
+func (*valueHasCounter) NewCounter() cli.ArgCounter { return argCounterImpl{} }
+func (*valueHasCounter) Set(arg string) error       { return nil }
+func (*valueHasCounter) String() string             { return "" }
+
+type argCounterImpl struct{}
+
+func (argCounterImpl) Take(arg string, possibleFlag bool) error { return nil }
+func (argCounterImpl) Done() error                              { return nil }
