@@ -586,9 +586,6 @@ func (cp contextPathPattern) Match(c ContextPath) bool {
 	if len(cp.parts) == 0 {
 		return true
 	}
-	if len(cp.parts) == 1 && cp.parts[0] == "*" {
-		return true
-	}
 	for i, j := len(cp.parts)-1, len(c)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
 		if matchField(cp.parts[i], c[j]) {
 			return true
@@ -599,18 +596,26 @@ func (cp contextPathPattern) Match(c ContextPath) bool {
 
 func matchField(pattern, field string) bool {
 	if pattern == "*" {
-		return true
+		return !matchFlag(field) && !matchArg(field)
 	}
 	if pattern == "-" || pattern == "--" {
-		return strings.HasPrefix(field, "-")
+		return matchFlag(field)
 	}
 	if pattern == "<>" {
-		return strings.HasPrefix(field, "<")
+		return matchArg(field)
 	}
 	if pattern == field {
 		return true
 	}
 	return false
+}
+
+func matchArg(field string) bool {
+	return strings.HasPrefix(field, "<")
+}
+
+func matchFlag(field string) bool {
+	return strings.HasPrefix(field, "-")
 }
 
 func rootContext(cctx context.Context, app *App, args []string) *Context {

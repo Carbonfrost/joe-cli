@@ -235,7 +235,7 @@ var _ = Describe("Context", func() {
 				}
 			})
 
-			It("", func() {
+			It("do skip sub-commands", func() {
 				Expect(commands).To(Equal([]string{
 					"_",
 					"p",
@@ -260,9 +260,20 @@ var _ = Describe("ContextPath", func() {
 		Entry("nested command", "sub", "app app sub"),
 		Entry("simple flag", "--flag", "app --flag"),
 		Entry("nested flag", "--flag", "app app sub --flag"),
-		Entry("anything", "*", "app --flag"),
+		Entry("any command", "*", "app"),
+		Entry("any sub-command", "*", "app sub"),
 		Entry("any flag", "-", "app --flag"),
 		Entry("any arg", "<>", "app <arg>"),
 		Entry("sub path", "sub cmd", "app sub cmd"),
+	)
+
+	DescribeTable("Match counterexamples",
+		func(pattern string, path string) {
+			p := cli.ContextPath(strings.Fields(path))
+			Expect(p.Match(pattern)).To(BeFalse())
+		},
+		Entry("* doesn't match flag", "*", "app --flag"),
+		Entry("* doesn't match arg", "*", "app <arg>"),
+		Entry("flag doesn't match sub-command", "-", "app sub"),
 	)
 })
