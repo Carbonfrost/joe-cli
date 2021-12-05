@@ -106,12 +106,122 @@ var _ = Describe("Expr", func() {
 
 		It("provides context Name", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
-			Expect(captured.Name()).To(Equal("-expr"))
+			Expect(captured.Name()).To(Equal("<-expr>"))
 		})
 
 		It("provides context Path", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
-			Expect(captured.Path().String()).To(Equal("app <expression> -expr"))
+			Expect(captured.Path().String()).To(Equal("app <-expr>"))
+		})
+	})
+
+	Describe("Before", func() {
+		var (
+			act *joeclifakes.FakeAction
+			app *cli.App
+		)
+
+		BeforeEach(func() {
+			act = new(joeclifakes.FakeAction)
+			app = &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						Name: "f",
+						NArg: 0,
+					},
+				},
+				Exprs: []*cli.Expr{
+					{
+						Name: "expr",
+						Args: []*cli.Arg{
+							{
+								Name:  "f",
+								Value: new(bool),
+								NArg:  1,
+							},
+						},
+						Before: act,
+					},
+				},
+				Action: func(c *cli.Context) {
+					c.Expression().Evaluate(c, nil)
+				},
+			}
+		})
+
+		JustBeforeEach(func() {
+			args, _ := cli.Split("app arg -expr true")
+			app.RunContext(context.TODO(), args)
+		})
+
+		It("executes before", func() {
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
+
+		It("provides context Name", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Name()).To(Equal("<-expr>"))
+		})
+
+		It("provides context Path", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Path().String()).To(Equal("app <expression> <-expr>"))
+		})
+	})
+
+	Describe("After", func() {
+		var (
+			act *joeclifakes.FakeAction
+			app *cli.App
+		)
+
+		BeforeEach(func() {
+			act = new(joeclifakes.FakeAction)
+			app = &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						Name: "f",
+						NArg: 0,
+					},
+				},
+				Exprs: []*cli.Expr{
+					{
+						Name: "expr",
+						Args: []*cli.Arg{
+							{
+								Name:  "f",
+								Value: new(bool),
+								NArg:  1,
+							},
+						},
+						After: act,
+					},
+				},
+				Action: func(c *cli.Context) {
+					c.Expression().Evaluate(c, nil)
+				},
+			}
+		})
+
+		JustBeforeEach(func() {
+			args, _ := cli.Split("app arg -expr true")
+			app.RunContext(context.TODO(), args)
+		})
+
+		It("executes before", func() {
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
+
+		It("provides context Name", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Name()).To(Equal("<-expr>"))
+		})
+
+		It("provides context Path", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Path().String()).To(Equal("app <expression> <-expr>"))
 		})
 	})
 
@@ -212,7 +322,7 @@ var _ = Describe("Expr", func() {
 			Entry(
 				"end argument list",
 				"arg -multi a b -offset 2",
-				Equal(`-> -multi=[a b] -> -offset=[2] `),
+				Equal(`-> <-multi>=[a b] -> <-offset>=[2] `),
 			),
 		)
 

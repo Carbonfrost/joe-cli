@@ -551,17 +551,22 @@ func (c ContextPath) Last() string {
 
 // IsCommand tests whether the last segment of the path represents a command
 func (c ContextPath) IsCommand() bool {
-	return !(c.IsFlag() || c.IsArg())
+	return matchCommand(c.Last())
 }
 
 // IsFlag tests whether the last segment of the path represents a flag
 func (c ContextPath) IsFlag() bool {
-	return []rune(c.Last())[0] == '-'
+	return matchFlag(c.Last())
 }
 
 // IsArg tests whether the last segment of the path represents an argument
 func (c ContextPath) IsArg() bool {
-	return []rune(c.Last())[0] == '<'
+	return matchArg(c.Last())
+}
+
+// IsExpr tests whether the last segment of the path represents an expression
+func (c ContextPath) IsExpr() bool {
+	return matchExpr(c.Last())
 }
 
 // String converts the context path to a string
@@ -577,6 +582,8 @@ func (c ContextPath) String() string {
 //   -flag    a flag matching the flag name
 //   <>       any argument
 //   <arg>    an argument matching the arg name
+//   <->      any expression
+//   <-expr>  an expression matching the arg name
 //
 func (c ContextPath) Match(pattern string) bool {
 	return newContextPathPattern(pattern).Match(c)
@@ -596,7 +603,7 @@ func (cp contextPathPattern) Match(c ContextPath) bool {
 
 func matchField(pattern, field string) bool {
 	if pattern == "*" {
-		return !matchFlag(field) && !matchArg(field)
+		return matchCommand(field)
 	}
 	if pattern == "-" || pattern == "--" {
 		return matchFlag(field)
@@ -604,14 +611,25 @@ func matchField(pattern, field string) bool {
 	if pattern == "<>" {
 		return matchArg(field)
 	}
+	if pattern == "<->" {
+		return matchExpr(field)
+	}
 	if pattern == field {
 		return true
 	}
 	return false
 }
 
+func matchCommand(field string) bool {
+	return !matchFlag(field) && !matchArg(field) && !matchExpr(field)
+}
+
+func matchExpr(field string) bool {
+	return strings.HasPrefix(field, "<-")
+}
+
 func matchArg(field string) bool {
-	return strings.HasPrefix(field, "<")
+	return strings.HasPrefix(field, "<") && !strings.HasPrefix(field, "<-")
 }
 
 func matchFlag(field string) bool {
@@ -684,9 +702,9 @@ func (c *Context) applySet() {
 		f.applyToSet(set)
 	}
 	if c.Parent() != nil {
-		for _, f := range c.Parent().allFlagsInScope() {
+		for _, f := range c.Parent().flags(true) {
 			f.applyToSet(set)
-			f.option.persistent = true
+			f.(*Flag).option.persistent = true
 		}
 	}
 	for _, a := range c.target().(*Command).actualArgs() {
@@ -694,15 +712,15 @@ func (c *Context) applySet() {
 	}
 }
 
-func (c *Context) allFlagsInScope() []*Flag {
-	result := make([]*Flag, 0)
+func (c *Context) flags(persistent bool) []option {
+	result := make([]option, 0)
 	for {
 		var (
-			cmd *Command
+			cmd hasFlags
 			ok  bool
 			all = map[string]bool{}
 		)
-		if cmd, ok = c.target().(*Command); !ok {
+		if cmd, ok = c.target().(hasFlags); !ok {
 			break
 		}
 		for _, f := range cmd.actualFlags() {
@@ -712,27 +730,20 @@ func (c *Context) allFlagsInScope() []*Flag {
 			all[f.Name] = true
 			result = append(result, f)
 		}
+		if !persistent {
+			break
+		}
 		c = c.Parent()
 	}
 	return result
 }
 
-func (c *Context) flagsAndArgs(persistent bool) []option {
-	cmd := c.Command()
-	res := make([]option, 0, len(cmd.Flags)+len(cmd.Args))
-	if persistent {
-		for _, f := range c.allFlagsInScope() {
-			res = append(res, f)
-		}
-	} else {
-		for _, f := range cmd.Flags {
-			res = append(res, f)
-		}
+func (c *Context) args() []option {
+	result := make([]option, 0)
+	for _, a := range c.target().(hasArguments).actualArgs() {
+		result = append(result, a)
 	}
-	for _, a := range cmd.Args {
-		res = append(res, a)
-	}
-	return res
+	return result
 }
 
 func (c *Context) applyFlagsAndArgs() (err error) {
@@ -803,6 +814,11 @@ func (c *Context) executeBefore() error {
 	)
 }
 
+func (c *Context) executeBeforeWithoutBubbling() error {
+	c.setTiming(BeforeTiming)
+	return c.internal.executeBefore(c)
+}
+
 func (c *Context) executeAfter() error {
 	c.setTiming(AfterTiming)
 	return tunnel(
@@ -810,6 +826,11 @@ func (c *Context) executeAfter() error {
 		func(c1 *Context) error { return c1.internal.executeAfter(c) },
 		func(c1 *Context) error { return c1.internal.executeAfterDescendent(c) },
 	)
+}
+
+func (c *Context) executeAfterWithoutTunneling() error {
+	c.setTiming(AfterTiming)
+	return c.internal.executeAfter(c)
 }
 
 func (c *Context) executeCommand() error {
@@ -840,8 +861,15 @@ func (c *Context) option() option {
 	return c.target().(option)
 }
 
-func triggerFlagsAndArgs(ctx *Context) error {
-	opts := ctx.flagsAndArgs(true)
+func triggerBeforeFlags(ctx *Context) error {
+	return triggerBeforeOptions(ctx, ctx.flags(true))
+}
+
+func triggerBeforeArgs(ctx *Context) error {
+	return triggerBeforeOptions(ctx, ctx.args())
+}
+
+func triggerBeforeOptions(ctx *Context, opts []option) error {
 	bindings := ctx.internal.set().bindings
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
@@ -871,8 +899,15 @@ func triggerFlagsAndArgs(ctx *Context) error {
 	return nil
 }
 
-func triggerAfterFlagsAndArgs(ctx *Context) error {
-	opts := ctx.flagsAndArgs(true)
+func triggerAfterFlags(ctx *Context) error {
+	return triggerAfterOptions(ctx, ctx.flags(true))
+}
+
+func triggerAfterArgs(ctx *Context) error {
+	return triggerAfterOptions(ctx, ctx.args())
+}
+
+func triggerAfterOptions(ctx *Context, opts []option) error {
 	bindings := ctx.internal.set().bindings
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {

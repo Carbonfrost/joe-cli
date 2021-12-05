@@ -10,7 +10,7 @@ type set struct {
 	shortOptions      map[rune]*internalOption
 	longOptions       map[string]*internalOption
 	positionalOptions []*internalOption
-	values            map[string]interface{}
+	values            LookupValues // map[string]interface{}
 	bindings          map[string][]string
 }
 

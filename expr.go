@@ -61,11 +61,11 @@ type Expr struct {
 	// the rules provided by the cli.EvaluatorOf function.
 	Evaluate interface{}
 
-	// Before executes before the command runs.  Refer to cli.Action about the correct
+	// Before executes before the expression is evaluated.  Refer to cli.Action about the correct
 	// function signature to use.
 	Before interface{}
 
-	// After executes after the command runs.  Refer to cli.Action about the correct
+	// After executes after the expression is evaluated.  Refer to cli.Action about the correct
 	// function signature to use.
 	After interface{}
 
@@ -91,7 +91,9 @@ type Expr struct {
 type Expression interface {
 	Value
 
-	// Evaluate the expression binding with the given inputs
+	// Evaluate the expression binding with the given inputs.  Generally, the context
+	// passed to the evaluation context is the context of the command where the
+	// expression was defined.
 	Evaluate(*Context, ...interface{}) error
 
 	// Walk iterates the contents of the expression.  The walker function is passed
@@ -136,12 +138,13 @@ type ExprCategory struct {
 type Yielder func(interface{}) error
 
 type exprPipelineFactory struct {
-	exprs map[string]func(*Context) *boundExpr
+	exprs map[string]*boundExpr
 }
 
 type exprPipeline struct {
-	items []ExprBinding
-	args  []string
+	boundContext *Context // where the expr pipeline was bound (should be "<expression>" argument)
+	items        []ExprBinding
+	args         []string
 }
 
 type exprSynopsis struct {
@@ -152,7 +155,7 @@ type exprSynopsis struct {
 }
 
 type boundExpr struct {
-	*Context
+	Lookup
 	expr *Expr
 	set  *set
 }
@@ -170,18 +173,32 @@ type exprContext struct {
 }
 
 // BindExpression is an action that binds expression handling to an argument.  This
-// is set up automatically when a command defines any expression operators.
+// is set up automatically when a command defines any expression operators.  The exprFunc
+// argument is used to determine which expressions to used.  If nil, the default behavior
+// is used which is to lookup Command.Exprs from the context
 func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
-	return ActionFunc(func(c *Context) error {
-		exprs, err := exprFunc(c)
-		if err != nil {
-			return err
+	if exprFunc == nil {
+		exprFunc = func(c *Context) ([]*Expr, error) {
+			return c.Command().Exprs, nil
+		}
+	}
+
+	return Initializer(ActionFunc(func(c *Context) error {
+		c.Arg().Value = &exprPipeline{
+			boundContext: c,
 		}
 
-		pipe := c.Value("").(*exprPipeline)
-		fac := newExprPipelineFactory(exprs)
-		return pipe.applyFactory(c, fac)
-	})
+		return c.Action(ActionFunc(func(c *Context) error {
+			exprs, err := exprFunc(c)
+			if err != nil {
+				return err
+			}
+
+			pipe := c.Value("").(*exprPipeline)
+			fac := newExprPipelineFactory(exprs)
+			return pipe.applyFactory(c, fac)
+		}))
+	}))
 }
 
 // NewExprBinding creates an expression binding.  The ev parameter is how
@@ -324,19 +341,14 @@ func GroupExprsByCategory(exprs []*Expr) ExprsByCategory {
 
 func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 	res := &exprPipelineFactory{
-		exprs: map[string]func(*Context) *boundExpr{},
+		exprs: map[string]*boundExpr{},
 	}
 	for _, e := range exprs {
-		e1 := e
-		fac := func(c *Context) *boundExpr {
-			// TODO Pass along args
-			args := []string{}
-			set := newSet().withArgs(e1.Args)
-			return &boundExpr{
-				expr:    e1,
-				set:     set,
-				Context: c.exprContext(e1, args, set).setTiming(ActionTiming),
-			}
+		set := newSet().withArgs(e.Args)
+		fac := &boundExpr{
+			expr:   e,
+			set:    set,
+			Lookup: set.values,
 		}
 		res.exprs[e.Name] = fac
 		for _, alias := range e.Aliases {
@@ -484,7 +496,10 @@ func (b *boundExpr) Expr() *Expr {
 }
 
 func (b *boundExpr) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
-	return EvaluatorOf(b.expr.Evaluate).Evaluate(b.Context, v, yield)
+	// TODO Pass along args
+	args := []string{}
+	ctx := c.exprContext(b.expr, args, b.set).setTiming(ActionTiming)
+	return EvaluatorOf(b.expr.Evaluate).Evaluate(ctx, v, yield)
 }
 
 func (p *exprPipeline) Set(arg string) error {
@@ -500,6 +515,18 @@ func (p *exprPipeline) String() string {
 }
 
 func (p *exprPipeline) Evaluate(ctx *Context, items ...interface{}) error {
+	if err := p.before(ctx); err != nil {
+		return err
+	}
+
+	if err := p.evaluateCore(ctx, items...); err != nil {
+		return err
+	}
+
+	return p.after(ctx)
+}
+
+func (p *exprPipeline) evaluateCore(ctx *Context, items ...interface{}) error {
 	yielders := make([]Yielder, len(p.items))
 	yielderThunk := func(i int) Yielder {
 		if i >= len(yielders) || yielders[i] == nil {
@@ -557,12 +584,11 @@ Parsing:
 		}
 
 	ParseExprFlag:
-		s, ok := e.exprs[arg[1:]]
+		set, ok := e.exprs[arg[1:]]
 		if !ok {
 			return nil, unknownExpr(arg)
 		}
 
-		set := s(c)
 		results = append(results, set)
 		if len(set.set.positionalOptions) == 0 {
 			continue Parsing
@@ -597,6 +623,32 @@ func (p *exprPipeline) applyFactory(c *Context, fac *exprPipelineFactory) error 
 	exprs, err := fac.parse(c, p.args)
 	p.items = exprs
 	return err
+}
+
+func (e *exprPipeline) before(ctx *Context) error {
+	// Use the context where the expression was defined rather than where
+	// it was evaluated to process events so that the correct lineage is accessible
+	// to actions
+	c := e.boundContext
+	for _, expr := range e.items {
+		// TODO Type coercion shouldn't be necessary, should provide args
+		if be, ok := expr.(*boundExpr); ok {
+			c.exprContext(expr.Expr(), nil, be.set).executeBeforeWithoutBubbling()
+		}
+	}
+
+	return nil
+}
+
+func (e *exprPipeline) after(ctx *Context) error {
+	c := e.boundContext
+	for _, expr := range e.items {
+		if be, ok := expr.(*boundExpr); ok {
+			c.exprContext(expr.Expr(), nil, be.set).executeAfterWithoutTunneling()
+		}
+	}
+
+	return nil
 }
 
 func (b *exprBinding) Expr() *Expr {
@@ -642,7 +694,7 @@ func (e *exprContext) lookupValue(name string) (interface{}, bool) {
 	return e.set_.lookupValue(name)
 }
 func (e *exprContext) Name() string {
-	return "-" + e.expr.Name
+	return "<-" + e.expr.Name + ">"
 }
 
 func emptyYielder(interface{}) error {

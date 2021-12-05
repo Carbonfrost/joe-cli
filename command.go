@@ -292,12 +292,6 @@ func (c *Command) ensureSubcommands() {
 			Value:     List(),
 			NArg:      -1,
 			Action:    ExecuteSubcommand(nil),
-
-			// This arg does not have an initialization pass, so its pipeline must
-			// be cached
-			pipelinesSupport: pipelinesSupport{
-				p: &actionPipelines{},
-			},
 		})
 		if c.Action == nil {
 			c.Action = DisplayHelpScreen()
@@ -310,17 +304,8 @@ func (c *Command) ensureExprs() {
 		c.appendArg(&Arg{
 			Name:      "expression",
 			UsageText: "<expression>",
-			Value:     new(exprPipeline),
 			NArg:      -1,
-			Action: BindExpression(func(c *Context) ([]*Expr, error) {
-				return c.Command().Exprs, nil
-			}),
-
-			// This arg does not have an initialization pass, so its pipeline must
-			// be cached
-			pipelinesSupport: pipelinesSupport{
-				p: &actionPipelines{},
-			},
+			Uses:      BindExpression(nil),
 		})
 	}
 }
@@ -431,6 +416,16 @@ func (c *commandContext) initializeCore(ctx *Context) error {
 			}
 			return nil
 		}
+
+		initArgs = func(args []*Arg) error {
+			for _, sub := range args {
+				err := ctx.argContext(sub, nil).initialize()
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}
 	)
 
 	flagCount := len(c.cmd.Flags)
@@ -443,12 +438,11 @@ func (c *commandContext) initializeCore(ctx *Context) error {
 		return err
 	}
 
-	for _, sub := range c.cmd.Args {
-		err := ctx.argContext(sub, nil).initialize()
-		if err != nil {
-			return err
-		}
+	argCount := len(c.cmd.Args)
+	if err := initArgs(c.cmd.Args); err != nil {
+		return err
 	}
+
 	for _, sub := range c.cmd.Exprs {
 		err := ctx.exprContext(sub, nil, nil).initialize()
 		if err != nil {
@@ -456,6 +450,10 @@ func (c *commandContext) initializeCore(ctx *Context) error {
 		}
 	}
 	c.cmd.setupDefaultArgs()
+	// New args, allow these
+	if err := initArgs(c.cmd.Args[argCount:]); err != nil {
+		return err
+	}
 
 	for _, sub := range c.cmd.Subcommands {
 		err := ctx.commandContext(sub, nil).initialize()

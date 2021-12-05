@@ -93,10 +93,12 @@ var (
 
 	defaultCommand = actionPipelines{
 		Before: Pipeline(
-			ActionFunc(triggerFlagsAndArgs),
+			ActionFunc(triggerBeforeFlags),
+			ActionFunc(triggerBeforeArgs),
 		),
 		After: Pipeline(
-			ActionFunc(triggerAfterFlagsAndArgs),
+			ActionFunc(triggerAfterArgs),
+			ActionFunc(triggerAfterFlags),
 		),
 	}
 
@@ -107,7 +109,14 @@ var (
 		),
 	}
 
-	defaultExpr = actionPipelines{}
+	defaultExpr = actionPipelines{
+		Before: Pipeline(
+			ActionFunc(triggerBeforeArgs),
+		),
+		After: Pipeline(
+			ActionFunc(triggerAfterArgs),
+		),
+	}
 
 	cantHookError = errors.New("hooks are not supported in this context")
 )
@@ -332,6 +341,27 @@ func (p *actionPipelines) exceptInitializers() *actionPipelines {
 		Action: p.Action,
 		After:  p.After,
 	}
+}
+
+func (p *actionPipelines) actualBefore() Action {
+	if p == nil {
+		return nil
+	}
+	return p.Before
+}
+
+func (p *actionPipelines) actualAction() Action {
+	if p == nil {
+		return nil
+	}
+	return p.Action
+}
+
+func (p *actionPipelines) actualAfter() Action {
+	if p == nil {
+		return nil
+	}
+	return p.After
 }
 
 func (w withTimingWrapper) timing() Timing {

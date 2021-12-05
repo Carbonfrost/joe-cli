@@ -260,10 +260,12 @@ var _ = Describe("ContextPath", func() {
 		Entry("nested command", "sub", "app app sub"),
 		Entry("simple flag", "--flag", "app --flag"),
 		Entry("nested flag", "--flag", "app app sub --flag"),
+		Entry("expression", "<-expr>", "app <expr> <-expr>"),
 		Entry("any command", "*", "app"),
 		Entry("any sub-command", "*", "app sub"),
 		Entry("any flag", "-", "app --flag"),
 		Entry("any arg", "<>", "app <arg>"),
+		Entry("any expr", "<->", "app <-expr>"),
 		Entry("sub path", "sub cmd", "app sub cmd"),
 	)
 
@@ -274,6 +276,8 @@ var _ = Describe("ContextPath", func() {
 		},
 		Entry("* doesn't match flag", "*", "app --flag"),
 		Entry("* doesn't match arg", "*", "app <arg>"),
+		Entry("* doesn't match expr", "*", "app <-expr>"),
+		Entry("<> doesn't match expr", "*", "app <-expr>"),
 		Entry("flag doesn't match sub-command", "-", "app sub"),
 	)
 })
