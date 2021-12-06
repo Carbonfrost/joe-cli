@@ -303,6 +303,32 @@ var _ = Describe("Flag", func() {
 		})
 	})
 
+	Context("when a NonPersistent flag", func() {
+		It("is a usage error to use", func() {
+			p := 1600
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "nope",
+						Value:   &p,
+						Options: cli.NonPersistent,
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+					},
+				},
+			}
+
+			arguments, _ := cli.Split("app sub --nope 19")
+			err := app.RunContext(context.TODO(), arguments)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("unknown option: --nope"))
+			Expect(p).To(Equal(1600)) // unchanged
+		})
+	})
+
 	Describe("Synopsis", func() {
 
 		DescribeTable("examples",

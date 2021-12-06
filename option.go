@@ -73,6 +73,11 @@ const (
 	// for the flag in the context always matches the original flag.
 	No
 
+	// NonPersistent marks a flag as being non-persistent.  By default, any flag defined by an ancestor
+	// command can be set by a sub-command.  However, when present, the NonPersistent option causes this to
+	// be treated as a usage error.
+	NonPersistent
+
 	maxOption
 
 	// None represents no options
@@ -85,6 +90,7 @@ const (
 	internalFlagExits
 	internalFlagSkipFlagParsing
 	internalFlagDisallowFlagsAfterArgs
+	internalFlagNonPersistent
 )
 
 var (
@@ -98,6 +104,7 @@ var (
 		Optional:               ActionFunc(optionalOption),
 		DisallowFlagsAfterArgs: ActionFunc(disallowFlagsAfterArgsOption),
 		No:                     ActionFunc(noOption),
+		NonPersistent:          ActionFunc(nonPersistentOption),
 	}
 
 	optionNames = map[Option]string{
@@ -110,6 +117,7 @@ var (
 		Required:               "REQUIRED",
 		SkipFlagParsing:        "SKIP_FLAG_PARSING",
 		WorkingDirectory:       "WORKING_DIRECTORY",
+		NonPersistent:          "NON_PERSISTENT",
 	}
 )
 
@@ -169,6 +177,10 @@ func (f internalFlags) disallowFlagsAfterArgs() bool {
 	return f&internalFlagDisallowFlagsAfterArgs == internalFlagDisallowFlagsAfterArgs
 }
 
+func (f internalFlags) nonPersistent() bool {
+	return f&internalFlagNonPersistent == internalFlagNonPersistent
+}
+
 func splitOptionsHO(opts Option, fn func(Option)) {
 	options := int(opts)
 	for current := 1; options != 0 && current < int(maxOption); current = current << 1 {
@@ -192,6 +204,11 @@ func requiredOption(c *Context) error {
 func wrapWithExit(c *Context) error {
 	c.option().setInternalFlags(internalFlagExits)
 	c.option().wrapAction(doThenExit)
+	return nil
+}
+
+func nonPersistentOption(c *Context) error {
+	c.option().setInternalFlags(internalFlagNonPersistent)
 	return nil
 }
 

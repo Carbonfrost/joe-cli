@@ -703,6 +703,9 @@ func (c *Context) applySet() {
 	}
 	if c.Parent() != nil {
 		for _, f := range c.Parent().flags(true) {
+			if f.internalFlags().nonPersistent() {
+				continue
+			}
 			f.applyToSet(set)
 			f.(*Flag).option.persistent = true
 		}
@@ -714,12 +717,12 @@ func (c *Context) applySet() {
 
 func (c *Context) flags(persistent bool) []option {
 	result := make([]option, 0)
+	var (
+		cmd hasFlags
+		ok  bool
+		all = map[string]bool{}
+	)
 	for {
-		var (
-			cmd hasFlags
-			ok  bool
-			all = map[string]bool{}
-		)
 		if cmd, ok = c.target().(hasFlags); !ok {
 			break
 		}

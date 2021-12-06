@@ -30,6 +30,7 @@ var _ = Describe("Option", func() {
 			Entry("Required", cli.Required, "REQUIRED"),
 			Entry("SkipFlagParsing", cli.SkipFlagParsing, "SKIP_FLAG_PARSING"),
 			Entry("WorkingDirectory", cli.WorkingDirectory, "WORKING_DIRECTORY"),
+			Entry("NonPersistent", cli.NonPersistent, "NON_PERSISTENT"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 	})
