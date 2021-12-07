@@ -40,11 +40,11 @@ func NewFlagSynopsis(long string) *flagSynopsis {
 func InitializeFlag(f *Flag) *Context {
 	c := &Context{
 		Context: context.TODO(),
-		internal: &flagContext{
-			option: f,
-			args_:  []string{},
-		},
 	}
+	c = c.copy(&flagContext{
+		option: f,
+		args_:  []string{},
+	}, true)
 	c.initialize()
 	return c
 }

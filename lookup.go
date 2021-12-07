@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"strings"
 )
 
 // Lookup provides type conversion from the various built-in types supported by
@@ -59,6 +60,16 @@ type Lookup interface {
 
 // LookupValues provides a Lookup backed by a map
 type LookupValues map[string]interface{}
+
+// lookupSupport provides a wrapper to typed lookups
+type lookupSupport struct {
+	lookupCore
+}
+
+type lookupCore interface {
+	// lookupValue, no need to dereference
+	lookupValue(name string) (interface{}, bool)
+}
 
 // Value obtains the value and converts it to Value
 func (c LookupValues) Value(name interface{}) interface{} {
@@ -181,6 +192,139 @@ func (c LookupValues) Regexp(name interface{}) *regexp.Regexp {
 // IP obtains the IP for the specified name
 func (c LookupValues) IP(name interface{}) net.IP {
 	return lookupIP(c, name)
+}
+
+func (c *lookupSupport) Bool(name interface{}) bool {
+	return lookupBool(c, name)
+}
+
+func (c *lookupSupport) String(name interface{}) string {
+	return lookupString(c, name)
+}
+
+func (c *lookupSupport) List(name interface{}) []string {
+	return lookupList(c, name)
+}
+
+func (c *lookupSupport) Int(name interface{}) int {
+	return lookupInt(c, name)
+}
+
+func (c *lookupSupport) Int8(name interface{}) int8 {
+	return lookupInt8(c, name)
+}
+
+func (c *lookupSupport) Int16(name interface{}) int16 {
+	return lookupInt16(c, name)
+}
+
+func (c *lookupSupport) Int32(name interface{}) int32 {
+	return lookupInt32(c, name)
+}
+
+func (c *lookupSupport) Int64(name interface{}) int64 {
+	return lookupInt64(c, name)
+}
+
+func (c *lookupSupport) UInt(name interface{}) uint {
+	return lookupUInt(c, name)
+}
+
+func (c *lookupSupport) UInt8(name interface{}) uint8 {
+	return lookupUInt8(c, name)
+}
+
+func (c *lookupSupport) UInt16(name interface{}) uint16 {
+	return lookupUInt16(c, name)
+}
+
+func (c *lookupSupport) UInt32(name interface{}) uint32 {
+	return lookupUInt32(c, name)
+}
+
+func (c *lookupSupport) UInt64(name interface{}) uint64 {
+	return lookupUInt64(c, name)
+}
+
+func (c *lookupSupport) Float32(name interface{}) float32 {
+	return lookupFloat32(c, name)
+}
+
+func (c *lookupSupport) Float64(name interface{}) float64 {
+	return lookupFloat64(c, name)
+}
+
+func (c *lookupSupport) File(name interface{}) *File {
+	return lookupFile(c, name)
+}
+
+func (c *lookupSupport) FileSet(name interface{}) *FileSet {
+	return lookupFileSet(c, name)
+}
+
+func (c *lookupSupport) Map(name interface{}) map[string]string {
+	return lookupMap(c, name)
+}
+
+func (c *lookupSupport) URL(name interface{}) *url.URL {
+	return lookupURL(c, name)
+}
+
+func (c *lookupSupport) Regexp(name interface{}) *regexp.Regexp {
+	return lookupRegexp(c, name)
+}
+
+func (c *lookupSupport) IP(name interface{}) net.IP {
+	return lookupIP(c, name)
+}
+
+func (c *lookupSupport) Value(name interface{}) interface{} {
+	if c == nil {
+		return nil
+	}
+	switch v := name.(type) {
+	case rune, string, nil, *Arg, *Flag:
+		return c.valueCore(nameToString(v))
+	default:
+		return nil
+	}
+}
+
+func (c *lookupSupport) valueCore(name string) interface{} {
+	if c == nil {
+		return nil
+	}
+	// Strip possible decorators --flag, <arg>
+	name = strings.Trim(name, "-<>")
+	if v, ok := c.lookupValue(name); ok {
+		return dereference(v)
+	}
+	return nil
+}
+
+func (p *parentLookup) lookupValue(name string) (interface{}, bool) {
+	if v, ok := p.lookupCore.lookupValue(name); ok {
+		return v, true
+	}
+
+	return p.parent.lookupValue(name)
+}
+
+func nameToString(name interface{}) string {
+	switch v := name.(type) {
+	case rune:
+		return string(v)
+	case string:
+		return v
+	case nil:
+		return ""
+	case *Arg:
+		return v.Name
+	case *Flag:
+		return v.Name
+	default:
+		return ""
+	}
 }
 
 func lookupBool(c Lookup, name interface{}) (res bool) {
@@ -350,3 +494,5 @@ func lookupIP(c Lookup, name interface{}) (res net.IP) {
 	}
 	return
 }
+
+var _ Lookup = (*lookupSupport)(nil)

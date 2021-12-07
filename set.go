@@ -7,10 +7,11 @@ import (
 )
 
 type set struct {
+	*lookupSupport
 	shortOptions      map[rune]*internalOption
 	longOptions       map[string]*internalOption
 	positionalOptions []*internalOption
-	values            LookupValues // map[string]interface{}
+	values            genericValues
 	bindings          map[string][]string
 }
 
@@ -19,6 +20,8 @@ type argBinding struct {
 	takers []ArgCounter
 	index  int
 }
+
+type genericValues map[string]*generic
 
 type internalOption struct {
 	short         []rune   // 0 means no short name
@@ -54,11 +57,15 @@ const (
 )
 
 func newSet() *set {
+	values := genericValues{}
 	return &set{
-		values:            map[string]interface{}{},
+		values:            values,
 		shortOptions:      map[rune]*internalOption{},
 		longOptions:       map[string]*internalOption{},
 		positionalOptions: []*internalOption{},
+		lookupSupport: &lookupSupport{
+			values,
+		},
 	}
 }
 
@@ -73,14 +80,6 @@ func newArgBinding(args []*internalOption) *argBinding {
 	return &argBinding{
 		items, takers, 0,
 	}
-}
-
-func (s *set) lookupValue(name string) (interface{}, bool) {
-	if s == nil {
-		return nil, false
-	}
-	v, ok := s.values[name]
-	return v, ok
 }
 
 func (s *set) parse(args []string, disallowFlagsAfterArgs bool) error {
@@ -246,20 +245,21 @@ func (s *set) defineFlag(res *internalOption) {
 		s.longOptions[long] = res
 	}
 
-	s.values[res.uname] = res.value.p
+	s.values[res.uname] = res.value
 }
 
 func (s *set) defineArg(name string, v interface{}, narg interface{}) *internalOption {
 	if name == "" {
 		name = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
 	}
+	gen := wrapGeneric(v)
 	opt := &internalOption{
-		value: wrapGeneric(v),
+		value: gen,
 		narg:  narg,
 		uname: name,
 	}
 
-	s.values[name] = v
+	s.values[name] = gen
 	s.positionalOptions = append(s.positionalOptions, opt)
 	return opt
 }
@@ -269,6 +269,13 @@ func (s *set) withArgs(args []*Arg) *set {
 		a.applyToSet(s)
 	}
 	return s
+}
+
+func (s genericValues) lookupValue(name string) (interface{}, bool) {
+	if g, ok := s[name]; ok {
+		return g.p, true
+	}
+	return nil, false
 }
 
 func (a *argBinding) next() bool {
@@ -388,3 +395,5 @@ func (o *internalOption) actualArgCounter() ArgCounter {
 	}
 	return ArgCount(o.narg)
 }
+
+var _ Lookup = (*set)(nil)

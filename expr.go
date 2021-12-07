@@ -348,7 +348,7 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 		fac := &boundExpr{
 			expr:   e,
 			set:    set,
-			Lookup: set.values,
+			Lookup: set,
 		}
 		res.exprs[e.Name] = fac
 		for _, alias := range e.Aliases {

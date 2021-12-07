@@ -5,10 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
-	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"text/template"
 
@@ -18,7 +15,9 @@ import (
 // Context provides the context in which the app, command, or flag is executing or initializing
 type Context struct {
 	context.Context
+
 	*contextData
+	*lookupSupport
 	internal internalContext
 	timing   Timing
 
@@ -29,6 +28,7 @@ type Context struct {
 type WalkFunc func(cmd *Context) error
 
 type internalContext interface {
+	lookupCore
 	initialize(*Context) error
 	executeBeforeDescendent(*Context) error
 	executeBefore(*Context) error
@@ -39,9 +39,13 @@ type internalContext interface {
 	args() []string
 	set() *set
 	target() target // *Command, *Arg, *Flag, or *Expr
-	lookupValue(string) (interface{}, bool)
 	setDidSubcommandExecute()
 	Name() string
+}
+
+type parentLookup struct {
+	lookupCore // delegates to the internal context
+	parent     lookupCore
 }
 
 type hasArguments interface {
@@ -266,21 +270,23 @@ func (c *Context) Value(name interface{}) interface{} {
 	if c == nil {
 		return nil
 	}
+
 	switch v := name.(type) {
-	case rune:
-		return c.valueCore(string(v))
-	case int:
-		return c.valueCore(c.logicalArg(v).Name)
-	case string:
-		return c.valueCore(v)
-	case nil:
-		return c.valueCore("")
-	case *Arg:
-		return c.valueCore(v.Name)
-	case *Flag:
-		return c.valueCore(v.Name)
+	case rune, string, nil, *Arg, *Flag, int:
+		return c.lookupSupport.Value(c.nameToString(v))
 	default:
 		return c.Context.Value(name)
+	}
+}
+
+func (c *Context) nameToString(name interface{}) string {
+	switch v := name.(type) {
+	case rune, string, nil, *Arg, *Flag:
+		return nameToString(name)
+	case int:
+		return c.logicalArg(v).Name
+	default:
+		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
 }
 
@@ -362,120 +368,6 @@ func (c *Context) walkCore(fn WalkFunc) error {
 func (c *Context) app() *App {
 	a, _ := c.internal.app()
 	return a
-}
-
-func (c *Context) valueCore(name string) interface{} {
-	// Strip possible decorators --flag, <arg>
-	name = strings.Trim(name, "-<>")
-	if v, ok := c.internal.lookupValue(name); ok {
-		return dereference(v)
-	}
-	return c.Parent().Value(name)
-}
-
-// Bool obtains the value and converts it to a bool
-func (c *Context) Bool(name interface{}) bool {
-	return lookupBool(c, name)
-}
-
-// String obtains the value and converts it to a string
-func (c *Context) String(name interface{}) string {
-	return lookupString(c, name)
-}
-
-// List obtains the value and converts it to a string slice
-func (c *Context) List(name interface{}) []string {
-	return lookupList(c, name)
-}
-
-// Int obtains the int for the specified name
-func (c *Context) Int(name interface{}) int {
-	return lookupInt(c, name)
-}
-
-// Int8 obtains the int8 for the specified name
-func (c *Context) Int8(name interface{}) int8 {
-	return lookupInt8(c, name)
-}
-
-// Int16 obtains the int16 for the specified name
-func (c *Context) Int16(name interface{}) int16 {
-	return lookupInt16(c, name)
-}
-
-// Int32 obtains the int32 for the specified name
-func (c *Context) Int32(name interface{}) int32 {
-	return lookupInt32(c, name)
-}
-
-// Int64 obtains the int64 for the specified name
-func (c *Context) Int64(name interface{}) int64 {
-	return lookupInt64(c, name)
-}
-
-// UInt obtains the uint for the specified name
-func (c *Context) UInt(name interface{}) uint {
-	return lookupUInt(c, name)
-}
-
-// UInt8 obtains the uint8 for the specified name
-func (c *Context) UInt8(name interface{}) uint8 {
-	return lookupUInt8(c, name)
-}
-
-// UInt16 obtains the uint16 for the specified name
-func (c *Context) UInt16(name interface{}) uint16 {
-	return lookupUInt16(c, name)
-}
-
-// UInt32 obtains the uint32 for the specified name
-func (c *Context) UInt32(name interface{}) uint32 {
-	return lookupUInt32(c, name)
-}
-
-// UInt64 obtains the uint64 for the specified name
-func (c *Context) UInt64(name interface{}) uint64 {
-	return lookupUInt64(c, name)
-}
-
-// Float32 obtains the float32 for the specified name
-func (c *Context) Float32(name interface{}) float32 {
-	return lookupFloat32(c, name)
-}
-
-// Float64 obtains the float64 for the specified name
-func (c *Context) Float64(name interface{}) float64 {
-	return lookupFloat64(c, name)
-}
-
-// File obtains the File for the specified name
-func (c *Context) File(name interface{}) *File {
-	return lookupFile(c, name)
-}
-
-// FileSet obtains the FileSet for the specified name
-func (c *Context) FileSet(name interface{}) *FileSet {
-	return lookupFileSet(c, name)
-}
-
-// Map obtains the map for the specified name
-func (c *Context) Map(name interface{}) map[string]string {
-	return lookupMap(c, name)
-}
-
-// URL obtains the URL for the specified name
-func (c *Context) URL(name interface{}) *url.URL {
-	return lookupURL(c, name)
-}
-
-// Regexp obtains the Regexp for the specified name
-func (c *Context) Regexp(name interface{}) *regexp.Regexp {
-	return lookupRegexp(c, name)
-}
-
-// IP obtains the IP for the specified name
-func (c *Context) IP(name interface{}) net.IP {
-	return lookupIP(c, name)
 }
 
 // Do executes the specified actions in succession.  If an action returns an error, that
@@ -637,16 +529,28 @@ func matchFlag(field string) bool {
 }
 
 func rootContext(cctx context.Context, app *App, args []string) *Context {
-	return &Context{
-		Context:     cctx,
-		contextData: &contextData{},
-		internal: &appContext{
-			commandContext: &commandContext{
-				cmd:   nil, // This will be set after initialization
-				args_: args,
-			},
-			app_: app,
+	internal := &appContext{
+		commandContext: &commandContext{
+			cmd:   nil, // This will be set after initialization
+			args_: args,
 		},
+		app_: app,
+	}
+	return &Context{
+		Context:       cctx,
+		contextData:   &contextData{},
+		internal:      internal,
+		lookupSupport: newLookupSupport(internal, nil),
+	}
+}
+
+func newLookupSupport(t internalContext, parent lookupCore) *lookupSupport {
+	if parent == nil {
+		return &lookupSupport{t}
+	}
+
+	return &lookupSupport{
+		&parentLookup{t, parent},
 	}
 }
 
@@ -679,16 +583,11 @@ func (c *Context) optionContext(opt option, args []string) *Context {
 }
 
 func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
-	return &Context{
-		Context:     c.Context,
-		contextData: c.contextData,
-		internal: &exprContext{
-			expr:  expr,
-			args_: args,
-			set_:  data,
-		},
-		parent: c,
-	}
+	return c.copy(&exprContext{
+		expr:  expr,
+		args_: args,
+		set_:  data,
+	}, true)
 }
 
 func (c *Context) setTiming(t Timing) *Context {
@@ -773,10 +672,11 @@ func (c *Context) copy(t internalContext, reparent bool) *Context {
 		p = c
 	}
 	return &Context{
-		Context:     c.Context,
-		contextData: c.contextData,
-		internal:    t,
-		parent:      p,
+		Context:       c.Context,
+		contextData:   c.contextData,
+		internal:      t,
+		parent:        p,
+		lookupSupport: newLookupSupport(t, p),
 	}
 }
 
