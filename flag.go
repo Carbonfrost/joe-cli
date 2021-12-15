@@ -412,18 +412,12 @@ func placeholder(v interface{}) string {
 
 // Seen returns true if the flag was used on the command line at least once
 func (f *Flag) Seen() bool {
-	if f.option == nil {
-		return false
-	}
 	return f.option.Seen()
 }
 
 // Occurrences returns the number of times the flag was specified on the command line
 func (f *Flag) Occurrences() int {
-	if f.option == nil {
-		return 0
-	}
-	return f.option.Count()
+	return f.option.Occurrences()
 }
 
 // Names obtains the name of the flag and its aliases
@@ -433,7 +427,7 @@ func (f *Flag) Names() []string {
 
 // Set will update the value of the flag
 func (f *Flag) Set(arg string) error {
-	return f.option.Value().Set(arg, f.option)
+	return f.option.Set(arg)
 }
 
 func canonicalNames(name string, aliases []string) (long []string, short []rune) {

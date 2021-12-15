@@ -197,23 +197,17 @@ func ArgCount(v interface{}) ArgCounter {
 
 // Occurrences counts the number of times that the argument has occurred on the command line
 func (a *Arg) Occurrences() int {
-	if a == nil || a.option == nil {
-		return 0
-	}
-	return a.option.Count()
+	return a.option.Occurrences()
 }
 
 // Seen reports true if the argument is used at least once.
 func (a *Arg) Seen() bool {
-	if a == nil || a.option == nil {
-		return false
-	}
-	return a.option.Count() > 0
+	return a.option.Seen()
 }
 
 // Set will set the value of the argument
 func (a *Arg) Set(arg string) error {
-	return a.option.Value().Set(arg, a.option)
+	return a.option.Set(arg)
 }
 
 // SetHidden causes the argument to be hidden from the help screen

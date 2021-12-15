@@ -380,7 +380,7 @@ func (o *internalOption) Value() *generic {
 	return o.value
 }
 
-func (o *internalOption) Count() int {
+func (o *internalOption) Occurrences() int {
 	return o.count
 }
 

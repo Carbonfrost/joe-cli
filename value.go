@@ -165,7 +165,7 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		}
 		a := splitWithEscapes(value, ",", -1)
 		// Reset on the first occurrence
-		if opt.Count() <= 1 {
+		if opt.Occurrences() <= 1 {
 			*p = nil
 		}
 		*p = append(*p, a...)
@@ -175,7 +175,7 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			*p = v.(map[string]string)
 			return nil
 		}
-		if opt.Count() <= 1 {
+		if opt.Occurrences() <= 1 {
 			// Reset the map on the first occurrence
 			*p = map[string]string{}
 		}
