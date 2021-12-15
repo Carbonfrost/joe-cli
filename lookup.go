@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // Lookup provides type conversion from the various built-in types supported by
@@ -32,6 +33,8 @@ type Lookup interface {
 	Int64(name interface{}) int64
 	// Int8 obtains the value and converts it to a int8
 	Int8(name interface{}) int8
+	// Duration obtains the value and converts it to a Duration
+	Duration(name interface{}) time.Duration
 	// List obtains the value and converts it to a slice of strings
 	List(name interface{}) []string
 	// Map obtains the value and converts it to a map
@@ -164,6 +167,11 @@ func (c LookupValues) Float64(name interface{}) float64 {
 	return lookupFloat64(c, name)
 }
 
+// Duration obtains the Duration for the specified name
+func (c LookupValues) Duration(name interface{}) time.Duration {
+	return lookupDuration(c, name)
+}
+
 // File obtains the File for the specified name
 func (c LookupValues) File(name interface{}) *File {
 	return lookupFile(c, name)
@@ -252,6 +260,10 @@ func (c *lookupSupport) Float32(name interface{}) float32 {
 
 func (c *lookupSupport) Float64(name interface{}) float64 {
 	return lookupFloat64(c, name)
+}
+
+func (c *lookupSupport) Duration(name interface{}) time.Duration {
+	return lookupDuration(c, name)
 }
 
 func (c *lookupSupport) File(name interface{}) *File {
@@ -443,6 +455,14 @@ func lookupFloat64(c Lookup, name interface{}) (res float64) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(float64)
+	}
+	return
+}
+
+func lookupDuration(c Lookup, name interface{}) (res time.Duration) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(time.Duration)
 	}
 	return
 }

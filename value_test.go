@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"time"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -215,6 +216,12 @@ var _ = Describe("Lookup", func() {
 				cli.Int8(),
 				func(lk cli.Lookup) interface{} { return lk.Int8("a") },
 				Equal(int8(0)),
+			),
+			Entry(
+				"Duration",
+				cli.Duration(),
+				func(lk cli.Lookup) interface{} { return lk.Duration("a") },
+				Equal(time.Duration(0)),
 			),
 			Entry(
 				"List",
