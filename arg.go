@@ -320,7 +320,6 @@ func (o *argContext) executeAfter(ctx *Context) error {
 func (o *argContext) execute(ctx *Context) error {
 	return executeAll(ctx, o.option.uses().actualAction(), ActionOf(o.option.Action))
 }
-func (o *argContext) app() (*App, bool)        { return nil, false }
 func (o *argContext) args() []string           { return o.args_ }
 func (o *argContext) set() *set                { return nil }
 func (o *argContext) target() target           { return o.option }

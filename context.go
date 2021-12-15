@@ -35,7 +35,6 @@ type internalContext interface {
 	executeAfter(*Context) error
 	executeAfterDescendent(*Context) error
 	execute(*Context) error
-	app() (*App, bool)
 	args() []string
 	set() *set
 	target() target // *Command, *Arg, *Flag, or *Expr
@@ -81,8 +80,12 @@ type contextData struct {
 	Stdin  io.Reader
 }
 
-// SkipCommand is used as a return value from WalkFunc to indicate that the command in the call is to be skipped.
-var SkipCommand = errors.New("skip this command")
+var (
+	// SkipCommand is used as a return value from WalkFunc to indicate that the command in the call is to be skipped.
+	SkipCommand = errors.New("skip this command")
+
+	errModifyAfterInit = errors.New("modification has no effect at this time")
+)
 
 func newContextPathPattern(pat string) contextPathPattern {
 	return contextPathPattern{strings.Fields(pat)}
@@ -98,10 +101,17 @@ func (c *Context) Parent() *Context {
 
 // App obtains the app
 func (c *Context) App() *App {
-	if cmd, ok := c.internal.app(); ok {
-		return cmd
+	if app, ok := c.app(); ok {
+		return app
 	}
 	return c.Parent().App()
+}
+
+func (c *Context) app() (*App, bool) {
+	if root, ok := c.internal.(*appContext); ok {
+		return root.app, true
+	}
+	return nil, false
 }
 
 // Command obtains the command.  The command could be a synthetic command that was
@@ -365,11 +375,6 @@ func (c *Context) walkCore(fn WalkFunc) error {
 	}
 }
 
-func (c *Context) app() *App {
-	a, _ := c.internal.app()
-	return a
-}
-
 // Do executes the specified actions in succession.  If an action returns an error, that
 // error is returned and the rest of the actions aren't run
 func (c *Context) Do(actions ...Action) error {
@@ -434,6 +439,48 @@ func (c *Context) lineageFunc(f func(*Context)) {
 
 func (c *Context) logicalArg(index int) *Arg {
 	return c.target().(hasArguments).actualArgs()[index]
+}
+
+// AddFlag provides a convenience method that adds a flag to the current command or app.  This
+// is only valid during the initialization phase.  An error is returned for other timings.
+func (c *Context) AddFlag(f *Flag) error {
+	if !c.IsInitializing() {
+		return errModifyAfterInit
+	}
+	if app, ok := c.app(); ok {
+		app.Flags = append(app.Flags, f)
+	} else {
+		c.Command().Flags = append(c.Command().Flags, f)
+	}
+	return nil
+}
+
+// AddCommand provides a convenience method that adds a Command to the current command or app.  This
+// is only valid during the initialization phase.  An error is returned for other timings.
+func (c *Context) AddCommand(v *Command) error {
+	if !c.IsInitializing() {
+		return errModifyAfterInit
+	}
+	if app, ok := c.app(); ok {
+		app.Commands = append(app.Commands, v)
+	} else {
+		c.Command().Subcommands = append(c.Command().Subcommands, v)
+	}
+	return nil
+}
+
+// AddArg provides a convenience method that adds an Arg to the current command or app.  This
+// is only valid during the initialization phase.  An error is returned for other timings.
+func (c *Context) AddArg(v *Arg) error {
+	if !c.IsInitializing() {
+		return errModifyAfterInit
+	}
+	if app, ok := c.app(); ok {
+		app.Args = append(app.Args, v)
+	} else {
+		c.Command().Args = append(c.Command().Args, v)
+	}
+	return nil
 }
 
 // Last gets the last name in the path
@@ -534,7 +581,7 @@ func rootContext(cctx context.Context, app *App, args []string) *Context {
 			cmd:   nil, // This will be set after initialization
 			args_: args,
 		},
-		app_: app,
+		app: app,
 	}
 	return &Context{
 		Context:       cctx,

@@ -42,6 +42,8 @@ type Command struct {
 
 	// Uses provides an action handler that is always executed during the initialization phase
 	// of the app.  Typically, hooks and other configuration actions are added to this handler.
+	// Actions within the Uses and Before pipelines can modify the app Commands and Flags lists.  Any
+	// commands or flags added to the list will be initialized
 	Uses interface{}
 
 	// Category places the command into a category.  Categories are displayed on the default
@@ -498,8 +500,6 @@ func (c *commandContext) execute(ctx *Context) error {
 	}
 	return nil
 }
-
-func (c *commandContext) app() (*App, bool) { return nil, false }
 func (c *commandContext) set() *set {
 	if c.set_ == nil {
 		c.set_ = newSet()

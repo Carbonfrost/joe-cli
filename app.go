@@ -78,6 +78,8 @@ type App struct {
 
 	// Uses provides an action handler that is always executed during the initialization phase
 	// of the app.  Typically, hooks and other configuration actions are added to this handler.
+	// Actions within the Uses and Before pipelines can modify the app Commands and Flags lists.  Any
+	// commands or flags added to the list will be initialized
 	Uses interface{}
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
@@ -101,7 +103,7 @@ type App struct {
 
 type appContext struct {
 	*commandContext
-	app_ *App
+	app *App
 }
 
 var (
@@ -227,9 +229,9 @@ func (a *App) ensureTemplateFuncs() map[string]interface{} {
 }
 
 func (a *appContext) initialize(c *Context) error {
-	rest := newPipelines(ActionOf(a.app_.Uses), a.app_.Options, c)
+	rest := newPipelines(ActionOf(a.app.Uses), a.app.Options, c)
 
-	a.commandContext.cmd = a.app_.createRoot()
+	a.commandContext.cmd = a.app.createRoot()
 	a.commandContext.cmd.setPipelines(rest)
 
 	if err := executeAll(c, rest.Initializers, defaultApp.Initializers); err != nil {
@@ -237,7 +239,7 @@ func (a *appContext) initialize(c *Context) error {
 	}
 
 	// Re-create the root command because middleware may have changed things.
-	a.commandContext.cmd = a.app_._createRootCore(true)
+	a.commandContext.cmd = a.app._createRootCore(true)
 
 	// We must also pierce the encapsulation of command context initialization here
 	// (by calling initializeCore instead of initialize) because we
@@ -248,12 +250,11 @@ func (a *appContext) initialize(c *Context) error {
 	return nil
 }
 
-func (a *appContext) app() (*App, bool) { return a.app_, true }
 func (a *appContext) target() target {
 	return a.commandContext.cmd
 }
 
-func (a *appContext) Name() string { return a.app_.Name }
+func (a *appContext) Name() string { return a.app.Name }
 
 func exit(c *Context, err error) {
 	if err == nil {
@@ -291,7 +292,7 @@ func buildDate() time.Time {
 }
 
 func setupDefaultData(c *Context) error {
-	a := c.app()
+	a := c.App()
 	if a.Name == "" {
 		a.Name = filepath.Base(os.Args[0])
 	}
@@ -305,7 +306,7 @@ func setupDefaultData(c *Context) error {
 }
 
 func setupDefaultIO(c *Context) error {
-	a := c.app()
+	a := c.App()
 	if a.Stdin == nil {
 		a.Stdin = os.Stdin
 	}
@@ -366,7 +367,7 @@ func setupDefaultTemplateFuncs(c *Context) error {
 		},
 	}
 
-	a := c.app()
+	a := c.App()
 	funcs := a.ensureTemplateFuncs()
 	for k, v := range funcMap {
 		if _, ok := funcs[k]; !ok {
@@ -377,7 +378,7 @@ func setupDefaultTemplateFuncs(c *Context) error {
 }
 
 func setupDefaultTemplates(c *Context) error {
-	a := c.app()
+	a := c.App()
 	templates := a.ensureTemplates()
 	for k, v := range defaultTemplates {
 		if _, ok := templates[k]; !ok {
@@ -389,7 +390,7 @@ func setupDefaultTemplates(c *Context) error {
 
 func addAppCommand(name string, f *Flag, cmd *Command) ActionFunc {
 	return func(c *Context) error {
-		app := c.app()
+		app := c.App()
 		if len(app.Commands) > 0 {
 			if _, ok := app.Command(name); !ok {
 				app.Commands = append(app.Commands, cmd)

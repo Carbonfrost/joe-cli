@@ -282,6 +282,27 @@ func OptionalValue(v interface{}) Action {
 	}))
 }
 
+// AddFlag provides an action which adds a flag to the command or app
+func AddFlag(f *Flag) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddFlag(f)
+	})
+}
+
+// AddCommand provides an action which adds a sub-command to the command or app
+func AddCommand(v *Command) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddCommand(v)
+	})
+}
+
+// AddArg provides an action which adds an arg to the command or app
+func AddArg(a *Arg) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddArg(a)
+	})
+}
+
 // Execute the action by calling the function
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {

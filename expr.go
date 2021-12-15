@@ -680,7 +680,6 @@ func (e *exprContext) executeAfter(ctx *Context) error {
 func (e *exprContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (e *exprContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (e *exprContext) execute(ctx *Context) error                 { return nil }
-func (e *exprContext) app() (*App, bool)                          { return nil, false }
 func (e *exprContext) args() []string                             { return e.args_ }
 func (e *exprContext) set() *set {
 	if e.set_ == nil {

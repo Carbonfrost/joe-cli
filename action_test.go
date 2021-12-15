@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -306,6 +307,37 @@ var _ = Describe("Uses", func() {
 			}
 		}),
 	)
+
+	Context("concurrent modifications", func() {
+
+		// When a flag, etc. is added during our initialization pass, we also
+		// process its initialization
+
+		DescribeTable("new values are initialized",
+			func(uses func(cli.Action) cli.Action) {
+				act := new(joeclifakes.FakeAction)
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "1"},
+						{Name: "2"},
+					},
+					Uses:   uses(act),
+					Stderr: ioutil.Discard,
+				}
+				_ = app.RunContext(context.TODO(), []string{"app"})
+				Expect(act.ExecuteCallCount()).To(Equal(1))
+			},
+			Entry("add Flag to end", func(act cli.Action) cli.Action {
+				return cli.AddFlag(&cli.Flag{Name: "f", Uses: act})
+			}),
+			Entry("add Arg to end", func(act cli.Action) cli.Action {
+				return cli.AddArg(&cli.Arg{Name: "f", Uses: act})
+			}),
+			Entry("add Command to end", func(act cli.Action) cli.Action {
+				return cli.AddCommand(&cli.Command{Name: "f", Uses: act})
+			}),
+		)
+	})
 })
 
 var _ = Describe("Action", func() {
