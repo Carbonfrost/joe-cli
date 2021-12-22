@@ -257,6 +257,37 @@ var _ = Describe("Arg", func() {
 			})
 		})
 	})
+
+	It("supports sequence -- to next arg", func() {
+		arg1 := cli.List()
+		arg2 := cli.List()
+		arg3 := cli.List()
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "arg1",
+					Value: arg1,
+				},
+				{
+					Name:  "arg2",
+					Value: arg2,
+				},
+				{
+					Name:  "arg3",
+					Value: arg3,
+				},
+			},
+		}
+		args, _ := cli.Split("app -- arg1 -- arg2 -- arg3")
+		_ = app.RunContext(context.TODO(), args)
+
+		// These should accumulate single values rather than lists
+		Expect(*arg1).To(Equal([]string{"arg1"}))
+		Expect(*arg2).To(Equal([]string{"arg2"}))
+		Expect(*arg3).To(Equal([]string{"arg3"}))
+	})
+
+	// A test for -- -flag if not already there
 })
 
 var _ = Describe("ArgCount", func() {

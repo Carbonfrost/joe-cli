@@ -113,6 +113,15 @@ Parsing:
 		// end of options?
 		if arg == "" || arg == "-" || arg[0] != '-' || state == argsOnly {
 			for {
+				if arg == "--" {
+					state = argsOnly
+					if err := bind.Done(); err != nil {
+						return err
+					}
+					bind.next()
+					continue Parsing
+				}
+
 				err := bind.SetArg(arg, state == flagsOrArgs)
 				if err != nil {
 					// Not accepted as an argument, possibly a flag per usual out of
