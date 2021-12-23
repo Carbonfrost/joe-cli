@@ -217,12 +217,15 @@ func mustExistOption(c *Context) error {
 	if v == nil {
 		return nil
 	}
-	f := v.(*File)
+	f := v.(fileExists)
 	if f.Exists() {
 		return nil
 	}
-	_, err := f.Stat()
-	return err
+	if s, ok := v.(fileStat); ok {
+		_, err := s.Stat()
+		return err
+	}
+	return fmt.Errorf("file not found: %v", v)
 }
 
 func skipFlagParsingOption(c *Context) error {

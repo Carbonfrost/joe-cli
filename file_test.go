@@ -121,6 +121,20 @@ var _ = Describe("File", func() {
 		_ = app.RunContext(context.TODO(), []string{"app", "-"})
 		Expect(string(actual)).To(Equal("hello\n"))
 	})
+
+	Describe("Ext", func() {
+		It("obtains the file ext", func() {
+			f := &cli.File{Name: "ok.pgp"}
+			Expect(f.Ext()).To(Equal(".pgp"))
+		})
+	})
+
+	Describe("Dir", func() {
+		It("obtains the file directory", func() {
+			f := &cli.File{Name: "secrets/ok.pgp"}
+			Expect(f.Dir()).To(Equal("secrets"))
+		})
+	})
 })
 
 var _ = Describe("FileSet", func() {
@@ -152,6 +166,18 @@ var _ = Describe("FileSet", func() {
 
 		return afero.NewIOFS(appFS)
 	}()
+
+	It("all files must exist", func() {
+		set := &cli.FileSet{FS: testFileSystem, Files: []string{"src/a/b.txt"}}
+		Expect(set.Exists()).To(BeTrue())
+
+		set = &cli.FileSet{
+			FS:    testFileSystem,
+			Files: []string{"src/a/b.txt", "somethingelse"},
+		}
+		Expect(set.Exists()).To(BeFalse())
+
+	})
 
 	Describe("Do", func() {
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 type fileExtension interface {
@@ -24,9 +25,20 @@ type fsExtension interface {
 	OpenFile(string, int, os.FileMode) (*os.File, error)
 }
 
+// fileExists tests whether file exists or all files in the file set exist
+type fileExists interface {
+	Exists() bool
+}
+
+// fileStat provides Stat() for File
+type fileStat interface {
+	Stat() (fs.FileInfo, error)
+}
+
 // File provides a value that can be used to represent a file path in flags or arguments.
 type File struct {
-	v string
+	// Name is the name of the file
+	Name string
 
 	// FS specifies the file system that is used for the file.  If not specified, it provides a
 	// default file system based upon the os package, which has the additional behavior that it treats the name "-"
@@ -64,22 +76,30 @@ func newDefaultFS(in io.Reader, out io.Writer) *defaultFS {
 }
 
 func (f *File) Set(arg string) error {
-	f.v = arg
+	f.Name = arg
 	return nil
 }
 
 func (f *File) String() string {
-	return f.v
+	return f.Name
+}
+
+func (f *File) Ext() string {
+	return filepath.Ext(f.Name)
+}
+
+func (f *File) Dir() string {
+	return filepath.Dir(f.Name)
 }
 
 // Open the file
 func (f *File) Open() (fs.File, error) {
-	return f.actualFS().Open(f.v)
+	return f.actualFS().Open(f.Name)
 }
 
 // OpenFile will open the file using the specified flags and permissions
 func (f *File) OpenFile(flag int, perm os.FileMode) (*os.File, error) {
-	return f.actualFS().OpenFile(f.Name(), flag, perm)
+	return f.actualFS().OpenFile(f.Name, flag, perm)
 }
 
 // Create the file
@@ -87,32 +107,27 @@ func (f *File) Create() (*os.File, error) {
 	return f.OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 }
 
-// Name of the file
-func (f *File) Name() string {
-	return f.v
-}
-
 // Exists tests whether the file exists
 func (f *File) Exists() bool {
 	_, err := f.Stat()
-	return err == nil || !errors.Is(err, fs.ErrNotExist)
+	return err == nil || !fileNotExists(err)
 }
 
 // Stat obtains information about the file
 func (f *File) Stat() (fs.FileInfo, error) {
-	return f.actualFS().Stat(f.v)
+	return f.actualFS().Stat(f.Name)
 }
 
 // Walk walks the file tree, calling fn for each file or directory in the tree, including the root.
 func (f *File) Walk(fn fs.WalkDirFunc) error {
-	return walkFile(f.actualFS(), f.v, fn)
+	return walkFile(f.actualFS(), f.Name, fn)
 }
 
 func (f *File) actualFS() fsExtension {
 	if f.FS == nil {
 		return newDefaultFS(os.Stdin, os.Stdout)
 	}
-	return fsExtensionWrapper{f.FS}
+	return wrapFS(f.FS)
 }
 
 func (f *FileSet) Set(arg string) error {
@@ -127,6 +142,18 @@ func (f *FileSet) Set(arg string) error {
 
 func (f *FileSet) String() string {
 	return Join(f.Files)
+}
+
+// Exists tests whether all files in the set exist
+func (f *FileSet) Exists() bool {
+	ff := f.actualFS()
+	for _, file := range f.Files {
+		_, err := (&File{file, ff}).Stat()
+		if fileNotExists(err) {
+			return false
+		}
+	}
+	return true
 }
 
 // Do will invoke the given function on each file in the set.  If recursion is
@@ -158,7 +185,7 @@ func (f *FileSet) actualFS() fsExtension {
 		// Handling of - does not apply to file set
 		return &defaultFS{}
 	}
-	return fsExtensionWrapper{f.FS}
+	return wrapFS(f.FS)
 }
 
 func (d defaultFS) Open(name string) (fs.File, error) {
@@ -241,6 +268,17 @@ func (s *stdFile) Write(p []byte) (n int, err error) {
 	return s.out.Write(p)
 }
 
+func fileNotExists(err error) bool {
+	return errors.Is(err, fs.ErrNotExist)
+}
+
+func wrapFS(f fs.FS) fsExtension {
+	if ext, ok := f.(fsExtension); ok {
+		return ext
+	}
+	return fsExtensionWrapper{f}
+}
+
 func setupOptionRequireFS(c *Context) error {
 	if f, ok := c.option().value().(*File); ok {
 		if f.FS == nil {
@@ -262,7 +300,10 @@ func walkFile(ff fsExtension, name string, fn fs.WalkDirFunc) error {
 
 var (
 	_ fileExtension = &stdFile{}
-	_ fs.FS         = &defaultFS{}
+	_ fsExtension   = (*defaultFS)(nil)
 	_ flag.Value    = (*File)(nil)
 	_ flag.Value    = (*FileSet)(nil)
+	_ fileExists    = (*File)(nil)
+	_ fileExists    = (*FileSet)(nil)
+	_ fileStat      = (*File)(nil)
 )
