@@ -122,6 +122,33 @@ var _ = Describe("File", func() {
 		Expect(string(actual)).To(Equal("hello\n"))
 	})
 
+	Describe("standard file", func() {
+
+		It("uses stdin when opening read mode", func() {
+			f := &cli.File{Name: "-"}
+			actual, _ := f.OpenFile(os.O_RDONLY, 0777)
+			Expect(actual).To(BeIdenticalTo(os.Stdin))
+		})
+
+		It("uses stdout when opening write mode", func() {
+			f := &cli.File{Name: "-"}
+			actual, _ := f.OpenFile(os.O_WRONLY, 0777)
+			Expect(actual).To(BeIdenticalTo(os.Stdout))
+		})
+
+		It("uses stdout when creating", func() {
+			f := &cli.File{Name: "-"}
+			actual, _ := f.Create()
+			Expect(actual).To(BeIdenticalTo(os.Stdout))
+		})
+
+		It("error when trying to do read-write without APPEND", func() {
+			f := &cli.File{Name: "-"}
+			_, err := f.OpenFile(os.O_RDWR, 0777)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("Ext", func() {
 		It("obtains the file ext", func() {
 			f := &cli.File{Name: "ok.pgp"}

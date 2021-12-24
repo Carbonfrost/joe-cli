@@ -71,6 +71,10 @@ type fsExtensionWrapper struct {
 	fs.FS
 }
 
+const (
+	readWriteMask = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
+)
+
 func newDefaultFS(in io.Reader, out io.Writer) *defaultFS {
 	return &defaultFS{&stdFile{in, out}}
 }
@@ -104,7 +108,7 @@ func (f *File) OpenFile(flag int, perm os.FileMode) (*os.File, error) {
 
 // Create the file
 func (f *File) Create() (*os.File, error) {
-	return f.OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	return f.actualFS().OpenFile(f.Name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 }
 
 // Exists tests whether the file exists
@@ -203,6 +207,19 @@ func (d defaultFS) Stat(name string) (fs.FileInfo, error) {
 }
 
 func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	if name == "-" && d.std != nil {
+		switch flag & readWriteMask {
+		case os.O_RDONLY:
+			return d.std.in.(*os.File), nil
+		case os.O_RDWR:
+			if (flag & (os.O_APPEND | os.O_CREATE)) > 0 {
+				return d.std.out.(*os.File), nil
+			}
+			return nil, errors.New("open not supported: O_RDWR must be specified with O_APPEND or O_CREATE")
+		case os.O_WRONLY:
+			return d.std.out.(*os.File), nil
+		}
+	}
 	return os.OpenFile(name, flag, perm)
 }
 
