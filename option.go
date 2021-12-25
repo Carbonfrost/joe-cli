@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 )
 
 // Option provides a built-in convenience configuration for flags, args, and commands.
 type Option int
 type internalFlags int
+type userOption uint32
+type optionDef struct {
+	Action Action
+	Name   string
+}
 
 const (
 	// Hidden causes the option to be Hidden
@@ -94,61 +100,123 @@ const (
 )
 
 var (
-	optionMap = map[Option]Action{
-		Hidden:                 ActionFunc(hiddenOption),
-		Required:               ActionFunc(requiredOption),
-		Exits:                  ActionFunc(wrapWithExit),
-		MustExist:              Before(ActionFunc(mustExistOption)),
-		SkipFlagParsing:        ActionFunc(skipFlagParsingOption),
-		WorkingDirectory:       Before(ActionFunc(workingDirectoryOption)),
-		Optional:               ActionFunc(optionalOption),
-		DisallowFlagsAfterArgs: ActionFunc(disallowFlagsAfterArgsOption),
-		No:                     ActionFunc(noOption),
-		NonPersistent:          ActionFunc(nonPersistentOption),
+	builtinOptions = map[Option]optionDef{
+		Hidden: {
+			Action: ActionFunc(hiddenOption),
+			Name:   "HIDDEN",
+		},
+		Required: {
+			Action: ActionFunc(requiredOption),
+			Name:   "REQUIRED",
+		},
+		Exits: {
+			Action: ActionFunc(wrapWithExit),
+			Name:   "EXITS",
+		},
+		MustExist: {
+			Action: Before(ActionFunc(mustExistOption)),
+			Name:   "MUST_EXIST",
+		},
+		SkipFlagParsing: {
+			Action: ActionFunc(skipFlagParsingOption),
+			Name:   "SKIP_FLAG_PARSING",
+		},
+		WorkingDirectory: {
+			Action: Before(ActionFunc(workingDirectoryOption)),
+			Name:   "WORKING_DIRECTORY",
+		},
+		Optional: {
+			Action: ActionFunc(optionalOption),
+			Name:   "OPTIONAL",
+		},
+		DisallowFlagsAfterArgs: {
+			Action: ActionFunc(disallowFlagsAfterArgsOption),
+			Name:   "DISALLOW_FLAGS_AFTER_ARGS",
+		},
+		No: {
+			Action: ActionFunc(noOption),
+			Name:   "NO",
+		},
+		NonPersistent: {
+			Action: ActionFunc(nonPersistentOption),
+			Name:   "NON_PERSISTENT",
+		},
 	}
 
-	optionNames = map[Option]string{
-		DisallowFlagsAfterArgs: "DISALLOW_FLAGS_AFTER_ARGS",
-		Exits:                  "EXITS",
-		Hidden:                 "HIDDEN",
-		MustExist:              "MUST_EXIST",
-		No:                     "NO",
-		Optional:               "OPTIONAL",
-		Required:               "REQUIRED",
-		SkipFlagParsing:        "SKIP_FLAG_PARSING",
-		WorkingDirectory:       "WORKING_DIRECTORY",
-		NonPersistent:          "NON_PERSISTENT",
-	}
+	userOptions = map[Option]optionDef{}
+
+	// Custom options start at 1 << 24, exclusive, which must be higher than built-in
+	startUserOption            = 24
+	globalOption    userOption = userOption(startUserOption)
 )
 
-func (o Option) MarshalText() ([]byte, error) {
+// NewOption allocates a custom user option.  This is typically used by add-ons.
+func NewOption(name string, action Action) Option {
+	for k, v := range userOptions {
+		if name == v.Name {
+			return k
+		}
+	}
+	val := Option(1 << globalOption.inc())
+	userOptions[val] = optionDef{
+		Action: action,
+		Name:   name,
+	}
+
+	return val
+}
+
+func getOptionDef(o Option) optionDef {
+	if res, ok := builtinOptions[o]; ok {
+		return res
+	}
+	return userOptions[o]
+}
+
+func (o Option) String() string {
 	var res []string
 	splitOptionsHO(o, func(current Option) {
-		res = append(res, optionNames[current])
+		name := getOptionDef(current).Name
+		if name != "" {
+			res = append(res, name)
+		}
 	})
-	return []byte(strings.Join(res, ", ")), nil
+	return strings.Join(res, ", ")
+}
+
+func (o Option) MarshalText() ([]byte, error) {
+	return []byte(o.String()), nil
 }
 
 func (o *Option) UnmarshalText(b []byte) error {
 	res := *o
 	for _, s := range strings.Split(string(b), ",") {
 		token := strings.TrimSpace(s)
-		for k, v := range optionNames {
-			if token == v {
-				res |= k
-				break
-			}
-		}
+		res |= unmarshalText(token)
 	}
-
 	*o = res
 	return nil
+}
+
+func unmarshalText(token string) Option {
+	for k, v := range builtinOptions {
+		if token == v.Name {
+			return k
+		}
+	}
+	for k, v := range userOptions {
+		if token == v.Name {
+			return k
+		}
+	}
+	return None
 }
 
 func (o Option) wrap() *ActionPipeline {
 	var parts []Action
 	splitOptionsHO(o, func(current Option) {
-		parts = append(parts, optionMap[current])
+		action := getOptionDef(current).Action
+		parts = append(parts, action)
 	})
 	if len(parts) == 0 {
 		return nil
@@ -181,9 +249,21 @@ func (f internalFlags) nonPersistent() bool {
 	return f&internalFlagNonPersistent == internalFlagNonPersistent
 }
 
+func (u *userOption) inc() uint32 {
+	return atomic.AddUint32((*uint32)(u), 1)
+}
+
 func splitOptionsHO(opts Option, fn func(Option)) {
 	options := int(opts)
 	for current := 1; options != 0 && current < int(maxOption); current = current << 1 {
+		if options&current == current {
+			fn(Option(current))
+			options = options &^ current
+		}
+	}
+
+	for index := startUserOption; options != 0 && index <= int(globalOption); index += 1 {
+		current := 1 << index
 		if options&current == current {
 			fn(Option(current))
 			options = options &^ current
