@@ -192,6 +192,10 @@ func (f *FileSet) actualFS() fsExtension {
 	return wrapFS(f.FS)
 }
 
+func (f *FileSet) NewCounter() ArgCounter {
+	return ArgCount(-2)
+}
+
 func (d defaultFS) Open(name string) (fs.File, error) {
 	if name == "-" && d.std != nil {
 		return d.std, nil

@@ -132,6 +132,8 @@ var _ = Describe("Arg", func() {
 			},
 			Entry("string", new(string), "_", Equal(cli.ArgCount(0))),
 			Entry("[]string", new([]string), "_", Equal(cli.ArgCount(-2))),
+			Entry("*File", new(cli.File), "_", Equal(cli.ArgCount(0))),
+			Entry("*FileSet", new(cli.FileSet), "_", Equal(cli.ArgCount(-2))),
 			Entry("value counter convention", &valueHasCounter{}, "_", BeAssignableToTypeOf(argCounterImpl{})),
 		)
 
