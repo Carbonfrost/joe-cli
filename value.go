@@ -139,6 +139,10 @@ func (g *generic) Set(value string, opt *internalOption) error {
 	}
 	switch p := g.p.(type) {
 	case Value:
+		if i, ok := p.(interface{ DisableSplitting() }); ok && opt.flags.disableSplitting() {
+			i.DisableSplitting()
+		}
+
 		return p.Set(value)
 	case *bool:
 		if v, ok := trySetOptional(); ok {
@@ -163,7 +167,7 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			*p = v.([]string)
 			return nil
 		}
-		a := splitWithEscapes(value, ",", -1)
+		a := opt.split(value, ",")
 		// Reset on the first occurrence
 		if opt.Occurrences() <= 1 {
 			*p = nil
@@ -181,7 +185,7 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		}
 		text := value
 		var key, value string
-		for _, kvp := range splitWithEscapes(text, ",", -1) {
+		for _, kvp := range opt.split(text, ",") {
 			k := splitWithEscapes(kvp, "=", 2)
 			switch len(k) {
 			case 2:

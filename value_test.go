@@ -54,6 +54,16 @@ var _ = Describe("Value", func() {
 				Equal([]string{"a", "b", "c", "d"}),
 			),
 			Entry(
+				"list disable splitting",
+				&cli.Flag{
+					Name:    "o",
+					Value:   cli.List(),
+					Options: cli.DisableSplitting,
+				},
+				"app -o a,b,c -o d",
+				Equal([]string{"a,b,c", "d"}),
+			),
+			Entry(
 				"map",
 				&cli.Flag{
 					Name:  "o",
@@ -151,6 +161,25 @@ var _ = Describe("Value", func() {
 			Entry("escaped equal trailing", "app -s 'L\\==B'", HaveKeyWithValue("L=", "B")),
 		)
 
+	})
+
+	Describe("DisableSplitting convention", func() {
+		cv := new(customValue)
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:    "d",
+					Options: cli.DisableSplitting,
+					Value:   cv,
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -d a")
+		app.RunContext(context.TODO(), args)
+
+		Expect(cv.calledDisableSplitting).To(BeTrue())
 	})
 })
 
@@ -424,4 +453,14 @@ var _ = Describe("Lookup", func() {
 
 func unwrap(v, _ interface{}) interface{} {
 	return v
+}
+
+type customValue struct {
+	calledDisableSplitting bool
+}
+
+func (*customValue) Set(arg string) error { return nil }
+func (*customValue) String() string       { return "" }
+func (c *customValue) DisableSplitting() {
+	c.calledDisableSplitting = true
 }

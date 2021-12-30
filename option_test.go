@@ -33,6 +33,7 @@ var _ = Describe("Option", func() {
 			Entry("SkipFlagParsing", cli.SkipFlagParsing, "SKIP_FLAG_PARSING"),
 			Entry("WorkingDirectory", cli.WorkingDirectory, "WORKING_DIRECTORY"),
 			Entry("NonPersistent", cli.NonPersistent, "NON_PERSISTENT"),
+			Entry("DisableSplitting", cli.DisableSplitting, "DISABLE_SPLITTING"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 	})

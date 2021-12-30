@@ -84,6 +84,13 @@ const (
 	// be treated as a usage error.
 	NonPersistent
 
+	// DisableSplitting disable splitting on commas.  This affects List arguments and flags.
+	// By default, commas are used as delimiters to split list values.
+	// For example --planet Mars,Jupiter is equivalent to --planet Mars --planet Jupiter by default;
+	// however, by enabling this option, such splitting is disabled.  For custom implementations of
+	// flag Value, you can implement this method DisableSplitting() to hook into this option.
+	DisableSplitting
+
 	maxOption
 
 	// None represents no options
@@ -97,6 +104,7 @@ const (
 	internalFlagSkipFlagParsing
 	internalFlagDisallowFlagsAfterArgs
 	internalFlagNonPersistent
+	internalFlagDisableSplitting
 )
 
 var (
@@ -140,6 +148,10 @@ var (
 		NonPersistent: {
 			Action: ActionFunc(nonPersistentOption),
 			Name:   "NON_PERSISTENT",
+		},
+		DisableSplitting: {
+			Action: ActionFunc(disableSplittingOption),
+			Name:   "DISABLE_SPLITTING",
 		},
 	}
 
@@ -249,6 +261,10 @@ func (f internalFlags) nonPersistent() bool {
 	return f&internalFlagNonPersistent == internalFlagNonPersistent
 }
 
+func (f internalFlags) disableSplitting() bool {
+	return f&internalFlagDisableSplitting == internalFlagDisableSplitting
+}
+
 func (u *userOption) inc() uint32 {
 	return atomic.AddUint32((*uint32)(u), 1)
 }
@@ -289,6 +305,11 @@ func wrapWithExit(c *Context) error {
 
 func nonPersistentOption(c *Context) error {
 	c.option().setInternalFlags(internalFlagNonPersistent)
+	return nil
+}
+
+func disableSplittingOption(c *Context) error {
+	c.option().setInternalFlags(internalFlagDisableSplitting)
 	return nil
 }
 

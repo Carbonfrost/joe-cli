@@ -91,8 +91,7 @@ type Arg struct {
 	// middleware and it is made available to templates
 	Data map[string]interface{}
 
-	option *internalOption
-	flags  internalFlags
+	option internalOption
 }
 
 //counterfeiter:generate . ArgCounter
@@ -212,12 +211,12 @@ func (a *Arg) Set(arg string) error {
 
 // SetHidden causes the argument to be hidden from the help screen
 func (a *Arg) SetHidden() {
-	a.flags |= internalFlagHidden
+	a.setInternalFlags(internalFlagHidden)
 }
 
 // SetRequired will indicate that the argument is required.
 func (a *Arg) SetRequired() {
-	a.flags |= internalFlagRequired
+	a.setInternalFlags(internalFlagRequired)
 }
 
 // Synopsis contains the value placeholder
@@ -241,11 +240,11 @@ func (a *Arg) newSynopsisCore(defaultUsage string) *argSynopsis {
 }
 
 func (a *Arg) internalFlags() internalFlags {
-	return a.flags
+	return a.option.flags
 }
 
 func (a *Arg) setInternalFlags(i internalFlags) {
-	a.flags |= i
+	a.option.flags |= i
 }
 
 func (a *Arg) wrapAction(fn func(Action) ActionFunc) {
@@ -253,7 +252,7 @@ func (a *Arg) wrapAction(fn func(Action) ActionFunc) {
 }
 
 func (a *Arg) applyToSet(s *set) {
-	a.option = s.defineArg(a.Name, a.value(), a.NArg)
+	s.defineArg(a.Name, a.value(), a.NArg, &a.option)
 	a.Name = a.option.uname
 }
 

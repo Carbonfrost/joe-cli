@@ -221,7 +221,7 @@ func (c *Command) Expr(name string) (*Expr, bool) {
 func (c *Command) VisibleArgs() []*Arg {
 	res := make([]*Arg, 0, len(c.actualArgs()))
 	for _, o := range c.actualArgs() {
-		if o.flags.hidden() {
+		if o.internalFlags().hidden() {
 			continue
 		}
 		res = append(res, o)
@@ -233,7 +233,7 @@ func (c *Command) VisibleArgs() []*Arg {
 func (c *Command) VisibleFlags() []*Flag {
 	res := make([]*Flag, 0, len(c.actualFlags()))
 	for _, o := range c.actualFlags() {
-		if o.flags.hidden() {
+		if o.internalFlags().hidden() {
 			continue
 		}
 		res = append(res, o)
@@ -245,7 +245,7 @@ func (c *Command) VisibleFlags() []*Flag {
 func (c *Command) VisibleExprs() []*Expr {
 	res := make([]*Expr, 0, len(c.actualExprs()))
 	for _, o := range c.actualExprs() {
-		if o.flags.hidden() {
+		if o.internalFlags().hidden() {
 			continue
 		}
 		res = append(res, o)

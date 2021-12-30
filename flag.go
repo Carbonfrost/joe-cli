@@ -128,8 +128,7 @@ type Flag struct {
 	// function signature to use.
 	Action interface{}
 
-	option *internalOption
-	flags  internalFlags
+	option internalOption
 }
 
 // FlagsByName is a sortable slice for flags
@@ -210,7 +209,7 @@ func GroupFlagsByCategory(flags []*Flag) FlagsByCategory {
 }
 
 func (f *Flag) applyToSet(s *set) {
-	s.defineFlag(f.option)
+	s.defineFlag(&f.option)
 }
 
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
@@ -299,7 +298,7 @@ func (o *flagContext) initialize(c *Context) error {
 	f := o.option
 	p := f.value()
 	long, short := canonicalNames(f.Name, f.Aliases)
-	res := &internalOption{
+	res := internalOption{
 		short: short,
 		long:  long,
 		value: wrapGeneric(p),
@@ -446,20 +445,20 @@ func canonicalNames(name string, aliases []string) (long []string, short []rune)
 
 // SetHidden causes the flag to be hidden
 func (f *Flag) SetHidden() {
-	f.flags |= internalFlagHidden
+	f.setInternalFlags(internalFlagHidden)
 }
 
 // SetRequired causes the flag to be required
 func (f *Flag) SetRequired() {
-	f.flags |= internalFlagRequired
+	f.setInternalFlags(internalFlagRequired)
 }
 
 func (f *Flag) internalFlags() internalFlags {
-	return f.flags
+	return f.option.flags
 }
 
 func (f *Flag) setInternalFlags(i internalFlags) {
-	f.flags |= i
+	f.option.flags |= i
 }
 
 func (f *Flag) wrapAction(fn func(Action) ActionFunc) {
@@ -515,7 +514,7 @@ func (f FlagsByName) Swap(i, j int) {
 func (f *FlagCategory) VisibleFlags() []*Flag {
 	res := make([]*Flag, 0, len(f.Flags))
 	for _, o := range f.Flags {
-		if o.flags.hidden() {
+		if o.internalFlags().hidden() {
 			continue
 		}
 		res = append(res, o)

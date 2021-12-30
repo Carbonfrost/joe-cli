@@ -35,6 +35,7 @@ type internalOption struct {
 	narg          interface{}
 	persistent    bool        // true when the option is a clone of a persistent flag
 	optionalValue interface{} // set when blank and optional
+	flags         internalFlags
 }
 
 type argCountError int
@@ -257,20 +258,20 @@ func (s *set) defineFlag(res *internalOption) {
 	s.values[res.uname] = res.value
 }
 
-func (s *set) defineArg(name string, v interface{}, narg interface{}) *internalOption {
+func (s *set) defineArg(name string, v interface{}, narg interface{}, res *internalOption) {
 	if name == "" {
 		name = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
 	}
 	gen := wrapGeneric(v)
-	opt := &internalOption{
+	*res = internalOption{
 		value: gen,
 		narg:  narg,
 		uname: name,
+		flags: res.flags,
 	}
 
 	s.values[name] = gen
-	s.positionalOptions = append(s.positionalOptions, opt)
-	return opt
+	s.positionalOptions = append(s.positionalOptions, res)
 }
 
 func (s *set) withArgs(args []*Arg) *set {
@@ -367,6 +368,13 @@ func isNextExpr(arg string, err error) bool {
 
 func allowFlag(arg string, possibleFlag bool) bool {
 	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
+}
+
+func (o *internalOption) split(text string, delim string) []string {
+	if o.flags.disableSplitting() {
+		return []string{text}
+	}
+	return splitWithEscapes(text, delim, -1)
 }
 
 func (o *internalOption) Seen() bool {
