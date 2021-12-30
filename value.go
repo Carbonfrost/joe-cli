@@ -15,8 +15,26 @@ import (
 )
 
 // Value provides the interface for custom handling of arg and flag values.  This is the
-// same as flag.Value
+// same as flag.Value.  Values can implement additional methods by convention which are called
+// on the first occurrence of a value being set
+//
+// * DisableSplitting()   called when the option has set the DisableSplitting option, which
+//      indicates that commas shouldn't be treated as list separators
+//
+// * Reset()              called on first occurrence of setting a value.  This can be used to reset lists
+//       to empty when the Merge option has not been set
+
 type Value = flag.Value
+
+// Conventions for values
+
+type valueDisableSplitting interface {
+	DisableSplitting()
+}
+
+type valueResetOrMerge interface {
+	Reset()
+}
 
 type generic struct {
 	p interface{}
@@ -137,12 +155,12 @@ func (g *generic) Set(value string, opt *internalOption) error {
 	trySetOptional := func() (interface{}, bool) {
 		return opt.optionalValue, (value == "" && opt.optional)
 	}
+
+	if opt.Occurrences() <= 1 {
+		g.applyValueConventions(opt.flags)
+	}
 	switch p := g.p.(type) {
 	case Value:
-		if i, ok := p.(interface{ DisableSplitting() }); ok && opt.flags.disableSplitting() {
-			i.DisableSplitting()
-		}
-
 		return p.Set(value)
 	case *bool:
 		if v, ok := trySetOptional(); ok {
@@ -168,20 +186,12 @@ func (g *generic) Set(value string, opt *internalOption) error {
 			return nil
 		}
 		a := opt.split(value, ",")
-		// Reset on the first occurrence
-		if opt.Occurrences() <= 1 {
-			*p = nil
-		}
 		*p = append(*p, a...)
 		return nil
 	case *map[string]string:
 		if v, ok := trySetOptional(); ok {
 			*p = v.(map[string]string)
 			return nil
-		}
-		if opt.Occurrences() <= 1 {
-			// Reset the map on the first occurrence
-			*p = map[string]string{}
 		}
 		text := value
 		var key, value string
@@ -414,6 +424,27 @@ func (g *generic) String() string {
 		return genericString(p)
 	}
 	panic("unreachable!")
+}
+
+func (g *generic) applyValueConventions(flags internalFlags) {
+	if flags.disableSplitting() {
+		if i, ok := g.p.(valueDisableSplitting); ok {
+			i.DisableSplitting()
+		}
+	}
+
+	if resetOnFirstOccur := !flags.merge(); resetOnFirstOccur {
+		switch p := g.p.(type) {
+		case valueResetOrMerge:
+			p.Reset()
+
+		case *[]string:
+			*p = nil
+
+		case *map[string]string:
+			*p = map[string]string{}
+		}
+	}
 }
 
 func (g *generic) smartOptionalDefault() interface{} {

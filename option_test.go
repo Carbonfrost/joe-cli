@@ -34,6 +34,7 @@ var _ = Describe("Option", func() {
 			Entry("WorkingDirectory", cli.WorkingDirectory, "WORKING_DIRECTORY"),
 			Entry("NonPersistent", cli.NonPersistent, "NON_PERSISTENT"),
 			Entry("DisableSplitting", cli.DisableSplitting, "DISABLE_SPLITTING"),
+			Entry("Merge", cli.Merge, "MERGE"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 	})

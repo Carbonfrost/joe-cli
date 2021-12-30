@@ -94,6 +94,7 @@ type Flag struct {
 	//   * an implementation of Value interface
 	//
 	// If unspecified, the value will be a string pointer.
+	// For more information about Values, see the Value type
 	Value interface{}
 
 	// DefaultText provides a description of the detault value for the flag.  This is displayed
