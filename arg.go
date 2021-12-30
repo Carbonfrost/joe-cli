@@ -107,10 +107,6 @@ type ArgCounter interface {
 	Done() error
 }
 
-type providesCounter interface {
-	NewCounter() ArgCounter
-}
-
 type argContext struct {
 	option *Arg
 	args_  []string

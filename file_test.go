@@ -203,7 +203,29 @@ var _ = Describe("FileSet", func() {
 			Files: []string{"src/a/b.txt", "somethingelse"},
 		}
 		Expect(set.Exists()).To(BeFalse())
+	})
 
+	It("uses - for stdin/out", func() {
+		var actual []byte
+		buf := bytes.NewBufferString("hello\n")
+		app := cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "f",
+					Value: &cli.FileSet{},
+				},
+			},
+			Stdin: buf,
+			Action: func(c *cli.Context) {
+				_ = c.FileSet("f").Do(func(f *cli.File, _ error) error {
+					fs, _ := f.Open()
+					actual, _ = ioutil.ReadAll(fs)
+					return nil
+				})
+			},
+		}
+		_ = app.RunContext(context.TODO(), []string{"app", "--", "-"})
+		Expect(string(actual)).To(Equal("hello\n"))
 	})
 
 	Describe("Do", func() {

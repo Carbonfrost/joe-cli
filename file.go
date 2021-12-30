@@ -126,6 +126,17 @@ func (f *File) Walk(fn fs.WalkDirFunc) error {
 	return walkFile(f.actualFS(), f.Name, fn)
 }
 
+func (f *File) Initializer() Action {
+	return ActionFunc(f.setupOptionRequireFS)
+}
+
+func (f *File) setupOptionRequireFS(c *Context) error {
+	if f.FS == nil {
+		f.FS = c.App().defaultFS()
+	}
+	return nil
+}
+
 func (f *File) actualFS() fsExtension {
 	if f.FS == nil {
 		return newDefaultFS(os.Stdin, os.Stdout)
@@ -188,14 +199,24 @@ func (f *FileSet) Do(fn func(*File, error) error) error {
 
 func (f *FileSet) actualFS() fsExtension {
 	if f.FS == nil {
-		// Handling of - does not apply to file set
-		return &defaultFS{}
+		return newDefaultFS(os.Stdin, os.Stdout)
 	}
 	return wrapFS(f.FS)
 }
 
 func (f *FileSet) NewCounter() ArgCounter {
 	return ArgCount(-2)
+}
+
+func (f *FileSet) Initializer() Action {
+	return ActionFunc(f.setupOptionRequireFS)
+}
+
+func (f *FileSet) setupOptionRequireFS(c *Context) error {
+	if f.FS == nil {
+		f.FS = c.App().defaultFS()
+	}
+	return nil
 }
 
 func (d defaultFS) Open(name string) (fs.File, error) {
@@ -302,31 +323,18 @@ func wrapFS(f fs.FS) fsExtension {
 	return fsExtensionWrapper{f}
 }
 
-func setupOptionRequireFS(c *Context) error {
-	if f, ok := c.option().value().(*File); ok {
-		if f.FS == nil {
-			app := c.App()
-			fs := app.FS
-
-			if fs == nil {
-				fs = newDefaultFS(app.Stdin, app.Stdout)
-			}
-			f.FS = fs
-		}
-	}
-	return nil
-}
-
 func walkFile(ff fsExtension, name string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(ff, name, fn)
 }
 
 var (
-	_ fileExtension = &stdFile{}
-	_ fsExtension   = (*defaultFS)(nil)
-	_ flag.Value    = (*File)(nil)
-	_ flag.Value    = (*FileSet)(nil)
-	_ fileExists    = (*File)(nil)
-	_ fileExists    = (*FileSet)(nil)
-	_ fileStat      = (*File)(nil)
+	_ fileExtension    = &stdFile{}
+	_ fsExtension      = (*defaultFS)(nil)
+	_ flag.Value       = (*File)(nil)
+	_ flag.Value       = (*FileSet)(nil)
+	_ valueInitializer = (*File)(nil)
+	_ valueInitializer = (*FileSet)(nil)
+	_ fileExists       = (*File)(nil)
+	_ fileExists       = (*FileSet)(nil)
+	_ fileStat         = (*File)(nil)
 )

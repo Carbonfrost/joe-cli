@@ -379,6 +379,9 @@ func (c *Context) walkCore(fn WalkFunc) error {
 // error is returned and the rest of the actions aren't run
 func (c *Context) Do(actions ...Action) error {
 	for _, a := range actions {
+		if a == nil {
+			continue
+		}
 		err := a.Execute(c)
 		if err != nil {
 			return err
@@ -881,6 +884,13 @@ func reverse(arr []string) []string {
 		arr[i], arr[j] = arr[j], arr[i]
 	}
 	return arr
+}
+
+func setupValueInitializer(c *Context) error {
+	if v, ok := c.option().value().(valueInitializer); ok {
+		return c.Do(v.Initializer())
+	}
+	return nil
 }
 
 func setupOptionFromEnv(ctx *Context) error {

@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
@@ -157,7 +158,9 @@ var _ = Describe("Value", func() {
 					Value: &cli.FileSet{Files: []string{"default"}},
 				},
 				"app -o a",
-				Equal(&cli.FileSet{Files: []string{"a"}}),
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Files": Equal([]string{"a"}),
+				})),
 			),
 			Entry(
 				"file set merge",
@@ -167,7 +170,9 @@ var _ = Describe("Value", func() {
 					Options: cli.Merge,
 				},
 				"app -o a",
-				Equal(&cli.FileSet{Files: []string{"default", "a"}}),
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Files": Equal([]string{"default", "a"}),
+				})),
 			),
 		)
 
@@ -243,6 +248,25 @@ var _ = Describe("Value", func() {
 		app.RunContext(context.TODO(), args)
 
 		Expect(cv.calledDisableSplitting).To(BeTrue())
+	})
+
+	Describe("Initializer convention", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name: "d",
+					Value: &customValue{
+						init: act,
+					},
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -d a")
+		app.RunContext(context.TODO(), args)
+		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 })
 
@@ -526,10 +550,12 @@ func unwrap(v, _ interface{}) interface{} {
 
 type customValue struct {
 	calledDisableSplitting bool
+	init                   cli.Action
 }
 
-func (*customValue) Set(arg string) error { return nil }
-func (*customValue) String() string       { return "" }
+func (*customValue) Set(arg string) error      { return nil }
+func (*customValue) String() string            { return "" }
+func (c *customValue) Initializer() cli.Action { return c.init }
 func (c *customValue) DisableSplitting() {
 	c.calledDisableSplitting = true
 }

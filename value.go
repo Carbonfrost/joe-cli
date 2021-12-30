@@ -23,7 +23,12 @@ import (
 //
 // * Reset()              called on first occurrence of setting a value.  This can be used to reset lists
 //       to empty when the Merge option has not been set
-
+//
+// * NewCounter() ArgCounter   if provided, this method is consulted to obtain the arg counter if NArg is unset
+//
+// * Initializer() Action      obtains an initialization action for the value which is called after initialization
+//      of the flag or arg
+//
 type Value = flag.Value
 
 // Conventions for values
@@ -34,6 +39,14 @@ type valueDisableSplitting interface {
 
 type valueResetOrMerge interface {
 	Reset()
+}
+
+type valueProvidesCounter interface {
+	NewCounter() ArgCounter
+}
+
+type valueInitializer interface {
+	Initializer() Action
 }
 
 type generic struct {

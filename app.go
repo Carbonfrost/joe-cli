@@ -228,6 +228,13 @@ func (a *App) ensureTemplateFuncs() map[string]interface{} {
 	return a.templateFuncs
 }
 
+func (a *App) defaultFS() fs.FS {
+	if a.FS == nil {
+		return newDefaultFS(a.Stdin, a.Stdout)
+	}
+	return a.FS
+}
+
 func (a *appContext) initialize(c *Context) error {
 	rest := newPipelines(ActionOf(a.app.Uses), a.app.Options, c)
 

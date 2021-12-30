@@ -406,7 +406,7 @@ func (o *internalOption) actualArgCounter() ArgCounter {
 		switch value := o.value.p.(type) {
 		case *[]string:
 			return ArgCount(TakeUntilNextFlag)
-		case providesCounter:
+		case valueProvidesCounter:
 			return value.NewCounter()
 		}
 	}

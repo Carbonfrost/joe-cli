@@ -103,8 +103,10 @@ var (
 	}
 
 	defaultOption = actionPipelines{
+		Initializers: Pipeline(
+			ActionFunc(setupValueInitializer),
+		),
 		Before: Pipeline(
-			ActionFunc(setupOptionRequireFS),
 			ActionFunc(setupOptionFromEnv),
 		),
 	}
