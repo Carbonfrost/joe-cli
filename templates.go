@@ -24,10 +24,11 @@ type persistentCommandData struct {
 }
 
 type flagData struct {
-	Name     string
-	Synopsis string
-	HelpText string
-	Data     map[string]interface{}
+	Name       string
+	Synopsis   string
+	HelpText   string
+	ManualText string
+	Data       map[string]interface{}
 }
 
 type commandCategory struct {
@@ -130,6 +131,30 @@ usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 	// VersionTemplate specifies the Go template for what is printed when
 	//   the version flag or command is used.
 	VersionTemplate string = "{{ .App.Name }}, version {{ .App.Version }}\n"
+
+	ManualTemplate = `
+{{ .Roff.Comment }} generated joe-cli manual 
+{{ .Roff.TitleHeader }} "{{ .App.Name | .Roff.Escape }}" "1" "{{ .App.BuildDate.Format "January 2006" }}" ""
+{{ .Roff.Header }} "NAME"
+{{ .App.Name | .Roff.Bold }} \- {{ .App.HelpText | .Roff.Escape }}
+{{ .Roff.Header }} "SYNOPSIS"
+{{ .Roff.HangingTag }} ""
+{{ .SelectedCommand | SynopsisHangingIndent }}
+
+{{ .Roff.Header }} "DESCRIPTION"
+{{ .App.Description | .Roff.Escape }}
+.P
+
+{{ .Roff.Header }} "OPTIONS"
+{{ range .SelectedCommand.VisibleFlags }}
+{{ $.Roff.HangingTag }}{{ .Synopsis }}
+{{ if .ManualText }}
+{{ .ManualText | $.Roff.Escape }}
+{{ else if .HelpText }}
+{{ .HelpText | $.Roff.Escape }}
+{{- end -}}
+{{ end }}
+`
 )
 
 func (c *commandData) withLineage(lineage string, persistent []*Flag) *commandData {

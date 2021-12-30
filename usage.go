@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -67,53 +68,82 @@ type csPair struct {
 	Close string
 }
 
+type Roff struct {
+	TitleHeader      string
+	Header           string
+	secondLevelHdr   string
+	otherHeader      string
+	crTag            string
+	emphTag          string
+	emphCloseTag     string
+	strongTag        string
+	strongCloseTag   string
+	breakTag         string
+	paraTag          string
+	hruleTag         string
+	linkTag          string
+	linkCloseTag     string
+	codespanTag      string
+	codespanCloseTag string
+	codeTag          string
+	codeCloseTag     string
+	quoteTag         string
+	quoteCloseTag    string
+	listTag          string
+	listCloseTag     string
+	HangingTag       string
+	tableStart       string
+	tableEnd         string
+	tableCellStart   string
+	tableCellEnd     string
+	Comment          string
+}
+
 var (
 	textUsage   = &defaultUsage{} // nil formatter disables formatting
 	modernUsage = &defaultUsage{&termFormatter{}}
 
 	bold      = namedCSPair(1, 22)
 	underline = namedCSPair(4, 24)
+
+	roffTag = Roff{
+		TitleHeader:      ".TH ",
+		Header:           ".SH ",
+		secondLevelHdr:   "\n.SH ",
+		otherHeader:      "\n.SS ",
+		crTag:            "\n",
+		emphTag:          "\\fI",
+		emphCloseTag:     "\\fP",
+		strongTag:        "\\fB",
+		strongCloseTag:   "\\fP",
+		breakTag:         "\n.br\n",
+		paraTag:          "\n.PP\n",
+		hruleTag:         "\n.ti 0\n\\l'\\n(.lu'\n",
+		linkTag:          "\n\\[la]",
+		linkCloseTag:     "\\[ra]",
+		codespanTag:      "\\fB\\fC",
+		codespanCloseTag: "\\fR",
+		codeTag:          "\n.PP\n.RS\n\n.nf\n",
+		codeCloseTag:     "\n.fi\n.RE\n",
+		quoteTag:         "\n.PP\n.RS\n",
+		quoteCloseTag:    "\n.RE\n",
+		listTag:          "\n.RS\n",
+		listCloseTag:     "\n.RE\n",
+		HangingTag:       ".TP\n",
+		tableStart:       "\n.TS\nallbox;\n",
+		tableEnd:         ".TE\n",
+		tableCellStart:   "T{\n",
+		tableCellEnd:     "\nT}\n",
+		Comment:          `.\"`,
+	}
 )
 
 // DisplayHelpScreen displays the help screen for the specified command.  If the command
 // is nested, each sub-command is named.
 func DisplayHelpScreen(command ...string) ActionFunc {
 	return func(c *Context) error {
-		current := c.App().createRoot()
-		persistentFlags := make([]*Flag, 0)
-
-		// Find command and accumulate persistent flags
-		for i, c := range command {
-			if i < len(command) {
-				persistentFlags = append(persistentFlags, current.VisibleFlags()...)
-			}
-
-			var ok bool
-			current, ok = current.Command(c)
-			if !ok {
-				return commandMissing(c)
-			}
-		}
-
 		tpl := c.Template("help")
-		lineage := ""
-
-		if len(command) > 0 {
-			all := make([]string, 0)
-			if len(c.App().Name) > 0 {
-				all = append(all, c.App().Name)
-			}
-			all = append(all, command[0:len(command)-1]...)
-			lineage = " " + strings.Join(all, " ")
-		}
-
-		data := struct {
-			SelectedCommand *commandData
-			App             *App
-		}{
-			SelectedCommand: commandAdapter(current).withLineage(lineage, persistentFlags),
-			App:             c.App(),
-		}
+		data := helpData(c, command)
 
 		w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
 
@@ -123,9 +153,68 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 	}
 }
 
+// DisplayManualPage displays the man page.
+func DisplayManualPage(command ...string) ActionFunc {
+	return func(c *Context) error {
+		tpl := c.Template("manual")
+		data := helpData(c, command)
+
+		cmd := exec.Command("/usr/bin/man")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		w, _ := cmd.StdinPipe()
+
+		if err := cmd.Start(); err != nil {
+			fmt.Println("An error occured: ", err)
+		}
+
+		_ = tpl.Execute(w, data)
+		return cmd.Wait()
+	}
+}
+
 // PrintVersion displays the version string.  The VersionTemplate provides the Go template
 func PrintVersion() ActionFunc {
 	return RenderTemplate("version", nil)
+}
+
+func helpData(c *Context, command []string) interface{} {
+	current := c.App().createRoot()
+	persistentFlags := make([]*Flag, 0)
+
+	// Find command and accumulate persistent flags
+	for i, c := range command {
+		if i < len(command) {
+			persistentFlags = append(persistentFlags, current.VisibleFlags()...)
+		}
+
+		var ok bool
+		current, ok = current.Command(c)
+		if !ok {
+			return commandMissing(c)
+		}
+	}
+	lineage := ""
+
+	if len(command) > 0 {
+		all := make([]string, 0)
+		if len(c.App().Name) > 0 {
+			all = append(all, c.App().Name)
+		}
+		all = append(all, command[0:len(command)-1]...)
+		lineage = " " + strings.Join(all, " ")
+	}
+
+	return struct {
+		SelectedCommand *commandData
+		App             *App
+		Roff            *Roff
+	}{
+		SelectedCommand: commandAdapter(current).withLineage(lineage, persistentFlags),
+		App:             c.App(),
+		Roff:            &Roff{},
+	}
+
 }
 
 func defaultData(c *Context) interface{} {
@@ -386,6 +475,36 @@ func (t *termFormatter) Underline(s string) string {
 		return s
 	}
 	return underline.Open + s + underline.Close
+}
+
+func (r *Roff) Escape(text string) string {
+	var w bytes.Buffer
+	for i := 0; i < len(text); i++ {
+		// escape initial apostrophe or period
+		if len(text) >= 1 && (text[0] == '\'' || text[0] == '.') {
+			w.WriteString("\\&")
+		}
+
+		original := i
+		for i < len(text) && text[i] != '\\' {
+			i++
+		}
+		if i > original {
+			w.WriteString(text[original:i])
+		}
+
+		// escape a character
+		if i >= len(text) {
+			break
+		}
+
+		w.Write([]byte{'\\', text[i]})
+	}
+	return w.String()
+}
+
+func (r *Roff) Bold(s string) string {
+	return fmt.Sprintf(`\fB%s\fR`, r.Escape(s))
 }
 
 // namedCSPair provides the ANSI control scheme pair for a formatting sequence.

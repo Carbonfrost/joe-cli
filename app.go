@@ -116,6 +116,9 @@ var (
 		"help": func() string {
 			return HelpTemplate
 		},
+		"manual": func() string {
+			return ManualTemplate
+		},
 		"version": func() string {
 			return VersionTemplate
 		},
