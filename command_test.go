@@ -13,6 +13,22 @@ import (
 
 var _ = Describe("Command", func() {
 
+	It("sub-command invocation should not split arguments", func() {
+		var t, u string
+		app := &cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Args: cli.Args("t", &t, "u", &u),
+				},
+			},
+		}
+		args, _ := cli.Split("app sub t,a,b u")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(t).To(Equal("t,a,b"))
+		Expect(u).To(Equal("u"))
+	})
+
 	Describe("actions", func() {
 
 		var (

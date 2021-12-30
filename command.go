@@ -294,6 +294,7 @@ func (c *Command) ensureSubcommands() {
 			Value:     List(),
 			NArg:      -1,
 			Action:    ExecuteSubcommand(nil),
+			Options:   DisableSplitting,
 		})
 		if c.Action == nil {
 			c.Action = DisplayHelpScreen()
