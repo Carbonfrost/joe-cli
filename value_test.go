@@ -150,6 +150,25 @@ var _ = Describe("Value", func() {
 				"app -o 127.0.0.1",
 				Equal(net.ParseIP("127.0.0.1")),
 			),
+			Entry(
+				"file set resets values",
+				&cli.Flag{
+					Name:  "o",
+					Value: &cli.FileSet{Files: []string{"default"}},
+				},
+				"app -o a",
+				Equal(&cli.FileSet{Files: []string{"a"}}),
+			),
+			Entry(
+				"file set merge",
+				&cli.Flag{
+					Name:    "o",
+					Value:   &cli.FileSet{Files: []string{"default"}},
+					Options: cli.Merge,
+				},
+				"app -o a",
+				Equal(&cli.FileSet{Files: []string{"default", "a"}}),
+			),
 		)
 
 		DescribeTable("List flag examples", func(arguments string, expected types.GomegaMatcher) {
@@ -247,6 +266,12 @@ var _ = Describe("Lookup", func() {
 				&cli.File{},
 				func(lk cli.Lookup) interface{} { return lk.File("a") },
 				Equal(&cli.File{}),
+			),
+			Entry(
+				"FileSet",
+				&cli.FileSet{},
+				func(lk cli.Lookup) interface{} { return lk.FileSet("a") },
+				Equal(&cli.FileSet{}),
 			),
 			Entry(
 				"Float32",

@@ -53,9 +53,8 @@ type FileSet struct {
 
 	// Files provides the files named in the file set.  These can be files or
 	// directories
-	Files      []string
-	FS         fs.FS
-	initialSet bool
+	Files []string
+	FS    fs.FS
 }
 
 type stdFile struct {
@@ -135,9 +134,8 @@ func (f *File) actualFS() fsExtension {
 }
 
 func (f *FileSet) Set(arg string) error {
-	if f.initialSet {
+	if f.Files == nil {
 		f.Files = []string{}
-		f.initialSet = true
 	}
 
 	f.Files = append(f.Files, arg)
@@ -158,6 +156,10 @@ func (f *FileSet) Exists() bool {
 		}
 	}
 	return true
+}
+
+func (f *FileSet) Reset() {
+	f.Files = nil
 }
 
 // Do will invoke the given function on each file in the set.  If recursion is
