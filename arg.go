@@ -56,7 +56,7 @@ type Arg struct {
 	//
 	// If unspecified, the value will depend upon NArg if it is a number, in which case either
 	// a pointer to a string or a string slice will be used depending upon the semantics of the
-	// ArgCount function.
+	// ArgCount function.  For more information about Values, see the Value type
 	Value interface{}
 
 	// DefaultText provides a description of the detault value for the argument.  This is displayed

@@ -64,7 +64,38 @@ var _ = Describe("Value", func() {
 				Equal([]string{"a,b,c", "d"}),
 			),
 			Entry(
+				"list resets values",
+				&cli.Flag{
+					Name:  "o",
+					Value: &([]string{"this value is lost"}),
+				},
+				"app -o a",
+				Equal([]string{"a"}),
+			),
+			Entry(
+				"list merge",
+				&cli.Flag{
+					Name:    "o",
+					Value:   &([]string{"default"}),
+					Options: cli.Merge,
+				},
+				"app -o a",
+				Equal([]string{"default", "a"}),
+			),
+			Entry(
 				"map",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.Map(),
+				},
+				"app -o hello=world -o goodbye=earth",
+				Equal(map[string]string{
+					"hello":   "world",
+					"goodbye": "earth",
+				}),
+			),
+			Entry(
+				"map resets values",
 				&cli.Flag{
 					Name:  "o",
 					Value: &map[string]string{"existing": "values"}, // Existing values are overwritten
@@ -85,6 +116,19 @@ var _ = Describe("Value", func() {
 				Equal(map[string]string{
 					"hello":   "world",
 					"goodbye": "earth",
+					"aloha":   "mars",
+				}),
+			),
+			Entry(
+				"map merge",
+				&cli.Flag{
+					Name:    "o",
+					Value:   &(map[string]string{"default": "set"}),
+					Options: cli.Merge,
+				},
+				"app  -o aloha=mars",
+				Equal(map[string]string{
+					"default": "set",
 					"aloha":   "mars",
 				}),
 			),

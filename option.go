@@ -91,6 +91,13 @@ const (
 	// flag Value, you can implement this method DisableSplitting() to hook into this option.
 	DisableSplitting
 
+	// Merge when set, indicates that rather than overwrite values set in list, there should
+	// be strategic merging.  This pertains to list, fileset, and map flags.  By default,
+	// the value that is used to initialize any of these flags is treated as a default which
+	// is overwritten if the user specifies an environment variable or any value.  To stop this,
+	// the Merge option can be used
+	Merge
+
 	maxOption
 
 	// None represents no options
@@ -105,6 +112,7 @@ const (
 	internalFlagDisallowFlagsAfterArgs
 	internalFlagNonPersistent
 	internalFlagDisableSplitting
+	internalFlagMerge
 )
 
 var (
@@ -152,6 +160,10 @@ var (
 		DisableSplitting: {
 			Action: ActionFunc(disableSplittingOption),
 			Name:   "DISABLE_SPLITTING",
+		},
+		Merge: {
+			Action: ActionFunc(mergeOption),
+			Name:   "MERGE",
 		},
 	}
 
@@ -265,6 +277,10 @@ func (f internalFlags) disableSplitting() bool {
 	return f&internalFlagDisableSplitting == internalFlagDisableSplitting
 }
 
+func (f internalFlags) merge() bool {
+	return f&internalFlagMerge == internalFlagMerge
+}
+
 func (u *userOption) inc() uint32 {
 	return atomic.AddUint32((*uint32)(u), 1)
 }
@@ -310,6 +326,11 @@ func nonPersistentOption(c *Context) error {
 
 func disableSplittingOption(c *Context) error {
 	c.option().setInternalFlags(internalFlagDisableSplitting)
+	return nil
+}
+
+func mergeOption(c *Context) error {
+	c.option().setInternalFlags(internalFlagMerge)
 	return nil
 }
 
