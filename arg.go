@@ -126,8 +126,9 @@ type varArgsCounter struct {
 }
 
 type argSynopsis struct {
-	value string
-	multi bool
+	value    string
+	multi    bool
+	optional bool
 }
 
 const (
@@ -229,9 +230,12 @@ func (a *Arg) newSynopsisCore(defaultUsage string) *argSynopsis {
 	if usage == "" {
 		usage = defaultUsage
 	}
+
+	opt, mul := aboutArgCounter(a.NArg)
 	return &argSynopsis{
-		value: usage,
-		multi: isMulti(a.NArg),
+		value:    usage,
+		multi:    mul,
+		optional: opt,
 	}
 }
 
@@ -269,7 +273,8 @@ func (a *Arg) helpText() string {
 }
 
 func (a *Arg) value() interface{} {
-	a.Value = ensureDestination(a.Value, isMulti(a.NArg))
+	_, multi := aboutArgCounter(a.NArg)
+	a.Value = ensureDestination(a.Value, multi)
 	return a.Value
 }
 
@@ -376,9 +381,16 @@ func findArgByName(items []*Arg, name string) (*Arg, bool) {
 	return nil, false
 }
 
-func isMulti(narg interface{}) bool {
-	if narg, ok := narg.(int); ok {
-		return narg < 0 || narg > 1
+func aboutArgCounter(narg interface{}) (optional, multi bool) {
+	switch c := narg.(type) {
+	case int:
+		return c == 0, c < 0 || c > 1
+	case *varArgsCounter:
+		return true, true
+	case nil, *optionalCounter:
+		return true, false
+	case *discreteCounter:
+		return false, c.count > 1
 	}
-	return false
+	return false, false
 }

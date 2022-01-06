@@ -48,3 +48,15 @@ func InitializeFlag(f *Flag) *Context {
 	c.initialize()
 	return c
 }
+
+func InitializeCommand(f *Command) *Context {
+	c := &Context{
+		Context: context.TODO(),
+	}
+	c = c.copy(&commandContext{
+		cmd:   f,
+		args_: []string{},
+	}, true)
+	c.initialize()
+	return c
+}

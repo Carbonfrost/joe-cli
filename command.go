@@ -91,6 +91,7 @@ type commandSynopsis struct {
 	name  string
 	flags map[optionGroup][]*flagSynopsis
 	args  []*argSynopsis
+	rtl   bool
 }
 
 type optionGroup int
@@ -359,6 +360,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 		name:  c.Name,
 		flags: groups,
 		args:  args,
+		rtl:   c.internalFlags().rightToLeft(),
 	}
 }
 

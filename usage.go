@@ -322,8 +322,34 @@ func (d *defaultUsage) command(c *commandSynopsis) []string {
 		add(d.flag(f, true))
 	}
 
-	for _, a := range c.args {
-		add(d.arg(a))
+	if c.rtl {
+		var start int
+		for i, p := range c.args {
+			if p.optional {
+				start = i
+				break
+			}
+			add(d.arg(p))
+		}
+
+		optionalArgs := c.args[start:]
+		open := strings.Repeat("[", len(optionalArgs))
+		for i, p := range optionalArgs {
+			if i == 0 {
+				add(open + d.arg(p) + "]")
+			} else {
+				add(d.arg(p) + "]")
+			}
+		}
+	} else {
+
+		for _, a := range c.args {
+			if a.optional {
+				add("[" + d.arg(a) + "]")
+			} else {
+				add(d.arg(a))
+			}
+		}
 	}
 
 	return tokens

@@ -291,6 +291,7 @@ var _ = Describe("Command", func() {
 	Describe("Synopsis", func() {
 		DescribeTable("examples",
 			func(cmd *cli.Command, expected string) {
+				cli.InitializeCommand(cmd)
 				Expect(cmd.Synopsis()).To(Equal(expected))
 			},
 			Entry(
@@ -325,12 +326,48 @@ var _ = Describe("Command", func() {
 						{Name: "t", Value: cli.Bool()},
 					},
 					Args: []*cli.Arg{
-						{Name: "arg"},
+						{Name: "arg", NArg: 1},
 					},
 					Name: "cmd",
 				},
 				"cmd [-t] <arg>",
-			))
+			),
+			Entry(
+				"optional arguments",
+				&cli.Command{
+					Args: []*cli.Arg{
+						{Name: "arg"},
+					},
+					Name: "cmd",
+				},
+				"cmd [<arg>]",
+			),
+			Entry(
+				"right-to-left arguments",
+				&cli.Command{
+					Args: []*cli.Arg{
+						{Name: "a"},
+						{Name: "b"},
+					},
+					Options: cli.RightToLeft,
+					Name:    "cmd",
+				},
+				"cmd [[<a>] <b>]",
+			),
+			Entry(
+				"right-to-left arguments non-optional",
+				&cli.Command{
+					Args: []*cli.Arg{
+						{Name: "a", NArg: 1},
+						{Name: "b"},
+						{Name: "c"},
+					},
+					Options: cli.RightToLeft,
+					Name:    "cmd",
+				},
+				"cmd <a> [[<b>] <c>]",
+			),
+		)
 
 	})
 })
