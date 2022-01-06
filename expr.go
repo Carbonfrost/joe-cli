@@ -344,7 +344,7 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 		exprs: map[string]*boundExpr{},
 	}
 	for _, e := range exprs {
-		set := newSet().withArgs(e.Args)
+		set := newSet(e.internalFlags().rightToLeft()).withArgs(e.Args)
 		fac := &boundExpr{
 			expr:   e,
 			set:    set,
@@ -584,17 +584,20 @@ Parsing:
 		}
 
 	ParseExprFlag:
-		set, ok := e.exprs[arg[1:]]
+		boundExpr, ok := e.exprs[arg[1:]]
 		if !ok {
 			return nil, unknownExpr(arg)
 		}
 
-		results = append(results, set)
-		if len(set.set.positionalOptions) == 0 {
+		results = append(results, boundExpr)
+		if len(boundExpr.set.positionalOptions) == 0 {
 			continue Parsing
 		}
 
-		bind := newArgBinding(set.set.positionalOptions)
+		bind, err := boundExpr.set.startArgBinding(len(args))
+		if err != nil {
+			return nil, err
+		}
 		for len(args) > 0 {
 			arg = args[0]
 			args = args[1:]
@@ -605,7 +608,7 @@ Parsing:
 					goto ParseExprFlag
 				}
 				if isHardArgCountErr(err) {
-					return nil, wrapExprError(set.expr.Name, err)
+					return nil, wrapExprError(boundExpr.expr.Name, err)
 				}
 			}
 			if !bind.hasCurrent() {
@@ -613,7 +616,7 @@ Parsing:
 			}
 		}
 		if err := bind.Done(); err != nil {
-			return nil, wrapExprError(set.expr.Name, err)
+			return nil, wrapExprError(boundExpr.expr.Name, err)
 		}
 	}
 	return results, nil
@@ -683,7 +686,7 @@ func (e *exprContext) execute(ctx *Context) error                 { return nil }
 func (e *exprContext) args() []string                             { return e.args_ }
 func (e *exprContext) set() *set {
 	if e.set_ == nil {
-		e.set_ = newSet()
+		e.set_ = newSet(e.expr.internalFlags().rightToLeft())
 	}
 	return e.set_
 }

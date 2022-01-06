@@ -503,7 +503,7 @@ func (c *commandContext) execute(ctx *Context) error {
 }
 func (c *commandContext) set() *set {
 	if c.set_ == nil {
-		c.set_ = newSet()
+		c.set_ = newSet(c.cmd.internalFlags().rightToLeft())
 	}
 	return c.set_
 }

@@ -98,6 +98,18 @@ const (
 	// the Merge option can be used
 	Merge
 
+	// RightToLeft causes arguments to bind right-to-left instead of left-to-right.
+	// This option applies to commands and expressions, and it affects how optional args are
+	// interpreted when there are fewer values than are optional.  By default, with left-to-right binding,
+	// in this situation, the leftmost optional args are filled first, leaving any subsequent args empty.
+	// However, with right-to-left binding, we fill as many rightmost args as there are available
+	// values.  For example, if arg a and b are optional (as in, Arg.NArg set to 0) and a subsequent
+	// arg r exists, then if there is one value passed to the command, only r will be set.  If there
+	// are two values, both b and r will be set.
+	// Note that despite its name, args still bind in order.
+	//
+	RightToLeft
+
 	maxOption
 
 	// None represents no options
@@ -113,6 +125,7 @@ const (
 	internalFlagNonPersistent
 	internalFlagDisableSplitting
 	internalFlagMerge
+	internalFlagRightToLeft
 )
 
 var (
@@ -134,7 +147,7 @@ var (
 			Name:   "MUST_EXIST",
 		},
 		SkipFlagParsing: {
-			Action: ActionFunc(skipFlagParsingOption),
+			Action: setInternalFlag(internalFlagSkipFlagParsing),
 			Name:   "SKIP_FLAG_PARSING",
 		},
 		WorkingDirectory: {
@@ -146,7 +159,7 @@ var (
 			Name:   "OPTIONAL",
 		},
 		DisallowFlagsAfterArgs: {
-			Action: ActionFunc(disallowFlagsAfterArgsOption),
+			Action: setInternalFlag(internalFlagDisallowFlagsAfterArgs),
 			Name:   "DISALLOW_FLAGS_AFTER_ARGS",
 		},
 		No: {
@@ -162,8 +175,12 @@ var (
 			Name:   "DISABLE_SPLITTING",
 		},
 		Merge: {
-			Action: ActionFunc(mergeOption),
+			Action: setInternalFlag(internalFlagMerge),
 			Name:   "MERGE",
+		},
+		RightToLeft: {
+			Action: setInternalFlag(internalFlagRightToLeft),
+			Name:   "RIGHT_TO_LEFT",
 		},
 	}
 
@@ -281,6 +298,10 @@ func (f internalFlags) merge() bool {
 	return f&internalFlagMerge == internalFlagMerge
 }
 
+func (f internalFlags) rightToLeft() bool {
+	return f&internalFlagRightToLeft == internalFlagRightToLeft
+}
+
 func (u *userOption) inc() uint32 {
 	return atomic.AddUint32((*uint32)(u), 1)
 }
@@ -329,11 +350,6 @@ func disableSplittingOption(c *Context) error {
 	return nil
 }
 
-func mergeOption(c *Context) error {
-	c.option().setInternalFlags(internalFlagMerge)
-	return nil
-}
-
 func mustExistOption(c *Context) error {
 	v := c.Value("")
 	if v == nil {
@@ -350,11 +366,6 @@ func mustExistOption(c *Context) error {
 	return fmt.Errorf("file not found: %v", v)
 }
 
-func skipFlagParsingOption(c *Context) error {
-	c.target().setInternalFlags(internalFlagSkipFlagParsing)
-	return nil
-}
-
 func workingDirectoryOption(c *Context) error {
 	newDir := fmt.Sprint(c.Value(""))
 	return os.Chdir(newDir)
@@ -365,9 +376,11 @@ func optionalOption(c *Context) error {
 	return nil
 }
 
-func disallowFlagsAfterArgsOption(c *Context) error {
-	c.target().setInternalFlags(internalFlagDisallowFlagsAfterArgs)
-	return nil
+func setInternalFlag(f internalFlags) ActionFunc {
+	return func(c *Context) error {
+		c.target().setInternalFlags(f)
+		return nil
+	}
 }
 
 func noOption(c *Context) error {
