@@ -92,13 +92,18 @@ type App struct {
 	// FS specifies the file system that is used by default for Files.
 	FS fs.FS
 
-	HelpText  string
+	// HelpText describes the help text displayed for the app
+	HelpText string
+
+	// UsageText provides the usage for the app.  If left blank, a succint synopsis
+	// is generated that lists each visible flag and arg
 	UsageText string
 
-	rootCommand   *Command
-	flags         internalFlags
-	templateFuncs map[string]interface{}
-	templates     map[string]string
+	rootCommandCreator func() *Command
+	rootCommand        *Command
+	flags              internalFlags
+	templateFuncs      map[string]interface{}
+	templates          map[string]string
 }
 
 type appContext struct {
@@ -121,6 +126,19 @@ var (
 		},
 	}
 )
+
+// NewApp creates an app initialized from the specified command.  The App struct can be used directly
+// to create and run an App.  It has the same set of exported fields; however, you can also initialize
+// an app from a command directly using this function.  This benefits from having a
+// fully consistent model with Command and fewer hidden semantics.
+func NewApp(cmd *Command) *App {
+	return &App{
+		Name: cmd.Name,
+		rootCommandCreator: func() *Command {
+			return cmd
+		},
+	}
+}
 
 // Run the application and exit using the exit handler.  This function exits using the
 // ExitHandler if an error occurs.  If you want to process the error yourself, use RunContext.
@@ -236,6 +254,20 @@ func (a *App) defaultFS() fs.FS {
 }
 
 func (a *appContext) initialize(c *Context) error {
+	var err error
+	if a.app.rootCommandCreator == nil {
+		err = a.defaultInitRootCommand(c)
+	} else {
+		err = a.factoryInitRootCommand(c)
+	}
+
+	if err != nil {
+		return err
+	}
+	return a.commandContext.initializeCore(c)
+}
+
+func (a *appContext) defaultInitRootCommand(c *Context) error {
 	rest := newPipelines(ActionOf(a.app.Uses), a.app.Options, c)
 
 	a.commandContext.cmd = a.app.createRoot()
@@ -253,7 +285,17 @@ func (a *appContext) initialize(c *Context) error {
 	// don't want to calculate separating out action pipelines again, and we
 	// don't want to invoke app's initializers twice
 	a.commandContext.cmd.setPipelines(rest.exceptInitializers())
-	a.commandContext.initializeCore(c)
+
+	return nil
+}
+
+func (a *appContext) factoryInitRootCommand(c *Context) error {
+	a.commandContext.cmd = a.app.rootCommandCreator()
+	if err := executeAll(c, defaultApp.Initializers); err != nil {
+		return err
+	}
+
+	a.commandContext.cmd.setPipelines(&actionPipelines{})
 	return nil
 }
 

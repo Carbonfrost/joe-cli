@@ -155,6 +155,25 @@ var _ = Describe("App", func() {
 		})
 	})
 
+	Describe("NewApp", func() {
+
+		It("runs default app pipeline (such as setting up app version flag)", func() {
+			var (
+				version *cli.Flag
+			)
+			app := cli.NewApp(&cli.Command{
+				Name: "app",
+				Action: func(c *cli.Context) {
+					version, _ = c.App().Flag("version")
+				},
+			})
+
+			err := app.RunContext(context.TODO(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(version).ToNot(BeNil())
+		})
+	})
+
 	Describe("i/o", func() {
 
 		It("sets up default I/O from standard files", func() {
