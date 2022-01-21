@@ -187,6 +187,25 @@ var _ = Describe("middleware", func() {
 				})
 			})
 
+			Context("when unset", func() {
+				BeforeEach(func() {
+					arguments = "app"
+					flags = []*cli.Flag{
+						{
+							Name:    "dir",
+							Value:   cli.String(),
+							Options: cli.WorkingDirectory,
+						},
+					}
+				})
+
+				It("WorkingDirectory does nothing", func() {
+					Expect(os.Getwd()).To(Equal(original))
+				})
+
+				// It also generates no error (this is checked in JustBeforeEach for the context)
+			})
+
 			Context("File flag", func() {
 				BeforeEach(func() {
 					flags = []*cli.Flag{

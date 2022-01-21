@@ -367,8 +367,11 @@ func mustExistOption(c *Context) error {
 }
 
 func workingDirectoryOption(c *Context) error {
-	newDir := fmt.Sprint(c.Value(""))
-	return os.Chdir(newDir)
+	if c.Seen("") {
+		newDir := fmt.Sprint(c.Value(""))
+		return os.Chdir(newDir)
+	}
+	return nil
 }
 
 func optionalOption(c *Context) error {
