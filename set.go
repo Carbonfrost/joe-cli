@@ -385,6 +385,7 @@ func (e argCountError) Error() string {
 		return "no more arguments to take"
 	case argExpectedMore:
 		return "more arguments expected"
+	case _argStartSoftErrors: // to please exhaustive
 	}
 	panic("unreachable!")
 }

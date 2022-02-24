@@ -119,6 +119,8 @@ func (e ErrorCode) String() string {
 	switch e {
 	case UnexpectedArgument:
 		return "unexpected argument"
+	case ExpectedArgument:
+		return "expected argument"
 	case CommandNotFound:
 		return "is not a command"
 	case UnknownOption:
