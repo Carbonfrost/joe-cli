@@ -27,6 +27,15 @@ type ActionPipeline struct {
 	items []Action
 }
 
+// Setup provides simple initialization, typically used in Uses pipeline.  The Setup action
+// will add the specified actions to the Before, main, and After action.
+type Setup struct {
+	Initialize interface{}
+	Before     interface{}
+	Action     interface{}
+	After      interface{}
+}
+
 type target interface {
 	hookAfter(pattern string, handler Action) error
 	hookBefore(pattern string, handler Action) error
@@ -122,6 +131,22 @@ var (
 
 	cantHookError = errors.New("hooks are not supported in this context")
 )
+
+func (s Setup) Execute(c *Context) error {
+	if err := c.act(s.Initialize, InitialTiming); err != nil {
+		return err
+	}
+	if err := c.Before(s.Before); err != nil {
+		return err
+	}
+	if err := c.Action(s.Action); err != nil {
+		return err
+	}
+	if err := c.After(s.After); err != nil {
+		return err
+	}
+	return nil
+}
 
 // Pipeline combines various actions into a single action
 func Pipeline(actions ...interface{}) *ActionPipeline {
@@ -498,4 +523,5 @@ func unwind(x Action) []Action {
 
 var (
 	_ actionWithTiming = withTimingWrapper{}
+	_ Action           = Setup{}
 )

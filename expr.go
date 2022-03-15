@@ -183,12 +183,13 @@ func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
 		}
 	}
 
-	return Initializer(ActionFunc(func(c *Context) error {
-		c.Arg().Value = &exprPipeline{
-			boundContext: c,
-		}
-
-		return c.Action(ActionFunc(func(c *Context) error {
+	return Setup{
+		Initialize: func(c *Context) {
+			c.Arg().Value = &exprPipeline{
+				boundContext: c,
+			}
+		},
+		Action: ActionFunc(func(c *Context) error {
 			exprs, err := exprFunc(c)
 			if err != nil {
 				return err
@@ -197,8 +198,8 @@ func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
 			pipe := c.Value("").(*exprPipeline)
 			fac := newExprPipelineFactory(exprs)
 			return pipe.applyFactory(c, fac)
-		}))
-	}))
+		}),
+	}
 }
 
 // NewExprBinding creates an expression binding.  The ev parameter is how
