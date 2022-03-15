@@ -413,13 +413,6 @@ func allowFlag(arg string, possibleFlag bool) bool {
 	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
 }
 
-func (o *internalOption) split(text string, delim string) []string {
-	if o.flags.disableSplitting() {
-		return []string{text}
-	}
-	return splitWithEscapes(text, delim, -1)
-}
-
 func (o *internalOption) Seen() bool {
 	return o.count > 0
 }

@@ -53,4 +53,31 @@ func Quote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
 }
 
+// SplitList considers escape sequences when splitting.  sep must not
+// be empty string
+func SplitList(s, sep string, n int) []string {
+	if strings.Contains(s, "\\") {
+		regex := regexp.MustCompile(`(^|[^\\])` + regexp.QuoteMeta(sep))
+		matches := regex.FindAllStringSubmatchIndex(s, n)
+
+		if len(matches) == 0 {
+			return []string{s}
+		}
+
+		unquote := func(x string) string {
+			return strings.ReplaceAll(x, "\\", "")
+		}
+		res := make([]string, 0)
+
+		var last int
+		for _, match := range matches {
+			res = append(res, unquote(s[last:match[1]-1]))
+			res = append(res, unquote(s[match[2]+1+1:]))
+			last = match[2] + 1 + 1
+		}
+		return res
+	}
+	return strings.SplitN(s, sep, n)
+}
+
 var unsafeShlexChars = regexp.MustCompile(`[^\w@%+=:,./-]`)

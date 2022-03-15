@@ -162,7 +162,161 @@ func BigFloat() **big.Float {
 	return new(*big.Float)
 }
 
-func (g *generic) Set(value string, opt *internalOption) error {
+// Set will set the destination value if supported.  If the destination value is not supported,
+// this panics.  See the overview for Value for which destination types are supported.
+// No additional splitting is performed on arguments.
+func Set(dest interface{}, args ...string) error {
+	for _, arg := range args {
+		err := setCore(dest, true, arg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool)) bool {
+	switch p := dest.(type) {
+	case *bool:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(bool)
+			return true
+		}
+		return false
+	case *string:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(string)
+			return true
+		}
+		return false
+	case *[]string:
+		if v, ok := trySetOptional(); ok {
+			*p = v.([]string)
+			return true
+		}
+		return false
+	case *map[string]string:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(map[string]string)
+			return true
+		}
+		return false
+	case *int:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int)
+			return true
+		}
+		return false
+	case *int8:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int8)
+			return true
+		}
+		return false
+	case *int16:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int16)
+			return true
+		}
+		return false
+	case *int32:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int32)
+			return true
+		}
+		return false
+	case *int64:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(int64)
+			return true
+		}
+		return false
+	case *uint:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint)
+			return true
+		}
+		return false
+	case *uint8:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint8)
+			return true
+		}
+		return false
+	case *uint16:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint16)
+			return true
+		}
+		return false
+	case *uint32:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint32)
+			return true
+		}
+		return false
+	case *uint64:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(uint64)
+			return true
+		}
+		return false
+	case *float32:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(float32)
+			return true
+		}
+		return false
+	case *float64:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(float64)
+			return true
+		}
+		return false
+	case *time.Duration:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(time.Duration)
+			return true
+		}
+		return false
+	case **url.URL:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*url.URL)
+			return true
+		}
+		return false
+
+	case *net.IP:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(net.IP)
+			return true
+		}
+		return false
+
+	case **regexp.Regexp:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*regexp.Regexp)
+			return true
+		}
+		return false
+	case **big.Int:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*big.Int)
+			return true
+		}
+		return false
+	case **big.Float:
+		if v, ok := trySetOptional(); ok {
+			*p = v.(*big.Float)
+			return true
+		}
+		return false
+	}
+	return false
+}
+
+// setCore sets the variable; no additional splitting is applied
+func setCore(dest interface{}, disableSplitting bool, value string) error {
 	strconvErr := func(err error) error {
 		if e, ok := err.(*strconv.NumError); ok {
 			switch e.Err {
@@ -174,21 +328,16 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		}
 		return err
 	}
-	trySetOptional := func() (interface{}, bool) {
-		return opt.optionalValue, (value == "" && opt.optional)
+	values := func() []string {
+		if disableSplitting {
+			return []string{value}
+		}
+		return SplitList(value, ",", -1)
 	}
-
-	if opt.Occurrences() <= 1 {
-		g.applyValueConventions(opt.flags)
-	}
-	switch p := g.p.(type) {
+	switch p := dest.(type) {
 	case Value:
 		return p.Set(value)
 	case *bool:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(bool)
-			return nil
-		}
 		var err error
 		*p, err = parseBool(value)
 		if err != nil {
@@ -196,29 +345,17 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		}
 		return nil
 	case *string:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(string)
-			return nil
-		}
 		*p = value
 		return nil
 	case *[]string:
-		if v, ok := trySetOptional(); ok {
-			*p = v.([]string)
-			return nil
-		}
-		a := opt.split(value, ",")
-		*p = append(*p, a...)
+
+		*p = append(*p, values()...)
+
 		return nil
 	case *map[string]string:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(map[string]string)
-			return nil
-		}
-		text := value
 		var key, value string
-		for _, kvp := range opt.split(text, ",") {
-			k := splitWithEscapes(kvp, "=", 2)
+		for _, kvp := range values() {
+			k := SplitList(kvp, "=", 2)
 			switch len(k) {
 			case 2:
 				key = k[0]
@@ -234,140 +371,84 @@ func (g *generic) Set(value string, opt *internalOption) error {
 
 		return nil
 	case *int:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int)
-			return nil
-		}
 		i64, err := strconv.ParseInt(value, 0, strconv.IntSize)
 		if err == nil {
 			*p = int(i64)
 		}
 		return strconvErr(err)
 	case *int8:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int8)
-			return nil
-		}
 		i64, err := strconv.ParseInt(value, 0, 8)
 		if err == nil {
 			*p = int8(i64)
 		}
 		return strconvErr(err)
 	case *int16:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int16)
-			return nil
-		}
 		i64, err := strconv.ParseInt(value, 0, 16)
 		if err == nil {
 			*p = int16(i64)
 		}
 		return strconvErr(err)
 	case *int32:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int32)
-			return nil
-		}
 		i64, err := strconv.ParseInt(value, 0, 32)
 		if err == nil {
 			*p = int32(i64)
 		}
 		return strconvErr(err)
 	case *int64:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int64)
-			return nil
-		}
 		i64, err := strconv.ParseInt(value, 0, 64)
 		if err == nil {
 			*p = i64
 		}
 		return strconvErr(err)
 	case *uint:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint)
-			return nil
-		}
 		u64, err := strconv.ParseUint(value, 0, strconv.IntSize)
 		if err == nil {
 			*p = uint(u64)
 		}
 		return strconvErr(err)
 	case *uint8:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint8)
-			return nil
-		}
 		u64, err := strconv.ParseUint(value, 0, 8)
 		if err == nil {
 			*p = uint8(u64)
 		}
 		return strconvErr(err)
 	case *uint16:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint16)
-			return nil
-		}
 		u64, err := strconv.ParseUint(value, 0, 16)
 		if err == nil {
 			*p = uint16(u64)
 		}
 		return strconvErr(err)
 	case *uint32:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint32)
-			return nil
-		}
 		u64, err := strconv.ParseUint(value, 0, 32)
 		if err == nil {
 			*p = uint32(u64)
 		}
 		return strconvErr(err)
 	case *uint64:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint64)
-			return nil
-		}
 		u64, err := strconv.ParseUint(value, 0, 64)
 		if err == nil {
 			*p = u64
 		}
 		return strconvErr(err)
 	case *float32:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(float32)
-			return nil
-		}
 		f64, err := strconv.ParseFloat(value, 32)
 		if err == nil {
 			*p = float32(f64)
 		}
 		return strconvErr(err)
 	case *float64:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(float64)
-			return nil
-		}
 		f64, err := strconv.ParseFloat(value, 64)
 		if err == nil {
 			*p = f64
 		}
 		return strconvErr(err)
 	case *time.Duration:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(time.Duration)
-			return nil
-		}
 		v, err := time.ParseDuration(value)
 		if err == nil {
 			*p = v
 		}
 		return err
 	case **url.URL:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*url.URL)
-			return nil
-		}
 		v, err := url.Parse(value)
 		if err == nil {
 			*p = v
@@ -375,10 +456,6 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		return err
 
 	case *net.IP:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(net.IP)
-			return nil
-		}
 		v := net.ParseIP(value)
 		if v != nil {
 			*p = v
@@ -387,20 +464,12 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		return errors.New("not a valid IP address")
 
 	case **regexp.Regexp:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*regexp.Regexp)
-			return nil
-		}
 		v, err := regexp.Compile(value)
 		if err == nil {
 			*p = v
 		}
 		return err
 	case **big.Int:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*big.Int)
-			return nil
-		}
 		v := new(big.Int)
 		if _, ok := v.SetString(value, 10); ok {
 			*p = v
@@ -408,17 +477,27 @@ func (g *generic) Set(value string, opt *internalOption) error {
 		}
 		return strconvErr(errors.New("conversion failed"))
 	case **big.Float:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*big.Float)
-			return nil
-		}
 		v, _, err := big.ParseFloat(value, 10, 53, big.ToZero)
 		if err == nil {
 			*p = v
 		}
 		return strconvErr(err)
 	}
-	panic("unreachable!")
+	panic(fmt.Sprintf("unsupported flag type: %T", value))
+}
+
+func (g *generic) Set(value string, opt *internalOption) error {
+	if opt.Occurrences() <= 1 {
+		g.applyValueConventions(opt.flags)
+	}
+
+	if trySetOptional(g.p, func() (interface{}, bool) {
+		return opt.optionalValue, (value == "" && opt.optional)
+	}) {
+		return nil
+	}
+
+	return setCore(g.p, opt.flags.disableSplitting(), value)
 }
 
 func (g *generic) String() string {
@@ -657,31 +736,4 @@ func parseBool(value string) (bool, error) {
 	default:
 		return false, fmt.Errorf("invalid value for bool %q", value)
 	}
-}
-
-// splitWithEscapes considers escape sequences when splitting.  sep must not
-// be empty string
-func splitWithEscapes(s, sep string, n int) []string {
-	if strings.Contains(s, "\\") {
-		regex := regexp.MustCompile(`(^|[^\\])` + regexp.QuoteMeta(sep))
-		matches := regex.FindAllStringSubmatchIndex(s, n)
-
-		if len(matches) == 0 {
-			return []string{s}
-		}
-
-		unquote := func(x string) string {
-			return strings.ReplaceAll(x, "\\", "")
-		}
-		res := make([]string, 0)
-
-		var last int
-		for _, match := range matches {
-			res = append(res, unquote(s[last:match[1]-1]))
-			res = append(res, unquote(s[match[2]+1+1:]))
-			last = match[2] + 1 + 1
-		}
-		return res
-	}
-	return strings.SplitN(s, sep, n)
 }
