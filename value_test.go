@@ -439,6 +439,12 @@ var _ = Describe("Lookup", func() {
 				func(lk cli.Lookup) interface{} { return lk.BigInt("a") },
 				BeAssignableToTypeOf(&big.Int{}),
 			),
+			Entry(
+				"Value auto dereference",
+				&hasDereference{v: &big.Int{}},
+				func(lk cli.Lookup) interface{} { return lk.Value("a") },
+				BeAssignableToTypeOf(&big.Int{}),
+			),
 		)
 	})
 
@@ -585,4 +591,14 @@ func (*customValue) String() string            { return "" }
 func (c *customValue) Initializer() cli.Action { return c.init }
 func (c *customValue) DisableSplitting() {
 	c.calledDisableSplitting = true
+}
+
+type hasDereference struct {
+	v interface{}
+}
+
+func (*hasDereference) Set(string) error { return nil }
+func (*hasDereference) String() string   { return "" }
+func (d *hasDereference) Value() interface{} {
+	return d.v
 }

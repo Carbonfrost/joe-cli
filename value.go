@@ -19,18 +19,22 @@ import (
 // same as flag.Value.  Values can implement additional methods by convention which are called
 // on the first occurrence of a value being set
 //
-// * DisableSplitting()   called when the option has set the DisableSplitting option, which
-//      indicates that commas shouldn't be treated as list separators
+// * DisableSplitting()        called when the option has set the DisableSplitting option, which
+//                             indicates that commas shouldn't be treated as list separators
 //
-// * Reset()              called on first occurrence of setting a value.  This can be used to reset lists
-//       to empty when the Merge option has not been set
+// * Reset()                   called on first occurrence of setting a value.  This can be used to reset lists
+//                             to empty when the Merge option has not been set
 //
 // * NewCounter() ArgCounter   if provided, this method is consulted to obtain the arg counter if NArg is unset
 //
 // * Initializer() Action      obtains an initialization action for the value which is called after initialization
-//      of the flag or arg
+//                             of the flag or arg
 //
+// * Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
+
 type Value = flag.Value
+
+//counterfeiter:generate . Value
 
 // Conventions for values
 
@@ -48,6 +52,10 @@ type valueProvidesCounter interface {
 
 type valueInitializer interface {
 	Initializer() Action
+}
+
+type valueDereference interface {
+	Value() interface{}
 }
 
 type generic struct {
@@ -699,6 +707,9 @@ func wrapGeneric(v interface{}) *generic {
 
 func dereference(v interface{}) interface{} {
 	if _, ok := v.(Value); ok {
+		if d, ok := v.(valueDereference); ok {
+			return d.Value()
+		}
 		return v
 	}
 
