@@ -36,6 +36,17 @@ type Value = flag.Value
 
 //counterfeiter:generate . Value
 
+// NameValue encapsulates a name-value pair.  This is a flag value specified
+// using the syntax name=value.  When only the name is specified, this is interpreted
+// as setting value to the constant true.  This allows disambiguating the syntax
+// name= explicitly setting value to blank.
+type NameValue struct {
+	// Name in the name-value pair
+	Name string
+	// Value in the name-value pair
+	Value string
+}
+
 // Conventions for values
 
 type valueDisableSplitting interface {
@@ -168,6 +179,23 @@ func BigInt() **big.Int {
 
 func BigFloat() **big.Float {
 	return new(*big.Float)
+}
+
+// NameValues creates a list of name-value pairs, optionally specifying the values to
+// set
+func NameValues(namevalue ...string) *[]*NameValue {
+	if len(namevalue)%2 != 0 {
+		panic("unexpected number of arguments")
+	}
+
+	res := make([]*NameValue, 0, len(namevalue)/2)
+	for i := 0; i < len(namevalue); i += 2 {
+		res = append(res, &NameValue{
+			Name:  namevalue[i],
+			Value: namevalue[i+1],
+		})
+	}
+	return &res
 }
 
 // Set will set the destination value if supported.  If the destination value is not supported,
@@ -356,9 +384,7 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		*p = value
 		return nil
 	case *[]string:
-
 		*p = append(*p, values()...)
-
 		return nil
 	case *map[string]string:
 		var key, value string
@@ -378,6 +404,16 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		}
 
 		return nil
+	case *[]*NameValue:
+		for _, kvp := range values() {
+			nvp := new(NameValue)
+			if err := nvp.Set(kvp); err != nil {
+				return err
+			}
+			*p = append(*p, nvp)
+		}
+		return nil
+
 	case *int:
 		i64, err := strconv.ParseInt(value, 0, strconv.IntSize)
 		if err == nil {
@@ -491,7 +527,29 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		}
 		return strconvErr(err)
 	}
-	panic(fmt.Sprintf("unsupported flag type: %T", value))
+	panic(fmt.Sprintf("unsupported flag type: %T", dest))
+}
+
+// Set will set the value
+func (v *NameValue) Set(arg string) error {
+	var key, value string
+	k := SplitList(arg, "=", 2)
+	switch len(k) {
+	case 2:
+		key = k[0]
+		value = k[1]
+	case 1:
+		key = k[0]
+		value = "true"
+	}
+	v.Name = key
+	v.Value = value
+	return nil
+}
+
+// String obtains the string representation of the name-value pair
+func (v *NameValue) String() string {
+	return Quote(v.Name + "=" + v.Value)
 }
 
 func (g *generic) Set(value string, opt *internalOption) error {
@@ -544,6 +602,8 @@ func (g *generic) String() string {
 		return genericString(*p)
 	case *map[string]string:
 		return genericString(*p)
+	case *[]*NameValue:
+		return genericString(p)
 	case **url.URL:
 		return genericString(*p)
 	case *net.IP:
@@ -574,6 +634,9 @@ func (g *generic) applyValueConventions(flags internalFlags) {
 
 		case *[]string:
 			*p = nil
+
+		case *[]*NameValue:
+			*p = []*NameValue{}
 
 		case *map[string]string:
 			*p = map[string]string{}
@@ -658,6 +721,8 @@ func genericString(v interface{}) string {
 		return p.String()
 	case map[string]string:
 		return formatMap(p)
+	case []*NameValue:
+		return formatNameValues(p)
 	case *url.URL:
 		return fmt.Sprint(p)
 	case net.IP:
@@ -689,6 +754,8 @@ func wrapGeneric(v interface{}) *generic {
 	case *time.Duration:
 		return &generic{v}
 	case *map[string]string:
+		return &generic{v}
+	case *[]*NameValue:
 		return &generic{v}
 	case **url.URL:
 		return &generic{v}
@@ -733,6 +800,23 @@ func formatMap(m map[string]string) string {
 		b.WriteString(k)
 		b.WriteString("=")
 		b.WriteString(v)
+	}
+	return b.String()
+}
+
+func formatNameValues(m []*NameValue) string {
+	var (
+		b     bytes.Buffer
+		comma bool
+	)
+	for _, v := range m {
+		if comma {
+			b.WriteString(",")
+		}
+		comma = true
+		b.WriteString(v.Name)
+		b.WriteString("=")
+		b.WriteString(v.Value)
 	}
 	return b.String()
 }

@@ -40,6 +40,10 @@ type Lookup interface {
 	List(name interface{}) []string
 	// Map obtains the value and converts it to a map
 	Map(name interface{}) map[string]string
+	// NameValue obtains the value and converts it to a name-value pair
+	NameValue(name interface{}) *NameValue
+	// NameValues obtains the value and converts it to a list of name-value pairs
+	NameValues(name interface{}) []*NameValue
 	// String obtains the value and converts it to a string
 	String(name interface{}) string
 	// UInt obtains the value and converts it to a uInt
@@ -192,6 +196,16 @@ func (c LookupValues) Map(name interface{}) map[string]string {
 	return lookupMap(c, name)
 }
 
+// NameValue obtains the value and converts it to a name-value pair
+func (c LookupValues) NameValue(name interface{}) *NameValue {
+	return lookupNameValue(c, name)
+}
+
+// NameValues obtains the value and converts it to a list of name-value pairs
+func (c LookupValues) NameValues(name interface{}) []*NameValue {
+	return lookupNameValues(c, name)
+}
+
 // URL obtains the URL for the specified name
 func (c LookupValues) URL(name interface{}) *url.URL {
 	return lookupURL(c, name)
@@ -291,6 +305,14 @@ func (c *lookupSupport) FileSet(name interface{}) *FileSet {
 
 func (c *lookupSupport) Map(name interface{}) map[string]string {
 	return lookupMap(c, name)
+}
+
+func (c *lookupSupport) NameValue(name interface{}) *NameValue {
+	return lookupNameValue(c, name)
+}
+
+func (c *lookupSupport) NameValues(name interface{}) []*NameValue {
+	return lookupNameValues(c, name)
 }
 
 func (c *lookupSupport) URL(name interface{}) *url.URL {
@@ -510,6 +532,22 @@ func lookupMap(c Lookup, name interface{}) (res map[string]string) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(map[string]string)
+	}
+	return
+}
+
+func lookupNameValue(c Lookup, name interface{}) (res *NameValue) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.(*NameValue)
+	}
+	return
+}
+
+func lookupNameValues(c Lookup, name interface{}) (res []*NameValue) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.([]*NameValue)
 	}
 	return
 }
