@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 )
 
 // ActionFunc provides the basic function for an Action
@@ -253,6 +254,22 @@ func SetContext(ctx context.Context) Action {
 	return ActionFunc(func(c *Context) error {
 		c.Context = ctx
 		return nil
+	})
+}
+
+// Timeout provides an action which adds a timeout to the context.
+func Timeout(timeout time.Duration) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.Before(func(c1 *Context) error {
+			ctx, cancel := context.WithTimeout(c1.Context, timeout)
+			return c1.Do(
+				SetContext(ctx),
+				After(ActionFunc(func(*Context) error {
+					cancel()
+					return nil
+				})),
+			)
+		})
 	})
 }
 

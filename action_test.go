@@ -727,3 +727,27 @@ var _ = Describe("HandleSignal", Ordered, func() {
 		Expect(err.Error()).To(Equal("expected output error"))
 	})
 })
+
+var _ = Describe("Timeout", func() {
+
+	It("can use context done", func() {
+		app := &cli.App{
+			Name: "any",
+			Uses: cli.Timeout(200 * time.Millisecond),
+			Action: func(c context.Context) error {
+				select {
+				case <-time.After(1 * time.Second):
+					return fmt.Errorf("expected proper timeout to be handled within action")
+				case <-c.Done():
+					return fmt.Errorf("expected output error")
+				}
+				return nil
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("expected output error"))
+	})
+})
