@@ -2,8 +2,11 @@ package cli_test
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
+	"time"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -676,5 +679,51 @@ var _ = Describe("Pipeline", func() {
 
 		Expect(act1.ExecuteCallCount()).To(Equal(1))
 		Expect(act2.ExecuteCallCount()).To(Equal(1))
+	})
+})
+
+var _ = Describe("HandleSignal", Ordered, func() {
+
+	BeforeAll(func() {
+		signal.Reset(os.Interrupt) // remove ginkgo signal handling
+	})
+
+	It("can use context done", func() {
+		proc, err := os.FindProcess(os.Getpid())
+		if err != nil {
+			Fail(err.Error())
+		}
+
+		// Simulate ^C being pressed
+		sigc := make(chan os.Signal, 1)
+		signal.Notify(sigc, os.Interrupt)
+
+		go func() {
+			<-sigc
+			signal.Stop(sigc)
+		}()
+
+		app := &cli.App{
+			Name: "any",
+			Uses: cli.HandleSignal(os.Interrupt),
+			Before: func() {
+				// Simulate user key press when app is ready
+				proc.Signal(os.Interrupt)
+			},
+			Action: func(c context.Context) error {
+				select {
+				case <-time.After(2 * time.Second):
+					return fmt.Errorf("expected signal to be handled within action before timeout")
+				case <-c.Done():
+					return fmt.Errorf("expected output error")
+				}
+				return nil
+			},
+		}
+
+		err = app.RunContext(context.Background(), []string{"app"})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("expected output error"))
 	})
 })

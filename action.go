@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 )
 
 // ActionFunc provides the basic function for an Action
@@ -246,6 +248,14 @@ func ContextValue(key, value interface{}) Action {
 	})
 }
 
+// SetContext provides an action which sets the context
+func SetContext(ctx context.Context) Action {
+	return ActionFunc(func(c *Context) error {
+		c.Context = ctx
+		return nil
+	})
+}
+
 // SetValue provides an action which sets the value of the flag or argument.
 func SetValue(v interface{}) Action {
 	return ActionFunc(func(c *Context) error {
@@ -285,6 +295,45 @@ func HookBefore(pattern string, handler Action) Action {
 func HookAfter(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.target().hookAfter(pattern, handler)
+	})
+}
+
+// HandleSignal provides an action that provides simple handling of a signal, usually os.Interrupt.
+// HandleSignal updates the Context to handle the signal by exposing the context Done() channel.
+// Compare this behavior to os/signal.NotifyContext.  Here's an example:
+//
+//       &cli.Command{
+//          Name: "command",
+//          Uses: cli.HandleSignal(os.Interrupt),
+//          Action: func(c *cli.Context) error {
+//              for {
+//                  select {
+//                  case <-c.Done():
+//                      // Ctrl+C was called
+//                      return nil
+//                  default:
+//                      // process another step, use return to exit
+//                  }
+//              }
+//          }
+//       }
+//
+// The signal handler is unregistered in the After pipeline.  The recommended approach
+// is therefore to place cleanup into After and consider using a timeout.
+// The process will be terminated when the user presses ^C for the second time:
+//
+func HandleSignal(s os.Signal) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.Before(func(c1 *Context) error {
+			ctx, stop := signal.NotifyContext(c1.Context, s)
+			return c1.Do(
+				SetContext(ctx),
+				After(ActionFunc(func(*Context) error {
+					stop()
+					return nil
+				})),
+			)
+		})
 	})
 }
 
