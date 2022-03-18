@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// Arg provides the representation of a positional argument.
 type Arg struct {
 	pipelinesSupport
 
@@ -108,8 +109,8 @@ type ArgCounter interface {
 }
 
 type argContext struct {
-	option *Arg
-	args_  []string
+	option  *Arg
+	argList []string
 }
 
 type discreteCounter struct {
@@ -136,7 +137,7 @@ const (
 	// all the remaining tokens from the command line
 	TakeRemaining = -1
 
-	// TakeRemaining is the value to use for Arg.NArg to indicate that an argument takes
+	// TakeUntilNextFlag is the value to use for Arg.NArg to indicate that an argument takes
 	// tokens from the command line until one looks like a flag.
 	TakeUntilNextFlag = -2
 )
@@ -320,7 +321,7 @@ func (o *argContext) executeAfter(ctx *Context) error {
 func (o *argContext) execute(ctx *Context) error {
 	return executeAll(ctx, o.option.uses().actualAction(), ActionOf(o.option.Action))
 }
-func (o *argContext) args() []string           { return o.args_ }
+func (o *argContext) args() []string           { return o.argList }
 func (o *argContext) set() *set                { return nil }
 func (o *argContext) target() target           { return o.option }
 func (o *argContext) setDidSubcommandExecute() {}
@@ -338,7 +339,7 @@ func (d *discreteCounter) Take(arg string, possibleFlag bool) error {
 	if d.count == 0 {
 		return EndOfArguments
 	}
-	d.count -= 1
+	d.count--
 	return nil
 }
 

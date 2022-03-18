@@ -38,14 +38,31 @@ type exitError struct {
 }
 
 const (
+	// UnexpectedArgument provides the error when an unexpected argument is encountered
 	UnexpectedArgument = ErrorCode(iota)
+
+	// CommandNotFound provides the error when the command is not found
 	CommandNotFound
+
+	// UnknownOption occurs when the option is not recognized
 	UnknownOption
+
+	// MissingArgument means that the value is required for a flag
 	MissingArgument
+
+	// InvalidArgument error represents the value for a position argument or flag not being parsable
 	InvalidArgument
+
+	// ExpectedArgument occurs when a value must be specified to a positional argument or flag
 	ExpectedArgument
+
+	// UnknownExpr represents an expression name that was not recognized
 	UnknownExpr
+
+	// ArgsMustPrecedeExprs occurs in expression parsing for unexpected arguments
 	ArgsMustPrecedeExprs
+
+	// FlagUsedAfterArgs occurs when a flag is used after a positional arg, but not allowed
 	FlagUsedAfterArgs
 )
 
@@ -237,9 +254,8 @@ func optionName(name interface{}) string {
 	case rune:
 		if n == '-' {
 			return "-"
-		} else {
-			return "-" + string(n)
 		}
+		return "-" + string(n)
 	case string:
 		return "--" + n
 	}

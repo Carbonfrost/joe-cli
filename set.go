@@ -331,7 +331,7 @@ func (s genericValues) lookupValue(name string) (interface{}, bool) {
 }
 
 func (a *argBinding) next() bool {
-	a.index += 1
+	a.index++
 	return a.index < len(a.items)
 }
 
@@ -418,7 +418,7 @@ func (o *internalOption) Seen() bool {
 }
 
 func (o *internalOption) Set(arg string) error {
-	o.count += 1
+	o.count++
 	return o.value.Set(arg, o)
 }
 

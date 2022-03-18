@@ -78,6 +78,7 @@ func newDefaultFS(in io.Reader, out io.Writer) *defaultFS {
 	return &defaultFS{&stdFile{in, out}}
 }
 
+// Set will set the name of the file
 func (f *File) Set(arg string) error {
 	f.Name = arg
 	return nil
@@ -87,10 +88,12 @@ func (f *File) String() string {
 	return f.Name
 }
 
+// Ext obtains the file extension
 func (f *File) Ext() string {
 	return filepath.Ext(f.Name)
 }
 
+// Dir obtains the directory
 func (f *File) Dir() string {
 	return filepath.Dir(f.Name)
 }
@@ -126,6 +129,7 @@ func (f *File) Walk(fn fs.WalkDirFunc) error {
 	return walkFile(f.actualFS(), f.Name, fn)
 }
 
+// Initializer obtains the initializer for the File, which is used to setup the file system used
 func (f *File) Initializer() Action {
 	return ActionFunc(f.setupOptionRequireFS)
 }
@@ -144,6 +148,7 @@ func (f *File) actualFS() fsExtension {
 	return wrapFS(f.FS)
 }
 
+// Set argument value; can call repeatedly
 func (f *FileSet) Set(arg string) error {
 	if f.Files == nil {
 		f.Files = []string{}
@@ -169,6 +174,7 @@ func (f *FileSet) Exists() bool {
 	return true
 }
 
+// Reset will resets the file set to empty
 func (f *FileSet) Reset() {
 	f.Files = nil
 }
@@ -204,10 +210,12 @@ func (f *FileSet) actualFS() fsExtension {
 	return wrapFS(f.FS)
 }
 
+// NewCounter obtains the arg counter for file sets, which is implied to be TakeUntilNextFlag
 func (f *FileSet) NewCounter() ArgCounter {
-	return ArgCount(-2)
+	return ArgCount(TakeUntilNextFlag)
 }
 
+// Initializer obtains the initializer for the FileSet, which is used to setup the file system used
 func (f *FileSet) Initializer() Action {
 	return ActionFunc(f.setupOptionRequireFS)
 }

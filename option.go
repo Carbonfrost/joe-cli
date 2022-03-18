@@ -225,10 +225,12 @@ func (o Option) String() string {
 	return strings.Join(res, ", ")
 }
 
+// MarshalText provides the textual representation
 func (o Option) MarshalText() ([]byte, error) {
 	return []byte(o.String()), nil
 }
 
+// UnmarshalText converts the textual representation
 func (o *Option) UnmarshalText(b []byte) error {
 	res := *o
 	for _, s := range strings.Split(string(b), ",") {
@@ -315,7 +317,7 @@ func splitOptionsHO(opts Option, fn func(Option)) {
 		}
 	}
 
-	for index := startUserOption; options != 0 && index <= int(globalOption); index += 1 {
+	for index := startUserOption; options != 0 && index <= int(globalOption); index++ {
 		current := 1 << index
 		if options&current == current {
 			fn(Option(current))

@@ -581,8 +581,8 @@ func matchFlag(field string) bool {
 func rootContext(cctx context.Context, app *App, args []string) *Context {
 	internal := &appContext{
 		commandContext: &commandContext{
-			cmd:   nil, // This will be set after initialization
-			args_: args,
+			cmd:     nil, // This will be set after initialization
+			argList: args,
 		},
 		app: app,
 	}
@@ -606,22 +606,22 @@ func newLookupSupport(t internalContext, parent lookupCore) *lookupSupport {
 
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	return c.copy(&commandContext{
-		cmd:   cmd,
-		args_: args,
+		cmd:     cmd,
+		argList: args,
 	}, true)
 }
 
 func (c *Context) flagContext(opt *Flag, args []string) *Context {
 	return c.copy(&flagContext{
-		option: opt,
-		args_:  args,
+		option:  opt,
+		argList: args,
 	}, true)
 }
 
 func (c *Context) argContext(opt *Arg, args []string) *Context {
 	return c.copy(&argContext{
-		option: opt,
-		args_:  args,
+		option:  opt,
+		argList: args,
 	}, true)
 }
 
@@ -634,9 +634,9 @@ func (c *Context) optionContext(opt option, args []string) *Context {
 
 func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
 	return c.copy(&exprContext{
-		expr:  expr,
-		args_: args,
-		set_:  data,
+		expr:    expr,
+		argList: args,
+		flagSet: data,
 	}, true)
 }
 

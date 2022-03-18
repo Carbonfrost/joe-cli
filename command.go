@@ -107,8 +107,8 @@ type command interface {
 
 type commandContext struct {
 	cmd                  *Command
-	args_                []string
-	set_                 *set
+	argList              []string
+	flagSet              *set
 	didSubcommandExecute bool
 }
 
@@ -504,12 +504,12 @@ func (c *commandContext) execute(ctx *Context) error {
 	return nil
 }
 func (c *commandContext) set() *set {
-	if c.set_ == nil {
-		c.set_ = newSet(c.cmd.internalFlags().rightToLeft())
+	if c.flagSet == nil {
+		c.flagSet = newSet(c.cmd.internalFlags().rightToLeft())
 	}
-	return c.set_
+	return c.flagSet
 }
-func (c *commandContext) args() []string { return c.args_ }
+func (c *commandContext) args() []string { return c.argList }
 func (c *commandContext) target() target { return c.cmd }
 func (c *commandContext) lookupValue(name string) (interface{}, bool) {
 	return c.set().lookupValue(name)

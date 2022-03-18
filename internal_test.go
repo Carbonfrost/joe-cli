@@ -42,8 +42,8 @@ func InitializeFlag(f *Flag) *Context {
 		Context: context.TODO(),
 	}
 	c = c.copy(&flagContext{
-		option: f,
-		args_:  []string{},
+		option:  f,
+		argList: []string{},
 	}, true)
 	c.initialize()
 	return c
@@ -54,8 +54,8 @@ func InitializeCommand(f *Command) *Context {
 		Context: context.TODO(),
 	}
 	c = c.copy(&commandContext{
-		cmd:   f,
-		args_: []string{},
+		cmd:     f,
+		argList: []string{},
 	}, true)
 	c.initialize()
 	return c

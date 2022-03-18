@@ -213,6 +213,7 @@ func (a *App) _createRootCore(force bool) *Command {
 	return a.rootCommand
 }
 
+// SetData sets the specified metadata on the app
 func (a *App) SetData(name string, v interface{}) {
 	a.ensureData()[name] = v
 }

@@ -135,6 +135,8 @@ var (
 	cantHookError = errors.New("hooks are not supported in this context")
 )
 
+// Execute executes the Setup, which assignes the various parts to their
+// pipelines
 func (s Setup) Execute(c *Context) error {
 	if err := c.act(s.Initialize, InitialTiming); err != nil {
 		return err

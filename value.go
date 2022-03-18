@@ -31,7 +31,6 @@ import (
 //                             of the flag or arg
 //
 // * Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
-
 type Value = flag.Value
 
 //counterfeiter:generate . Value
@@ -173,10 +172,12 @@ func IP() *net.IP {
 	return new(net.IP)
 }
 
+// BigInt creates a big integer value.  This is for convenience to obtain the right pointer.
 func BigInt() **big.Int {
 	return new(*big.Int)
 }
 
+// BigFloat creates a big float value.  This is for convenience to obtain the right pointer.
 func BigFloat() **big.Float {
 	return new(*big.Float)
 }

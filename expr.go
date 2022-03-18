@@ -167,9 +167,9 @@ type exprBinding struct {
 }
 
 type exprContext struct {
-	expr  *Expr
-	args_ []string
-	set_  *set
+	expr    *Expr
+	argList []string
+	flagSet *set
 }
 
 // BindExpression is an action that binds expression handling to an argument.  This
@@ -254,11 +254,11 @@ func EvaluatorOf(v interface{}) Evaluator {
 		return EvaluatorFunc(a)
 	case func(*Context, interface{}) error:
 		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
-			if err := a(c, v); err == nil {
+			err := a(c, v)
+			if err == nil {
 				return y(v)
-			} else {
-				return err
 			}
+			return err
 		})
 	case func(*Context, interface{}) bool:
 		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
@@ -278,11 +278,11 @@ func EvaluatorOf(v interface{}) Evaluator {
 		})
 	case func(interface{}) error:
 		return EvaluatorFunc(func(_ *Context, v interface{}, y func(interface{}) error) error {
-			if err := a(v); err == nil {
+			err := a(v)
+			if err == nil {
 				return y(v)
-			} else {
-				return err
 			}
+			return err
 		})
 	case func(interface{}) bool:
 		return EvaluatorFunc(func(_ *Context, v interface{}, y func(interface{}) error) error {
@@ -629,12 +629,12 @@ func (p *exprPipeline) applyFactory(c *Context, fac *exprPipelineFactory) error 
 	return err
 }
 
-func (e *exprPipeline) before(ctx *Context) error {
+func (p *exprPipeline) before(ctx *Context) error {
 	// Use the context where the expression was defined rather than where
 	// it was evaluated to process events so that the correct lineage is accessible
 	// to actions
-	c := e.boundContext
-	for _, expr := range e.items {
+	c := p.boundContext
+	for _, expr := range p.items {
 		// TODO Type coercion shouldn't be necessary, should provide args
 		if be, ok := expr.(*boundExpr); ok {
 			c.exprContext(expr.Expr(), nil, be.set).executeBeforeWithoutBubbling()
@@ -644,9 +644,9 @@ func (e *exprPipeline) before(ctx *Context) error {
 	return nil
 }
 
-func (e *exprPipeline) after(ctx *Context) error {
-	c := e.boundContext
-	for _, expr := range e.items {
+func (p *exprPipeline) after(ctx *Context) error {
+	c := p.boundContext
+	for _, expr := range p.items {
 		if be, ok := expr.(*boundExpr); ok {
 			c.exprContext(expr.Expr(), nil, be.set).executeAfterWithoutTunneling()
 		}
@@ -684,17 +684,17 @@ func (e *exprContext) executeAfter(ctx *Context) error {
 func (e *exprContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (e *exprContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (e *exprContext) execute(ctx *Context) error                 { return nil }
-func (e *exprContext) args() []string                             { return e.args_ }
+func (e *exprContext) args() []string                             { return e.argList }
 func (e *exprContext) set() *set {
-	if e.set_ == nil {
-		e.set_ = newSet(e.expr.internalFlags().rightToLeft())
+	if e.flagSet == nil {
+		e.flagSet = newSet(e.expr.internalFlags().rightToLeft())
 	}
-	return e.set_
+	return e.flagSet
 }
 func (e *exprContext) setDidSubcommandExecute() {}
 func (e *exprContext) target() target           { return e.expr }
 func (e *exprContext) lookupValue(name string) (interface{}, bool) {
-	return e.set_.lookupValue(name)
+	return e.flagSet.lookupValue(name)
 }
 func (e *exprContext) Name() string {
 	return "<-" + e.expr.Name + ">"
