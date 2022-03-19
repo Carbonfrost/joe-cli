@@ -143,7 +143,7 @@ func NewApp(cmd *Command) *App {
 // Run the application and exit using the exit handler.  This function exits using the
 // ExitHandler if an error occurs.  If you want to process the error yourself, use RunContext.
 func (a *App) Run(args []string) {
-	a.runContextCore(context.TODO(), args, func(c *Context, err error) error {
+	a.runContextCore(context.Background(), args, func(c *Context, err error) error {
 		exit(c, err)
 		return nil
 	})

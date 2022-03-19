@@ -378,11 +378,12 @@ func (c *Context) walkCore(fn WalkFunc) error {
 // Do executes the specified actions in succession.  If an action returns an error, that
 // error is returned and the rest of the actions aren't run
 func (c *Context) Do(actions ...Action) error {
+	currentTiming := c.Timing()
 	for _, a := range actions {
 		if a == nil {
 			continue
 		}
-		err := a.Execute(c)
+		err := c.act(a, timingOf(a, currentTiming))
 		if err != nil {
 			return err
 		}

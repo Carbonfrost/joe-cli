@@ -482,6 +482,64 @@ var _ = Describe("Before", func() {
 	)
 })
 
+var _ = Describe("Do", func() {
+
+	var (
+		handler cli.Action
+		err     error
+	)
+
+	JustBeforeEach(func() {
+		app := &cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "r",
+					Action: func(c *cli.Context) error {
+						return c.Do(handler)
+					},
+				},
+			},
+		}
+
+		args, _ := cli.Split("app r")
+		err = app.RunContext(context.TODO(), args)
+	})
+
+	// When Do is called on an action that has timing specified, it should
+	// be run later
+	Context("when After timing", func() {
+		var actual = new(struct {
+			IsAfter   bool
+			CallCount int
+		})
+
+		BeforeEach(func() {
+			handler = cli.After(cli.ActionFunc(func(c *cli.Context) error {
+				actual.IsAfter = c.IsAfter()
+				actual.CallCount += 1
+				return nil
+			}))
+		})
+
+		It("applies After timing if specified", func() {
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual.CallCount).To(Equal(1))
+			Expect(actual.IsAfter).To(BeTrue())
+		})
+	})
+
+	Context("when Before timing", func() {
+		BeforeEach(func() {
+			handler = cli.Before(new(joeclifakes.FakeAction))
+		})
+
+		It("applies Before timing if specified", func() {
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("too late to exec action"))
+		})
+	})
+})
+
 var _ = Describe("After", func() {
 	DescribeTable("timing examples",
 		func(arguments string, actualApp func(cli.Action) *cli.App) {
