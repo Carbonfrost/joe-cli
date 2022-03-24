@@ -25,11 +25,11 @@ type argBinding struct {
 type genericValues map[string]*generic
 
 type internalOption struct {
-	short         []rune   // 0 means no short name
-	long          []string // "" means no long name
-	isLong        bool     // True if they used the long name
-	flag          bool     // true if a boolean flag
-	optional      bool     // true if we take an optional value
+	short         []rune
+	long          []string
+	isLong        bool // True if they used the long name
+	flag          bool // true if a boolean flag
+	optional      bool // true if we take an optional value
 	value         *generic
 	count         int
 	uname         string

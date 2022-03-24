@@ -158,6 +158,32 @@ var _ = Describe("Flag", func() {
 		})
 	})
 
+	It("can set and define name and value by initializer", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Uses: func(c *cli.Context) {
+						f := c.Flag()
+						f.Name = "uses"
+						f.Value = new(bool)
+						f.Action = act
+					},
+				},
+			},
+		}
+
+		err := app.RunContext(context.TODO(), []string{"app", "--uses"})
+
+		// In particular, we expect --uses to be available and not cause usage
+		// error
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+
+		Expect(app.Flags[0].Name).To(Equal("uses"))
+	})
+
 	Context("when environment variables are set", func() {
 		var (
 			actual    string

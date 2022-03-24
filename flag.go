@@ -299,18 +299,13 @@ func (o *flagContext) initialize(c *Context) error {
 	f := o.option
 	p := f.value()
 	long, short := canonicalNames(f.Name, f.Aliases)
-	res := internalOption{
+	f.option = internalOption{
 		short: short,
 		long:  long,
 		value: wrapGeneric(p),
 		uname: f.Name,
+		flag:  isFlagType(p),
 	}
-
-	switch p.(type) {
-	case *bool:
-		res.flag = true
-	}
-	f.option = res
 
 	rest := newPipelines(ActionOf(f.Uses), f.Options, c)
 	f.setPipelines(rest)
@@ -612,4 +607,12 @@ func shortName(s []rune) string {
 		return ""
 	}
 	return string(s[0])
+}
+
+func isFlagType(p interface{}) bool {
+	switch p.(type) {
+	case *bool:
+		return true
+	}
+	return false
 }

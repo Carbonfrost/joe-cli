@@ -894,6 +894,24 @@ func setupValueInitializer(c *Context) error {
 	return nil
 }
 
+func fixupOptionInternals(c *Context) error {
+	// Because Uses pipeline could have changed Flag, copy flag internals again
+	switch o := c.target().(type) {
+	case *Flag:
+		long, short := canonicalNames(o.Name, o.Aliases)
+		o.option.short = short
+		o.option.long = long
+		o.option.uname = o.Name
+
+		p := o.value()
+		if o.Value != nil && p != o.option.value.p {
+			o.option.value = wrapGeneric(p)
+			o.option.flag = isFlagType(p)
+		}
+	}
+	return nil
+}
+
 func setupOptionFromEnv(ctx *Context) error {
 	o := ctx.option()
 	if v, ok := loadFlagValueFromEnvironment(o); ok {

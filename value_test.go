@@ -321,41 +321,47 @@ var _ = Describe("Value", func() {
 	})
 
 	Describe("DisableSplitting convention", func() {
-		cv := new(customValue)
-		app := &cli.App{
-			Name: "app",
-			Flags: []*cli.Flag{
-				{
-					Name:    "d",
-					Options: cli.DisableSplitting,
-					Value:   cv,
+
+		It("is called when DisableSplitting is set", func() {
+			cv := new(customValue)
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name:    "d",
+						Options: cli.DisableSplitting,
+						Value:   cv,
+					},
 				},
-			},
-		}
+			}
 
-		args, _ := cli.Split("app -d a")
-		app.RunContext(context.TODO(), args)
+			args, _ := cli.Split("app -d a")
+			app.RunContext(context.TODO(), args)
 
-		Expect(cv.calledDisableSplitting).To(BeTrue())
+			Expect(cv.calledDisableSplitting).To(BeTrue())
+		})
 	})
 
 	Describe("Initializer convention", func() {
-		act := new(joeclifakes.FakeAction)
-		app := &cli.App{
-			Name: "app",
-			Flags: []*cli.Flag{
-				{
-					Name: "d",
-					Value: &customValue{
-						init: act,
+
+		It("is called and invoked", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name: "d",
+						Value: &customValue{
+							init: act,
+						},
 					},
 				},
-			},
-		}
+			}
 
-		args, _ := cli.Split("app -d a")
-		app.RunContext(context.TODO(), args)
-		Expect(act.ExecuteCallCount()).To(Equal(1))
+			args, _ := cli.Split("app -d a")
+			app.RunContext(context.TODO(), args)
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
 	})
 })
 
