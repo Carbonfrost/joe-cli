@@ -906,7 +906,7 @@ func guessWidth() int {
 	fd := int(os.Stdout.Fd())
 	if term.IsTerminal(fd) {
 		width, _, err := term.GetSize(fd)
-		if err == nil && width > 12 {
+		if err == nil && width > 12 && width < 80 {
 			return width
 		}
 	}
