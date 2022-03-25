@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -789,20 +790,14 @@ func dereference(v interface{}) interface{} {
 }
 
 func formatMap(m map[string]string) string {
-	var (
-		b     bytes.Buffer
-		comma bool
-	)
+	items := make([]string, len(m))
+	var i int
 	for k, v := range m {
-		if comma {
-			b.WriteString(",")
-		}
-		comma = true
-		b.WriteString(k)
-		b.WriteString("=")
-		b.WriteString(v)
+		items[i] = k + "=" + v
+		i++
 	}
-	return b.String()
+	sort.Strings(items)
+	return strings.Join(items, ", ")
 }
 
 func formatNameValues(m []*NameValue) string {
