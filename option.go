@@ -255,7 +255,12 @@ func unmarshalText(token string) Option {
 	return None
 }
 
-func (o Option) wrap() *ActionPipeline {
+// Execute treats the options as if an action
+func (o Option) Execute(c *Context) (err error) {
+	return o.pipeline().Execute(c)
+}
+
+func (o Option) pipeline() *ActionPipeline {
 	var parts []Action
 	splitOptionsHO(o, func(current Option) {
 		action := getOptionDef(current).Action
@@ -423,5 +428,8 @@ func noOption(c *Context) error {
 	return nil
 }
 
-var _ encoding.TextMarshaler = (Option)(0)
-var _ encoding.TextUnmarshaler = (*Option)(nil)
+var (
+	_ encoding.TextMarshaler   = (Option)(0)
+	_ encoding.TextUnmarshaler = (*Option)(nil)
+	_ Action                   = (*Option)(nil)
+)

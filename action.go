@@ -419,22 +419,7 @@ func (p *ActionPipeline) Execute(c *Context) (err error) {
 	if p == nil {
 		return nil
 	}
-	for _, a := range p.items {
-		err = a.Execute(c)
-		if err != nil {
-			return
-		}
-	}
-	return nil
-}
-
-func (p *ActionPipeline) groupByTiming(c *Context) *actionPipelines {
-	res := &actionPipelines{}
-	for _, h := range p.items {
-		res.add(timingOf(h, InitialTiming), h)
-	}
-
-	return res
+	return c.Do(p.items...)
 }
 
 func (p *actionPipelines) add(t Timing, h Action) {
@@ -568,8 +553,12 @@ func pipeline(x, y Action) *ActionPipeline {
 	}
 }
 
-func newPipelines(uses Action, opts Option, c *Context) *actionPipelines {
-	return pipeline(uses, opts.wrap()).groupByTiming(c)
+func newPipelines(uses Action, opts *Option) *actionPipelines {
+	// Use a reference to the options so that if it is updated, the
+	// most recent version will apply when the pipeline actually runs
+	return &actionPipelines{
+		Initializers: Pipeline(uses, opts),
+	}
 }
 
 func unwind(x Action) []Action {

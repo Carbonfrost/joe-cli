@@ -307,7 +307,7 @@ func (o *flagContext) initialize(c *Context) error {
 		flag:  isFlagType(p),
 	}
 
-	rest := newPipelines(ActionOf(f.Uses), f.Options, c)
+	rest := newPipelines(ActionOf(f.Uses), &f.Options)
 	f.setPipelines(rest)
 	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }

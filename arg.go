@@ -302,7 +302,7 @@ func (*Arg) hookBefore(string, Action) error {
 }
 
 func (o *argContext) initialize(c *Context) error {
-	rest := newPipelines(ActionOf(o.option.Uses), o.option.Options, c)
+	rest := newPipelines(ActionOf(o.option.Uses), &o.option.Options)
 	o.option.setPipelines(rest)
 	return executeAll(c, rest.Initializers, defaultOption.Initializers)
 }

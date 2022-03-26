@@ -401,7 +401,7 @@ func (c CommandsByName) Swap(i, j int) {
 }
 
 func (c *commandContext) initialize(ctx *Context) error {
-	rest := newPipelines(ActionOf(c.cmd.Uses), c.cmd.Options, ctx)
+	rest := newPipelines(ActionOf(c.cmd.Uses), &c.cmd.Options)
 	c.cmd.setPipelines(rest)
 	return c.initializeCore(ctx)
 }

@@ -269,7 +269,7 @@ func (a *appContext) initialize(c *Context) error {
 }
 
 func (a *appContext) defaultInitRootCommand(c *Context) error {
-	rest := newPipelines(ActionOf(a.app.Uses), a.app.Options, c)
+	rest := newPipelines(ActionOf(a.app.Uses), &a.app.Options)
 
 	a.commandContext.cmd = a.app.createRoot()
 	a.commandContext.cmd.setPipelines(rest)

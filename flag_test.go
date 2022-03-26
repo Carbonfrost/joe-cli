@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -182,6 +183,31 @@ var _ = Describe("Flag", func() {
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
 		Expect(app.Flags[0].Name).To(Equal("uses"))
+	})
+
+	It("can set additional options by initializer", func() {
+		var capture bytes.Buffer
+		defer disableConsoleColor()()
+
+		app := &cli.App{
+			Name:   "app",
+			Stderr: &capture,
+			Flags: []*cli.Flag{
+				{
+					Name: "do-not-show",
+					Uses: func(c *cli.Context) {
+						c.Flag().Options |= cli.Hidden
+					},
+				},
+			},
+			Action: cli.DisplayHelpScreen(),
+		}
+
+		err := app.RunContext(context.TODO(), []string{"app"})
+
+		// In particular, we expect --do-not-show to be hidden
+		Expect(err).NotTo(HaveOccurred())
+		Expect(capture.String()).NotTo(ContainSubstring("--do-not-show"))
 	})
 
 	Context("when environment variables are set", func() {
