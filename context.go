@@ -487,6 +487,60 @@ func (c *Context) AddArg(v *Arg) error {
 	return nil
 }
 
+// AddExpr provides a convenience method that adds an Expr to the current command or app.  This
+// is only valid during the initialization phase.  An error is returned for other timings.
+func (c *Context) AddExpr(e *Expr) error {
+	if !c.IsInitializing() {
+		return errModifyAfterInit
+	}
+	if app, ok := c.app(); ok {
+		app.Exprs = append(app.Exprs, e)
+	} else {
+		c.Command().Exprs = append(c.Command().Exprs, e)
+	}
+	return nil
+}
+
+// AddFlags provides a convenience method for adding flags to the current command or app.
+func (c *Context) AddFlags(flags ...*Flag) (err error) {
+	for _, f := range flags {
+		if err = c.AddFlag(f); err != nil {
+			break
+		}
+	}
+	return
+}
+
+// AddExprs provides a convenience method for adding exprs to the current command or app.
+func (c *Context) AddExprs(exprs ...*Expr) (err error) {
+	for _, e := range exprs {
+		if err = c.AddExpr(e); err != nil {
+			break
+		}
+	}
+	return
+}
+
+// AddCommands provides a convenience method for adding commands to the current command or app.
+func (c *Context) AddCommands(commands ...*Command) (err error) {
+	for _, cmd := range commands {
+		if err = c.AddCommand(cmd); err != nil {
+			break
+		}
+	}
+	return
+}
+
+// AddArgs provides a convenience method for adding args to the current command or app.
+func (c *Context) AddArgs(args ...*Arg) (err error) {
+	for _, a := range args {
+		if err = c.AddArg(a); err != nil {
+			break
+		}
+	}
+	return
+}
+
 // Last gets the last name in the path
 func (c ContextPath) Last() string {
 	return c[len(c)-1]

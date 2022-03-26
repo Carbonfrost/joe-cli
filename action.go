@@ -399,6 +399,41 @@ func AddArg(a *Arg) Action {
 	})
 }
 
+// AddExpr provides an action which adds an expr to the command or app
+func AddExpr(v *Expr) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddExpr(v)
+	})
+}
+
+// AddFlags provides an action which adds the specified flags to the command
+func AddFlags(flags ...*Flag) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddFlags(flags...)
+	})
+}
+
+// AddArgs provides an action which adds the specified args to the command
+func AddArgs(args ...*Arg) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddArgs(args...)
+	})
+}
+
+// AddCommands provides an action which adds the specified commands to the command
+func AddCommands(commands ...*Command) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddCommands(commands...)
+	})
+}
+
+// AddExprs provides an action which adds the specified exprs to the command
+func AddExprs(exprs ...*Expr) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.AddExprs(exprs...)
+	})
+}
+
 // Execute the action by calling the function
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {
