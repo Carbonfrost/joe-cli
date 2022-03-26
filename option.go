@@ -10,7 +10,7 @@ import (
 
 // Option provides a built-in convenience configuration for flags, args, and commands.
 type Option int
-type internalFlags int
+type internalFlags uint32
 type userOption uint32
 type optionDef struct {
 	Action Action
@@ -126,6 +126,10 @@ const (
 	internalFlagDisableSplitting
 	internalFlagMerge
 	internalFlagRightToLeft
+	internalFlagSpecifiedLong // True if they specified the long name during parsing
+	internalFlagFlagOnly      // true for Flag without an argument
+	internalFlagOptional      // true if value is optional
+	internalFlagPersistent    // true when the option is a clone of a peristent parent flag
 )
 
 var (
@@ -307,6 +311,22 @@ func (f internalFlags) merge() bool {
 
 func (f internalFlags) rightToLeft() bool {
 	return f&internalFlagRightToLeft == internalFlagRightToLeft
+}
+
+func (f internalFlags) specifiedLong() bool {
+	return f&internalFlagSpecifiedLong == internalFlagSpecifiedLong
+}
+
+func (f internalFlags) flagOnly() bool {
+	return f&internalFlagFlagOnly == internalFlagFlagOnly
+}
+
+func (f internalFlags) optional() bool {
+	return f&internalFlagOptional == internalFlagOptional
+}
+
+func (f internalFlags) persistent() bool {
+	return f&internalFlagPersistent == internalFlagPersistent
 }
 
 func (u *userOption) inc() uint32 {

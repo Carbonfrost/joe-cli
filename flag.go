@@ -263,7 +263,7 @@ func (f *Flag) setOptional() {
 }
 
 func (f *Flag) setOptionalValue(v interface{}) {
-	f.option.optional = true
+	f.option.flags |= internalFlagOptional
 	f.option.optionalValue = v
 }
 
@@ -304,7 +304,7 @@ func (o *flagContext) initialize(c *Context) error {
 		long:  long,
 		value: wrapGeneric(p),
 		uname: f.Name,
-		flag:  isFlagType(p),
+		flags: isFlagType(p),
 	}
 
 	rest := newPipelines(ActionOf(f.Uses), &f.Options)
@@ -609,10 +609,10 @@ func shortName(s []rune) string {
 	return string(s[0])
 }
 
-func isFlagType(p interface{}) bool {
+func isFlagType(p interface{}) internalFlags {
 	switch p.(type) {
 	case *bool:
-		return true
+		return internalFlagFlagOnly
 	}
-	return false
+	return 0
 }

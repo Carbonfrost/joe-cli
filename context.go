@@ -657,7 +657,7 @@ func (c *Context) applySet() {
 				continue
 			}
 			f.applyToSet(set)
-			f.(*Flag).option.persistent = true
+			f.(*Flag).option.flags |= internalFlagPersistent
 		}
 	}
 	for _, a := range c.target().(*Command).actualArgs() {
@@ -827,7 +827,7 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 	bindings := ctx.internal.set().bindings
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
-			if flag.option.persistent {
+			if flag.option.flags.persistent() {
 				// This is a persistent flag that was cloned into the flag set of the current
 				// command; don't process it again
 				continue
@@ -865,7 +865,7 @@ func triggerAfterOptions(ctx *Context, opts []option) error {
 	bindings := ctx.internal.set().bindings
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
-			if flag.option.persistent {
+			if flag.option.flags.persistent() {
 				// This is a persistent flag that was cloned into the flag set of the current
 				// command; don't process it again
 				continue
@@ -906,7 +906,7 @@ func fixupOptionInternals(c *Context) error {
 		p := o.value()
 		if o.Value != nil && p != o.option.value.p {
 			o.option.value = wrapGeneric(p)
-			o.option.flag = isFlagType(p)
+			o.option.flags |= isFlagType(p)
 		}
 	}
 	return nil

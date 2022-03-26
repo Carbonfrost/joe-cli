@@ -560,7 +560,7 @@ func (g *generic) Set(value string, opt *internalOption) error {
 	}
 
 	if trySetOptional(g.p, func() (interface{}, bool) {
-		return opt.optionalValue, (value == "" && opt.optional)
+		return opt.optionalValue, (value == "" && opt.flags.optional())
 	}) {
 		return nil
 	}

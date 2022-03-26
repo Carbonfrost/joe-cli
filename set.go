@@ -27,14 +27,10 @@ type genericValues map[string]*generic
 type internalOption struct {
 	short         []rune
 	long          []string
-	isLong        bool // True if they used the long name
-	flag          bool // true if a boolean flag
-	optional      bool // true if we take an optional value
 	value         *generic
 	count         int
 	uname         string
 	narg          interface{}
-	persistent    bool        // true when the option is a clone of a persistent flag
 	optionalValue interface{} // set when blank and optional
 	flags         internalFlags
 }
@@ -221,10 +217,10 @@ Parsing:
 			if disallowFlagsAfterArgs && anyArgs {
 				return flagAfterArgError(arg[2:])
 			}
-			opt.isLong = true
+			opt.flags |= internalFlagSpecifiedLong
 			// If we require an option and did not have an =
 			// then use the next argument as an option.
-			if !opt.flag && e < 0 && !opt.optional {
+			if !opt.flags.flagOnly() && e < 0 && !opt.flags.optional() {
 				if len(args) == 0 {
 					return missingArgument(opt)
 				}
@@ -257,12 +253,12 @@ Parsing:
 			}
 
 			appendOutput(opt.uname, "-"+arg)
-			opt.isLong = false
+			opt.flags = opt.flags & (^internalFlagSpecifiedLong)
 			opt.count++
 			var value string
-			if !opt.flag {
+			if !opt.flags.flagOnly() {
 				value = arg[1+i:]
-				if value == "" && !opt.optional {
+				if value == "" && !opt.flags.optional() {
 					if len(args) == 0 {
 						return missingArgument(opt)
 					}
@@ -275,7 +271,7 @@ Parsing:
 			}
 			appendOutput(opt.uname, value)
 
-			if !opt.flag {
+			if !opt.flags.flagOnly() {
 				continue Parsing
 			}
 		}
@@ -423,7 +419,7 @@ func (o *internalOption) Set(arg string) error {
 }
 
 func (o *internalOption) Name() string {
-	if !o.isLong && len(o.short) > 0 {
+	if !o.flags.specifiedLong() && len(o.short) > 0 {
 		return "-" + string(o.short[0])
 	}
 	return "--" + o.long[0]
