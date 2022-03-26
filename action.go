@@ -246,10 +246,10 @@ func ActionOf(item interface{}) Action {
 // ContextValue provides an action which updates the context with a
 // value.
 func ContextValue(key, value interface{}) Action {
-	return ActionFunc(func(c *Context) error {
+	return Before(ActionFunc(func(c *Context) error {
 		c.Context = context.WithValue(c.Context, key, value)
 		return nil
-	})
+	}))
 }
 
 // SetContext provides an action which sets the context

@@ -22,18 +22,24 @@ var _ = Describe("middleware", func() {
 			captured  *cli.Context
 			before    cli.Action
 			flags     []*cli.Flag
+			commands  []*cli.Command
 			arguments []string
 		)
+
 		JustBeforeEach(func() {
 			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
-				Name:   "app",
-				Before: before,
-				Action: act,
-				Flags:  flags,
+				Name:     "app",
+				Before:   before,
+				Action:   act,
+				Flags:    flags,
+				Commands: commands,
 			}
-			app.RunContext(context.TODO(), arguments)
-			captured = act.ExecuteArgsForCall(0)
+			err := app.RunContext(context.TODO(), arguments)
+			Expect(err).NotTo(HaveOccurred())
+			if act.ExecuteCallCount() > 0 {
+				captured = act.ExecuteArgsForCall(0)
+			}
 		})
 
 		Context("ContextValue", func() {
@@ -50,6 +56,50 @@ var _ = Describe("middleware", func() {
 
 			It("ContextValue can set and retrieve context value via Value", func() {
 				Expect(captured.Value(privateKey("mykey"))).To(BeIdenticalTo("context value"))
+			})
+
+			Context("when defined on a command", func() {
+
+				var (
+					beforeFlag, afterFlag, flagAct *joeclifakes.FakeAction
+				)
+
+				BeforeEach(func() {
+					beforeFlag = new(joeclifakes.FakeAction)
+					afterFlag = new(joeclifakes.FakeAction)
+					flagAct = new(joeclifakes.FakeAction)
+					arguments = []string{"app", "sub", "--flag=0"}
+					commands = []*cli.Command{
+						{
+							Name: "sub",
+							Uses: cli.ContextValue(privateKey("command"), "context value"),
+							Flags: []*cli.Flag{
+								{
+									Name:   "flag",
+									Before: beforeFlag,
+									Action: flagAct,
+									After:  afterFlag,
+								},
+							},
+						},
+					}
+				})
+
+				It("makes value available to flag action", func() {
+					captured := beforeFlag.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to flag action", func() {
+					captured := afterFlag.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to flag action", func() {
+					captured := flagAct.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
+				})
+
 			})
 		})
 
