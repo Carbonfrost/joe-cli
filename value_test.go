@@ -365,6 +365,133 @@ var _ = Describe("Value", func() {
 	})
 })
 
+var _ = Describe("NameValue", func() {
+
+	Describe("Set", func() {
+		DescribeTable("examples",
+			func(args []string, expected *cli.NameValue) {
+				actual := &cli.NameValue{}
+				for _, a := range args {
+					err := actual.Set(a)
+					Expect(err).NotTo(HaveOccurred())
+				}
+				Expect(actual).To(Equal(expected))
+			},
+			Entry(
+				"nominal",
+				[]string{"name=value"},
+				&cli.NameValue{"name", "value"},
+			),
+			Entry(
+				"escaped equal sign",
+				[]string{"name\\=value=value"},
+				&cli.NameValue{"name=value", "value"},
+			),
+			Entry(
+				"separated by spaces",
+				[]string{"name", "value"},
+				&cli.NameValue{"name", "value"},
+			),
+			Entry(
+				"key only",
+				[]string{"name="},
+				&cli.NameValue{"name", ""},
+			),
+		)
+	})
+
+})
+
+var _ = Describe("NameValues", func() {
+
+	Describe("Set", func() {
+		DescribeTable("examples",
+			func(args []string, expected []*cli.NameValue) {
+				actual := cli.NameValues()
+				for _, a := range args {
+					err := cli.Set(actual, a)
+					Expect(err).NotTo(HaveOccurred())
+				}
+
+				Expect(actual).To(Equal(&expected))
+			},
+			Entry(
+				"nominal",
+				[]string{"name=value"},
+				[]*cli.NameValue{{"name", "value"}},
+			),
+			Entry(
+				"two",
+				[]string{"a=b", "c=d"},
+				[]*cli.NameValue{{"a", "b"}, {"c", "d"}},
+			),
+			Entry(
+				"inline escapes",
+				[]string{"a=b\\,c=d"},
+				[]*cli.NameValue{{"a", "b,c=d"}},
+			),
+		)
+	})
+
+})
+
+var _ = Describe("NameValueCounter", func() {
+
+	var (
+		newCounter = func() cli.ArgCounter {
+			return new(cli.NameValue).NewCounter()
+		}
+	)
+
+	DescribeTable("examples",
+		func(args []string) {
+			actual := newCounter()
+			for _, a := range args {
+				err := actual.Take(a, true)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Expect(actual.Done()).NotTo(HaveOccurred())
+		},
+		Entry(
+			"nominal",
+			[]string{"name=value"},
+		),
+		Entry(
+			"separated by spaces",
+			[]string{"name", "value"},
+		),
+		Entry(
+			"key only",
+			[]string{"name="},
+		),
+	)
+
+	DescribeTable("errors",
+		func(args []string, expected string) {
+			actual := newCounter()
+			for _, a := range args {
+				err := actual.Take(a, true)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			err := actual.Done()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(expected))
+		},
+		Entry(
+			"filter missing value",
+			[]string{"name"},
+			"filter missing value",
+		),
+		Entry(
+			"missing both",
+			[]string{},
+			"filter missing name and value",
+		),
+	)
+
+})
+
 func unwrap(v, _ interface{}) interface{} {
 	return v
 }

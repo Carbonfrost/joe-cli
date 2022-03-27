@@ -73,6 +73,10 @@ type generic struct {
 	p interface{}
 }
 
+type valuePairCounter struct {
+	count int
+}
+
 // Bool creates a bool value.  This is for convenience to obtain the right pointer.
 func Bool() *bool {
 	return new(bool)
@@ -409,8 +413,11 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 	case *[]*NameValue:
 		for _, kvp := range values() {
 			nvp := new(NameValue)
-			if err := nvp.Set(kvp); err != nil {
-				return err
+			var hasValue bool
+
+			nvp.Name, nvp.Value, hasValue = splitValuePair(kvp)
+			if !hasValue {
+				return fmt.Errorf("value required for %s", nvp.Name)
 			}
 			*p = append(*p, nvp)
 		}
@@ -532,26 +539,52 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 	panic(fmt.Sprintf("unsupported flag type: %T", dest))
 }
 
-// Set will set the value
 func (v *NameValue) Set(arg string) error {
-	var key, value string
-	k := SplitList(arg, "=", 2)
-	switch len(k) {
-	case 2:
-		key = k[0]
-		value = k[1]
-	case 1:
-		key = k[0]
-		value = "true"
+	if v.Name == "" {
+		v.Name, v.Value, _ = splitValuePair(arg)
+	} else {
+		v.Value = arg
 	}
-	v.Name = key
-	v.Value = value
 	return nil
 }
 
 // String obtains the string representation of the name-value pair
 func (v *NameValue) String() string {
 	return Quote(v.Name + "=" + v.Value)
+}
+
+func (v *NameValue) NewCounter() ArgCounter {
+	return &valuePairCounter{}
+}
+
+func (v *valuePairCounter) Done() error {
+	switch v.count {
+	case 0:
+		return errors.New("filter missing name and value")
+	case 1:
+		return errors.New("filter missing value")
+	}
+	return nil
+}
+
+func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
+	switch v.count {
+	case 0:
+		if _, _, hasValue := splitValuePair(arg); hasValue {
+			v.count += 2
+		} else {
+			v.count += 1
+		}
+		return nil
+	case 1:
+		v.count += 1
+		return nil
+	case 2:
+		v.count += 1
+		return EndOfArguments
+	}
+
+	return errors.New("too many arguments to filter")
 }
 
 func (g *generic) Set(value string, opt *internalOption) error {
@@ -827,4 +860,12 @@ func parseBool(value string) (bool, error) {
 	default:
 		return false, fmt.Errorf("invalid value for bool %q", value)
 	}
+}
+
+func splitValuePair(arg string) (k, v string, hasValue bool) {
+	a := SplitList(arg, "=", 2)
+	if len(a) == 1 {
+		return a[0], "true", false
+	}
+	return a[0], a[1], true
 }
