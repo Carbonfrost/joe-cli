@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"time"
 )
 
@@ -47,6 +48,7 @@ type target interface {
 	SetData(name string, v interface{})
 	setInternalFlags(internalFlags)
 	internalFlags() internalFlags
+	ensureData() map[string]interface{}
 }
 
 type hooksSupport struct {
@@ -111,6 +113,7 @@ var (
 		After: Pipeline(
 			ActionFunc(triggerAfterArgs),
 			ActionFunc(triggerAfterFlags),
+			ActionFunc(failWithContextError),
 		),
 	}
 
@@ -164,6 +167,41 @@ func Pipeline(actions ...interface{}) *ActionPipeline {
 	return &ActionPipeline{myActions}
 }
 
+// SuppressError wraps an action to ignore its error.
+func SuppressError(a Action) Action {
+	return ActionFunc(func(c *Context) error {
+		a.Execute(c)
+		return nil
+	})
+}
+
+// Recover wraps an action to recover from a panic
+func Recover(a Action) Action {
+	return ActionFunc(func(c *Context) error {
+		defer func() {
+			if rvr := recover(); rvr != nil {
+				c.SetData("_panicRecovered", fmt.Sprint(rvr))
+				c.SetData("_panicStack", formatStack())
+			}
+		}()
+		return a.Execute(c)
+	})
+}
+
+func formatStack() string {
+	return string(debug.Stack())
+}
+
+func failWithContextError(c *Context) error {
+	if rvr, ok := c.Data()["_panicStack"]; ok {
+		fmt.Fprintf(c.Stderr, rvr.(string))
+	}
+	if rvr, ok := c.Data()["_panicRecovered"]; ok {
+		return fmt.Errorf(rvr.(string))
+	}
+	return nil
+}
+
 // Before revises the timing of the action so that it runs in the Before pipeline.
 // This function is used to wrap actions in the initialization pipeline that will be
 // deferred until later.
@@ -207,7 +245,7 @@ func withTiming(a Action, t Timing) Action {
 //   * func()
 //   * Action
 //
-// Any other type causes a panic
+// Any other type causes a panic.
 func ActionOf(item interface{}) Action {
 	switch a := item.(type) {
 	case nil:
@@ -288,7 +326,7 @@ func SetValue(v interface{}) Action {
 // set up inside a Uses pipeline.
 func Data(name string, value interface{}) Action {
 	return ActionFunc(func(c *Context) error {
-		c.target().SetData(name, value)
+		c.SetData(name, value)
 		return nil
 	})
 }

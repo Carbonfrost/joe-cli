@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -857,5 +858,25 @@ var _ = Describe("Timeout", func() {
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("expected output error"))
+	})
+})
+
+var _ = Describe("Recover", func() {
+
+	It("will print out the debug stack", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "any",
+			Stderr: &capture,
+			Action: cli.Recover(cli.ActionFunc(func(c *cli.Context) error {
+				panic("panic in action")
+			})),
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("panic in action"))
+		Expect(capture.String()).To(ContainSubstring("runtime/debug.Stack()"))
 	})
 })

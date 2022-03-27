@@ -289,6 +289,16 @@ func (c *Context) Value(name interface{}) interface{} {
 	}
 }
 
+// Data gets the data on the current context
+func (c *Context) Data() map[string]interface{} {
+	return c.target().ensureData()
+}
+
+// SetData sets data on the current target
+func (c *Context) SetData(name string, v interface{}) {
+	c.target().SetData(name, v)
+}
+
 func (c *Context) nameToString(name interface{}) string {
 	switch v := name.(type) {
 	case rune, string, nil, *Arg, *Flag:
