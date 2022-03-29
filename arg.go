@@ -253,7 +253,7 @@ func (a *Arg) wrapAction(fn func(Action) ActionFunc) {
 }
 
 func (a *Arg) applyToSet(s *set) {
-	s.defineArg(a.Name, a.value(), a.NArg, &a.option)
+	s.defineArg(&a.option)
 	a.Name = a.option.uname
 }
 
@@ -302,6 +302,13 @@ func (*Arg) hookBefore(string, Action) error {
 }
 
 func (o *argContext) initialize(c *Context) error {
+	a := o.option
+	a.option = internalOption{
+		value: wrapGeneric(a.value()),
+		narg:  a.NArg,
+		uname: a.Name,
+	}
+
 	rest := newPipelines(ActionOf(o.option.Uses), &o.option.Options)
 	o.option.setPipelines(rest)
 	return executeAll(c, rest.Initializers, defaultOption.Initializers)

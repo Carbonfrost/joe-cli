@@ -296,19 +296,12 @@ func (s *set) defineFlag(res *internalOption) {
 	s.values[res.uname] = res.value
 }
 
-func (s *set) defineArg(name string, v interface{}, narg interface{}, res *internalOption) {
-	if name == "" {
-		name = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
-	}
-	gen := wrapGeneric(v)
-	*res = internalOption{
-		value: gen,
-		narg:  narg,
-		uname: name,
-		flags: res.flags,
+func (s *set) defineArg(res *internalOption) {
+	if res.uname == "" {
+		res.uname = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
 	}
 
-	s.values[name] = gen
+	s.values[res.uname] = res.value
 	s.positionalOptions = append(s.positionalOptions, res)
 }
 
@@ -435,6 +428,9 @@ func (o *internalOption) Occurrences() int {
 
 func (o *internalOption) actualArgCounter() ArgCounter {
 	if o.narg == nil {
+		if o.value == nil || o.value.p == nil {
+			return ArgCount(0)
+		}
 		switch value := o.value.p.(type) {
 		case *[]string:
 			return ArgCount(TakeUntilNextFlag)

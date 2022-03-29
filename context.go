@@ -972,6 +972,11 @@ func fixupOptionInternals(c *Context) error {
 			o.option.value = wrapGeneric(p)
 			o.option.flags |= isFlagType(p)
 		}
+	case *Arg:
+		p := o.value()
+		if o.Value != nil && p != o.option.value.p {
+			o.option.value = wrapGeneric(p)
+		}
 	}
 	return nil
 }
