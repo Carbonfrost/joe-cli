@@ -212,12 +212,15 @@ var _ = Describe("Flag", func() {
 
 	Context("when environment variables are set", func() {
 		var (
-			actual    string
-			arguments string
+			actual     string
+			arguments  string
+			beforeFlag *joeclifakes.FakeAction
 		)
 
 		BeforeEach(func() {
-			arguments = "app "
+			actual = ""
+			arguments = "app"
+			beforeFlag = new(joeclifakes.FakeAction)
 		})
 
 		JustBeforeEach(func() {
@@ -227,6 +230,7 @@ var _ = Describe("Flag", func() {
 						Name:    "f",
 						EnvVars: []string{"_GOCLI_F"},
 						Value:   &actual,
+						Before:  beforeFlag,
 					},
 				},
 			}
@@ -247,6 +251,21 @@ var _ = Describe("Flag", func() {
 
 			It("sets up value from option", func() {
 				Expect(actual).To(Equal("option text"))
+			})
+		})
+
+		Context("when accessed in the Before pipeline", func() {
+			BeforeEach(func() {
+				arguments = "app"
+				beforeFlag.ExecuteStub = func(c *cli.Context) error {
+					Expect(c.Value("f")).To(Equal("environment value"))
+					return nil
+				}
+			})
+
+			It("sets up value from option", func() {
+				context := beforeFlag.ExecuteArgsForCall(0)
+				Expect(context.Value("f")).To(Equal("environment value"))
 			})
 		})
 	})

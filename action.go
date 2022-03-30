@@ -121,8 +121,6 @@ var (
 		Initializers: Pipeline(
 			ActionFunc(fixupOptionInternals),
 			ActionFunc(setupValueInitializer),
-		),
-		Before: Pipeline(
 			ActionFunc(setupOptionFromEnv),
 		),
 	}
