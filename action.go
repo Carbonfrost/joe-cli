@@ -516,27 +516,6 @@ func (p *actionPipelines) exceptInitializers() *actionPipelines {
 	}
 }
 
-func (p *actionPipelines) actualBefore() Action {
-	if p == nil {
-		return nil
-	}
-	return p.Before
-}
-
-func (p *actionPipelines) actualAction() Action {
-	if p == nil {
-		return nil
-	}
-	return p.Action
-}
-
-func (p *actionPipelines) actualAfter() Action {
-	if p == nil {
-		return nil
-	}
-	return p.After
-}
-
 func (w withTimingWrapper) timing() Timing {
 	return w.t
 }

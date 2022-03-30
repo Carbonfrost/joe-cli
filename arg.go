@@ -316,18 +316,20 @@ func (o *argContext) initialize(c *Context) error {
 
 func (o *argContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses().actualBefore(), ActionOf(tt.Before), defaultOption.Before)
+	return executeAll(ctx, tt.uses().Before, ActionOf(tt.Before), defaultOption.Before)
 }
 
 func (o *argContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *argContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *argContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses().actualAfter(), ActionOf(tt.After), defaultOption.After)
+	return executeAll(ctx, tt.uses().After, ActionOf(tt.After), defaultOption.After)
 }
+
 func (o *argContext) execute(ctx *Context) error {
-	return executeAll(ctx, o.option.uses().actualAction(), ActionOf(o.option.Action))
+	return executeAll(ctx, o.option.uses().Action, ActionOf(o.option.Action))
 }
+
 func (o *argContext) args() []string           { return o.argList }
 func (o *argContext) set() *set                { return nil }
 func (o *argContext) target() target           { return o.option }
