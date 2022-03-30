@@ -126,6 +126,12 @@ type varArgsCounter struct {
 	stopOnFlags bool
 }
 
+type matchesArgsCounter struct {
+	fn    func(string) bool
+	count int
+	max   int
+}
+
 type argSynopsis struct {
 	value    string
 	multi    bool
@@ -189,6 +195,19 @@ func ArgCount(v interface{}) ArgCounter {
 		return ArgCount(0)
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", v))
+	}
+}
+
+// OptionalArg provides an argument counter which matches zero or one
+// argument using the specified function.
+func OptionalArg(fn func(string) bool) ArgCounter {
+	if fn == nil {
+		fn = func(string) bool { return true }
+	}
+	return &matchesArgsCounter{
+		fn:    fn,
+		count: 0,
+		max:   1,
 	}
 }
 
@@ -379,6 +398,19 @@ func (v *varArgsCounter) Take(arg string, possibleFlag bool) error {
 }
 
 func (*varArgsCounter) Done() error {
+	return nil
+}
+
+func (o *matchesArgsCounter) Take(arg string, possibleFlag bool) error {
+	if o.fn(arg) && o.count < o.max {
+		o.count++
+		return nil
+	}
+	o.count++
+	return EndOfArguments
+}
+
+func (*matchesArgsCounter) Done() error {
 	return nil
 }
 

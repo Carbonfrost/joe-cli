@@ -3,6 +3,7 @@ package cli_test
 import (
 	"context"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -301,6 +302,38 @@ var _ = Describe("ArgCount", func() {
 		Entry("1", 1, Not(Panic())),
 		Entry("nil", nil, Not(Panic())),
 		Entry("bad", "", Panic()),
+	)
+})
+
+var _ = Describe("OptionalArg", func() {
+	DescribeTable("examples", func(arguments string, expectedA types.GomegaMatcher, expectedB types.GomegaMatcher) {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "a",
+					NArg: cli.OptionalArg(regexp.MustCompile("hel?").MatchString),
+				},
+				{
+					Name:  "b",
+					Value: cli.List(),
+				},
+			},
+			Action: act,
+		}
+
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		context := act.ExecuteArgsForCall(0)
+		Expect(context.String("a")).To(expectedA)
+		Expect(context.List("b")).To(expectedB)
+	},
+		Entry("no argument", "app", Equal(""), BeNil()),
+		Entry("match a", "app help", Equal("help"), BeNil()),
+		Entry("no match a", "app something else", Equal(""), Equal([]string{"something", "else"})),
+		Entry("match a twice", "app help help else", Equal("help"), Equal([]string{"help", "else"})),
 	)
 })
 
