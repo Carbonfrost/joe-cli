@@ -3,6 +3,7 @@ package cli_test
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -28,6 +29,33 @@ var _ = Describe("Command", func() {
 		_ = app.RunContext(context.TODO(), args)
 		Expect(t).To(Equal("t,a,b"))
 		Expect(u).To(Equal("u"))
+	})
+
+	It("allow arguments and sub-commands", func() {
+		// to support pastiche, reversing previous behavior to require only sub-commands
+		var t string
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "scope",
+					NArg: cli.OptionalArg(regexp.MustCompile("^https?:").MatchString),
+				},
+			},
+			Commands: []*cli.Command{
+				{
+					Name:   "sub",
+					Args:   cli.Args("t", &t),
+					Action: act,
+				},
+			},
+		}
+		args, _ := cli.Split("app https://example.com sub t")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(t).To(Equal("t"))
+		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 
 	Describe("actions", func() {

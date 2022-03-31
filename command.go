@@ -286,9 +286,6 @@ func (c *Command) setupDefaultArgs() {
 
 func (c *Command) ensureSubcommands() {
 	if len(c.Subcommands) > 0 {
-		if len(c.Args) > 0 {
-			panic("cannot specify subcommands and arguments")
-		}
 		c.appendArg(&Arg{
 			Name:      "command",
 			UsageText: "<command> [<args>]",
