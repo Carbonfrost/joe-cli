@@ -68,8 +68,7 @@ type Command struct {
 	// is generated that lists each visible flag and arg
 	UsageText string
 
-	didSetupDefaultArgs bool
-	flags               internalFlags
+	flags internalFlags
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -265,7 +264,6 @@ func (c *Command) appendArg(arg *Arg) *Command {
 }
 
 func (c *Command) parseAndExecuteSelf(ctx *Context) error {
-	c.setupDefaultArgs()
 	ctx.applySet()
 
 	if err := ctx.applyFlagsAndArgs(); err != nil {
@@ -275,13 +273,14 @@ func (c *Command) parseAndExecuteSelf(ctx *Context) error {
 	return ctx.executeCommand()
 }
 
-func (c *Command) setupDefaultArgs() {
-	if c.didSetupDefaultArgs {
-		return
-	}
-	c.didSetupDefaultArgs = true
-	c.ensureSubcommands()
-	c.ensureExprs()
+func ensureSubcommands(c *Context) error {
+	c.target().(*Command).ensureSubcommands()
+	return nil
+}
+
+func ensureExprs(c *Context) error {
+	c.target().(*Command).ensureExprs()
+	return nil
 }
 
 func (c *Command) ensureSubcommands() {
@@ -404,66 +403,73 @@ func (c *commandContext) initialize(ctx *Context) error {
 }
 
 func (c *commandContext) initializeCore(ctx *Context) error {
-	if err := executeAll(ctx, ActionOf(c.cmd.uses().Initializers), defaultCommand.Initializers); err != nil {
-		return err
-	}
+	return executeAll(ctx, ActionOf(c.cmd.uses().Initializers), defaultCommand.Initializers)
+}
 
+func initializeFlagsArgs(ctx *Context) error {
 	var (
-		initFlags = func(flags []*Flag) error {
+		flagStart   int
+		argStart    int
+		_, anyFlags = ctx.target().(hasFlags)
+		_, anyArgs  = ctx.target().(hasArguments)
+	)
+
+	// New flags and/or args may have been introduced, so allow these to also initialize.
+	// They can ONLY be appended to the slice, not inserted elsewhere
+	for anyFlags || anyArgs {
+		if cmd, ok := ctx.target().(hasFlags); ok {
+			flags := cmd.actualFlags()[flagStart:]
+			flagStart = len(cmd.actualFlags())
+
 			for _, sub := range flags {
 				err := ctx.flagContext(sub, nil).initialize()
 				if err != nil {
 					return err
 				}
 			}
-			return nil
+			anyFlags = len(flags) > 0
+		} else {
+			anyFlags = false
 		}
 
-		initArgs = func(args []*Arg) error {
+		if cmd, ok := ctx.target().(hasArguments); ok {
+			args := cmd.actualArgs()[argStart:]
+			argStart = len(cmd.actualArgs())
+
 			for _, sub := range args {
 				err := ctx.argContext(sub, nil).initialize()
 				if err != nil {
 					return err
 				}
 			}
-			return nil
+			anyArgs = len(args) > 0
+		} else {
+			anyArgs = false
 		}
-	)
-
-	flagCount := len(c.cmd.Flags)
-	if err := initFlags(c.cmd.Flags); err != nil {
-		return err
 	}
 
-	// New flags may have been introduced, so allow these to also initialize.
-	if err := initFlags(c.cmd.Flags[flagCount:]); err != nil {
-		return err
-	}
+	return nil
+}
 
-	argCount := len(c.cmd.Args)
-	if err := initArgs(c.cmd.Args); err != nil {
-		return err
-	}
-
-	for _, sub := range c.cmd.Exprs {
+func initializeExprs(ctx *Context) error {
+	cmd := ctx.target().(*Command)
+	for _, sub := range cmd.Exprs {
 		err := ctx.exprContext(sub, nil, nil).initialize()
 		if err != nil {
 			return err
 		}
 	}
-	c.cmd.setupDefaultArgs()
-	// New args, allow these
-	if err := initArgs(c.cmd.Args[argCount:]); err != nil {
-		return err
-	}
+	return nil
+}
 
-	for _, sub := range c.cmd.Subcommands {
+func initializeSubcommands(ctx *Context) error {
+	cmd := ctx.target().(*Command)
+	for _, sub := range cmd.Subcommands {
 		err := ctx.commandContext(sub, nil).initialize()
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 

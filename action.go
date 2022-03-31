@@ -106,6 +106,13 @@ var (
 	}
 
 	defaultCommand = actionPipelines{
+		Initializers: Pipeline(
+			ActionFunc(ensureSubcommands),
+			ActionFunc(ensureExprs),
+			ActionFunc(initializeExprs),
+			ActionFunc(initializeFlagsArgs),
+			ActionFunc(initializeSubcommands),
+		),
 		Before: Pipeline(
 			ActionFunc(triggerBeforeFlags),
 			ActionFunc(triggerBeforeArgs),
@@ -126,6 +133,9 @@ var (
 	}
 
 	defaultExpr = actionPipelines{
+		Initializers: Pipeline(
+			ActionFunc(initializeFlagsArgs),
+		),
 		Before: Pipeline(
 			ActionFunc(triggerBeforeArgs),
 		),

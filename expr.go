@@ -670,37 +670,7 @@ func (e *exprSynopsis) names() string {
 }
 
 func (e *exprContext) initialize(c *Context) error {
-	err := executeAll(c, ActionOf(e.expr.Uses), nil)
-	if err != nil {
-		return err
-	}
-	return e.initializeCore(c)
-}
-
-func (c *exprContext) initializeCore(ctx *Context) error {
-	var (
-		initArgs = func(args []*Arg) error {
-			for _, sub := range args {
-				err := ctx.argContext(sub, nil).initialize()
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	)
-
-	argCount := len(c.expr.Args)
-	if err := initArgs(c.expr.Args); err != nil {
-		return err
-	}
-
-	// New args, allow these
-	if err := initArgs(c.expr.Args[argCount:]); err != nil {
-		return err
-	}
-
-	return nil
+	return executeAll(c, ActionOf(e.expr.Uses), defaultExpr.Initializers)
 }
 
 func (e *exprContext) executeBefore(ctx *Context) error {
