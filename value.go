@@ -32,6 +32,11 @@ import (
 //                             of the flag or arg
 //
 // * Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
+//
+// * Synopsis() string         obtains the synopsis text
+//
+// * WriteSynopsis(Writer)     called to write the synopsis
+//
 type Value = flag.Value
 
 //counterfeiter:generate . Value
@@ -67,6 +72,14 @@ type valueInitializer interface {
 
 type valueDereference interface {
 	Value() interface{}
+}
+
+type valueProvidesSynopsis interface {
+	Synopsis() string
+}
+
+type valueWritesSynopsis interface {
+	WriteSynopsis(Writer)
 }
 
 type generic struct {

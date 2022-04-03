@@ -49,6 +49,7 @@ type target interface {
 	setInternalFlags(internalFlags)
 	internalFlags() internalFlags
 	ensureData() map[string]interface{}
+	WriteSynopsis(Writer)
 }
 
 type hooksSupport struct {

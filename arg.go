@@ -238,7 +238,11 @@ func (a *Arg) SetRequired() {
 
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
-	return textUsage.arg(a.newSynopsis())
+	return sprintSynopsis(a, false)
+}
+
+func (a *Arg) WriteSynopsis(w Writer) {
+	w.WriteString(a.newSynopsis().String())
 }
 
 func (a *Arg) newSynopsis() *argSynopsis {
@@ -318,6 +322,13 @@ func (*Arg) hookAfter(string, Action) error {
 
 func (*Arg) hookBefore(string, Action) error {
 	return cantHookError
+}
+
+func (a *argSynopsis) String() string {
+	if a.multi {
+		return a.value + "..."
+	}
+	return a.value
 }
 
 func (o *argContext) initialize(c *Context) error {

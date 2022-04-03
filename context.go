@@ -75,8 +75,8 @@ type contextPathPattern struct {
 
 // contextData provides data that is copied into child contexts
 type contextData struct {
-	Stdout io.Writer
-	Stderr io.Writer
+	Stdout Writer
+	Stderr Writer
 	Stdin  io.Reader
 }
 

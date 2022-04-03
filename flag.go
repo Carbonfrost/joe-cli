@@ -216,7 +216,11 @@ func (f *Flag) applyToSet(s *set) {
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
 // is inferred from the HelpText.  Up to one short and one long name will be used.
 func (f *Flag) Synopsis() string {
-	return textUsage.flag(f.synopsis(), false)
+	return sprintSynopsis(f, false)
+}
+
+func (f *Flag) WriteSynopsis(w Writer) {
+	f.synopsis().write(w, false)
 }
 
 func (f *Flag) cacheSynopsis(syn *flagSynopsis) *flagSynopsis {
@@ -293,6 +297,24 @@ func (f *flagSynopsis) names(hideAlternates bool) string {
 		return fmt.Sprintf("--%s", f.long)
 	}
 	return fmt.Sprintf("-%s, --%s", f.short, f.long)
+}
+
+func (f *flagSynopsis) write(w Writer, hideAlternates bool) {
+	sepIfNeeded := ""
+	place := f.value.placeholder
+	if len(place) > 0 {
+		sepIfNeeded = f.sep
+	}
+
+	w.SetStyle(Bold)
+	w.WriteString(f.names(hideAlternates))
+	w.Reset()
+
+	w.WriteString(sepIfNeeded)
+
+	w.SetStyle(Underline)
+	w.WriteString(place)
+	w.Reset()
 }
 
 func (o *flagContext) initialize(c *Context) error {
@@ -397,7 +419,9 @@ func placeholder(v interface{}) string {
 		return "IP"
 	case **regexp.Regexp:
 		return "PATTERN"
-	case interface{ Synopsis() string }:
+	case valueWritesSynopsis:
+		return sprintSynopsis(m, true)
+	case valueProvidesSynopsis:
 		return m.Synopsis()
 	default:
 		return "VALUE"

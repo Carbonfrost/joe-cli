@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/juju/ansiterm"
 	"github.com/juju/ansiterm/tabwriter"
 	"io"
@@ -29,11 +28,90 @@ type Template struct {
 	Debug bool
 }
 
+// Writer provides a terminal output writer which can provide access to color and styles
+type Writer interface {
+	io.Writer
+	io.StringWriter
+
+	// ClearStyle removes the corresponding style
+	ClearStyle(Style)
+	// Reset will reset to the default style
+	Reset()
+	// SetColorCapable changes whether or not the writer should use color and style control codes
+	SetColorCapable(bool)
+	// SetBackground updates the background color
+	SetBackground(Color)
+	// SetForeground updates the foreground color
+	SetForeground(Color)
+	// SetStyle updates the style
+	SetStyle(Style)
+}
+
+// Color of terminal output
+type Color = ansiterm.Color
+
+// Style of terminal output
+type Style = ansiterm.Style
+
+type stringHelper struct {
+	*ansiterm.Writer
+}
+
+type buffer struct {
+	Writer
+	res *bytes.Buffer
+}
+
+const (
+	Bold          Style = ansiterm.Bold
+	Faint               = ansiterm.Faint
+	Italic              = ansiterm.Italic
+	Underline           = ansiterm.Underline
+	Blink               = ansiterm.Blink
+	Reverse             = ansiterm.Reverse
+	Strikethrough       = ansiterm.Strikethrough
+	Conceal             = ansiterm.Conceal
+)
+
+const (
+	Default       = ansiterm.Default
+	Black         = ansiterm.Black
+	Red           = ansiterm.Red
+	Green         = ansiterm.Green
+	Yellow        = ansiterm.Yellow
+	Blue          = ansiterm.Blue
+	Magenta       = ansiterm.Magenta
+	Cyan          = ansiterm.Cyan
+	Gray          = ansiterm.Gray
+	DarkGray      = ansiterm.DarkGray
+	BrightRed     = ansiterm.BrightRed
+	BrightGreen   = ansiterm.BrightGreen
+	BrightYellow  = ansiterm.BrightYellow
+	BrightBlue    = ansiterm.BrightBlue
+	BrightMagenta = ansiterm.BrightMagenta
+	BrightCyan    = ansiterm.BrightCyan
+	White         = ansiterm.White
+)
+
+func newBuffer() *buffer {
+	res := new(bytes.Buffer)
+	return &buffer{
+		Writer: NewWriter(res),
+		res:    res,
+	}
+}
+
+// NewWriter creates a new writer
+func NewWriter(w io.Writer) Writer {
+	return &stringHelper{ansiterm.NewWriter(w)}
+}
+
 type usage struct {
 	exprs []expr
 }
 
 type expr interface {
+	exprSigil()
 }
 
 type placeholderExpr struct {
@@ -45,35 +123,7 @@ type literal struct {
 	text string
 }
 
-type usageGenerator interface {
-	command(c *commandSynopsis) []string
-	arg(a *argSynopsis) string
-	flag(f *flagSynopsis, hideAlternates bool) string
-	expr(f *exprSynopsis) string
-	value(v *valueSynopsis) string
-	helpText(u *usage) string
-}
-
-type termFormatter struct{}
-
 type placeholdersByPos []*placeholderExpr
-
-type defaultUsage struct {
-	*termFormatter
-}
-
-type csPair struct {
-	Open  string
-	Close string
-}
-
-var (
-	textUsage   = &defaultUsage{} // nil formatter disables formatting
-	modernUsage = &defaultUsage{&termFormatter{}}
-
-	bold      = namedCSPair(1, 22)
-	underline = namedCSPair(4, 24)
-)
 
 // DisplayHelpScreen displays the help screen for the specified command.  If the command
 // is nested, each sub-command is named.
@@ -267,10 +317,24 @@ func (u *usage) WithoutPlaceholders() string {
 	return b.String()
 }
 
+func (b *buffer) String() string {
+	return b.res.String()
+}
+
+func (*placeholderExpr) exprSigil() {}
+func (*literal) exprSigil()         {}
+
+func bold(s string) string {
+	res := newBuffer()
+	res.SetStyle(Bold)
+	res.WriteString(s)
+	res.Reset()
+	return res.String()
+}
+
 // bold command name, flag names
 // underline arg names, value placeholders
-
-func (d *defaultUsage) command(c *commandSynopsis) []string {
+func sprintSynopsisTokens(c *commandSynopsis, enableColor bool) []string {
 	tokens := make([]string, 0)
 
 	var (
@@ -278,17 +342,17 @@ func (d *defaultUsage) command(c *commandSynopsis) []string {
 			tokens = append(tokens, s)
 		}
 	)
-	add(d.Bold(c.name))
+	add(bold(c.name))
 
 	groups := c.flags
 	if len(groups[actionGroup]) > 0 {
-		var res bytes.Buffer
+		res := newBuffer()
 		res.WriteString("{")
 		for i, f := range groups[actionGroup] {
 			if i > 0 {
 				res.WriteString(" | ")
 			}
-			res.WriteString(d.flag(f, true))
+			f.write(res, true)
 		}
 		res.WriteString("}")
 		add(res.String())
@@ -296,7 +360,7 @@ func (d *defaultUsage) command(c *commandSynopsis) []string {
 
 	// short option list -abc
 	if len(groups[onlyShortNoValue]) > 0 {
-		var res bytes.Buffer
+		res := newBuffer()
 		res.WriteString("-")
 		for _, f := range groups[onlyShortNoValue] {
 			res.WriteString(f.short)
@@ -305,7 +369,7 @@ func (d *defaultUsage) command(c *commandSynopsis) []string {
 	}
 
 	if len(groups[onlyShortNoValueOptional]) > 0 {
-		var res bytes.Buffer
+		res := newBuffer()
 		res.WriteString("[-")
 		for _, f := range groups[onlyShortNoValueOptional] {
 			res.WriteString(f.short)
@@ -315,11 +379,17 @@ func (d *defaultUsage) command(c *commandSynopsis) []string {
 	}
 
 	for _, f := range groups[otherOptional] {
-		add("[" + d.flag(f, true) + "]")
+		res := newBuffer()
+		res.WriteString("[")
+		f.write(res, true)
+		res.WriteString("]")
+		add(res.String())
 	}
 
 	for _, f := range groups[other] {
-		add(d.flag(f, true))
+		res := newBuffer()
+		f.write(res, true)
+		add(res.String())
 	}
 
 	if c.rtl {
@@ -329,25 +399,25 @@ func (d *defaultUsage) command(c *commandSynopsis) []string {
 				start = i
 				break
 			}
-			add(d.arg(p))
+			add(p.String())
 		}
 
 		optionalArgs := c.args[start:]
 		open := strings.Repeat("[", len(optionalArgs))
 		for i, p := range optionalArgs {
 			if i == 0 {
-				add(open + d.arg(p) + "]")
+				add(open + p.String() + "]")
 			} else {
-				add(d.arg(p) + "]")
+				add(p.String() + "]")
 			}
 		}
 	} else {
 
 		for _, a := range c.args {
 			if a.optional {
-				add("[" + d.arg(a) + "]")
+				add("[" + a.String() + "]")
 			} else {
-				add(d.arg(a))
+				add(a.String())
 			}
 		}
 	}
@@ -355,44 +425,16 @@ func (d *defaultUsage) command(c *commandSynopsis) []string {
 	return tokens
 }
 
-func (d *defaultUsage) arg(a *argSynopsis) string {
-	if a.multi {
-		return a.value + "..."
-	}
-	return a.value
-}
-
-func (d *defaultUsage) flag(f *flagSynopsis, hideAlternates bool) string {
-	sepIfNeeded := ""
-	place := f.value.placeholder
-	if len(place) > 0 {
-		sepIfNeeded = f.sep
-	}
-	names := d.Bold(f.names(hideAlternates))
-	return names + sepIfNeeded + d.Underline(place)
-}
-
-func (d *defaultUsage) expr(e *exprSynopsis) string {
+func (u *usage) helpText() string {
 	var b bytes.Buffer
-	names := d.Bold(e.names())
-	b.WriteString(names)
-	for _, a := range e.args {
-		b.WriteString(" ")
-		b.WriteString(d.Underline(d.arg(a)))
-	}
-	return b.String()
-}
+	w := NewWriter(&b)
 
-func (d *defaultUsage) value(v *valueSynopsis) string {
-	return d.Underline(v.placeholder)
-}
-
-func (d *defaultUsage) helpText(u *usage) string {
-	var b bytes.Buffer
 	for _, e := range u.exprs {
 		switch item := e.(type) {
 		case *placeholderExpr:
-			b.WriteString(d.Underline(item.name))
+			w.SetStyle(Underline)
+			w.WriteString(item.name)
+			w.Reset()
 		case *literal:
 			b.WriteString(item.text)
 		}
@@ -400,34 +442,22 @@ func (d *defaultUsage) helpText(u *usage) string {
 	return b.String()
 }
 
-func (t *termFormatter) Bold(s string) string {
-	if t == nil {
-		return s
-	}
-	return bold.Open + s + bold.Close
+func (w *stringHelper) WriteString(s string) (int, error) {
+	return w.Writer.Write([]byte(s))
 }
 
-func (t *termFormatter) Underline(s string) string {
-	if t == nil {
-		return s
-	}
-	return underline.Open + s + underline.Close
-}
+func sprintSynopsis(t valueWritesSynopsis, enableColor bool) string {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
 
-// namedCSPair provides the ANSI control scheme pair for a formatting sequence.
-// tabwriter escapes are added to disregard them in formatting
-func namedCSPair(open uint8, close uint8) csPair {
-	return csPair{
-		Open:  fmt.Sprintf("%[1]s\u001B[%[2]dm%[1]s", "", open),
-		Close: fmt.Sprintf("%[1]s\u001B[%[2]dm%[1]s", "", close),
+	if enableColor {
+		_, ok := os.LookupEnv("NO_COLOR")
+		enableColor = !ok
 	}
-}
 
-func getUsageGenerator() usageGenerator {
-	if os.Getenv("NO_COLOR") == "1" {
-		return textUsage
-	}
-	return modernUsage
+	w.SetColorCapable(enableColor)
+	t.WriteSynopsis(w)
+	return buf.String()
 }
 
 func parseUsage(text string) *usage {

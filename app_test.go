@@ -191,8 +191,8 @@ var _ = Describe("App", func() {
 			app.RunContext(context.TODO(), []string{"app"})
 
 			Expect(in).To(Equal(os.Stdin))
-			Expect(out).To(Equal(os.Stdout))
-			Expect(err).To(Equal(os.Stderr))
+			Expect(out).To(Equal(cli.NewWriter(os.Stdout)))
+			Expect(err).To(Equal(cli.NewWriter(os.Stderr)))
 		})
 
 		It("sets up I/O in nested commands", func() {
@@ -215,8 +215,8 @@ var _ = Describe("App", func() {
 			app.RunContext(context.TODO(), []string{"app", "s"})
 
 			Expect(in).To(Equal(os.Stdin))
-			Expect(out).To(Equal(os.Stdout))
-			Expect(err).To(Equal(os.Stderr))
+			Expect(out).To(Equal(cli.NewWriter(os.Stdout)))
+			Expect(err).To(Equal(cli.NewWriter(os.Stderr)))
 		})
 	})
 })

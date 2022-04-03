@@ -325,7 +325,7 @@ func exit(c *Context, err error) {
 func defaultExitHandler(c *Context, message string, status int) {
 	stderr := c.Stderr
 	if stderr == nil {
-		stderr = os.Stderr
+		stderr = NewWriter(os.Stderr)
 	}
 	if message != "" && status != 0 {
 		fmt.Fprintln(stderr, message)
@@ -368,8 +368,8 @@ func setupDefaultIO(c *Context) error {
 	}
 
 	c.contextData.Stdin = a.Stdin
-	c.contextData.Stdout = a.Stdout
-	c.contextData.Stderr = a.Stderr
+	c.contextData.Stdout = NewWriter(a.Stdout)
+	c.contextData.Stderr = NewWriter(a.Stderr)
 	return nil
 }
 
@@ -388,7 +388,7 @@ func setupDefaultTemplateFuncs(c *Context) error {
 			return buf.String()
 		},
 		"BoldFirst": func(args []string) []string {
-			args[0] = bold.Open + args[0] + bold.Close
+			args[0] = bold(args[0])
 			return args
 		},
 		"SynopsisHangingIndent": func(d *commandData) string {

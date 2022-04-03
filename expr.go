@@ -366,7 +366,11 @@ func (e *Expr) Names() []string {
 
 // Synopsis retrieves the synopsis for the expression operator.
 func (e *Expr) Synopsis() string {
-	return textUsage.expr(e.newSynopsis())
+	return sprintSynopsis(e, false)
+}
+
+func (e *Expr) WriteSynopsis(w Writer) {
+	e.newSynopsis().write(w)
 }
 
 // Arg gets the expression operator by name
@@ -667,6 +671,19 @@ func (e *exprSynopsis) names() string {
 		return fmt.Sprintf("-%s", e.long)
 	}
 	return fmt.Sprintf("-%s, -%s", e.short, e.long)
+}
+
+func (e *exprSynopsis) write(w Writer) {
+	w.SetStyle(Bold)
+	w.WriteString(e.names())
+	w.Reset()
+
+	for _, a := range e.args {
+		w.WriteString(" ")
+		w.SetStyle(Underline)
+		w.WriteString(a.String())
+		w.Reset()
+	}
 }
 
 func (e *exprContext) initialize(c *Context) error {

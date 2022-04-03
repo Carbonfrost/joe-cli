@@ -133,11 +133,10 @@ usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 )
 
 func (c *commandData) withLineage(lineage string, persistent []*Flag) *commandData {
-	gen := getUsageGenerator()
 	c.Lineage = lineage
 	c.Persistent = &persistentCommandData{
-		VisibleFlags:    visibleFlags(persistent, gen),
-		FlagsByCategory: visibleFlagCategories(GroupFlagsByCategory(persistent), gen),
+		VisibleFlags:    visibleFlags(persistent),
+		FlagsByCategory: visibleFlagCategories(GroupFlagsByCategory(persistent)),
 	}
 	return c
 }
@@ -150,21 +149,21 @@ func (e flagDataList) Names() []string {
 	return res
 }
 
-func visibleFlags(items []*Flag, gen usageGenerator) []*flagData {
+func visibleFlags(items []*Flag) []*flagData {
 	res := make([]*flagData, 0, len(items))
 	for _, a := range items {
-		res = append(res, flagAdapter(a, gen))
+		res = append(res, flagAdapter(a))
 	}
 	return res
 }
 
-func visibleFlagCategories(items FlagsByCategory, gen usageGenerator) []*flagCategory {
+func visibleFlagCategories(items FlagsByCategory) []*flagCategory {
 	res := make([]*flagCategory, 0, len(items))
 	for _, a := range items {
 		res = append(res, &flagCategory{
 			Category:     a.Category,
 			Undocumented: a.Undocumented(),
-			VisibleFlags: visibleFlags(a.VisibleFlags(), gen),
+			VisibleFlags: visibleFlags(a.VisibleFlags()),
 		})
 	}
 	if len(res) == 1 && res[0].Category == "" {
@@ -175,12 +174,10 @@ func visibleFlagCategories(items FlagsByCategory, gen usageGenerator) []*flagCat
 
 func commandAdapter(val *Command) *commandData {
 	var (
-		gen = getUsageGenerator()
-
 		visibleArgs = func(items []*Arg) []*flagData {
 			res := make([]*flagData, 0, len(items))
 			for _, a := range items {
-				res = append(res, argAdapter(a, gen))
+				res = append(res, argAdapter(a))
 			}
 			return res
 		}
@@ -188,7 +185,7 @@ func commandAdapter(val *Command) *commandData {
 		visibleExprs = func(items []*Expr) []*flagData {
 			res := make([]*flagData, 0, len(items))
 			for _, a := range items {
-				res = append(res, exprAdapter(a, gen))
+				res = append(res, exprAdapter(a))
 			}
 			return res
 		}
@@ -233,13 +230,13 @@ func commandAdapter(val *Command) *commandData {
 		Names:              val.Names(),
 		Description:        val.Description,
 		HelpText:           val.HelpText,
-		Synopsis:           gen.command(val.newSynopsis()),
+		Synopsis:           sprintSynopsisTokens(val.newSynopsis(), true),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
-		VisibleFlags:       visibleFlags(val.VisibleFlags(), gen),
+		VisibleFlags:       visibleFlags(val.VisibleFlags()),
 		VisibleExprs:       visibleExprs(val.VisibleExprs()),
 		VisibleCommands:    visibleCommands(val.Subcommands),
 		CommandsByCategory: visibleCategories(GroupedByCategory(val.Subcommands)),
-		FlagsByCategory:    visibleFlagCategories(GroupFlagsByCategory(val.Flags), gen),
+		FlagsByCategory:    visibleFlagCategories(GroupFlagsByCategory(val.Flags)),
 		ExprsByCategory:    visibleExprCategories(GroupExprsByCategory(val.Exprs)),
 		Persistent: &persistentCommandData{
 			VisibleFlags: []*flagData{},
@@ -248,31 +245,31 @@ func commandAdapter(val *Command) *commandData {
 	}
 }
 
-func flagAdapter(val *Flag, gen usageGenerator) *flagData {
+func flagAdapter(val *Flag) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
 		Name:     val.Name,
-		HelpText: gen.helpText(syn.value.usage),
-		Synopsis: gen.flag(syn, false),
+		HelpText: syn.value.usage.helpText(),
+		Synopsis: sprintSynopsis(val, true),
 		Data:     val.Data,
 	}
 }
 
-func argAdapter(val *Arg, gen usageGenerator) *flagData {
+func argAdapter(val *Arg) *flagData {
 	return &flagData{
 		Name:     val.Name,
 		HelpText: val.HelpText,
-		Synopsis: gen.arg(val.newSynopsis()),
+		Synopsis: sprintSynopsis(val, true),
 		Data:     val.Data,
 	}
 }
 
-func exprAdapter(val *Expr, gen usageGenerator) *flagData {
+func exprAdapter(val *Expr) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
 		Name:     val.Name,
-		HelpText: gen.helpText(syn.usage),
-		Synopsis: gen.expr(syn),
+		HelpText: syn.usage.helpText(),
+		Synopsis: sprintSynopsis(val, true),
 		Data:     val.Data,
 	}
 }
