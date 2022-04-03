@@ -186,12 +186,17 @@ func (a *App) _createRootCore(force bool) *Command {
 		var (
 			flags internalFlags
 			hooks hooksSupport
+			data  map[string]interface{}
 		)
 		if a.rootCommand != nil {
 			flags = a.rootCommand.flags
 			hooks = a.rootCommand.hooksSupport
+			data = a.rootCommand.Data
 		}
 		flags |= a.flags
+		for k, v := range a.Data {
+			data[k] = v
+		}
 
 		a.rootCommand = &Command{
 			Name:         a.Name,
@@ -201,7 +206,7 @@ func (a *App) _createRootCore(force bool) *Command {
 			Subcommands:  a.Commands,
 			Action:       a.Action,
 			Description:  a.Description,
-			Data:         a.Data,
+			Data:         data,
 			After:        a.After,
 			Uses:         a.Uses,
 			Before:       a.Before,

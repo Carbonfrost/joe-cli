@@ -110,6 +110,17 @@ const (
 	//
 	RightToLeft
 
+	// PreventSetup is used to opt-out of any setup actions.  Typically,
+	// reusable actions provide implicit setup such as choosing a good default
+	// name or environment variables.  To stop this, add PreventSetup to
+	// the pipeline which will taint the implicit setup actions causing them
+	// to be skipped.  However, note that preventing setup could cause the
+	// flag, arg, or command not to work properly if any required
+	// configurations go missing. PreventSetup only applies in the Uses
+	// pipeline and to actions in the Uses pipeline.  The action is recursive to
+	// the scope of the app, flag, arg, or command.
+	PreventSetup
+
 	maxOption
 
 	// None represents no options
@@ -185,6 +196,10 @@ var (
 		RightToLeft: {
 			Action: setInternalFlag(internalFlagRightToLeft),
 			Name:   "RIGHT_TO_LEFT",
+		},
+		PreventSetup: {
+			Action: ActionOf((*Context).PreventSetup),
+			Name:   "PREVENT_SETUP",
 		},
 	}
 

@@ -481,6 +481,48 @@ func AddExprs(exprs ...*Expr) Action {
 	})
 }
 
+// FlagSetup action is used to apply set-up to a flag.  This is typically
+// used within the Uses pipeline for actions that provide some default
+// setup.  The setup function fn will only be called in the initialization
+// timing and only if setup hasn't been blocked by PreventSetup.
+func FlagSetup(fn func(*Flag)) Action {
+	return optionalSetup(func(c *Context) {
+		fn(c.Flag())
+	})
+}
+
+// ArgSetup action is used to apply set-up to a Arg.  This is typically
+// used within the Uses pipeline for actions that provide some default
+// setup.  The setup function fn will only be called in the initialization
+// timing and only if setup hasn't been blocked by PreventSetup.
+func ArgSetup(fn func(*Arg)) Action {
+	return optionalSetup(func(c *Context) {
+		fn(c.Arg())
+	})
+}
+
+// CommandSetup action is used to apply set-up to a Command.  This is typically
+// used within the Uses pipeline for actions that provide some default
+// setup.  The setup function fn will only be called in the initialization
+// timing and only if setup hasn't been blocked by PreventSetup.
+func CommandSetup(fn func(*Command)) Action {
+	return optionalSetup(func(c *Context) {
+		fn(c.Command())
+	})
+}
+
+func optionalSetup(a func(*Context)) ActionFunc {
+	return func(c *Context) error {
+		if c.SkipImplicitSetup() {
+			return nil
+		}
+		if c.IsInitializing() {
+			a(c)
+		}
+		return nil
+	}
+}
+
 // Execute the action by calling the function
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {
@@ -615,10 +657,13 @@ func pipeline(x, y Action) *ActionPipeline {
 }
 
 func newPipelines(uses Action, opts *Option) *actionPipelines {
+	// PreventSetup if specified must be handled first
+	first := *opts & PreventSetup
+
 	// Use a reference to the options so that if it is updated, the
 	// most recent version will apply when the pipeline actually runs
 	return &actionPipelines{
-		Initializers: Pipeline(uses, opts),
+		Initializers: Pipeline(first, uses, opts),
 	}
 }
 

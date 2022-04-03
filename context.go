@@ -296,6 +296,19 @@ func (c *Context) Data() map[string]interface{} {
 	return c.target().ensureData()
 }
 
+// LookupData gets the data matching the key, including recursive traversal
+// up the lineage contexts
+func (c *Context) LookupData(name string) (interface{}, bool) {
+	if c == nil {
+		return nil, false
+	}
+	d := c.target().ensureData()
+	if res, ok := d[name]; ok {
+		return res, true
+	}
+	return c.Parent().LookupData(name)
+}
+
 // SetData sets data on the current target
 func (c *Context) SetData(name string, v interface{}) {
 	c.target().SetData(name, v)
@@ -551,6 +564,22 @@ func (c *Context) AddArgs(args ...*Arg) (err error) {
 		}
 	}
 	return
+}
+
+// SkipImplicitSetup gets whether implicit setup steps should be skipped
+func (c *Context) SkipImplicitSetup() bool {
+	_, ok := c.LookupData("_taintSetup")
+	return ok
+}
+
+// PreventSetup causes implicit setup options to be skipped.  The function
+// returns an error if the timing is not initial timing.
+func (c *Context) PreventSetup() error {
+	if !c.IsInitializing() {
+		return errModifyAfterInit
+	}
+	c.SetData("_taintSetup", true)
+	return nil
 }
 
 // Last gets the last name in the path

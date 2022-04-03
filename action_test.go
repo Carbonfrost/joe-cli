@@ -880,3 +880,157 @@ var _ = Describe("Recover", func() {
 		Expect(capture.String()).To(ContainSubstring("runtime/debug.Stack()"))
 	})
 })
+
+var _ = Describe("FlagSetup", func() {
+	It("is called to apply to the flag", func() {
+		var called bool
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Name: "ok",
+					Uses: cli.FlagSetup(func(f *cli.Flag) {
+						Expect(f.Name).To(Equal("ok"))
+						called = true
+					}),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(called).To(BeTrue())
+	})
+})
+
+var _ = Describe("ArgSetup", func() {
+	It("is called to apply to the Arg", func() {
+		var called bool
+		app := &cli.App{
+			Name: "any",
+			Args: []*cli.Arg{
+				{
+					Name: "ok",
+					Uses: cli.ArgSetup(func(a *cli.Arg) {
+						Expect(a.Name).To(Equal("ok"))
+						called = true
+					}),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(called).To(BeTrue())
+	})
+})
+
+var _ = Describe("CommandSetup", func() {
+	It("is called to apply to the Command", func() {
+		var called bool
+		app := &cli.App{
+			Name:   "any",
+			Stderr: ioutil.Discard,
+			Commands: []*cli.Command{
+				{
+					Name: "ok",
+					Uses: cli.CommandSetup(func(c *cli.Command) {
+						Expect(c.Name).To(Equal("ok"))
+						called = true
+					}),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(called).To(BeTrue())
+	})
+})
+
+var _ = Describe("PreventSetup", func() {
+	var (
+		flagSetup = func(thunk func()) cli.Action {
+			return cli.FlagSetup(func(*cli.Flag) {
+				thunk()
+			})
+		}
+		argSetup = func(thunk func()) cli.Action {
+			return cli.ArgSetup(func(*cli.Arg) {
+				thunk()
+			})
+		}
+		commandSetup = func(thunk func()) cli.Action {
+			return cli.CommandSetup(func(*cli.Command) {
+				thunk()
+			})
+		}
+	)
+
+	DescribeTable("entry", func(create func(func()) *cli.App) {
+		thunk := func() {
+			Fail("should not call setup method")
+		}
+		app := create(thunk)
+
+		args, _ := cli.Split("app")
+		err := app.RunContext(context.Background(), args)
+
+		Expect(err).NotTo(HaveOccurred())
+	},
+		Entry("flag", func(t func()) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Options: cli.PreventSetup,
+						Uses:    flagSetup(t),
+					},
+				},
+			}
+		}),
+		Entry("arg", func(t func()) *cli.App {
+			return &cli.App{
+				Args: []*cli.Arg{
+					{
+						Options: cli.PreventSetup,
+						Uses:    argSetup(t),
+					},
+				},
+			}
+		}),
+		Entry("command", func(t func()) *cli.App {
+			return &cli.App{
+				Stderr: ioutil.Discard,
+				Commands: []*cli.Command{
+					{
+						Options: cli.PreventSetup,
+						Name:    "sub",
+						Uses:    commandSetup(t),
+					},
+				},
+			}
+		}),
+		Entry("flag recursive", func(t func()) *cli.App {
+			return &cli.App{
+				Options: cli.PreventSetup,
+				Flags: []*cli.Flag{
+					{
+						Uses: flagSetup(t),
+					},
+				},
+			}
+		}),
+		Entry("flag via command recursive", func(t func()) *cli.App {
+			return &cli.App{
+				Options: cli.PreventSetup,
+				Stderr:  ioutil.Discard,
+				Commands: []*cli.Command{
+					{
+						Flags: []*cli.Flag{
+							{
+								Uses: flagSetup(t),
+							},
+						},
+					},
+				},
+			}
+		}),
+	)
+})
