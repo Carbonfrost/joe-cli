@@ -67,7 +67,7 @@ var (
 {{- end -}}
 
 {{- define "Flag" -}}
-{{ "\t" }}{{.Synopsis}}{{ "\t" }}{{.HelpText}}
+{{ "\t" }}{{.Synopsis | ExtraSpaceBeforeFlag }}{{ "\t" }}{{.HelpText}}
 {{- end -}}
 
 {{- define "Flags" -}}

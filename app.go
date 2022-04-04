@@ -391,6 +391,12 @@ func setupDefaultTemplateFuncs(c *Context) error {
 			args[0] = bold(args[0])
 			return args
 		},
+		"ExtraSpaceBeforeFlag": func(s string) string {
+			if strings.HasPrefix(controlCodes.ReplaceAllString(s, ""), "--") {
+				return "    " + s
+			}
+			return s
+		},
 		"SynopsisHangingIndent": func(d *commandData) string {
 			var buf bytes.Buffer
 			hang := strings.Repeat(
