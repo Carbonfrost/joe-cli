@@ -150,7 +150,7 @@ var _ = Describe("Command", func() {
 			args, _ := cli.Split(arguments)
 			err := app.RunContext(context.TODO(), args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("can't use --whitespace after arguments"))
+			Expect(err).To(MatchError("can't use --whitespace after arguments"))
 		})
 	})
 
@@ -177,7 +177,7 @@ var _ = Describe("Command", func() {
 			args, _ := cli.Split("app one")
 			err := app.RunContext(context.TODO(), args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("done error"))
+			Expect(err).To(MatchError("done error"))
 			Expect(counter.DoneCallCount()).To(Equal(1))
 		})
 

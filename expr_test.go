@@ -356,7 +356,7 @@ var _ = Describe("Expr", func() {
 				err := app.RunContext(context.TODO(), args)
 
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(match)
+				Expect(err).To(MatchError(match))
 			},
 			Entry("args after expr", "arg -expr unbound", Equal(`arguments must precede expressions: "unbound"`)),
 			Entry(

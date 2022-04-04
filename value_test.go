@@ -476,7 +476,7 @@ var _ = Describe("NameValueCounter", func() {
 
 			err := actual.Done()
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(expected))
+			Expect(err).To(MatchError(expected))
 		},
 		Entry(
 			"filter missing value",

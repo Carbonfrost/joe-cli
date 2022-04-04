@@ -586,7 +586,7 @@ var _ = Describe("Do", func() {
 
 		It("applies Before timing if specified", func() {
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("too late to exec action"))
+			Expect(err).To(MatchError("too late to exec action"))
 		})
 	})
 })
@@ -833,7 +833,7 @@ var _ = Describe("HandleSignal", Ordered, func() {
 		err = app.RunContext(context.Background(), []string{"app"})
 
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("expected output error"))
+		Expect(err).To(MatchError("expected output error"))
 	})
 })
 
@@ -857,7 +857,7 @@ var _ = Describe("Timeout", func() {
 		err := app.RunContext(context.Background(), []string{"app"})
 
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("expected output error"))
+		Expect(err).To(MatchError("expected output error"))
 	})
 })
 
@@ -876,7 +876,7 @@ var _ = Describe("Recover", func() {
 		err := app.RunContext(context.Background(), []string{"app"})
 
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("panic in action"))
+		Expect(err).To(MatchError("panic in action"))
 		Expect(capture.String()).To(ContainSubstring("runtime/debug.Stack()"))
 	})
 })

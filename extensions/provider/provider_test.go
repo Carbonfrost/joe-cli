@@ -182,7 +182,7 @@ var _ = Describe("Value", func() {
 			args, _ := cli.Split(arguments)
 			err := app.RunContext(context.TODO(), args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(expected)
+			Expect(err).To(MatchError(expected))
 		},
 			XEntry(
 				"invalid provider",

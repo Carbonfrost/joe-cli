@@ -214,7 +214,7 @@ var _ = Describe("RunContext", func() {
 			err := app.RunContext(context.TODO(), args)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(expected)
+			Expect(err).To(MatchError(expected))
 		},
 		Entry(
 			"too many arguments",

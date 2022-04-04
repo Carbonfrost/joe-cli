@@ -56,7 +56,7 @@ var _ = Describe("File", func() {
 		name := filepath.Join(os.TempDir(), "nonexistent")
 		err := app.RunContext(context.TODO(), []string{"app", name})
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring(name + ": no such file or directory"))
+		Expect(err).To(MatchError(ContainSubstring(name + ": no such file or directory")))
 	})
 
 	It("writes to the app output when - is used", func() {

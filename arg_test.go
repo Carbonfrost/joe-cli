@@ -184,7 +184,7 @@ var _ = Describe("Arg", func() {
 				args, _ := cli.Split("app " + arguments)
 				err := app.RunContext(context.TODO(), args)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(match)
+				Expect(err).To(MatchError(match))
 			},
 			Entry("missing when 1", 1, "", Equal("expected argument")),
 			Entry("too few by 1", 2, "a", Equal("expected 2 arguments")),

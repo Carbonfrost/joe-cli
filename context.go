@@ -60,6 +60,8 @@ type hook struct {
 	action Action
 }
 
+type internalDataKey string
+
 // ContextPath provides a list of strings that name each one of the parent components
 // in the context.  Each string follows the form:
 //

@@ -21,7 +21,7 @@ var _ = Describe("Exit", func() {
 			}
 
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(expectedMessage)
+			Expect(err).To(MatchError(expectedMessage))
 			Expect(err.ExitCode()).To(Equal(expectedCode))
 		},
 		Entry("string", "message", Equal("message"), 1),

@@ -302,7 +302,7 @@ var _ = Describe("Flag", func() {
 			arguments, _ := cli.Split("app -sK")
 			err := app.RunContext(context.TODO(), arguments)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("not supported"))
+			Expect(err).To(MatchError("not supported"))
 		})
 	})
 
@@ -394,7 +394,7 @@ var _ = Describe("Flag", func() {
 			arguments, _ := cli.Split("app sub --nope 19")
 			err := app.RunContext(context.TODO(), arguments)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("unknown option: --nope"))
+			Expect(err).To(MatchError("unknown option: --nope"))
 			Expect(p).To(Equal(1600)) // unchanged
 		})
 	})
