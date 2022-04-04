@@ -582,6 +582,18 @@ func (c *Context) PreventSetup() error {
 	return nil
 }
 
+// SetColor sets whether terminal color and styles are enabled on stdout.
+func (c *Context) SetColor(v bool) {
+	c.Stdout.SetColorCapable(v)
+}
+
+// AutodetectColor causes terminal color and styles to automatically
+// detect support for stdout.  Auto-detection is the default behavior, but this
+// is provided to reset if SetColor has modified.
+func (c *Context) AutodetectColor() {
+	c.Stdout.ResetColorCapable()
+}
+
 // Last gets the last name in the path
 func (c ContextPath) Last() string {
 	return c[len(c)-1]

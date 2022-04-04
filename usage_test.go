@@ -70,6 +70,56 @@ var _ = Describe("PrintVersion", func() {
 	})
 })
 
+var _ = Describe("SetColor", func() {
+	It("sets whether color will be enabled", func() {
+		app := &cli.App{
+			Name: "demo",
+			Action: cli.Pipeline(cli.SetColor(true), func(c *cli.Context) {
+				c.Stdout.SetStyle(cli.Bold)
+				c.Stdout.WriteString(" BOLD TEXT ")
+				c.Stdout.Reset()
+			}),
+		}
+		Expect(renderScreen(app, "demo")).To(
+			Equal("\x1b[1m BOLD TEXT \x1b[0m"),
+		)
+	})
+
+	It("sets whether color will be enabled nested", func() {
+		app := &cli.App{
+			Name: "demo",
+			Uses: cli.SetColor(true),
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Action: func(c *cli.Context) {
+						c.Stdout.SetStyle(cli.Bold)
+						c.Stdout.WriteString(" BOLD TEXT ")
+						c.Stdout.Reset()
+					},
+				},
+			},
+		}
+		Expect(renderScreen(app, "demo sub")).To(
+			Equal("\x1b[1m BOLD TEXT \x1b[0m"),
+		)
+	})
+})
+
+var _ = Describe("AutodetectColor", func() {
+	It("will disable when TERM=dumb", func() {
+		app := &cli.App{
+			Name: "demo",
+			Action: cli.Pipeline(cli.AutodetectColor(), func(c *cli.Context) {
+				c.Stdout.SetStyle(cli.Bold)
+				c.Stdout.WriteString("BOLD TEXT")
+				c.Stdout.Reset()
+			}),
+		}
+		Expect(renderScreen(app, "demo")).To(Equal("BOLD TEXT"))
+	})
+})
+
 var _ = Describe("DisplayHelpScreen", func() {
 	It("is the default action for an app with sub-commands", func() {
 		app := &cli.App{
@@ -204,9 +254,9 @@ var _ = Describe("DisplayHelpScreen", func() {
 })
 
 func disableConsoleColor() func() {
-	os.Setenv("NO_COLOR", "1")
+	os.Setenv("TERM", "dumb")
 	return func() {
-		os.Setenv("NO_COLOR", "0")
+		os.Setenv("TERM", "0")
 	}
 }
 

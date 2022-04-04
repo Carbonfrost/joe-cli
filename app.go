@@ -373,9 +373,16 @@ func setupDefaultIO(c *Context) error {
 	}
 
 	c.contextData.Stdin = a.Stdin
-	c.contextData.Stdout = NewWriter(a.Stdout)
-	c.contextData.Stderr = NewWriter(a.Stderr)
+	c.contextData.Stdout = adaptWriter(a.Stdout)
+	c.contextData.Stderr = adaptWriter(a.Stderr)
 	return nil
+}
+
+func adaptWriter(w io.Writer) Writer {
+	if a, ok := w.(Writer); ok {
+		return a
+	}
+	return NewWriter(w)
 }
 
 func setupDefaultTemplateFuncs(c *Context) error {

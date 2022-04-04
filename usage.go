@@ -2,8 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"github.com/juju/ansiterm"
-	"github.com/juju/ansiterm/tabwriter"
 	"io"
 	"log"
 	"os"
@@ -12,6 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/juju/ansiterm"
+	"github.com/juju/ansiterm/tabwriter"
+	"golang.org/x/term"
 )
 
 var (
@@ -28,6 +30,8 @@ type Template struct {
 	Debug bool
 }
 
+//counterfeiter:generate . Writer
+
 // Writer provides a terminal output writer which can provide access to color and styles
 type Writer interface {
 	io.Writer
@@ -39,6 +43,8 @@ type Writer interface {
 	Reset()
 	// SetColorCapable changes whether or not the writer should use color and style control codes
 	SetColorCapable(bool)
+	// ResetColorCapable uses autodetect to apply the default
+	ResetColorCapable()
 	// SetBackground updates the background color
 	SetBackground(Color)
 	// SetForeground updates the foreground color
@@ -124,6 +130,26 @@ type literal struct {
 }
 
 type placeholdersByPos []*placeholderExpr
+
+// SetColor enables or disables color output on stdout.
+func SetColor(enabled bool) Action {
+	return ActionFunc(func(c *Context) error {
+		// It is possible if this is called early, it will need to be
+		// deferred
+		if c.IsInitializing() && c.Stdout == nil {
+			return c.Before(SetColor(true))
+		}
+
+		c.SetColor(enabled)
+		return nil
+	})
+}
+
+// AutodetectColor resets whether color output is used on stdout
+// to use auto-detection
+func AutodetectColor() Action {
+	return ActionOf((*Context).AutodetectColor)
+}
 
 // DisplayHelpScreen displays the help screen for the specified command.  If the command
 // is nested, each sub-command is named.
@@ -459,6 +485,23 @@ func (u *usage) helpText() string {
 
 func (w *stringHelper) WriteString(s string) (int, error) {
 	return w.Writer.Write([]byte(s))
+}
+
+func (w *stringHelper) ResetColorCapable() {
+	enabled := func(w io.Writer) bool {
+		f, ok := w.(*os.File)
+		if !ok {
+			return false
+		}
+
+		// https://no-color.org/, which requires any value to be treated as true
+		if _, ok := os.LookupEnv("NO_COLOR"); ok {
+			return false
+		}
+		return os.Getenv("TERM") != "dumb" && term.IsTerminal(int(f.Fd()))
+	}
+
+	w.SetColorCapable(enabled(w.Writer))
 }
 
 func sprintSynopsis(t valueWritesSynopsis, enableColor bool) string {
