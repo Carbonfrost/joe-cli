@@ -1,7 +1,6 @@
 package cli_test
 
 import (
-	"context"
 	"encoding/json"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -38,43 +37,49 @@ var _ = Describe("Option", func() {
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 	})
+})
 
-	Describe("NewOption", func() {
+var _ = Describe("FeatureMap", func() {
 
-		It("allocates two options", func() {
-			opt1 := cli.NewOption("OPTION_1", nil)
-			opt2 := cli.NewOption("OPTION_2", nil)
+	type Option int
 
-			Expect(opt1).NotTo(Equal(opt2))
-		})
+	const (
+		Lo  Option = 1
+		Alp Option = 2
+		Bet Option = 4
+	)
 
-		It("re-uses previously named option", func() {
-			opt1 := cli.NewOption("OPTION_A", nil)
-			opt2 := cli.NewOption("OPTION_A", nil)
+	It("splits the options and invokes them", func() {
+		loAction := new(joeclifakes.FakeAction)
+		alpAction := new(joeclifakes.FakeAction)
+		betAction := new(joeclifakes.FakeAction)
+		fm := cli.FeatureMap[Option]{
+			Lo:  loAction,
+			Alp: alpAction,
+			Bet: betAction,
+		}
+		cli.InitializeFlag(&cli.Flag{}).Do(fm.Pipeline(Lo | Alp | Bet))
 
-			Expect(opt1).To(Equal(opt2))
-		})
+		Expect(loAction.ExecuteCallCount()).To(Equal(1))
+		Expect(alpAction.ExecuteCallCount()).To(Equal(1))
+		Expect(betAction.ExecuteCallCount()).To(Equal(1))
 
-		It("can invoke custom option", func() {
-			act := new(joeclifakes.FakeAction)
-			myCustomOption := cli.NewOption("MY_CUSTOM_OPTION", act)
-			app := &cli.App{
-				Name:    "app",
-				Options: myCustomOption,
-			}
-			app.RunContext(context.TODO(), []string{"app"})
-			Expect(act.ExecuteCallCount()).To(Equal(1))
-		})
-
-		It("custom option is marshal", func() {
-			opt := cli.NewOption("MY_CUSTOM_OPTION", nil)
-
-			actual, _ := json.Marshal(opt)
-			Expect(string(actual)).To(Equal("\"MY_CUSTOM_OPTION\""))
-
-			var o cli.Option
-			_ = json.Unmarshal(actual, &o)
-			Expect(o).To(Equal(opt))
-		})
 	})
+
+	It("invokes composite flags in order of hamming weight", func() {
+		alpLoAction := new(joeclifakes.FakeAction)
+		alpAction := new(joeclifakes.FakeAction)
+		betAction := new(joeclifakes.FakeAction)
+		fm := cli.FeatureMap[Option]{
+			Lo | Alp: alpLoAction,
+			Alp:      alpAction,
+			Bet:      betAction,
+		}
+		cli.InitializeFlag(&cli.Flag{}).Do(fm.Pipeline(Lo | Alp | Bet))
+
+		Expect(alpLoAction.ExecuteCallCount()).To(Equal(1))
+		Expect(alpAction.ExecuteCallCount()).To(Equal(0)) // not called because Alp|Lo was available
+		Expect(betAction.ExecuteCallCount()).To(Equal(1))
+	})
+
 })

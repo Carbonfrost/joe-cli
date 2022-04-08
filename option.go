@@ -3,19 +3,24 @@ package cli
 import (
 	"encoding"
 	"fmt"
+	"math/bits"
 	"os"
+	"sort"
 	"strings"
-	"sync/atomic"
 )
 
 // Option provides a built-in convenience configuration for flags, args, and commands.
 type Option int
-type internalFlags uint32
-type userOption uint32
-type optionDef struct {
-	Action Action
-	Name   string
+
+type Feature interface {
+	~int
 }
+
+// FeatureMap provides a map from a feature identifier to an action.  A common idiom within
+// joe-cli is to define a bitmask representing
+type FeatureMap[T Feature] map[T]Action
+
+type internalFlags uint32
 
 const (
 	// Hidden causes the option to be Hidden
@@ -144,99 +149,45 @@ const (
 )
 
 var (
-	builtinOptions = map[Option]optionDef{
-		Hidden: {
-			Action: ActionFunc(hiddenOption),
-			Name:   "HIDDEN",
-		},
-		Required: {
-			Action: ActionFunc(requiredOption),
-			Name:   "REQUIRED",
-		},
-		Exits: {
-			Action: ActionFunc(wrapWithExit),
-			Name:   "EXITS",
-		},
-		MustExist: {
-			Action: Before(ActionFunc(mustExistOption)),
-			Name:   "MUST_EXIST",
-		},
-		SkipFlagParsing: {
-			Action: setInternalFlag(internalFlagSkipFlagParsing),
-			Name:   "SKIP_FLAG_PARSING",
-		},
-		WorkingDirectory: {
-			Action: Before(ActionFunc(workingDirectoryOption)),
-			Name:   "WORKING_DIRECTORY",
-		},
-		Optional: {
-			Action: ActionFunc(optionalOption),
-			Name:   "OPTIONAL",
-		},
-		DisallowFlagsAfterArgs: {
-			Action: setInternalFlag(internalFlagDisallowFlagsAfterArgs),
-			Name:   "DISALLOW_FLAGS_AFTER_ARGS",
-		},
-		No: {
-			Action: ActionFunc(noOption),
-			Name:   "NO",
-		},
-		NonPersistent: {
-			Action: ActionFunc(nonPersistentOption),
-			Name:   "NON_PERSISTENT",
-		},
-		DisableSplitting: {
-			Action: ActionFunc(disableSplittingOption),
-			Name:   "DISABLE_SPLITTING",
-		},
-		Merge: {
-			Action: setInternalFlag(internalFlagMerge),
-			Name:   "MERGE",
-		},
-		RightToLeft: {
-			Action: setInternalFlag(internalFlagRightToLeft),
-			Name:   "RIGHT_TO_LEFT",
-		},
-		PreventSetup: {
-			Action: ActionOf((*Context).PreventSetup),
-			Name:   "PREVENT_SETUP",
-		},
+	builtinOptions = FeatureMap[Option]{
+		Hidden:                 ActionFunc(hiddenOption),
+		Required:               ActionFunc(requiredOption),
+		Exits:                  ActionFunc(wrapWithExit),
+		MustExist:              Before(ActionFunc(mustExistOption)),
+		SkipFlagParsing:        setInternalFlag(internalFlagSkipFlagParsing),
+		WorkingDirectory:       Before(ActionFunc(workingDirectoryOption)),
+		Optional:               ActionFunc(optionalOption),
+		DisallowFlagsAfterArgs: setInternalFlag(internalFlagDisallowFlagsAfterArgs),
+		No:                     ActionFunc(noOption),
+		NonPersistent:          ActionFunc(nonPersistentOption),
+		DisableSplitting:       ActionFunc(disableSplittingOption),
+		Merge:                  setInternalFlag(internalFlagMerge),
+		RightToLeft:            setInternalFlag(internalFlagRightToLeft),
+		PreventSetup:           ActionOf((*Context).PreventSetup),
 	}
 
-	userOptions = map[Option]optionDef{}
-
-	// Custom options start at 1 << 24, exclusive, which must be higher than built-in
-	startUserOption            = 24
-	globalOption    userOption = userOption(startUserOption)
+	builtinOptionLabels = map[Option]string{
+		Hidden:                 "HIDDEN",
+		Required:               "REQUIRED",
+		Exits:                  "EXITS",
+		MustExist:              "MUST_EXIST",
+		SkipFlagParsing:        "SKIP_FLAG_PARSING",
+		WorkingDirectory:       "WORKING_DIRECTORY",
+		Optional:               "OPTIONAL",
+		DisallowFlagsAfterArgs: "DISALLOW_FLAGS_AFTER_ARGS",
+		No:                     "NO",
+		NonPersistent:          "NON_PERSISTENT",
+		DisableSplitting:       "DISABLE_SPLITTING",
+		Merge:                  "MERGE",
+		RightToLeft:            "RIGHT_TO_LEFT",
+		PreventSetup:           "PREVENT_SETUP",
+	}
 )
-
-// NewOption allocates a custom user option.  This is typically used by add-ons.
-func NewOption(name string, action Action) Option {
-	for k, v := range userOptions {
-		if name == v.Name {
-			return k
-		}
-	}
-	val := Option(1 << globalOption.inc())
-	userOptions[val] = optionDef{
-		Action: action,
-		Name:   name,
-	}
-
-	return val
-}
-
-func getOptionDef(o Option) optionDef {
-	if res, ok := builtinOptions[o]; ok {
-		return res
-	}
-	return userOptions[o]
-}
 
 func (o Option) String() string {
 	var res []string
 	splitOptionsHO(o, func(current Option) {
-		name := getOptionDef(current).Name
+		name := builtinOptionLabels[current]
 		if name != "" {
 			res = append(res, name)
 		}
@@ -261,13 +212,8 @@ func (o *Option) UnmarshalText(b []byte) error {
 }
 
 func unmarshalText(token string) Option {
-	for k, v := range builtinOptions {
-		if token == v.Name {
-			return k
-		}
-	}
-	for k, v := range userOptions {
-		if token == v.Name {
+	for k, v := range builtinOptionLabels {
+		if token == v {
 			return k
 		}
 	}
@@ -276,17 +222,37 @@ func unmarshalText(token string) Option {
 
 // Execute treats the options as if an action
 func (o Option) Execute(c *Context) (err error) {
-	return o.pipeline().Execute(c)
+	return builtinOptions.Pipeline(o).Execute(c)
 }
 
-func (o Option) pipeline() *ActionPipeline {
-	var parts []Action
-	splitOptionsHO(o, func(current Option) {
-		action := getOptionDef(current).Action
-		parts = append(parts, action)
+func (m FeatureMap[T]) Pipeline(values T) Action {
+	var (
+		i     int
+		parts []Action
+	)
+
+	// Sort options in order of hamming weight so that any composite flag
+	// is invoked before single flags.
+	keys := make([]uint, len(m))
+	for k := range m {
+		keys[i] = uint(k)
+		i++
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return bits.OnesCount(keys[i]) > bits.OnesCount(keys[j])
 	})
+	options := uint(values)
+
+	for _, current := range keys {
+		if options&current == current {
+			action := m[T(current)]
+			parts = append(parts, action)
+			options = options &^ current
+		}
+	}
+
 	if len(parts) == 0 {
-		return nil
+		return ActionOf(nil)
 	}
 
 	return &ActionPipeline{parts}
@@ -344,21 +310,9 @@ func (f internalFlags) persistent() bool {
 	return f&internalFlagPersistent == internalFlagPersistent
 }
 
-func (u *userOption) inc() uint32 {
-	return atomic.AddUint32((*uint32)(u), 1)
-}
-
 func splitOptionsHO(opts Option, fn func(Option)) {
 	options := int(opts)
 	for current := 1; options != 0 && current < int(maxOption); current = current << 1 {
-		if options&current == current {
-			fn(Option(current))
-			options = options &^ current
-		}
-	}
-
-	for index := startUserOption; options != 0 && index <= int(globalOption); index++ {
-		current := 1 << index
 		if options&current == current {
 			fn(Option(current))
 			options = options &^ current
