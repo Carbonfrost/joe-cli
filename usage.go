@@ -192,19 +192,14 @@ func defaultData(c *Context) interface{} {
 // creates the data that is passed to the template
 func RenderTemplate(name string, data func(*Context) interface{}) ActionFunc {
 	return func(c *Context) error {
-		tpl := c.Template(name)
-		if data == nil {
-			data = defaultData
-		}
-		_ = tpl.Execute(c.Stdout, data(c))
-		return nil
+		return c.RenderTemplate(name, data)
 	}
 }
 
 // RegisterTemplate will register the specified template by name.
 func RegisterTemplate(name string, template string) Action {
 	return ActionFunc(func(c *Context) error {
-		c.App().ensureTemplates()[name] = template
+		c.RegisterTemplate(name, template)
 		return nil
 	})
 }
@@ -212,9 +207,29 @@ func RegisterTemplate(name string, template string) Action {
 // RegisterTemplateFunc will register the specified function for use in template rendering.
 func RegisterTemplateFunc(name string, fn interface{}) Action {
 	return ActionFunc(func(c *Context) error {
-		c.App().ensureTemplateFuncs()[name] = fn
+		c.RegisterTemplateFunc(name, fn)
 		return nil
 	})
+}
+
+// RenderTemplate provides an action that renders the specified template using the factory function that
+// creates the data that is passed to the template
+func (c *Context) RenderTemplate(name string, data func(*Context) interface{}) error {
+	tpl := c.Template(name)
+	if data == nil {
+		data = defaultData
+	}
+	return tpl.Execute(c.Stdout, data(c))
+}
+
+// RegisterTemplate will register the specified template by name.
+func (c *Context) RegisterTemplate(name string, template string) {
+	c.App().ensureTemplates()[name] = template
+}
+
+// RegisterTemplateFunc will register the specified function for use in template rendering.
+func (c *Context) RegisterTemplateFunc(name string, fn interface{}) {
+	c.App().ensureTemplateFuncs()[name] = fn
 }
 
 func defaultHelpCommand() *Command {

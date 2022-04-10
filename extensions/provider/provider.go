@@ -133,7 +133,8 @@ func ListProviders(name string) cli.Action {
 				f.Value = new(bool)
 				f.Options |= cli.Exits
 			}
-			return c.Do(cli.RegisterTemplate("providers", listTemplate))
+			c.RegisterTemplate("providers", listTemplate)
+			return nil
 		},
 		Action: func(c *cli.Context) error {
 			registry := Services(c).Registry(name)
