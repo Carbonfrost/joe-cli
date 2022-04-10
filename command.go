@@ -347,7 +347,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 	args := make([]*argSynopsis, 0)
 	for _, f := range c.actualFlags() {
 		group := getGroup(f)
-		groups[group] = append(groups[group], f.newSynopsis())
+		groups[group] = append(groups[group], f.synopsis())
 	}
 	for _, a := range c.actualArgs() {
 		args = append(args, a.newSynopsis())
