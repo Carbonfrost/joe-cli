@@ -88,6 +88,12 @@ type valuePairCounter struct {
 	count int
 }
 
+type valueContext struct {
+	v      *valueTarget
+	name   string
+	lookup *set
+}
+
 // Bool creates a bool value.  This is for convenience to obtain the right pointer.
 func Bool() *bool {
 	return new(bool)
@@ -687,6 +693,50 @@ func (g *generic) smartOptionalDefault() interface{} {
 		return net.ParseIP("127.0.0.1")
 	}
 	return nil
+}
+
+func (v *valueContext) initialize(c *Context) error {
+	return executeAll(c, v.v.uses().Initializers)
+}
+
+func (v *valueContext) executeBefore(ctx *Context) error {
+	return executeAll(ctx, v.v.uses().Before)
+}
+
+func (v *valueContext) executeAfter(ctx *Context) error {
+	return executeAll(ctx, v.v.uses().After)
+}
+
+func (v *valueContext) execute(ctx *Context) error {
+	return executeAll(ctx, v.v.uses().Action)
+}
+
+func (v *valueContext) executeBeforeDescendent(ctx *Context) error { return nil }
+func (v *valueContext) executeAfterDescendent(ctx *Context) error  { return nil }
+
+func (v *valueContext) lookupBinding(name string) []string {
+	if v.lookup == nil {
+		return nil
+	}
+	return v.lookup.bindings[name]
+}
+
+func (v *valueContext) setDidSubcommandExecute() {
+}
+
+func (v *valueContext) target() target {
+	return v.v
+}
+
+func (v *valueContext) lookupValue(name string) (interface{}, bool) {
+	if v.lookup == nil {
+		return nil, false
+	}
+	return v.lookup.lookupValue(name)
+}
+
+func (v *valueContext) Name() string {
+	return "<-" + v.name + ">"
 }
 
 func wrapGeneric(v interface{}) *generic {

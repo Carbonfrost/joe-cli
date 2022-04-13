@@ -11,11 +11,9 @@ type commandData struct {
 	VisibleCommands    []*commandData
 	VisibleFlags       flagDataList
 	VisibleArgs        flagDataList
-	VisibleExprs       flagDataList
 	Persistent         *persistentCommandData
 	CommandsByCategory []*commandCategory
 	FlagsByCategory    []*flagCategory
-	ExprsByCategory    []*exprCategory
 	Data               map[string]interface{}
 }
 
@@ -52,6 +50,11 @@ type exprCategory struct {
 	Category     string
 	VisibleExprs flagDataList
 	Data         map[string]interface{}
+}
+
+type exprDescriptionData struct {
+	VisibleExprs    flagDataList
+	ExprsByCategory []*exprCategory
 }
 
 var (
@@ -103,26 +106,6 @@ Global options (specify before any sub-commands): {{ "\n" }}
 {{ end }}
 {{- end -}}
 
-{{- define "Expression" -}}
-{{ "\t" }}{{.Synopsis}}{{ "\t" }}{{.HelpText}}
-{{- end -}}
-
-{{- define "Expressions" -}}
-{{ if .VisibleExprs -}}
-{{ range .ExprsByCategory }}
-{{ if .Category }}{{.Category}}:{{ end }}
-{{ if .Undocumented -}}
-{{ .VisibleExprs.Names | Join ", " | Wrap 4 }}
-{{- else -}}
-{{ range .VisibleExprs }}{{- template "Expression" . -}}{{ "\n" }}{{end}}
-{{- end -}}
-{{- else -}}
-Expressions:
-{{ range .VisibleExprs }}{{- template "Expression" . -}}{{ "\n" }}{{end}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
 {{/* Usage is the entry point, which calls flags, subcommands */}} 
 {{- define "Usage" -}}
 usage:{{ .SelectedCommand | SynopsisHangingIndent }}
@@ -132,13 +115,36 @@ usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 {{ .SelectedCommand.HelpText | Wrap 4 }}
 {{- end -}}
 {{- template "Flags" .SelectedCommand -}}
-{{- template "Expressions" .SelectedCommand -}}
 {{- template "Subcommands" .SelectedCommand -}}
 {{- template "PersistentFlags" .SelectedCommand -}}
 {{- template "ExtendedDescription" .SelectedCommand -}}
 {{- end -}}
 
 {{- template "Usage" $ -}}
+`
+
+	expressionTemplate string = `
+{{- define "Expression" -}}
+{{ "\t" }}{{.Synopsis}}{{ "\t" }}{{.HelpText}}
+{{- end -}}
+
+{{- define "Expressions" -}}
+{{ if .VisibleExprs -}}
+Expressions:
+{{ range .ExprsByCategory }}
+{{ if .Category }}{{.Category}}:{{ end }}
+{{ if .Undocumented -}}
+{{ .VisibleExprs.Names | Join ", " | Wrap 4 }}
+{{- else -}}
+{{ range .VisibleExprs }}{{- template "Expression" . -}}{{ "\n" }}{{end}}
+{{- end -}}
+{{- else -}}
+{{ range .VisibleExprs }}{{- template "Expression" . -}}{{ "\n" }}{{end}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- template "Expressions" .Description -}}
 `
 
 	// VersionTemplate specifies the Go template for what is printed when
@@ -196,14 +202,6 @@ func commandAdapter(val *Command) *commandData {
 			return res
 		}
 
-		visibleExprs = func(items []*Expr) []*flagData {
-			res := make([]*flagData, 0, len(items))
-			for _, a := range items {
-				res = append(res, exprAdapter(a))
-			}
-			return res
-		}
-
 		visibleCommands = func(items []*Command) []*commandData {
 			res := make([]*commandData, 0, len(items))
 			for _, a := range items {
@@ -222,21 +220,6 @@ func commandAdapter(val *Command) *commandData {
 			}
 			return res
 		}
-
-		visibleExprCategories = func(items ExprsByCategory) []*exprCategory {
-			res := make([]*exprCategory, 0, len(items))
-			for _, a := range items {
-				res = append(res, &exprCategory{
-					Category:     a.Category,
-					Undocumented: a.Undocumented(),
-					VisibleExprs: visibleExprs(a.VisibleExprs()),
-				})
-			}
-			if len(res) == 1 && res[0].Category == "" {
-				return nil
-			}
-			return res
-		}
 	)
 
 	return &commandData{
@@ -248,11 +231,9 @@ func commandAdapter(val *Command) *commandData {
 		Synopsis:           sprintSynopsisTokens(val.newSynopsis(), true),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
-		VisibleExprs:       visibleExprs(val.VisibleExprs()),
 		VisibleCommands:    visibleCommands(val.Subcommands),
 		CommandsByCategory: visibleCategories(GroupedByCategory(val.Subcommands)),
 		FlagsByCategory:    visibleFlagCategories(GroupFlagsByCategory(val.Flags)),
-		ExprsByCategory:    visibleExprCategories(GroupExprsByCategory(val.Exprs)),
 		Persistent: &persistentCommandData{
 			VisibleFlags: []*flagData{},
 		},
@@ -286,10 +267,42 @@ func argAdapter(val *Arg) *flagData {
 func exprAdapter(val *Expr) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
-		Name:       val.Name,
-		HelpText:   syn.usage.helpText(),
-		ManualText: val.ManualText,
-		Synopsis:   sprintSynopsis(val, true),
-		Data:       val.Data,
+		Name:        val.Name,
+		HelpText:    syn.usage.helpText(),
+		Description: val.Description,
+		ManualText:  val.ManualText,
+		Synopsis:    sprintSynopsis(val, true),
+		Data:        val.Data,
+	}
+}
+
+func exprDescription(e *Expression) *exprDescriptionData {
+	exprs := e.Exprs
+	var (
+		visibleExprs = func(items []*Expr) []*flagData {
+			res := make([]*flagData, 0, len(items))
+			for _, a := range items {
+				res = append(res, exprAdapter(a))
+			}
+			return res
+		}
+		visibleExprCategories = func(items ExprsByCategory) []*exprCategory {
+			res := make([]*exprCategory, 0, len(items))
+			for _, a := range items {
+				res = append(res, &exprCategory{
+					Category:     a.Category,
+					Undocumented: a.Undocumented(),
+					VisibleExprs: visibleExprs(a.VisibleExprs()),
+				})
+			}
+			if len(res) == 1 && res[0].Category == "" {
+				return nil
+			}
+			return res
+		}
+	)
+	return &exprDescriptionData{
+		VisibleExprs:    visibleExprs(exprs),
+		ExprsByCategory: visibleExprCategories(GroupExprsByCategory(exprs)),
 	}
 }

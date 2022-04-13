@@ -60,6 +60,12 @@ type hook struct {
 	action Action
 }
 
+type valueTarget struct {
+	pipelinesSupport
+
+	v interface{}
+}
+
 // ContextPath provides a list of strings that name each one of the parent components
 // in the context.  Each string follows the form:
 //
@@ -129,11 +135,6 @@ func (c *Context) Arg() *Arg {
 		return a
 	}
 	return c.Parent().Arg()
-}
-
-// Expr retrieves the expression operator in scope if any
-func (c *Context) Expr() *Expr {
-	return c.target().(*Expr)
 }
 
 // Flag retrieves the flag in scope if any
@@ -242,8 +243,8 @@ func (c *Context) Occurrences(name string) int {
 }
 
 // Expression obtains the expression from the context
-func (c *Context) Expression() Expression {
-	return c.Value("expression").(Expression)
+func (c *Context) Expression(name string) *Expression {
+	return c.Value(name).(*Expression)
 }
 
 // NValue gets the maximum number available, exclusive, as an argument Value.
@@ -514,34 +515,10 @@ func (c *Context) AddArg(v *Arg) error {
 	return nil
 }
 
-// AddExpr provides a convenience method that adds an Expr to the current command or app.  This
-// is only valid during the initialization phase.  An error is returned for other timings.
-func (c *Context) AddExpr(e *Expr) error {
-	if !c.IsInitializing() {
-		return errModifyAfterInit
-	}
-	if app, ok := c.app(); ok {
-		app.Exprs = append(app.Exprs, e)
-	} else {
-		c.Command().Exprs = append(c.Command().Exprs, e)
-	}
-	return nil
-}
-
 // AddFlags provides a convenience method for adding flags to the current command or app.
 func (c *Context) AddFlags(flags ...*Flag) (err error) {
 	for _, f := range flags {
 		if err = c.AddFlag(f); err != nil {
-			break
-		}
-	}
-	return
-}
-
-// AddExprs provides a convenience method for adding exprs to the current command or app.
-func (c *Context) AddExprs(exprs ...*Expr) (err error) {
-	for _, e := range exprs {
-		if err = c.AddExpr(e); err != nil {
 			break
 		}
 	}
@@ -594,6 +571,36 @@ func (c *Context) SetColor(v bool) {
 // is provided to reset if SetColor has modified.
 func (c *Context) AutodetectColor() {
 	c.Stdout.ResetColorCapable()
+}
+
+// ProvideValueInitializer causes an additional child context to be created
+// which is used to initialize an arbitrary value.  Typically, the value is
+// the value of the flag or arg.
+// The value can provides methods such as SetDescription(string),
+// SetHelpText(string), etc. in order to operate with actions that set these values.
+func (c *Context) ProvideValueInitializer(v interface{}, name string, action Action) error {
+	adapter := &valueTarget{
+		v: v,
+		pipelinesSupport: pipelinesSupport{
+			&actionPipelines{
+				Initializers: action,
+			},
+		},
+	}
+	return c.Do(Setup{
+		Uses: func(c1 *Context) error {
+			return c1.valueContext(adapter, name).initialize()
+		},
+		Before: func(c1 *Context) error {
+			return c1.valueContext(adapter, name).executeBefore()
+		},
+		After: func(c1 *Context) error {
+			return c1.valueContext(adapter, name).executeAfter()
+		},
+		Action: func(c1 *Context) error {
+			return c1.valueContext(adapter, name).executeSelf()
+		},
+	})
 }
 
 // Last gets the last name in the path
@@ -740,10 +747,24 @@ func (c *Context) optionContext(opt option, args []string) *Context {
 	return c.argContext(opt.(*Arg), args)
 }
 
+func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
+	return c.copy(&valueContext{
+		v:    adapter,
+		name: name,
+	}, nil, true)
+}
+
 func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
-	return c.copy(&exprContext{
-		expr:    expr,
-		flagSet: data,
+	adapter := &valueTarget{
+		v: expr,
+		pipelinesSupport: pipelinesSupport{
+			&actionPipelines{},
+		},
+	}
+	return c.copy(&valueContext{
+		v:      adapter,
+		name:   expr.Name,
+		lookup: data,
 	}, args, true)
 }
 
@@ -846,11 +867,6 @@ func (c *Context) executeBefore() error {
 	)
 }
 
-func (c *Context) executeBeforeWithoutBubbling() error {
-	c.setTiming(BeforeTiming)
-	return c.internal.executeBefore(c)
-}
-
 func (c *Context) executeAfter() error {
 	c.setTiming(AfterTiming)
 	return tunnel(
@@ -858,11 +874,6 @@ func (c *Context) executeAfter() error {
 		func(c1 *Context) error { return c1.internal.executeAfter(c) },
 		func(c1 *Context) error { return c1.internal.executeAfterDescendent(c) },
 	)
-}
-
-func (c *Context) executeAfterWithoutTunneling() error {
-	c.setTiming(AfterTiming)
-	return c.internal.executeAfter(c)
 }
 
 func (c *Context) executeCommand() error {
@@ -894,6 +905,80 @@ func (c *Context) lookupOption(name string) (option, bool) {
 
 func (c *Context) option() option {
 	return c.target().(option)
+}
+
+func (*valueTarget) hookAfter(pattern string, handler Action) error {
+	return cantHookError
+}
+
+func (*valueTarget) hookBefore(pattern string, handler Action) error {
+	return cantHookError
+}
+
+func (v *valueTarget) setDescription(arg string) {
+	switch val := v.v.(type) {
+	case targetConventions:
+		val.setDescription(arg)
+	case interface{ SetDescription(string) }:
+		val.SetDescription(arg)
+	}
+}
+
+func (v *valueTarget) setHelpText(arg string) {
+	switch val := v.v.(type) {
+	case targetConventions:
+		val.setHelpText(arg)
+	case interface{ SetHelpText(string) }:
+		val.SetHelpText(arg)
+	}
+}
+
+func (v *valueTarget) setManualText(arg string) {
+	switch val := v.v.(type) {
+	case targetConventions:
+		val.setManualText(arg)
+	case interface{ SetManualText(string) }:
+		val.SetManualText(arg)
+	}
+}
+
+func (v *valueTarget) setCategory(arg string) {
+	switch val := v.v.(type) {
+	case targetConventions:
+		val.setCategory(arg)
+	case interface{ SetCategory(string) }:
+		val.SetCategory(arg)
+	}
+}
+
+func (*valueTarget) setInternalFlags(internalFlags) {}
+
+func (*valueTarget) internalFlags() internalFlags {
+	return 0
+}
+
+func (v *valueTarget) SetData(name string, val interface{}) {
+	if t, ok := v.v.(interface{ SetData(string, interface{}) }); ok {
+		t.SetData(name, val)
+	}
+}
+
+func (v *valueTarget) LookupData(name string) (interface{}, bool) {
+	if t, ok := v.v.(interface {
+		LookupData(string) (interface{}, bool)
+	}); ok {
+		return t.LookupData(name)
+	}
+	return nil, false
+}
+
+func (*valueTarget) WriteSynopsis(Writer) {}
+
+func (v *valueTarget) actualArgs() []*Arg {
+	if a, ok := v.v.(hasArguments); ok {
+		return a.actualArgs()
+	}
+	return nil
 }
 
 func triggerBeforeFlags(ctx *Context) error {
@@ -1033,6 +1118,6 @@ var (
 	_ internalContext = (*commandContext)(nil)
 	_ internalContext = (*flagContext)(nil)
 	_ internalContext = (*argContext)(nil)
-	_ internalContext = (*exprContext)(nil)
+	_ internalContext = (*valueContext)(nil)
 	_ internalContext = (*appContext)(nil)
 )

@@ -61,9 +61,6 @@ type App struct {
 	// Args will be bound for non-command arguments
 	Args []*Arg
 
-	// Exprs will provide expression evaluation
-	Exprs []*Expr
-
 	// Action specifies the action to run for the app, assuming no other more specific command
 	// has been selected.  Refer to cli.Action about the correct function signature to use.
 	Action interface{}
@@ -127,6 +124,9 @@ var (
 		"version": func() string {
 			return VersionTemplate
 		},
+		"expressions": func() string {
+			return expressionTemplate
+		},
 	}
 )
 
@@ -175,11 +175,6 @@ func (a *App) Arg(name string) (*Arg, bool) {
 	return findArgByName(a.Args, name)
 }
 
-// Expr  gets the expression by name
-func (a *App) Expr(name string) (*Expr, bool) {
-	return findExprByName(a.Exprs, name)
-}
-
 func (a *App) createRoot() *Command {
 	return a._createRootCore(false)
 }
@@ -205,7 +200,6 @@ func (a *App) _createRootCore(force bool) *Command {
 			Name:         a.Name,
 			Flags:        a.Flags,
 			Args:         a.Args,
-			Exprs:        a.Exprs,
 			Subcommands:  a.Commands,
 			Action:       a.Action,
 			Description:  a.Description,

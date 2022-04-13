@@ -1,9 +1,13 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/juju/ansiterm"
+	"github.com/juju/ansiterm/tabwriter"
 )
 
 //counterfeiter:generate . Evaluator
@@ -92,24 +96,14 @@ type Expr struct {
 }
 
 // Expression provides the parsed result of the expression that can be evaluated
-// with the given inputs.  Clients typically don't implement this interface; it is returned
-// from the Context.Expression() method assuming that expressions have be defined for the
-// command or app.
-type Expression interface {
-	Value
+// with the given inputs.
+type Expression struct {
+	boundContext *Context // where the expr pipeline was bound (should be "<expression>" argument)
+	items        []ExprBinding
+	args         []string
 
-	// Evaluate the expression binding with the given inputs.  Generally, the context
-	// passed to the evaluation context is the context of the command where the
-	// expression was defined.
-	Evaluate(*Context, ...interface{}) error
-
-	// Walk iterates the contents of the expression.  The walker function is passed
-	// each expression that is encountered along with the operands which were bound for it.
-	// If the walker function returns an error, walking stops and returns that error.
-	Walk(func(ExprBinding) error) error
-
-	// Append will append the specified expression evaluator
-	Append(ExprBinding)
+	// Exprs identifies the expression operators that are allowed
+	Exprs []*Expr
 }
 
 // ExprBinding provides the relationship between an evaluator and the evaluation
@@ -148,12 +142,6 @@ type exprPipelineFactory struct {
 	exprs map[string]*boundExpr
 }
 
-type exprPipeline struct {
-	boundContext *Context // where the expr pipeline was bound (should be "<expression>" argument)
-	items        []ExprBinding
-	args         []string
-}
-
 type exprSynopsis struct {
 	long  string
 	short string
@@ -173,39 +161,59 @@ type exprBinding struct {
 	expr *Expr
 }
 
-type exprContext struct {
-	expr    *Expr
-	flagSet *set
-}
-
 // BindExpression is an action that binds expression handling to an argument.  This
 // is set up automatically when a command defines any expression operators.  The exprFunc
 // argument is used to determine which expressions to used.  If nil, the default behavior
 // is used which is to lookup Command.Exprs from the context
-func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
-	if exprFunc == nil {
-		exprFunc = func(c *Context) ([]*Expr, error) {
-			return c.Command().Exprs, nil
+func (e *Expression) Initializer() Action {
+	return ActionOf(func(c *Context) error {
+		arg := c.Arg()
+		if arg.Name == "" {
+			arg.Name = "expression"
 		}
-	}
+		arg.UsageText = "<expression>"
+		arg.NArg = -1
+		arg.Action = Pipeline(arg.Action, func(c *Context) error {
+			pipe := c.Value("").(*Expression)
+			fac := newExprPipelineFactory(e.Exprs)
+			return pipe.applyFactory(c, fac)
+		})
+		arg.Before = Pipeline(arg.Before, func(c *Context) {
+			// Provide a more up-to-date description if Exprs changed
+			c.Arg().Description = e.renderDescription(c)
+		})
 
-	return Setup{
-		Uses: func(c *Context) {
-			c.Arg().Value = &exprPipeline{
-				boundContext: c,
-			}
-		},
-		Action: ActionFunc(func(c *Context) error {
-			exprs, err := exprFunc(c)
+		c.Arg().Description = e.renderDescription(c)
+		e.boundContext = c
+
+		for _, sub := range e.Exprs {
+			err := c.ProvideValueInitializer(sub, sub.Name, Setup{
+				Uses:   Pipeline(sub.Uses, initializeFlagsArgs),
+				Before: Pipeline(sub.Before, triggerBeforeArgs),
+				After:  Pipeline(sub.After, triggerAfterArgs),
+			})
 			if err != nil {
 				return err
 			}
+		}
+		return nil
+	})
+}
 
-			pipe := c.Value("").(*exprPipeline)
-			fac := newExprPipelineFactory(exprs)
-			return pipe.applyFactory(c, fac)
-		}),
+func (e *Expression) renderDescription(c *Context) string {
+	var buf bytes.Buffer
+	tpl := c.Template("expressions")
+
+	data := struct {
+		Description *exprDescriptionData
+	}{
+		Description: exprDescription(e),
 	}
+
+	w := ansiterm.NewTabWriter(&buf, 1, 8, 2, ' ', tabwriter.StripEscape)
+	_ = tpl.Execute(w, data)
+	_ = w.Flush()
+	return buf.String()
 }
 
 // NewExprBinding creates an expression binding.  The ev parameter is how
@@ -523,32 +531,24 @@ func (b *boundExpr) Evaluate(c *Context, v interface{}, yield func(interface{}) 
 	return EvaluatorOf(b.expr.Evaluate).Evaluate(ctx, v, yield)
 }
 
-func (p *exprPipeline) Set(arg string) error {
-	if p.args == nil {
-		p.args = make([]string, 0)
+func (e *Expression) Set(arg string) error {
+	if e.args == nil {
+		e.args = make([]string, 0)
 	}
-	p.args = append(p.args, arg)
+	e.args = append(e.args, arg)
 	return nil
 }
 
-func (p *exprPipeline) String() string {
-	return strings.Join(p.args, " ")
+func (e *Expression) String() string {
+	return strings.Join(e.args, " ")
 }
 
-func (p *exprPipeline) Evaluate(ctx *Context, items ...interface{}) error {
-	if err := p.before(ctx); err != nil {
-		return err
-	}
-
-	if err := p.evaluateCore(ctx, items...); err != nil {
-		return err
-	}
-
-	return p.after(ctx)
+func (e *Expression) Evaluate(ctx *Context, items ...interface{}) error {
+	return e.evaluateCore(ctx, items...)
 }
 
-func (p *exprPipeline) evaluateCore(ctx *Context, items ...interface{}) error {
-	yielders := make([]Yielder, len(p.items))
+func (e *Expression) evaluateCore(ctx *Context, items ...interface{}) error {
+	yielders := make([]Yielder, len(e.items))
 	yielderThunk := func(i int) Yielder {
 		if i >= len(yielders) || yielders[i] == nil {
 			return emptyYielder
@@ -556,10 +556,10 @@ func (p *exprPipeline) evaluateCore(ctx *Context, items ...interface{}) error {
 		return yielders[i]
 	}
 
-	for ik := range p.items {
+	for ik := range e.items {
 		i := ik
 		yielders[i] = func(in interface{}) error {
-			return p.items[i].Evaluate(ctx, in, yielderThunk(i+1))
+			return e.items[i].Evaluate(ctx, in, yielderThunk(i+1))
 		}
 	}
 	for _, v := range items {
@@ -571,12 +571,12 @@ func (p *exprPipeline) evaluateCore(ctx *Context, items ...interface{}) error {
 	return nil
 }
 
-func (p *exprPipeline) Walk(fn func(ExprBinding) error) error {
+func (e *Expression) Walk(fn func(ExprBinding) error) error {
 	if fn == nil {
 		return nil
 	}
-	for _, e := range p.items {
-		err := fn(e)
+	for _, x := range e.items {
+		err := fn(x)
 		if err != nil {
 			return err
 		}
@@ -584,8 +584,20 @@ func (p *exprPipeline) Walk(fn func(ExprBinding) error) error {
 	return nil
 }
 
-func (p *exprPipeline) Append(expr ExprBinding) {
-	p.items = append(p.items, expr)
+func (e *Expression) Append(expr ExprBinding) {
+	e.items = append(e.items, expr)
+}
+
+// VisibleExprs filters all expression operators by whether they are not hidden
+func (e *Expression) VisibleExprs() []*Expr {
+	res := make([]*Expr, 0, len(e.Exprs))
+	for _, o := range e.Exprs {
+		if o.internalFlags().hidden() {
+			continue
+		}
+		res = append(res, o)
+	}
+	return res
 }
 
 func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, error) {
@@ -643,36 +655,10 @@ Parsing:
 	return results, nil
 }
 
-func (p *exprPipeline) applyFactory(c *Context, fac *exprPipelineFactory) error {
-	exprs, err := fac.parse(c, p.args)
-	p.items = exprs
+func (e *Expression) applyFactory(c *Context, fac *exprPipelineFactory) error {
+	exprs, err := fac.parse(c, e.args)
+	e.items = exprs
 	return err
-}
-
-func (p *exprPipeline) before(ctx *Context) error {
-	// Use the context where the expression was defined rather than where
-	// it was evaluated to process events so that the correct lineage is accessible
-	// to actions
-	c := p.boundContext
-	for _, expr := range p.items {
-		// TODO Type coercion shouldn't be necessary, should provide args
-		if be, ok := expr.(*boundExpr); ok {
-			c.exprContext(expr.Expr(), nil, be.set).executeBeforeWithoutBubbling()
-		}
-	}
-
-	return nil
-}
-
-func (p *exprPipeline) after(ctx *Context) error {
-	c := p.boundContext
-	for _, expr := range p.items {
-		if be, ok := expr.(*boundExpr); ok {
-			c.exprContext(expr.Expr(), nil, be.set).executeAfterWithoutTunneling()
-		}
-	}
-
-	return nil
 }
 
 func (b *exprBinding) Expr() *Expr {
@@ -702,46 +688,9 @@ func (e *exprSynopsis) write(w Writer) {
 	}
 }
 
-func (e *exprContext) initialize(c *Context) error {
-	return executeAll(c, ActionOf(e.expr.Uses), defaultExpr.Initializers)
-}
-
-func (e *exprContext) executeBefore(ctx *Context) error {
-	return executeAll(ctx, ActionOf(e.expr.Before), defaultExpr.Before)
-}
-
-func (e *exprContext) executeAfter(ctx *Context) error {
-	return executeAll(ctx, ActionOf(e.expr.After), defaultExpr.After)
-}
-
-func (e *exprContext) executeBeforeDescendent(ctx *Context) error { return nil }
-func (e *exprContext) executeAfterDescendent(ctx *Context) error  { return nil }
-func (e *exprContext) execute(ctx *Context) error                 { return nil }
-func (e *exprContext) lookupBinding(name string) []string {
-	return e.flagSet.bindings[name]
-}
-
-func (e *exprContext) setDidSubcommandExecute() {}
-func (e *exprContext) target() target           { return e.expr }
-func (e *exprContext) lookupValue(name string) (interface{}, bool) {
-	return e.flagSet.lookupValue(name)
-}
-func (e *exprContext) Name() string {
-	return "<-" + e.expr.Name + ">"
-}
-
 func emptyYielder(interface{}) error {
 	return nil
 }
 
-func findExprByName(items []*Expr, name string) (*Expr, bool) {
-	for _, sub := range items {
-		if sub.Name == name {
-			return sub, true
-		}
-	}
-	return nil, false
-}
-
-var _ Expression = (*exprPipeline)(nil)
+var _ Value = (*Expression)(nil)
 var _ targetConventions = (*Expr)(nil)

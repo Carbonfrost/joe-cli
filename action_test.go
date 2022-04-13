@@ -472,6 +472,34 @@ var _ = Describe("Action", func() {
 	)
 })
 
+var _ = Describe("ProvideValueInitializer", func() {
+	It("invokes a context scope on the value", func() {
+		setup := cli.Setup{
+			Uses:   new(joeclifakes.FakeAction),
+			Before: new(joeclifakes.FakeAction),
+			Action: new(joeclifakes.FakeAction),
+			After:  new(joeclifakes.FakeAction),
+		}
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "r",
+					Uses: cli.ProvideValueInitializer(nil, "myname", setup),
+				},
+			},
+		}
+		args, _ := cli.Split("app 0")
+		_ = app.RunContext(context.TODO(), args)
+
+		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.Before.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.After.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.Action.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+
+		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteArgsForCall(0).Name()).To(Equal("<-myname>"))
+	})
+})
+
 var _ = Describe("Before", func() {
 
 	DescribeTable("timing examples",

@@ -23,20 +23,45 @@ var _ = Describe("Expr", func() {
 					Name: "start",
 					NArg: -2,
 				},
-			},
-			Exprs: []*cli.Expr{
 				{
-					Name: "expr",
-					Args: cli.Args("a", cli.Bool()),
+					Name: "e",
+					Value: &cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name: "expr",
+								Args: cli.Args("a", cli.Bool()),
+							},
+						},
+					},
 				},
 			},
 		}
 		args, _ := cli.Split("app x -expr true")
-		app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
 
 		captured := act.ExecuteArgsForCall(0)
-		Expect(captured.Expression())
+		Expect(captured.Expression("e"))
+	})
 
+	It("names it expression by default", func() {
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Value: &cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name: "expr",
+								Args: cli.Args("a", cli.Bool()),
+							},
+						},
+					},
+				},
+			},
+		}
+		err := app.RunContext(context.TODO(), []string{"app"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Args[0].Name).To(Equal("expression"))
 	})
 
 	Describe("Evaluate", func() {
@@ -54,32 +79,37 @@ var _ = Describe("Expr", func() {
 						Name: "f",
 						NArg: 0,
 					},
-				},
-				Action: func(c *cli.Context) {
-					c.Expression().Evaluate(c, "items")
-				},
-				Exprs: []*cli.Expr{
 					{
-						Name: "expr",
-						Args: []*cli.Arg{
-							{
-								Name:  "f",
-								Value: new(bool),
-								NArg:  1,
-							},
-							{
-								Name:  "g",
-								Value: new(int),
-								NArg:  2,
-							},
-							{
-								Name:  "h",
-								Value: new([]string),
-								NArg:  -2,
+						Name: "e",
+						Value: &cli.Expression{
+							Exprs: []*cli.Expr{
+								{
+									Name: "expr",
+									Args: []*cli.Arg{
+										{
+											Name:  "f",
+											Value: new(bool),
+											NArg:  1,
+										},
+										{
+											Name:  "g",
+											Value: new(int),
+											NArg:  2,
+										},
+										{
+											Name:  "h",
+											Value: new([]string),
+											NArg:  -2,
+										},
+									},
+									Evaluate: act,
+								},
 							},
 						},
-						Evaluate: act,
 					},
+				},
+				Action: func(c *cli.Context) {
+					c.Expression("e").Evaluate(c, "items")
 				},
 			}
 		})
@@ -129,22 +159,27 @@ var _ = Describe("Expr", func() {
 						Name: "f",
 						NArg: 0,
 					},
-				},
-				Exprs: []*cli.Expr{
 					{
-						Name: "expr",
-						Args: []*cli.Arg{
-							{
-								Name:  "f",
-								Value: new(bool),
-								NArg:  1,
+						Name: "expression",
+						Value: &cli.Expression{
+							Exprs: []*cli.Expr{
+								{
+									Name: "expr",
+									Args: []*cli.Arg{
+										{
+											Name:  "f",
+											Value: new(bool),
+											NArg:  1,
+										},
+									},
+									Before: act,
+								},
 							},
 						},
-						Before: act,
 					},
 				},
 				Action: func(c *cli.Context) {
-					c.Expression().Evaluate(c, nil)
+					c.Expression("expression").Evaluate(c, nil)
 				},
 			}
 		})
@@ -184,22 +219,27 @@ var _ = Describe("Expr", func() {
 						Name: "f",
 						NArg: 0,
 					},
-				},
-				Exprs: []*cli.Expr{
 					{
-						Name: "expr",
-						Args: []*cli.Arg{
-							{
-								Name:  "f",
-								Value: new(bool),
-								NArg:  1,
+						Name: "expression",
+						Value: &cli.Expression{
+							Exprs: []*cli.Expr{
+								{
+									Name: "expr",
+									Args: []*cli.Arg{
+										{
+											Name:  "f",
+											Value: new(bool),
+											NArg:  1,
+										},
+									},
+									After: act,
+								},
 							},
 						},
-						After: act,
 					},
 				},
 				Action: func(c *cli.Context) {
-					c.Expression().Evaluate(c, nil)
+					c.Expression("expression").Evaluate(c, nil)
 				},
 			}
 		})
@@ -276,7 +316,7 @@ var _ = Describe("Expr", func() {
 						for _, v := range c.List("f") {
 							items = append(items, v)
 						}
-						c.Expression().Evaluate(c, items...)
+						c.Expression("expression").Evaluate(c, items...)
 					},
 					Stdout: &captured,
 					Args: []*cli.Arg{
@@ -284,30 +324,35 @@ var _ = Describe("Expr", func() {
 							Name: "f",
 							NArg: -2,
 						},
-					},
-					Exprs: []*cli.Expr{
 						{
-							Name: "offset",
-							Args: []*cli.Arg{
-								{
-									Name:  "value",
-									Value: new(int),
-									NArg:  1,
+							Name: "expression",
+							Value: &cli.Expression{
+								Exprs: []*cli.Expr{
+									{
+										Name: "offset",
+										Args: []*cli.Arg{
+											{
+												Name:  "value",
+												Value: new(int),
+												NArg:  1,
+											},
+										},
+										Evaluate: evaluator,
+									},
+									{
+										Name: "multi",
+										Args: []*cli.Arg{
+											{
+												NArg: 1,
+											},
+											{
+												NArg: 1,
+											},
+										},
+										Evaluate: evaluator,
+									},
 								},
 							},
-							Evaluate: evaluator,
-						},
-						{
-							Name: "multi",
-							Args: []*cli.Arg{
-								{
-									NArg: 1,
-								},
-								{
-									NArg: 1,
-								},
-							},
-							Evaluate: evaluator,
 						},
 					},
 				}
@@ -335,18 +380,23 @@ var _ = Describe("Expr", func() {
 							Name: "f",
 							NArg: -2,
 						},
-					},
-					Exprs: []*cli.Expr{
 						{
-							Name: "expr",
-						},
-						{
-							Name: "offset",
-							Args: []*cli.Arg{
-								{
-									Name:  "value",
-									Value: new(int),
-									NArg:  1,
+							Name: "e",
+							Value: &cli.Expression{
+								Exprs: []*cli.Expr{
+									{
+										Name: "expr",
+									},
+									{
+										Name: "offset",
+										Args: []*cli.Arg{
+											{
+												Name:  "value",
+												Value: new(int),
+												NArg:  1,
+											},
+										},
+									},
 								},
 							},
 						},
@@ -384,24 +434,30 @@ var _ = Describe("Expr", func() {
 					for _, v := range c.List("start") {
 						items = append(items, v)
 					}
-					c.Expression().Evaluate(c, items...)
+					c.Expression("e").Evaluate(c, items...)
 				},
 				Args: []*cli.Arg{
 					{
 						Name: "start",
 						NArg: -2,
 					},
-				},
-				Exprs: []*cli.Expr{
 					{
-						Name: "expr",
-						Args: cli.Args("a", cli.String(), "b", cli.String(), "c", cli.String()),
-						Evaluate: func(c *cli.Context, in interface{}, yield func(interface{}) error) error {
-							fmt.Fprintf(c.Stdout, "%s%s%s%s ", in, c.String("a"), c.String("b"), c.String("c"))
-							return nil
+						Name: "e",
+						Value: &cli.Expression{
+							Exprs: []*cli.Expr{
+								{
+									Name: "expr",
+									Args: cli.Args("a", cli.String(), "b", cli.String(), "c", cli.String()),
+									Evaluate: func(c *cli.Context, in interface{}, yield func(interface{}) error) error {
+										fmt.Fprintf(c.Stdout, "%s%s%s%s ", in, c.String("a"), c.String("b"), c.String("c"))
+										return nil
+									},
+								},
+							},
 						},
 					},
 				},
+
 				Stdout: &captured,
 			}
 			args, _ := cli.Split(arguments)

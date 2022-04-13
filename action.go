@@ -118,8 +118,6 @@ var (
 	defaultCommand = actionPipelines{
 		Initializers: Pipeline(
 			ActionFunc(ensureSubcommands),
-			ActionFunc(ensureExprs),
-			ActionFunc(initializeExprs),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
 		),
@@ -139,18 +137,6 @@ var (
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
-		),
-	}
-
-	defaultExpr = actionPipelines{
-		Initializers: Pipeline(
-			ActionFunc(initializeFlagsArgs),
-		),
-		Before: Pipeline(
-			ActionFunc(triggerBeforeArgs),
-		),
-		After: Pipeline(
-			ActionFunc(triggerAfterArgs),
 		),
 	}
 
@@ -439,6 +425,15 @@ func OptionalValue(v interface{}) Action {
 	}))
 }
 
+// ProvideValueInitializer causes an additional child context to be created
+// which is used to initialize an arbitrary value.  For more information,
+// refer to the implementation provided by Context.ProvideValueInitializer.
+func ProvideValueInitializer(v target, name string, a Action) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.ProvideValueInitializer(v, name, a)
+	})
+}
+
 // AddFlag provides an action which adds a flag to the command or app
 func AddFlag(f *Flag) Action {
 	return ActionFunc(func(c *Context) error {
@@ -460,13 +455,6 @@ func AddArg(a *Arg) Action {
 	})
 }
 
-// AddExpr provides an action which adds an expr to the command or app
-func AddExpr(v *Expr) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddExpr(v)
-	})
-}
-
 // AddFlags provides an action which adds the specified flags to the command
 func AddFlags(flags ...*Flag) Action {
 	return ActionFunc(func(c *Context) error {
@@ -485,13 +473,6 @@ func AddArgs(args ...*Arg) Action {
 func AddCommands(commands ...*Command) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.AddCommands(commands...)
-	})
-}
-
-// AddExprs provides an action which adds the specified exprs to the command
-func AddExprs(exprs ...*Expr) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddExprs(exprs...)
 	})
 }
 

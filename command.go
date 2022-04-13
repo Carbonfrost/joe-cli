@@ -22,9 +22,6 @@ type Command struct {
 	// Args that the command supports
 	Args []*Arg
 
-	// Exprs identifies the expression operators that are allowed for the command.
-	Exprs []*Expr
-
 	// Aliases indicates alternate names that can be used
 	Aliases []string
 
@@ -209,11 +206,6 @@ func (c *Command) Arg(name string) (*Arg, bool) {
 	return findArgByName(c.Args, name)
 }
 
-// Expr tries to obtain an expression operator by name or alias
-func (c *Command) Expr(name string) (*Expr, bool) {
-	return findExprByName(c.Exprs, name)
-}
-
 // VisibleArgs filters all arguments in the command by whether they are not hidden
 func (c *Command) VisibleArgs() []*Arg {
 	res := make([]*Arg, 0, len(c.actualArgs()))
@@ -230,18 +222,6 @@ func (c *Command) VisibleArgs() []*Arg {
 func (c *Command) VisibleFlags() []*Flag {
 	res := make([]*Flag, 0, len(c.actualFlags()))
 	for _, o := range c.actualFlags() {
-		if o.internalFlags().hidden() {
-			continue
-		}
-		res = append(res, o)
-	}
-	return res
-}
-
-// VisibleExprs filters all expression operators in the command by whether they are not hidden
-func (c *Command) VisibleExprs() []*Expr {
-	res := make([]*Expr, 0, len(c.actualExprs()))
-	for _, o := range c.actualExprs() {
 		if o.internalFlags().hidden() {
 			continue
 		}
@@ -307,11 +287,6 @@ func ensureSubcommands(c *Context) error {
 	return nil
 }
 
-func ensureExprs(c *Context) error {
-	c.target().(*Command).ensureExprs()
-	return nil
-}
-
 func (c *Command) ensureSubcommands() {
 	if len(c.Subcommands) > 0 {
 		c.appendArg(&Arg{
@@ -328,29 +303,11 @@ func (c *Command) ensureSubcommands() {
 	}
 }
 
-func (c *Command) ensureExprs() {
-	if len(c.Exprs) > 0 {
-		c.appendArg(&Arg{
-			Name:      "expression",
-			UsageText: "<expression>",
-			NArg:      -1,
-			Uses:      BindExpression(nil),
-		})
-	}
-}
-
 func (c *Command) actualArgs() []*Arg {
 	if c.Args == nil {
 		return make([]*Arg, 0)
 	}
 	return c.Args
-}
-
-func (c *Command) actualExprs() []*Expr {
-	if c.Exprs == nil {
-		return make([]*Expr, 0)
-	}
-	return c.Exprs
 }
 
 func (c *Command) actualFlags() []*Flag {
@@ -495,17 +452,6 @@ func initializeFlagsArgs(ctx *Context) error {
 		}
 	}
 
-	return nil
-}
-
-func initializeExprs(ctx *Context) error {
-	cmd := ctx.target().(*Command)
-	for _, sub := range cmd.Exprs {
-		err := ctx.exprContext(sub, nil, nil).initialize()
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

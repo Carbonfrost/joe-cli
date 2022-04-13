@@ -198,13 +198,28 @@ var _ = Describe("DisplayHelpScreen", func() {
 			ContainSubstring("description text")),
 		Entry("display expression",
 			&cli.App{
-				Exprs: []*cli.Expr{
-					{
-						Name: "expr",
-					},
-				},
+				Args: cli.Args("expression", &cli.Expression{}),
 			},
 			ContainSubstring("<expression>...")),
+		Entry("display expression description",
+			&cli.App{
+				Args: cli.Args(
+					"expr",
+					&cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name:     "cname",
+								HelpText: "Gets the cname value",
+							},
+						},
+					},
+				),
+			},
+			And(
+				ContainSubstring("Expressions:"),
+				ContainSubstring("-cname"),
+				ContainSubstring("Gets the cname value"),
+			)),
 		Entry("display arg description",
 			&cli.App{
 				Args: []*cli.Arg{
@@ -248,10 +263,15 @@ var _ = Describe("DisplayHelpScreen", func() {
 				Commands: []*cli.Command{
 					{
 						Name: "sub",
-
-						Exprs: []*cli.Expr{
+						Args: []*cli.Arg{
 							{
-								Name: "expr",
+								Value: &cli.Expression{
+									Exprs: []*cli.Expr{
+										{
+											Name: "expr",
+										},
+									},
+								},
 							},
 						},
 					},
