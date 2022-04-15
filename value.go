@@ -400,7 +400,11 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		}
 		return nil
 	case *string:
-		*p = value
+		s := *p
+		if len(s) > 0 {
+			s = s + " "
+		}
+		*p = s + value
 		return nil
 	case *[]string:
 		*p = append(*p, values()...)
@@ -601,9 +605,7 @@ func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
 }
 
 func (g *generic) Set(value string, opt *internalOption) error {
-	if opt.Occurrences() <= 1 {
-		g.applyValueConventions(opt.flags)
-	}
+	g.applyValueConventions(opt.flags, opt.Occurrences())
 
 	if trySetOptional(g.p, func() (interface{}, bool) {
 		return opt.optionalValue, (value == "" && opt.flags.optional())
@@ -668,17 +670,32 @@ func (g *generic) String() string {
 	panic("unreachable!")
 }
 
-func (g *generic) applyValueConventions(flags internalFlags) {
+func (g *generic) applyValueConventions(flags internalFlags, occurs int) {
+	resetOnFirstOccur := !flags.merge()
+	if occurs > 1 {
+		// string will reset on every occurrence unless Merge is turned on
+		if resetOnFirstOccur {
+			switch p := g.p.(type) {
+			case *string:
+				*p = ""
+			}
+		}
+		return
+	}
+
 	if flags.disableSplitting() {
 		if i, ok := g.p.(valueDisableSplitting); ok {
 			i.DisableSplitting()
 		}
 	}
 
-	if resetOnFirstOccur := !flags.merge(); resetOnFirstOccur {
+	if resetOnFirstOccur {
 		switch p := g.p.(type) {
 		case valueResetOrMerge:
 			p.Reset()
+
+		case *string:
+			*p = ""
 
 		case *[]string:
 			*p = nil

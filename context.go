@@ -1028,6 +1028,9 @@ func fixupOptionInternals(c *Context) error {
 		if o.Value != nil && p != o.option.value.p {
 			o.option.value = wrapGeneric(p)
 		}
+		if _, ok := o.Value.(*string); ok {
+			o.option.flags |= internalFlagMerge
+		}
 	}
 	return nil
 }

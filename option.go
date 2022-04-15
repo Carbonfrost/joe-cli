@@ -97,7 +97,7 @@ const (
 	DisableSplitting
 
 	// Merge when set, indicates that rather than overwrite values set in list, there should
-	// be strategic merging.  This pertains to list, fileset, and map flags.  By default,
+	// be strategic merging.  This pertains to strings, list, fileset, and map flags.  By default,
 	// the value that is used to initialize any of these flags is treated as a default which
 	// is overwritten if the user specifies an environment variable or any value.  To stop this,
 	// the Merge option can be used

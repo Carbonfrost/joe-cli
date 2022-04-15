@@ -208,6 +208,16 @@ var _ = Describe("Value", func() {
 				}),
 			),
 			Entry(
+				"string appends given Merge",
+				&cli.Flag{
+					Name:    "o",
+					Value:   new(string),
+					Options: cli.Merge,
+				},
+				"app -o abc -o 123",
+				Equal("abc 123"),
+			),
+			Entry(
 				"URL",
 				&cli.Flag{Name: "o", Value: cli.URL()},
 				"app -o https://localhost.example:1619",
