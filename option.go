@@ -146,6 +146,7 @@ const (
 	internalFlagFlagOnly      // true for Flag without an argument
 	internalFlagOptional      // true if value is optional
 	internalFlagPersistent    // true when the option is a clone of a peristent parent flag
+	internalFlagDestinationImplicitlyCreated
 )
 
 var (
@@ -308,6 +309,10 @@ func (f internalFlags) optional() bool {
 
 func (f internalFlags) persistent() bool {
 	return f&internalFlagPersistent == internalFlagPersistent
+}
+
+func (f internalFlags) destinationImplicitlyCreated() bool {
+	return f&internalFlagDestinationImplicitlyCreated == internalFlagDestinationImplicitlyCreated
 }
 
 func splitOptionsHO(opts Option, fn func(Option)) {

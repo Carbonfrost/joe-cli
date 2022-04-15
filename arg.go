@@ -298,7 +298,7 @@ func (a *Arg) helpText() string {
 
 func (a *Arg) value() interface{} {
 	_, multi := aboutArgCounter(a.NArg)
-	a.Value = ensureDestination(a.Value, multi)
+	a.Value = ensureDestination(a, a.Value, multi)
 	return a.Value
 }
 
@@ -333,10 +333,15 @@ func (a *argSynopsis) String() string {
 
 func (o *argContext) initialize(c *Context) error {
 	a := o.option
+	var flags internalFlags
+	if a.Value == nil {
+		flags = internalFlagDestinationImplicitlyCreated
+	}
 	a.option = internalOption{
 		value: wrapGeneric(a.value()),
 		narg:  a.NArg,
 		uname: a.Name,
+		flags: flags,
 	}
 
 	rest := newPipelines(ActionOf(o.option.Uses), &o.option.Options)

@@ -10,6 +10,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
@@ -289,7 +290,56 @@ var _ = Describe("Arg", func() {
 		Expect(*arg3).To(Equal([]string{"arg3"}))
 	})
 
-	// A test for -- -flag if not already there
+	It("can set and define name and value by initializer", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Uses: func(c *cli.Context) {
+						f := c.Arg()
+						f.Name = "uses"
+						f.Value = new(bool)
+						f.Action = act
+					},
+				},
+			},
+		}
+
+		err := app.RunContext(context.TODO(), []string{"app", "true"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+
+		Expect(app.Args[0].Name).To(Equal("uses"))
+		Expect(app.Args[0].Value).To(PointTo(BeTrue()))
+	})
+
+	It("can set and define NArg by initializer", func() {
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Name: "u", // Allocate a list because NArg is set
+					Uses: cli.ArgSetup(func(a *cli.Arg) {
+						a.NArg = 5
+					}),
+				},
+				{
+					Name:  "v",
+					Value: new(string), // Keep this value even though NArg changes
+					Uses: cli.ArgSetup(func(a *cli.Arg) {
+						a.NArg = 5
+					}),
+				},
+			},
+		}
+
+		err := app.RunContext(context.TODO(), []string{"app", "1", "2", "3", "4", "5", "1", "2", "3", "4", "5"})
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(app.Args[0].Value).To(PointTo(Equal([]string{"1", "2", "3", "4", "5"})))
+		Expect(app.Args[1].Value).To(PointTo(Equal("5")))
+	})
 })
 
 var _ = Describe("ArgCount", func() {

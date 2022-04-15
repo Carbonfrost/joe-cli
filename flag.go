@@ -498,7 +498,7 @@ func (f *Flag) filePath() string {
 }
 
 func (f *Flag) value() interface{} {
-	f.Value = ensureDestination(f.Value, false)
+	f.Value = ensureDestination(f, f.Value, false)
 	return f.Value
 }
 
@@ -576,7 +576,7 @@ func hasNoValue(f *Flag) bool {
 	return false
 }
 
-func ensureDestination(dest interface{}, multi bool) interface{} {
+func ensureDestination(o option, dest interface{}, multi bool) interface{} {
 	if dest == nil {
 		if !multi {
 			return String()
