@@ -17,17 +17,29 @@ import (
 var _ = Describe("Arg", func() {
 
 	It("sets default name by index", func() {
+		var (
+			called         bool
+			nameInPipeline string
+		)
 		app := &cli.App{
 			Name: "app",
 			Args: []*cli.Arg{
 				{
 					NArg: 1,
+					Uses: func(c *cli.Context) {
+						called = true
+						nameInPipeline = c.Arg().Name
+					},
 				},
 			},
 		}
-		app.RunContext(context.TODO(), []string{"app"})
+		app.RunContext(context.TODO(), []string{"app", "a"})
 
 		Expect(app.Args[0].Name).To(Equal("_1"))
+		Expect(called).To(BeTrue())
+		Expect(nameInPipeline).To(
+			Equal(""), "the name should be set to a generated name after all initializers have run",
+		)
 	})
 
 	Describe("Action", func() {
@@ -68,6 +80,16 @@ var _ = Describe("Arg", func() {
 			captured := act.ExecuteArgsForCall(0)
 			Expect(captured.Name()).To(Equal("<f>"))
 			Expect(captured.Path().String()).To(Equal("app <f>"))
+		})
+
+		It("contains the value in the context", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Value("")).To(Equal("f"))
+		})
+
+		It("contains the correct Occurrences count", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Occurrences("")).To(Equal(1))
 		})
 	})
 
@@ -224,6 +246,7 @@ var _ = Describe("Arg", func() {
 		var (
 			actual    string
 			arguments string
+			occurs    int
 		)
 
 		BeforeEach(func() {
@@ -238,6 +261,9 @@ var _ = Describe("Arg", func() {
 						Name:    "f",
 						EnvVars: []string{"_GOCLI_F"},
 						Value:   &actual,
+						Action: func(c *cli.Context) {
+							occurs = c.Occurrences("")
+						},
 					},
 				},
 			}
@@ -258,6 +284,10 @@ var _ = Describe("Arg", func() {
 
 			XIt("sets up value from option", func() {
 				Expect(actual).To(Equal("option text"))
+			})
+
+			It("has 1 occurrence", func() {
+				Expect(occurs).To(Equal(1))
 			})
 		})
 	})
@@ -302,6 +332,32 @@ var _ = Describe("Arg", func() {
 						f.Name = "uses"
 						f.Value = new(bool)
 						f.Action = act
+					},
+				},
+			},
+		}
+
+		err := app.RunContext(context.TODO(), []string{"app", "true"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+
+		Expect(app.Args[0].Name).To(Equal("uses"))
+		Expect(app.Args[0].Value).To(PointTo(BeTrue()))
+	})
+
+	It("can set and define name by initializer", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Value: &customValue{
+						init: cli.ActionOf(func(c *cli.Context) {
+							f := c.Arg()
+							f.Name = "uses"
+							f.Value = new(bool)
+							f.Action = act
+						}),
 					},
 				},
 			},

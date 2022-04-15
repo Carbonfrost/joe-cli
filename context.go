@@ -912,6 +912,9 @@ func (c *Context) executeSelf() error {
 }
 
 func (c *Context) lookupOption(name string) (option, bool) {
+	if name == "" {
+		return c.option(), true
+	}
 	if f, ok := c.LookupFlag(name); ok {
 		return f, true
 	}

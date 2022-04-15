@@ -587,10 +587,6 @@ func ensureDestination(o option, dest interface{}, multi bool) interface{} {
 }
 
 func loadFlagValueFromEnvironment(f option) (string, bool) {
-	if f.Seen() {
-		return "", false
-	}
-
 	envVars := f.envVars()
 	for _, envVar := range envVars {
 		envVar = strings.TrimSpace(envVar)

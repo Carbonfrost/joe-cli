@@ -355,6 +355,7 @@ func (a *argBinding) SetArg(arg string, possibleFlag bool) error {
 
 		err := t.Take(arg, possibleFlag)
 		if err == nil {
+			c.Occurrence()
 			return c.Set(arg)
 		}
 
@@ -407,8 +408,11 @@ func (o *internalOption) Seen() bool {
 }
 
 func (o *internalOption) Set(arg string) error {
-	o.count++
 	return o.value.Set(arg, o)
+}
+
+func (o *internalOption) Occurrence() {
+	o.count++
 }
 
 func (o *internalOption) Name() string {

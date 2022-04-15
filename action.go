@@ -127,9 +127,9 @@ var (
 
 	defaultOption = actionPipelines{
 		Initializers: Pipeline(
-			ActionFunc(fixupOptionInternals),
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
+			ActionFunc(fixupOptionInternals),
 		),
 	}
 
