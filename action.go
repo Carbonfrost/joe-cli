@@ -326,8 +326,7 @@ func Timeout(timeout time.Duration) Action {
 // SetValue provides an action which sets the value of the flag or argument.
 func SetValue(v interface{}) Action {
 	return ActionFunc(func(c *Context) error {
-		c.target().(option).Set(genericString(dereference(v)))
-		return nil
+		return c.SetValue(v)
 	})
 }
 
@@ -521,6 +520,19 @@ func optionalSetup(a func(*Context)) ActionFunc {
 		}
 		return nil
 	}
+}
+
+// ImplicitValue sets the implicit value which is specified for the arg or flag
+// if it was not specified for the command.  Any errors are suppressed
+func ImplicitValue(fn func() (string, bool)) Action {
+	return Before(ActionFunc(func(c *Context) error {
+		if c.Occurrences("") == 0 {
+			if v, ok := fn(); ok {
+				c.SetValue(v)
+			}
+		}
+		return nil
+	}))
 }
 
 // Execute the action by calling the function

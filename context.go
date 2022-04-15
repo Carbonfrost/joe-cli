@@ -325,6 +325,11 @@ func (c *Context) nameToString(name interface{}) string {
 	}
 }
 
+// SetValue sets the value of the current flag or arg
+func (c *Context) SetValue(v interface{}) error {
+	return c.target().(option).Set(genericString(dereference(v)))
+}
+
 // Action either stores or executes the action. When called from the initialization or before pipelines, this
 // appends the action to the pipeline for the current flag, arg, or command/app.
 // When called from the action or after pipelines, this simply causes the action to be invoked immediately.
@@ -1040,10 +1045,9 @@ func fixupOptionInternals(c *Context) error {
 
 func setupOptionFromEnv(ctx *Context) error {
 	o := ctx.option()
-	if v, ok := loadFlagValueFromEnvironment(o); ok {
-		return o.Set(v)
-	}
-	return nil
+	return ctx.Do(ImplicitValue(func() (string, bool) {
+		return loadFlagValueFromEnvironment(o)
+	}))
 }
 
 func guessWidth() int {

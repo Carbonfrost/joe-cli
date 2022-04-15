@@ -282,7 +282,7 @@ var _ = Describe("Arg", func() {
 				arguments = "app 'option text'"
 			})
 
-			XIt("sets up value from option", func() {
+			It("sets up value from option", func() {
 				Expect(actual).To(Equal("option text"))
 			})
 
