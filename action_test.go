@@ -111,7 +111,7 @@ var _ = Describe("middleware", func() {
 					{
 						Name:   "int",
 						Value:  cli.Int(),
-						Before: cli.SetValue(420),
+						Before: cli.SetValue("420"),
 					},
 				}
 			})

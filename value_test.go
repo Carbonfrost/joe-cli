@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"time"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -234,6 +235,12 @@ var _ = Describe("Value", func() {
 				&cli.Flag{Name: "o", Value: cli.IP()},
 				"app -o 127.0.0.1",
 				Equal(net.ParseIP("127.0.0.1")),
+			),
+			Entry(
+				"Duration",
+				&cli.Flag{Name: "o", Value: cli.Duration()},
+				"app -o 55ms",
+				Equal(time.Millisecond*55),
 			),
 			Entry(
 				"file set resets values",

@@ -324,7 +324,7 @@ func Timeout(timeout time.Duration) Action {
 }
 
 // SetValue provides an action which sets the value of the flag or argument.
-func SetValue(v interface{}) Action {
+func SetValue(v string) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.SetValue(v)
 	})

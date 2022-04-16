@@ -326,8 +326,8 @@ func (c *Context) nameToString(name interface{}) string {
 }
 
 // SetValue sets the value of the current flag or arg
-func (c *Context) SetValue(v interface{}) error {
-	return c.target().(option).Set(genericString(dereference(v)))
+func (c *Context) SetValue(arg string) error {
+	return c.target().(option).Set(arg)
 }
 
 // Action either stores or executes the action. When called from the initialization or before pipelines, this

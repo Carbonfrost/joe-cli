@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -616,60 +614,6 @@ func (g *generic) Set(value string, opt *internalOption) error {
 	return setCore(g.p, opt.flags.disableSplitting(), value)
 }
 
-func (g *generic) String() string {
-	switch p := g.p.(type) {
-	case *bool:
-		return genericString(*p)
-	case *string:
-		return genericString(*p)
-	case *[]string:
-		return genericString(*p)
-	case *int:
-		return genericString(*p)
-	case *int8:
-		return genericString(*p)
-	case *int16:
-		return genericString(*p)
-	case *int32:
-		return genericString(*p)
-	case *int64:
-		return genericString(*p)
-	case *uint:
-		return genericString(*p)
-	case *uint8:
-		return genericString(*p)
-	case *uint16:
-		return genericString(*p)
-	case *uint32:
-		return genericString(*p)
-	case *uint64:
-		return genericString(*p)
-	case *float32:
-		return genericString(*p)
-	case *float64:
-		return genericString(*p)
-	case *time.Duration:
-		return genericString(*p)
-	case *map[string]string:
-		return genericString(*p)
-	case *[]*NameValue:
-		return genericString(p)
-	case **url.URL:
-		return genericString(*p)
-	case *net.IP:
-		return genericString(*p)
-	case **regexp.Regexp:
-		return genericString(*p)
-	case **big.Float:
-		return genericString(*p)
-	case **big.Int:
-		return genericString(*p)
-	case Value:
-		return genericString(p)
-	}
-	panic("unreachable!")
-}
-
 func (g *generic) applyValueConventions(flags internalFlags, occurs int) {
 	resetOnFirstOccur := !flags.merge()
 	if occurs > 1 {
@@ -745,63 +689,6 @@ func (g *generic) smartOptionalDefault() interface{} {
 	return nil
 }
 
-func genericString(v interface{}) string {
-	switch p := v.(type) {
-	case Value:
-		return p.String()
-	case bool:
-		if p {
-			return "true"
-		}
-		return "false"
-	case string:
-		return p
-	case []string:
-		return strings.Join([]string(p), ",")
-	case int:
-		return strconv.FormatInt(int64(p), 10)
-	case int8:
-		return strconv.FormatInt(int64(p), 10)
-	case int16:
-		return strconv.FormatInt(int64(p), 10)
-	case int32:
-		return strconv.FormatInt(int64(p), 10)
-	case int64:
-		return strconv.FormatInt(p, 10)
-	case uint:
-		return strconv.FormatUint(uint64(p), 10)
-	case uint8:
-		return strconv.FormatUint(uint64(p), 10)
-	case uint16:
-		return strconv.FormatUint(uint64(p), 10)
-	case uint32:
-		return strconv.FormatUint(uint64(p), 10)
-	case uint64:
-		return strconv.FormatUint(p, 10)
-	case float32:
-		return strconv.FormatFloat(float64(p), 'g', -1, 32)
-	case float64:
-		return strconv.FormatFloat(p, 'g', -1, 64)
-	case time.Duration:
-		return p.String()
-	case map[string]string:
-		return formatMap(p)
-	case []*NameValue:
-		return formatNameValues(p)
-	case *url.URL:
-		return fmt.Sprint(p)
-	case net.IP:
-		return fmt.Sprint(p)
-	case *regexp.Regexp:
-		return fmt.Sprint(p)
-	case *big.Int:
-		return fmt.Sprint(p)
-	case *big.Float:
-		return fmt.Sprint(p)
-	}
-	panic("unreachable!")
-}
-
 func wrapGeneric(v interface{}) *generic {
 	switch v.(type) {
 	case Value:
@@ -850,34 +737,6 @@ func dereference(v interface{}) interface{} {
 		return val.Elem().Interface()
 	}
 	return v
-}
-
-func formatMap(m map[string]string) string {
-	items := make([]string, len(m))
-	var i int
-	for k, v := range m {
-		items[i] = k + "=" + v
-		i++
-	}
-	sort.Strings(items)
-	return strings.Join(items, ", ")
-}
-
-func formatNameValues(m []*NameValue) string {
-	var (
-		b     bytes.Buffer
-		comma bool
-	)
-	for _, v := range m {
-		if comma {
-			b.WriteString(",")
-		}
-		comma = true
-		b.WriteString(v.Name)
-		b.WriteString("=")
-		b.WriteString(v.Value)
-	}
-	return b.String()
 }
 
 func parseBool(value string) (bool, error) {
