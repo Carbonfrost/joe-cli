@@ -95,6 +95,9 @@ type App struct {
 	// HelpText describes the help text displayed for the app
 	HelpText string
 
+	// ManualText provides the text shown in the manual.  The default templates don't use this value
+	ManualText string
+
 	// UsageText provides the usage for the app.  If left blank, a succint synopsis
 	// is generated that lists each visible flag and arg
 	UsageText string

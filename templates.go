@@ -5,6 +5,7 @@ type commandData struct {
 	Names              []string
 	Description        string
 	HelpText           string
+	ManualText         string
 	Synopsis           []string
 	Lineage            string
 	VisibleCommands    []*commandData
@@ -24,10 +25,11 @@ type persistentCommandData struct {
 }
 
 type flagData struct {
-	Name     string
-	Synopsis string
-	HelpText string
-	Data     map[string]interface{}
+	Name       string
+	Synopsis   string
+	HelpText   string
+	ManualText string
+	Data       map[string]interface{}
 }
 
 type commandCategory struct {
@@ -230,6 +232,7 @@ func commandAdapter(val *Command) *commandData {
 		Names:              val.Names(),
 		Description:        val.Description,
 		HelpText:           val.HelpText,
+		ManualText:         val.ManualText,
 		Synopsis:           sprintSynopsisTokens(val.newSynopsis(), true),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
@@ -248,28 +251,31 @@ func commandAdapter(val *Command) *commandData {
 func flagAdapter(val *Flag) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
-		Name:     val.Name,
-		HelpText: syn.value.usage.helpText(),
-		Synopsis: sprintSynopsis(val, true),
-		Data:     val.Data,
+		Name:       val.Name,
+		HelpText:   syn.value.usage.helpText(),
+		ManualText: val.ManualText,
+		Synopsis:   sprintSynopsis(val, true),
+		Data:       val.Data,
 	}
 }
 
 func argAdapter(val *Arg) *flagData {
 	return &flagData{
-		Name:     val.Name,
-		HelpText: val.HelpText,
-		Synopsis: sprintSynopsis(val, true),
-		Data:     val.Data,
+		Name:       val.Name,
+		HelpText:   val.HelpText,
+		ManualText: val.ManualText,
+		Synopsis:   sprintSynopsis(val, true),
+		Data:       val.Data,
 	}
 }
 
 func exprAdapter(val *Expr) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
-		Name:     val.Name,
-		HelpText: syn.usage.helpText(),
-		Synopsis: sprintSynopsis(val, true),
-		Data:     val.Data,
+		Name:       val.Name,
+		HelpText:   syn.usage.helpText(),
+		ManualText: val.ManualText,
+		Synopsis:   sprintSynopsis(val, true),
+		Data:       val.Data,
 	}
 }

@@ -48,6 +48,9 @@ type Expr struct {
 	// as error messages.
 	HelpText string
 
+	// ManualText provides the text shown in the manual.  The default templates don't use this value
+	ManualText string
+
 	// UsageText provides the usage for the expression operator.  If left blank, a succint synopsis
 	// is generated from the type of the expression operator's arguments
 	UsageText string
