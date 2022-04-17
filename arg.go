@@ -384,8 +384,9 @@ func (o *argContext) execute(ctx *Context) error {
 	return executeAll(ctx, o.option.uses().Action, ActionOf(o.option.Action))
 }
 
-func (o *argContext) args() []string           { return o.argList }
-func (o *argContext) set() *set                { return nil }
+func (c *argContext) lookupBinding(name string) []string {
+	return nil
+}
 func (o *argContext) target() target           { return o.option }
 func (o *argContext) setDidSubcommandExecute() {}
 func (o *argContext) lookupValue(name string) (interface{}, bool) {

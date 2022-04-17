@@ -20,6 +20,7 @@ type Context struct {
 	*lookupSupport
 	internal internalContext
 	timing   Timing
+	argList  []string
 
 	parent *Context
 }
@@ -35,8 +36,7 @@ type internalContext interface {
 	executeAfter(*Context) error
 	executeAfterDescendent(*Context) error
 	execute(*Context) error
-	args() []string
-	set() *set
+	lookupBinding(string) []string
 	target() target // *Command, *Arg, *Flag, or *Expr
 	setDidSubcommandExecute()
 	Name() string
@@ -59,8 +59,6 @@ type hook struct {
 	pat    contextPathPattern
 	action Action
 }
-
-type internalDataKey string
 
 // ContextPath provides a list of strings that name each one of the parent components
 // in the context.  Each string follows the form:
@@ -169,7 +167,7 @@ func (c *Context) isOption() bool {
 // represent the name of the command plus the arguments passed to it.  For flags and arguments,
 // this is the value passed to them
 func (c *Context) Args() []string {
-	return c.internal.args()
+	return c.argList
 }
 
 // LookupFlag finds the flag by name.  The name can be a string, rune, or *Flag
@@ -694,8 +692,7 @@ func matchFlag(field string) bool {
 func rootContext(cctx context.Context, app *App, args []string) *Context {
 	internal := &appContext{
 		commandContext: &commandContext{
-			cmd:     nil, // This will be set after initialization
-			argList: args,
+			cmd: nil, // This will be set after initialization
 		},
 		app: app,
 	}
@@ -704,6 +701,7 @@ func rootContext(cctx context.Context, app *App, args []string) *Context {
 		contextData:   &contextData{},
 		internal:      internal,
 		lookupSupport: newLookupSupport(internal, nil),
+		argList:       args,
 	}
 }
 
@@ -719,23 +717,21 @@ func newLookupSupport(t internalContext, parent lookupCore) *lookupSupport {
 
 func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	return c.copy(&commandContext{
-		cmd:     cmd,
-		argList: args,
-	}, true)
+		cmd: cmd,
+	}, args, true)
 }
 
 func (c *Context) flagContext(opt *Flag, args []string) *Context {
 	return c.copy(&flagContext{
-		option:  opt,
-		argList: args,
-	}, true)
+		option: opt,
+	}, args, true)
 }
 
 func (c *Context) argContext(opt *Arg, args []string) *Context {
 	return c.copy(&argContext{
 		option:  opt,
 		argList: args,
-	}, true)
+	}, args, true)
 }
 
 func (c *Context) optionContext(opt option, args []string) *Context {
@@ -748,33 +744,13 @@ func (c *Context) optionContext(opt option, args []string) *Context {
 func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
 	return c.copy(&exprContext{
 		expr:    expr,
-		argList: args,
 		flagSet: data,
-	}, true)
+	}, args, true)
 }
 
 func (c *Context) setTiming(t Timing) *Context {
 	c.timing = t
 	return c
-}
-
-func (c *Context) applySet() {
-	set := c.internal.set()
-	for _, f := range c.target().(*Command).actualFlags() {
-		f.applyToSet(set)
-	}
-	if c.Parent() != nil {
-		for _, f := range c.Parent().flags(true) {
-			if f.internalFlags().nonPersistent() {
-				continue
-			}
-			f.applyToSet(set)
-			f.(*Flag).option.flags |= internalFlagPersistent
-		}
-	}
-	for _, a := range c.target().(*Command).actualArgs() {
-		a.applyToSet(set)
-	}
 }
 
 func (c *Context) flags(persistent bool) []option {
@@ -811,16 +787,6 @@ func (c *Context) args() []option {
 	return result
 }
 
-func (c *Context) applyFlagsAndArgs() (err error) {
-	args := make([]string, 0)
-	args = append(args, c.internal.args()...)
-
-	if c.Command().internalFlags().skipFlagParsing() {
-		args = append([]string{args[0], "--"}, args[1:]...)
-	}
-	return c.internal.set().parse(args, c.Command().internalFlags().disallowFlagsAfterArgs())
-}
-
 func (c *Context) initialize() error {
 	if c == nil {
 		return nil
@@ -829,7 +795,7 @@ func (c *Context) initialize() error {
 	return c.internal.initialize(c)
 }
 
-func (c *Context) copy(t internalContext, reparent bool) *Context {
+func (c *Context) copy(t internalContext, args []string, reparent bool) *Context {
 	p := c.parent
 	if reparent {
 		p = c
@@ -839,6 +805,7 @@ func (c *Context) copy(t internalContext, reparent bool) *Context {
 		contextData:   c.contextData,
 		internal:      t,
 		parent:        p,
+		argList:       args,
 		lookupSupport: newLookupSupport(t, p),
 	}
 }
@@ -939,7 +906,7 @@ func triggerBeforeArgs(ctx *Context) error {
 }
 
 func triggerBeforeOptions(ctx *Context, opts []option) error {
-	bindings := ctx.internal.set().bindings
+	bindings := ctx.internal.lookupBinding
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
 			if flag.option.flags.persistent() {
@@ -949,7 +916,7 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 			}
 		}
 
-		err := ctx.optionContext(f, bindings[f.name()]).setTiming(BeforeTiming).executeBefore()
+		err := ctx.optionContext(f, bindings(f.name())).setTiming(BeforeTiming).executeBefore()
 		if err != nil {
 			return err
 		}
@@ -959,7 +926,7 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 	// Action when the flag or arg was set
 	for _, f := range opts {
 		if f.Seen() {
-			err := ctx.optionContext(f, bindings[f.name()]).setTiming(ActionTiming).executeSelf()
+			err := ctx.optionContext(f, bindings(f.name())).setTiming(ActionTiming).executeSelf()
 			if err != nil {
 				return err
 			}
@@ -977,7 +944,7 @@ func triggerAfterArgs(ctx *Context) error {
 }
 
 func triggerAfterOptions(ctx *Context, opts []option) error {
-	bindings := ctx.internal.set().bindings
+	bindings := ctx.internal.lookupBinding
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
 			if flag.option.flags.persistent() {
@@ -987,7 +954,7 @@ func triggerAfterOptions(ctx *Context, opts []option) error {
 			}
 		}
 
-		err := ctx.optionContext(f, bindings[f.name()]).setTiming(AfterTiming).executeAfter()
+		err := ctx.optionContext(f, bindings(f.name())).setTiming(AfterTiming).executeAfter()
 		if err != nil {
 			return err
 		}

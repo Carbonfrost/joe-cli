@@ -173,8 +173,7 @@ type option interface {
 }
 
 type flagContext struct {
-	option  *Flag
-	argList []string
+	option *Flag
 }
 
 type wrapLookupContext struct {
@@ -367,8 +366,9 @@ func (o *flagContext) executeAfter(ctx *Context) error {
 func (o *flagContext) execute(ctx *Context) error {
 	return executeAll(ctx, o.option.uses().Action, ActionOf(o.option.Action))
 }
-func (o *flagContext) args() []string           { return o.argList }
-func (o *flagContext) set() *set                { return nil }
+func (c *flagContext) lookupBinding(name string) []string {
+	return nil
+}
 func (o *flagContext) target() target           { return o.option }
 func (o *flagContext) setDidSubcommandExecute() {}
 func (o *flagContext) lookupValue(name string) (interface{}, bool) {

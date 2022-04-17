@@ -109,7 +109,6 @@ type command interface {
 
 type commandContext struct {
 	cmd                  *Command
-	argList              []string
 	flagSet              *set
 	didSubcommandExecute bool
 }
@@ -271,13 +270,45 @@ func (c *Command) appendArg(arg *Arg) *Command {
 }
 
 func (c *Command) parseAndExecuteSelf(ctx *Context) error {
-	ctx.applySet()
+	args := ctx.argList
+	set := c.buildSet(ctx)
+	if c.internalFlags().skipFlagParsing() {
+		args = append([]string{args[0], "--"}, args[1:]...)
+	}
 
-	if err := ctx.applyFlagsAndArgs(); err != nil {
+	err := set.parse(args, c.internalFlags().disallowFlagsAfterArgs())
+	if err != nil {
 		return err
 	}
 
 	return ctx.executeCommand()
+}
+
+func (c *Command) buildSet(ctx *Context) *set {
+	set := newSet(c.internalFlags().rightToLeft())
+	switch internal := ctx.internal.(type) {
+	case *commandContext:
+		internal.flagSet = set
+	case *appContext:
+		internal.commandContext.flagSet = set
+	}
+
+	for _, f := range c.actualFlags() {
+		f.applyToSet(set)
+	}
+	if ctx.Parent() != nil {
+		for _, f := range ctx.Parent().flags(true) {
+			if f.internalFlags().nonPersistent() {
+				continue
+			}
+			f.applyToSet(set)
+			f.(*Flag).option.flags |= internalFlagPersistent
+		}
+	}
+	for _, a := range c.actualArgs() {
+		a.applyToSet(set)
+	}
+	return set
 }
 
 func ensureSubcommands(c *Context) error {
@@ -525,16 +556,13 @@ func (c *commandContext) execute(ctx *Context) error {
 	}
 	return nil
 }
-func (c *commandContext) set() *set {
-	if c.flagSet == nil {
-		c.flagSet = newSet(c.cmd.internalFlags().rightToLeft())
-	}
-	return c.flagSet
+
+func (c *commandContext) lookupBinding(name string) []string {
+	return c.flagSet.bindings[name]
 }
-func (c *commandContext) args() []string { return c.argList }
 func (c *commandContext) target() target { return c.cmd }
 func (c *commandContext) lookupValue(name string) (interface{}, bool) {
-	return c.set().lookupValue(name)
+	return c.flagSet.lookupValue(name)
 }
 
 func (c *commandContext) setDidSubcommandExecute() {

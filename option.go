@@ -399,6 +399,7 @@ func noOption(c *Context) error {
 					flagContext: c.internal.(*flagContext),
 					actual:      f,
 				},
+				c.argList,
 				false,
 			))
 		}

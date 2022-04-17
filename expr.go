@@ -175,7 +175,6 @@ type exprBinding struct {
 
 type exprContext struct {
 	expr    *Expr
-	argList []string
 	flagSet *set
 }
 
@@ -720,13 +719,10 @@ func (e *exprContext) executeAfter(ctx *Context) error {
 func (e *exprContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (e *exprContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (e *exprContext) execute(ctx *Context) error                 { return nil }
-func (e *exprContext) args() []string                             { return e.argList }
-func (e *exprContext) set() *set {
-	if e.flagSet == nil {
-		e.flagSet = newSet(e.expr.internalFlags().rightToLeft())
-	}
-	return e.flagSet
+func (e *exprContext) lookupBinding(name string) []string {
+	return e.flagSet.bindings[name]
 }
+
 func (e *exprContext) setDidSubcommandExecute() {}
 func (e *exprContext) target() target           { return e.expr }
 func (e *exprContext) lookupValue(name string) (interface{}, bool) {
