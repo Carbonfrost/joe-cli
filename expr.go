@@ -190,7 +190,7 @@ func BindExpression(exprFunc func(*Context) ([]*Expr, error)) Action {
 	}
 
 	return Setup{
-		Initialize: func(c *Context) {
+		Uses: func(c *Context) {
 			c.Arg().Value = &exprPipeline{
 				boundContext: c,
 			}

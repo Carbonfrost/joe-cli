@@ -32,12 +32,13 @@ type ActionPipeline struct {
 }
 
 // Setup provides simple initialization, typically used in Uses pipeline.  The Setup action
-// will add the specified actions to the Before, main, and After action.
+// will add the specified actions to the Before, main, and After action and run
+// the Uses action immediately.
 type Setup struct {
-	Initialize interface{}
-	Before     interface{}
-	Action     interface{}
-	After      interface{}
+	Uses   interface{}
+	Before interface{}
+	Action interface{}
+	After  interface{}
 }
 
 type target interface {
@@ -154,7 +155,7 @@ var (
 // Execute executes the Setup, which assignes the various parts to their
 // pipelines
 func (s Setup) Execute(c *Context) error {
-	if err := c.act(s.Initialize, InitialTiming); err != nil {
+	if err := c.act(s.Uses, InitialTiming); err != nil {
 		return err
 	}
 	if err := c.Before(s.Before); err != nil {

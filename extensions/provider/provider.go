@@ -102,7 +102,7 @@ var (
 //  If the action is set to initialize a flag that is unnamed, the suffix -arg is implied.
 func SetArgument(name string) cli.Action {
 	return cli.Setup{
-		Initialize: func(c *cli.Context) {
+		Uses: func(c *cli.Context) {
 			if c.Path().IsFlag() {
 				f := c.Flag()
 				if f.Name == "" {
@@ -124,7 +124,7 @@ func SetArgument(name string) cli.Action {
 // The template "providers" is used, which is set to a default if unspecified.
 func ListProviders(name string) cli.Action {
 	return cli.Setup{
-		Initialize: func(c *cli.Context) error {
+		Uses: func(c *cli.Context) error {
 			if c.Path().IsFlag() {
 				f := c.Flag()
 				if f.Name == "" {
