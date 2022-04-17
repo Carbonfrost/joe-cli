@@ -112,6 +112,10 @@ type Flag struct {
 	// together on the help screen
 	Category string
 
+	// Description provides a long description for the flag.  The long description is
+	// not used in any templates by default
+	Description string
+
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
 	Data map[string]interface{}
@@ -259,6 +263,18 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 // SetData sets the specified metadata on the flag
 func (f *Flag) SetData(name string, v interface{}) {
 	f.ensureData()[name] = v
+}
+
+func (f *Flag) setDescription(value string) {
+	f.Description = value
+}
+
+func (f *Flag) setHelpText(name string) {
+	f.HelpText = name
+}
+
+func (f *Flag) setManualText(name string) {
+	f.ManualText = name
 }
 
 func (f *Flag) setCategory(name string) {

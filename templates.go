@@ -25,11 +25,12 @@ type persistentCommandData struct {
 }
 
 type flagData struct {
-	Name       string
-	Synopsis   string
-	HelpText   string
-	ManualText string
-	Data       map[string]interface{}
+	Name        string
+	Synopsis    string
+	HelpText    string
+	ManualText  string
+	Description string
+	Data        map[string]interface{}
 }
 
 type commandCategory struct {
@@ -85,6 +86,16 @@ var (
 {{- end }}
 {{- end -}}
 
+{{- define "ExtendedDescription" -}}
+{{- "\n" -}}
+{{- range .VisibleArgs -}}
+{{ if .Description }}{{ .Description }}{{ "\n" }}{{end}}
+{{- end -}}
+{{- range .VisibleFlags -}}
+{{ if .Description }}{{ .Description }}{{ "\n" }}{{end}}
+{{- end -}}
+{{- end -}}
+
 {{- define "PersistentFlags" -}}
 {{ if .Persistent.VisibleFlags -}}
 Global options (specify before any sub-commands): {{ "\n" }}
@@ -124,6 +135,7 @@ usage:{{ .SelectedCommand | SynopsisHangingIndent }}
 {{- template "Expressions" .SelectedCommand -}}
 {{- template "Subcommands" .SelectedCommand -}}
 {{- template "PersistentFlags" .SelectedCommand -}}
+{{- template "ExtendedDescription" .SelectedCommand -}}
 {{- end -}}
 
 {{- template "Usage" $ -}}
@@ -251,21 +263,23 @@ func commandAdapter(val *Command) *commandData {
 func flagAdapter(val *Flag) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
-		Name:       val.Name,
-		HelpText:   syn.value.usage.helpText(),
-		ManualText: val.ManualText,
-		Synopsis:   sprintSynopsis(val, true),
-		Data:       val.Data,
+		Name:        val.Name,
+		HelpText:    syn.value.usage.helpText(),
+		ManualText:  val.ManualText,
+		Description: val.Description,
+		Synopsis:    sprintSynopsis(val, true),
+		Data:        val.Data,
 	}
 }
 
 func argAdapter(val *Arg) *flagData {
 	return &flagData{
-		Name:       val.Name,
-		HelpText:   val.HelpText,
-		ManualText: val.ManualText,
-		Synopsis:   sprintSynopsis(val, true),
-		Data:       val.Data,
+		Name:        val.Name,
+		HelpText:    val.HelpText,
+		ManualText:  val.ManualText,
+		Description: val.Description,
+		Synopsis:    sprintSynopsis(val, true),
+		Data:        val.Data,
 	}
 }
 

@@ -59,6 +59,10 @@ type Expr struct {
 	// together on the help screen
 	Category string
 
+	// Description provides a long description.  The long description is
+	// not used in any templates by default
+	Description string
+
 	// Evaluate provides the evaluation behavior for the expression.  The value should
 	// implement Evaluator or support runtime conversion to that interface via
 	// the rules provided by the cli.EvaluatorOf function.
@@ -418,6 +422,18 @@ func (e *Expr) SetData(name string, v interface{}) {
 
 func (e *Expr) setCategory(name string) {
 	e.Category = name
+}
+
+func (e *Expr) setHelpText(name string) {
+	e.HelpText = name
+}
+
+func (e *Expr) setManualText(name string) {
+	e.ManualText = name
+}
+
+func (e *Expr) setDescription(value string) {
+	e.Description = value
 }
 
 func (e *Expr) ensureData() map[string]interface{} {

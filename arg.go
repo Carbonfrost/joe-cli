@@ -29,6 +29,10 @@ type Arg struct {
 	// ManualText provides the text shown in the manual.  The default templates don't use this value
 	ManualText string
 
+	// Description provides a long description for the flag.  The long description is
+	// not used in any templates by default
+	Description string
+
 	// UsageText provides the usage for the argument.  If left blank, a succint synopsis
 	// is generated from the type of the argument's value
 	UsageText string
@@ -311,6 +315,18 @@ func (a *Arg) SetData(name string, v interface{}) {
 }
 
 func (a *Arg) setCategory(name string) {}
+
+func (a *Arg) setDescription(value string) {
+	a.Description = value
+}
+
+func (a *Arg) setManualText(value string) {
+	a.ManualText = value
+}
+
+func (a *Arg) setHelpText(value string) {
+	a.HelpText = value
+}
 
 func (a *Arg) ensureData() map[string]interface{} {
 	if a.Data == nil {

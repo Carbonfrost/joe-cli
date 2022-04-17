@@ -376,6 +376,18 @@ func (c *Command) setCategory(name string) {
 	c.Category = name
 }
 
+func (c *Command) setManualText(name string) {
+	c.ManualText = name
+}
+
+func (c *Command) setHelpText(name string) {
+	c.HelpText = name
+}
+
+func (c *Command) setDescription(name string) {
+	c.Description = name
+}
+
 func (c *Command) ensureData() map[string]interface{} {
 	if c.Data == nil {
 		c.Data = map[string]interface{}{}

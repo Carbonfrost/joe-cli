@@ -205,6 +205,16 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 			ContainSubstring("<expression>...")),
+		Entry("display arg description",
+			&cli.App{
+				Args: []*cli.Arg{
+					{
+						Name:        "e",
+						Description: "e argument description",
+					},
+				},
+			},
+			ContainSubstring("e argument description")),
 	)
 
 	DescribeTable("sub-command examples",

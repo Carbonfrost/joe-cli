@@ -44,6 +44,9 @@ type target interface {
 	hookAfter(pattern string, handler Action) error
 	hookBefore(pattern string, handler Action) error
 	appendAction(Timing, Action)
+	setDescription(string)
+	setHelpText(string)
+	setManualText(string)
 	setCategory(name string)
 	SetData(name string, v interface{})
 	setInternalFlags(internalFlags)
