@@ -27,9 +27,7 @@ type Action interface {
 
 // ActionPipeline represents an action composed of several steps.  To create
 // this value, use the Pipeline function
-type ActionPipeline struct {
-	items []Action
-}
+type ActionPipeline []Action
 
 // Setup provides simple initialization, typically used in Uses pipeline.  The Setup action
 // will add the specified actions to the Before, main, and After action and run
@@ -171,13 +169,13 @@ func (s Setup) Execute(c *Context) error {
 }
 
 // Pipeline combines various actions into a single action
-func Pipeline(actions ...interface{}) *ActionPipeline {
+func Pipeline(actions ...interface{}) ActionPipeline {
 	myActions := make([]Action, len(actions))
 	for i, a := range actions {
 		myActions[i] = ActionOf(a)
 	}
 
-	return &ActionPipeline{myActions}
+	return myActions
 }
 
 // SuppressError wraps an action to ignore its error.
@@ -548,30 +546,28 @@ func (af ActionFunc) Execute(c *Context) error {
 }
 
 // Append appends an action to the pipeline
-func (p *ActionPipeline) Append(x Action) *ActionPipeline {
-	return &ActionPipeline{
-		items: append(p.items, unwind(x)...),
-	}
+func (p ActionPipeline) Append(x Action) ActionPipeline {
+	return ActionPipeline(append(p, x))
 }
 
 // Execute the pipeline by calling each action successively
-func (p *ActionPipeline) Execute(c *Context) (err error) {
+func (p ActionPipeline) Execute(c *Context) (err error) {
 	if p == nil {
 		return nil
 	}
-	return c.Do(p.items...)
+	return c.Do(p...)
 }
 
 func (p *actionPipelines) add(t Timing, h Action) {
 	switch t {
 	case InitialTiming:
-		p.Initializers = pipeline(p.Initializers, h)
+		p.Initializers = Pipeline(p.Initializers, h)
 	case BeforeTiming:
-		p.Before = pipeline(p.Before, h)
+		p.Before = Pipeline(p.Before, h)
 	case ActionTiming:
-		p.Action = pipeline(p.Action, h)
+		p.Action = Pipeline(p.Action, h)
 	case AfterTiming:
-		p.After = pipeline(p.After, h)
+		p.After = Pipeline(p.After, h)
 	default:
 		panic("unreachable!")
 	}
@@ -666,12 +662,6 @@ func doThenExit(a Action) ActionFunc {
 	}
 }
 
-func pipeline(x, y Action) *ActionPipeline {
-	return &ActionPipeline{
-		items: append(unwind(x), unwind(y)...),
-	}
-}
-
 func newPipelines(uses Action, opts *Option) *actionPipelines {
 	// PreventSetup if specified must be handled first
 	first := *opts & PreventSetup
@@ -681,24 +671,6 @@ func newPipelines(uses Action, opts *Option) *actionPipelines {
 	return &actionPipelines{
 		Initializers: Pipeline(first, uses, opts),
 	}
-}
-
-func unwind(x Action) []Action {
-	if x == nil {
-		return nil
-	}
-	switch pipe := x.(type) {
-	case *ActionPipeline:
-		if pipe == nil {
-			return nil
-		}
-		res := make([]Action, 0, len(pipe.items))
-		for _, p := range pipe.items {
-			res = append(res, unwind(p)...)
-		}
-		return res
-	}
-	return []Action{x}
 }
 
 var (

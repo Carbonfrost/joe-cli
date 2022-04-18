@@ -256,7 +256,7 @@ func (m FeatureMap[T]) Pipeline(values T) Action {
 		return ActionOf(nil)
 	}
 
-	return &ActionPipeline{parts}
+	return ActionPipeline(parts)
 }
 
 func (f internalFlags) hidden() bool {
