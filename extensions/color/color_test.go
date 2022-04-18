@@ -68,21 +68,31 @@ var _ = Describe("Templates", func() {
 
 	Describe("style and color printers", func() {
 
-		It("uses the template and custom funcs", func() {
+		DescribeTable("examples", func(tpl string, expected types.GomegaMatcher) {
 			app := &cli.App{
 				Name: "demo",
 				Uses: color.Options{},
 
 				Before: cli.Pipeline(
 					cli.SetColor(true),
-					cli.RegisterTemplate("custom", "{{ .Data | Bold }}"),
+					cli.RegisterTemplate("custom", tpl),
 				),
 				Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
-					return struct{ Data string }{" BOLD TEXT "}
+					return struct {
+						Data string
+						Int  int
+					}{
+						Data: " string ",
+						Int:  420,
+					}
 				}),
 			}
-			Expect(renderScreen(app, "app")).To(Equal("\x1b[1m BOLD TEXT \x1b[0m"))
-		})
+			Expect(renderScreen(app, "app")).To(expected)
+		},
+			Entry("pipe func", "{{ .Data | Bold }}", Equal("\x1b[1m string \x1b[0m")),
+			Entry("direct func color", "{{ Red }} {{ .Int }} {{ ResetColor }}", Equal("\x1b[31m 420 \x1b[39m")),
+			Entry("direct func style", "{{ Underline }} {{ .Int }} {{ Reset }}", Equal("\x1b[4m 420 \x1b[0m")),
+		)
 
 		It("disables color if stdout has no color", func() {
 			app := &cli.App{
@@ -90,7 +100,6 @@ var _ = Describe("Templates", func() {
 				Uses: color.Options{},
 
 				Before: cli.Pipeline(
-					// cli.SetColor(true),
 					cli.RegisterTemplate("custom", "{{ .Data | Bold }}"),
 				),
 				Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {

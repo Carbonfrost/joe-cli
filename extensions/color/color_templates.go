@@ -35,6 +35,7 @@ func templateFuncs(c *cli.Context) map[string]interface{} {
 		"BrightMagenta": t.sprintForegroundColor(cli.BrightMagenta),
 		"BrightCyan":    t.sprintForegroundColor(cli.BrightCyan),
 		"White":         t.sprintForegroundColor(cli.White),
+		"ResetColor":    t.resetColor(),
 
 		"Bold":          t.sprintStyle(cli.Bold),
 		"Faint":         t.sprintStyle(cli.Faint),
@@ -44,6 +45,7 @@ func templateFuncs(c *cli.Context) map[string]interface{} {
 		"Reverse":       t.sprintStyle(cli.Reverse),
 		"Strikethrough": t.sprintStyle(cli.Strikethrough),
 		"Conceal":       t.sprintStyle(cli.Conceal),
+		"Reset":         t.reset(),
 	}
 }
 
@@ -54,21 +56,41 @@ func (t *templateContext) newBuffer() *buffer {
 		res:    res,
 	}
 }
-func (t *templateContext) sprintStyle(s cli.Style) func(string) string {
-	return func(format string) string {
+func (t *templateContext) sprintStyle(s cli.Style) func(...interface{}) string {
+	return func(a ...interface{}) string {
 		res := t.newBuffer()
 		res.SetStyle(s)
-		fmt.Fprint(res, format)
+		if len(a) > 0 {
+			fmt.Fprint(res, a...)
+			res.Reset()
+		}
+		return res.String()
+	}
+}
+
+func (t *templateContext) reset() func() string {
+	return func() string {
+		res := t.newBuffer()
 		res.Reset()
 		return res.String()
 	}
 }
 
-func (t *templateContext) sprintForegroundColor(f cli.Color) func(string, ...interface{}) string {
-	return func(format string, a ...interface{}) string {
+func (t *templateContext) sprintForegroundColor(f cli.Color) func(...interface{}) string {
+	return func(a ...interface{}) string {
 		res := t.newBuffer()
 		res.SetForeground(f)
-		fmt.Fprintf(res, format, a...)
+		if len(a) > 0 {
+			fmt.Fprint(res, a...)
+			res.SetForeground(cli.Default)
+		}
+		return res.String()
+	}
+}
+
+func (t *templateContext) resetColor() func() string {
+	return func() string {
+		res := t.newBuffer()
 		res.SetForeground(cli.Default)
 		return res.String()
 	}
