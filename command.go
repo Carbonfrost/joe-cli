@@ -50,8 +50,9 @@ type Command struct {
 	Category string
 
 	// Description provides a long description for the command.  The long description is
-	// displayed on the help screen
-	Description string
+	// displayed on the help screen.  The type of Description should be string or
+	// fmt.Stringer.  Refer to func Description for details.
+	Description interface{}
 
 	// Comment provides a short descriptive comment.  This is
 	// usually a few words to summarize the purpose of the command.
@@ -580,7 +581,7 @@ func (c *Command) setHelpText(name string) {
 	c.HelpText = name
 }
 
-func (c *Command) setDescription(name string) {
+func (c *Command) setDescription(name interface{}) {
 	c.Description = name
 }
 

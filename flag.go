@@ -113,8 +113,9 @@ type Flag struct {
 	Category string
 
 	// Description provides a long description for the flag.  The long description is
-	// not used in any templates by default
-	Description string
+	// not used in any templates by default.  The type of Description should be string or
+	// fmt.Stringer.  Refer to func Description for details.
+	Description interface{}
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
@@ -336,7 +337,7 @@ func (f *Flag) LookupData(name string) (interface{}, bool) {
 	return v, ok
 }
 
-func (f *Flag) setDescription(value string) {
+func (f *Flag) setDescription(value interface{}) {
 	f.Description = value
 }
 

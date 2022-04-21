@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"strings"
 	"text/template"
 )
@@ -8,7 +9,7 @@ import (
 type commandData struct {
 	Name               string
 	Names              []string
-	Description        string
+	Description        interface{}
 	HelpText           string
 	ManualText         string
 	Synopsis           *commandSynopsis
@@ -33,7 +34,7 @@ type flagData struct {
 	Synopsis    *flagSynopsis
 	HelpText    string
 	ManualText  string
-	Description string
+	Description interface{}
 	Data        map[string]interface{}
 }
 
@@ -429,7 +430,7 @@ func exprAdapter(val *Expr) *exprData {
 	return &exprData{
 		Name:        val.Name,
 		HelpText:    syn.usage.helpText(),
-		Description: val.Description,
+		Description: fmt.Sprint(val.Description),
 		ManualText:  val.ManualText,
 		Synopsis:    syn,
 		Data:        val.Data,

@@ -1179,10 +1179,10 @@ func (c *Context) actualFS() fs.FS {
 	return c.FS
 }
 
-func (v *valueTarget) setDescription(arg string) {
+func (v *valueTarget) setDescription(arg interface{}) {
 	switch val := v.v.(type) {
 	case interface{ SetDescription(string) }:
-		val.SetDescription(arg)
+		val.SetDescription(fmt.Sprint(arg))
 	case interface{ SetDescription(interface{}) }:
 		val.SetDescription(arg)
 	}

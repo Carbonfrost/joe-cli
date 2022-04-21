@@ -80,7 +80,7 @@ type Prototype struct {
 	Category    string
 	Data        map[string]interface{}
 	DefaultText string
-	Description string
+	Description interface{}
 	EnvVars     []string
 	FilePath    string
 	HelpText    string
@@ -109,7 +109,7 @@ type customizable interface {
 
 type target interface {
 	appendAction(Timing, Action)
-	setDescription(string)
+	setDescription(interface{})
 	setHelpText(string)
 	setManualText(string)
 	setCategory(name string)
@@ -626,7 +626,9 @@ func Accessory[T Value](name string, fn func(T) Prototype) Action {
 		}
 		proto.HelpText = conditionalFormat(proto.HelpText, c.Name())
 		proto.ManualText = conditionalFormat(proto.ManualText, c.Name())
-		proto.Description = conditionalFormat(proto.Description, c.Name())
+		if s, ok := proto.Description.(string); ok {
+			proto.Description = conditionalFormat(s, c.Name())
+		}
 
 		switch name {
 		case "":
@@ -707,6 +709,18 @@ func Data(name string, value interface{}) Action {
 func Category(name string) Action {
 	return ActionFunc(func(c *Context) error {
 		c.target().setCategory(name)
+		return nil
+	})
+}
+
+// Description sets the description of a command, flag, or expression.  This handler is generally
+// set up inside a Uses pipeline.  The type should be string or fmt.Stringer
+// Consider implementing a custom Stringer value that defers calculation of the description if the
+// description is expensive to calculate.  One convenient implementation is from Template.Bind or
+// Template.BindFunc.
+func Description(v interface{}) Action {
+	return ActionFunc(func(c *Context) error {
+		c.target().setDescription(v)
 		return nil
 	})
 }
@@ -977,7 +991,7 @@ func (p *Prototype) copyToArg(o *Arg) {
 	if o.UsageText == "" {
 		o.UsageText = p.UsageText
 	}
-	if o.Description == "" {
+	if o.Description == "" || o.Description == nil {
 		o.Description = p.Description
 	}
 	if o.FilePath == "" {
@@ -1015,7 +1029,7 @@ func (p *Prototype) copyToFlag(o *Flag) {
 	if o.UsageText == "" {
 		o.UsageText = p.UsageText
 	}
-	if o.Description == "" {
+	if o.Description == "" || o.Description == nil {
 		o.Description = p.Description
 	}
 	if o.FilePath == "" {

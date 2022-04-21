@@ -24,8 +24,9 @@ type App struct {
 	Version string
 
 	// Description provides a description of the app.  This value is typically used in templates, and otherwise
-	// provides no special behavior.
-	Description string
+	// provides no special behavior.  The type of Description should be string or
+	// fmt.Stringer.  Refer to func Description for details.
+	Description interface{}
 
 	// BuildDate provides the time when the app was built.  This value is typically used in templates, and otherwise
 	// provides no special behavior.   The default value is inferred by checking the last modification time of

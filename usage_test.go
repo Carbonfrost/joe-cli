@@ -325,6 +325,26 @@ var _ = Describe("DisplayHelpScreen", func() {
 				ContainSubstring("-cname"),
 				ContainSubstring("Gets the cname value"),
 			)),
+		Entry("display expression description (last-minute addition)",
+			&cli.App{
+				Args: cli.Args(
+					"expr",
+					&cli.Expression{
+						Exprs: []*cli.Expr{},
+					},
+				),
+				Before: func(c *cli.Context) error {
+					arg, _ := c.LookupArg("expr")
+					exprs := arg.Value.(*cli.Expression).Exprs
+					arg.Value.(*cli.Expression).Exprs = append(exprs, &cli.Expr{Name: "cname", HelpText: "Gets the cname value"})
+					return nil
+				},
+			},
+			And(
+				ContainSubstring("Expressions:"),
+				ContainSubstring("-cname"),
+				ContainSubstring("Gets the cname value"),
+			)),
 		Entry("display arg description",
 			&cli.App{
 				Args: []*cli.Arg{

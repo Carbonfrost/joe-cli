@@ -1,13 +1,9 @@
 package cli
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
 	"strings"
-
-	"github.com/juju/ansiterm"
-	"github.com/juju/ansiterm/tabwriter"
 )
 
 //counterfeiter:generate . Evaluator
@@ -63,8 +59,9 @@ type Expr struct {
 	Category string
 
 	// Description provides a long description.  The long description is
-	// not used in any templates by default
-	Description string
+	// not used in any templates by default.  The type of Description should be string or
+	// fmt.Stringer.  Refer to func Description for details.
+	Description interface{}
 
 	// Evaluate provides the evaluation behavior for the expression.  The value should
 	// implement Evaluator or support runtime conversion to that interface via
@@ -179,12 +176,7 @@ func (e *Expression) Initializer() Action {
 			fac := newExprPipelineFactory(e.Exprs)
 			return pipe.applyFactory(c, fac)
 		})
-		arg.Before = Pipeline(arg.Before, func(c *Context) {
-			// Provide a more up-to-date description if Exprs changed
-			c.Arg().Description = e.renderDescription(c)
-		})
-
-		c.Arg().Description = e.renderDescription(c)
+		arg.Description = c.Template("Expressions").BindFunc(e.descriptionData)
 		e.boundContext = c
 
 		for _, sub := range e.Exprs {
@@ -201,22 +193,12 @@ func (e *Expression) Initializer() Action {
 	})
 }
 
-func (e *Expression) renderDescription(c *Context) string {
-	var buf bytes.Buffer
-	tpl := c.Template("Expressions")
-
-	data := struct {
+func (e *Expression) descriptionData() interface{} {
+	return struct {
 		Description *exprDescriptionData
-		Debug       bool
 	}{
 		Description: exprDescription(e),
-		Debug:       tpl.Debug,
 	}
-
-	w := ansiterm.NewTabWriter(&buf, 1, 8, 2, ' ', tabwriter.StripEscape)
-	_ = tpl.Execute(w, data)
-	_ = w.Flush()
-	return buf.String()
 }
 
 // NewExprBinding creates an expression binding.  The ev parameter is how

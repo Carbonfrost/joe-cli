@@ -32,8 +32,9 @@ type Arg struct {
 	ManualText string
 
 	// Description provides a long description for the flag.  The long description is
-	// not used in any templates by default
-	Description string
+	// not used in any templates by default.  The type of Description should be string or
+	// fmt.Stringer.  Refer to func Description for details.
+	Description interface{}
 
 	// Category specifies the arg category.  Categories are not used by the help screen.
 	Category string
@@ -353,7 +354,7 @@ func (a *Arg) setCategory(name string) {
 	a.Category = name
 }
 
-func (a *Arg) setDescription(value string) {
+func (a *Arg) setDescription(value interface{}) {
 	a.Description = value
 }
 
