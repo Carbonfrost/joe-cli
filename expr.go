@@ -419,6 +419,12 @@ func (e *Expr) SetData(name string, v interface{}) {
 	e.ensureData()[name] = v
 }
 
+// LookupData obtains the data if it exists
+func (e *Expr) LookupData(name string) (interface{}, bool) {
+	v, ok := e.ensureData()[name]
+	return v, ok
+}
+
 func (e *Expr) setCategory(name string) {
 	e.Category = name
 }
@@ -448,14 +454,6 @@ func (e *Expr) setInternalFlags(f internalFlags) {
 
 func (e *Expr) internalFlags() internalFlags {
 	return e.flags
-}
-
-func (*Expr) hookAfter(string, Action) error {
-	return cantHookError
-}
-
-func (*Expr) hookBefore(string, Action) error {
-	return cantHookError
 }
 
 // Evaluate provides the evaluation of the function and implements the Evaluator interface
@@ -746,3 +744,4 @@ func findExprByName(items []*Expr, name string) (*Expr, bool) {
 }
 
 var _ Expression = (*exprPipeline)(nil)
+var _ targetConventions = (*Expr)(nil)

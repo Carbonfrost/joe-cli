@@ -264,6 +264,12 @@ func (f *Flag) SetData(name string, v interface{}) {
 	f.ensureData()[name] = v
 }
 
+// LookupData obtains the data if it exists
+func (f *Flag) LookupData(name string) (interface{}, bool) {
+	v, ok := f.ensureData()[name]
+	return v, ok
+}
+
 func (f *Flag) setDescription(value string) {
 	f.Description = value
 }
@@ -294,14 +300,6 @@ func (f *Flag) ensureData() map[string]interface{} {
 		f.Data = map[string]interface{}{}
 	}
 	return f.Data
-}
-
-func (*Flag) hookAfter(string, Action) error {
-	return cantHookError
-}
-
-func (*Flag) hookBefore(string, Action) error {
-	return cantHookError
 }
 
 func (f *flagSynopsis) names(hideAlternates bool) string {
@@ -655,3 +653,5 @@ func isFlagType(p interface{}) internalFlags {
 	}
 	return 0
 }
+
+var _ targetConventions = (*Flag)(nil)

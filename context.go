@@ -289,19 +289,13 @@ func (c *Context) Value(name interface{}) interface{} {
 	}
 }
 
-// Data gets the data on the current context
-func (c *Context) Data() map[string]interface{} {
-	return c.target().ensureData()
-}
-
 // LookupData gets the data matching the key, including recursive traversal
 // up the lineage contexts
 func (c *Context) LookupData(name string) (interface{}, bool) {
 	if c == nil {
 		return nil, false
 	}
-	d := c.target().ensureData()
-	if res, ok := d[name]; ok {
+	if res, ok := c.target().LookupData(name); ok {
 		return res, true
 	}
 	return c.Parent().LookupData(name)
@@ -375,6 +369,11 @@ func (c *Context) target() target {
 		return nil
 	}
 	return c.internal.target()
+}
+
+func (c *Context) hookable() (hookable, bool) {
+	h, ok := c.internal.target().(hookable)
+	return h, ok
 }
 
 // Walk traverses the hierarchy of commands.  The provided function fn is called once for each command

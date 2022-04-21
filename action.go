@@ -39,18 +39,25 @@ type Setup struct {
 	After  interface{}
 }
 
-type target interface {
+type hookable interface {
 	hookAfter(pattern string, handler Action) error
 	hookBefore(pattern string, handler Action) error
+}
+
+type target interface {
 	appendAction(Timing, Action)
 	setDescription(string)
 	setHelpText(string)
 	setManualText(string)
 	setCategory(name string)
 	SetData(name string, v interface{})
+	LookupData(name string) (interface{}, bool)
 	setInternalFlags(internalFlags)
 	internalFlags() internalFlags
-	ensureData() map[string]interface{}
+}
+
+type targetConventions interface {
+	target
 	WriteSynopsis(Writer)
 }
 
@@ -204,10 +211,10 @@ func formatStack() string {
 }
 
 func failWithContextError(c *Context) error {
-	if rvr, ok := c.Data()["_panicStack"]; ok {
+	if rvr, ok := c.LookupData("_panicStack"); ok {
 		fmt.Fprintf(c.Stderr, rvr.(string))
 	}
-	if rvr, ok := c.Data()["_panicRecovered"]; ok {
+	if rvr, ok := c.LookupData("_panicRecovered"); ok {
 		return fmt.Errorf(rvr.(string))
 	}
 	return nil
@@ -354,7 +361,10 @@ func Category(name string) Action {
 // the syntax of patterns and how they are matched.
 func HookBefore(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
-		return c.target().hookBefore(pattern, handler)
+		if h, ok := c.hookable(); ok {
+			return h.hookBefore(pattern, handler)
+		}
+		return cantHookError
 	})
 }
 
@@ -362,7 +372,10 @@ func HookBefore(pattern string, handler Action) Action {
 // the syntax of patterns and how they are matched.
 func HookAfter(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
-		return c.target().hookAfter(pattern, handler)
+		if h, ok := c.hookable(); ok {
+			return h.hookAfter(pattern, handler)
+		}
+		return cantHookError
 	})
 }
 

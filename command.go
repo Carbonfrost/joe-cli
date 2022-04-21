@@ -98,15 +98,6 @@ type commandSynopsis struct {
 
 type optionGroup int
 
-type command interface {
-	hasArguments
-	hasFlags
-	Command(string) (*Command, bool)
-	Flag(string) (*Flag, bool)
-	Arg(string) (*Arg, bool)
-	Expr(string) (*Expr, bool)
-}
-
 type commandContext struct {
 	cmd                  *Command
 	flagSet              *set
@@ -403,6 +394,12 @@ func (c *Command) SetData(name string, v interface{}) {
 	c.ensureData()[name] = v
 }
 
+// LookupData obtains the data if it exists
+func (c *Command) LookupData(name string) (interface{}, bool) {
+	v, ok := c.ensureData()[name]
+	return v, ok
+}
+
 func (c *Command) setCategory(name string) {
 	c.Category = name
 }
@@ -625,4 +622,4 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 	return nil, commandMissing(sub)
 }
 
-var _ command = (*Command)(nil)
+var _ targetConventions = (*Command)(nil)

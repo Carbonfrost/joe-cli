@@ -314,6 +314,12 @@ func (a *Arg) SetData(name string, v interface{}) {
 	a.ensureData()[name] = v
 }
 
+// LookupData obtains the data if it exists
+func (a *Arg) LookupData(name string) (interface{}, bool) {
+	v, ok := a.ensureData()[name]
+	return v, ok
+}
+
 func (a *Arg) setCategory(name string) {}
 
 func (a *Arg) setDescription(value string) {
@@ -333,14 +339,6 @@ func (a *Arg) ensureData() map[string]interface{} {
 		a.Data = map[string]interface{}{}
 	}
 	return a.Data
-}
-
-func (*Arg) hookAfter(string, Action) error {
-	return cantHookError
-}
-
-func (*Arg) hookBefore(string, Action) error {
-	return cantHookError
 }
 
 func (a *argSynopsis) String() string {
@@ -472,3 +470,5 @@ func aboutArgCounter(narg interface{}) (optional, multi bool) {
 	}
 	return false, false
 }
+
+var _ targetConventions = (*Arg)(nil)
