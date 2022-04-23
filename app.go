@@ -17,6 +17,7 @@ import (
 // App provides the definition of an app, which is composed of commands, flags, and arguments.
 type App struct {
 	hooksSupport
+	customizableSupport
 
 	// Name provides the name of the app.  This value is inferred from the base name of the entry process if
 	// it is explicitly not set.  It will be displayed on the help screen and other templates.
@@ -179,13 +180,15 @@ func (a *App) createRoot() *Command {
 func (a *App) _createRootCore(force bool) *Command {
 	if a.rootCommand == nil || force {
 		var (
-			flags internalFlags
-			hooks hooksSupport
-			data  map[string]interface{}
+			flags   internalFlags
+			hooks   hooksSupport
+			customs customizableSupport
+			data    map[string]interface{}
 		)
 		if a.rootCommand != nil {
 			flags = a.rootCommand.flags
 			hooks = a.rootCommand.hooksSupport
+			customs = a.rootCommand.customizableSupport
 			data = a.rootCommand.Data
 		}
 		flags |= a.flags
@@ -194,19 +197,20 @@ func (a *App) _createRootCore(force bool) *Command {
 		}
 
 		a.rootCommand = &Command{
-			Name:         a.Name,
-			Flags:        a.Flags,
-			Args:         a.Args,
-			Subcommands:  a.Commands,
-			Action:       a.Action,
-			Description:  a.Description,
-			Data:         data,
-			After:        a.After,
-			Uses:         a.Uses,
-			Before:       a.Before,
-			Options:      a.Options,
-			flags:        flags,
-			hooksSupport: hooks.append(&a.hooksSupport),
+			Name:                a.Name,
+			Flags:               a.Flags,
+			Args:                a.Args,
+			Subcommands:         a.Commands,
+			Action:              a.Action,
+			Description:         a.Description,
+			Data:                data,
+			After:               a.After,
+			Uses:                a.Uses,
+			Before:              a.Before,
+			Options:             a.Options,
+			flags:               flags,
+			hooksSupport:        hooks.append(&a.hooksSupport),
+			customizableSupport: customs.append(&a.customizableSupport),
 		}
 	}
 	return a.rootCommand
@@ -475,3 +479,5 @@ func addAppCommand(name string, f *Flag, cmd *Command) ActionFunc {
 		return nil
 	}
 }
+
+var _ hookable = (*App)(nil)

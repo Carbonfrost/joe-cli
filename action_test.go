@@ -1119,3 +1119,70 @@ var _ = Describe("PreventSetup", func() {
 		}),
 	)
 })
+
+var _ = Describe("Customize", func() {
+	DescribeTable("examples",
+		func(uses cli.Action, expected func(app *cli.App)) {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "flag",
+					},
+				},
+				Args: []*cli.Arg{
+					{
+						Name:  "arg",
+						Value: &cli.Expression{},
+						Uses:  cli.Data("arg", 1),
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+						Flags: []*cli.Flag{
+							{
+								Name: "flag",
+							},
+						},
+					},
+					{
+						Name:  "dom",
+						Flags: []*cli.Flag{},
+					},
+				},
+				Uses: uses,
+			}
+			app.Initialize(context.Background())
+			expected(app)
+		},
+
+		Entry("customizes a flag",
+			cli.Customize("--flag", cli.Data("match", "flag")),
+			func(app *cli.App) {
+				Expect(app.Flags[0].Data).To(HaveKeyWithValue("match", "flag"))
+			}),
+
+		Entry("customizes flags recursively within commands",
+			cli.Customize("--flag", cli.Data("match", "flag")),
+			func(app *cli.App) {
+				Expect(app.Commands[0].Flags[0].Data).To(
+					HaveKeyWithValue("match", "flag"),
+				)
+			}),
+	)
+
+	It("flag can customize itself", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "flag",
+					Uses: cli.Customize("", cli.FlagSetup(func(f *cli.Flag) {
+						f.Data["ok"] = "2"
+					})),
+				},
+			},
+		}
+		app.Initialize(context.Background())
+		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
+	})
+})

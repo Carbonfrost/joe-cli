@@ -9,6 +9,7 @@ import (
 type Command struct {
 	hooksSupport
 	pipelinesSupport
+	customizableSupport
 
 	// Name of the command
 	Name string
@@ -569,3 +570,4 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 }
 
 var _ targetConventions = (*Command)(nil)
+var _ hookable = (*Command)(nil)

@@ -44,6 +44,11 @@ type hookable interface {
 	hookBefore(pattern string, handler Action) error
 }
 
+type customizable interface {
+	customize(pattern string, handler Action)
+	customizations() []*hook
+}
+
 type target interface {
 	appendAction(Timing, Action)
 	setDescription(string)
@@ -58,12 +63,17 @@ type target interface {
 
 type targetConventions interface {
 	target
+	customizable
 	WriteSynopsis(Writer)
 }
 
 type hooksSupport struct {
 	before []*hook
 	after  []*hook
+}
+
+type customizableSupport struct {
+	items []*hook
 }
 
 type pipelinesSupport struct {
@@ -120,6 +130,7 @@ var (
 			ActionFunc(ensureSubcommands),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
+			ActionFunc(handleCustomizations),
 		),
 		Before: Pipeline(
 			ActionFunc(triggerBeforeFlags),
@@ -137,6 +148,7 @@ var (
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
+			ActionFunc(handleCustomizations),
 		),
 	}
 
@@ -537,6 +549,15 @@ func ImplicitValue(fn func() (string, bool)) Action {
 	}))
 }
 
+// Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
+// is usually used to apply further customizations after an extension has done setup of
+// the defaults.
+func Customize(pattern string, a ...Action) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.Customize(pattern, a...)
+	})
+}
+
 // Execute the action by calling the function
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {
@@ -620,6 +641,20 @@ func (i *hooksSupport) append(other *hooksSupport) hooksSupport {
 	}
 }
 
+func (i *customizableSupport) customize(pat string, handler Action) {
+	i.items = append(i.items, &hook{newContextPathPattern(pat), handler})
+}
+
+func (i *customizableSupport) append(other *customizableSupport) customizableSupport {
+	return customizableSupport{
+		items: append(i.items, other.items...),
+	}
+}
+
+func (i *customizableSupport) customizations() []*hook {
+	return i.items
+}
+
 func (s *pipelinesSupport) uses() *actionPipelines {
 	return s.p
 }
@@ -676,4 +711,5 @@ func newPipelines(uses Action, opts *Option) *actionPipelines {
 var (
 	_ actionWithTiming = withTimingWrapper{}
 	_ Action           = Setup{}
+	_ hookable         = (*hooksSupport)(nil)
 )

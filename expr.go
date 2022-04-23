@@ -29,6 +29,7 @@ type EvaluatorFunc func(*Context, interface{}, func(interface{}) error) error
 // each file is processed through a series of operands to filter a list of files.
 type Expr struct {
 	pipelinesSupport
+	customizableSupport
 
 	// Name provides the name of the expression operator. This value must be set, and it is used to access
 	// the expression operator's value via the context

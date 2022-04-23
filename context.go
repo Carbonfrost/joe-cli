@@ -439,7 +439,8 @@ func (c *Context) Target() interface{} {
 }
 
 func (c *Context) target() target {
-	if c == nil {
+	// This is to avoid complexity in test setup; internal should never actually be nil
+	if c == nil || c.internal == nil {
 		return nil
 	}
 	return c.internal.target()
@@ -447,6 +448,14 @@ func (c *Context) target() target {
 
 func (c *Context) hookable() (hookable, bool) {
 	h, ok := c.internal.target().(hookable)
+	return h, ok
+}
+
+func (c *Context) customizable() (customizable, bool) {
+	// if c == nil || c.internal == nil{
+	// 	return nil, false
+	// }
+	h, ok := c.target().(customizable)
 	return h, ok
 }
 
@@ -536,7 +545,8 @@ func (c *Context) pathSlow() ContextPath {
 	return ContextPath(res)
 }
 
-// Lineage retrieves all of the ancestor contexts up to the root
+// Lineage retrieves all of the ancestor contexts up to the root.  The result
+// contains the current context and all contexts up to the root.
 func (c *Context) Lineage() []*Context {
 	res := make([]*Context, 0)
 	c.lineageFunc(func(ctx *Context) {
@@ -685,6 +695,17 @@ func (c *Context) ProvideValueInitializer(v interface{}, name string, action Act
 			return c1.valueContext(adapter, name).executeSelf()
 		},
 	})
+}
+
+// Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
+// is usually used to apply further customizations after an extension has done setup of
+// the defaults.
+func (c *Context) Customize(pattern string, a ...Action) error {
+	if h, ok := c.customizable(); ok {
+		h.customize(pattern, ActionPipeline(a))
+		return nil
+	}
+	return cantHookError
 }
 
 // Last gets the last name in the path
@@ -998,14 +1019,6 @@ func (c *Context) option() option {
 	return c.target().(option)
 }
 
-func (*valueTarget) hookAfter(pattern string, handler Action) error {
-	return cantHookError
-}
-
-func (*valueTarget) hookBefore(pattern string, handler Action) error {
-	return cantHookError
-}
-
 func (v *valueTarget) setDescription(arg string) {
 	switch val := v.v.(type) {
 	case targetConventions:
@@ -1190,6 +1203,20 @@ func setupOptionFromEnv(ctx *Context) error {
 	return ctx.Do(ImplicitValue(func() (string, bool) {
 		return loadFlagValueFromEnvironment(o)
 	}))
+}
+
+func handleCustomizations(target *Context) error {
+	path := target.Path()
+	target.lineageFunc(func(c *Context) {
+		if h, ok := c.customizable(); ok {
+			for _, b := range h.customizations() {
+				if b.pat.Match(path) {
+					b.action.Execute(target)
+				}
+			}
+		}
+	})
+	return nil
 }
 
 func guessWidth() int {

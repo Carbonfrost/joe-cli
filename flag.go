@@ -34,6 +34,7 @@ import (
 //
 type Flag struct {
 	pipelinesSupport
+	customizableSupport
 
 	// Name provides the name of the flag. This value must be set, and it is used to access
 	// the flag's value via the context

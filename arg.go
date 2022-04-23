@@ -8,6 +8,7 @@ import (
 // Arg provides the representation of a positional argument.
 type Arg struct {
 	pipelinesSupport
+	customizableSupport
 
 	// Name provides the name of the argument. This value must be set, and it is used to access
 	// the argument's value via the context
