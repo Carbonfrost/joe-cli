@@ -180,7 +180,7 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 			}
 		}
 
-		tpl := c.Template("help")
+		tpl := c.Template("Help")
 		lineage := ""
 
 		if len(command) > 0 {
@@ -189,15 +189,17 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 				all = append(all, c.App().Name)
 			}
 			all = append(all, command[0:len(command)-1]...)
-			lineage = " " + strings.Join(all, " ")
+			lineage = strings.Join(all, " ")
 		}
 
 		data := struct {
 			SelectedCommand *commandData
 			App             *App
+			Debug           bool
 		}{
 			SelectedCommand: commandAdapter(current).withLineage(lineage, persistentFlags),
 			App:             c.App(),
+			Debug:           tpl.Debug,
 		}
 
 		w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
@@ -209,8 +211,8 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 }
 
 // PrintVersion displays the version string.  The VersionTemplate provides the Go template
-func PrintVersion() ActionFunc {
-	return RenderTemplate("version", nil)
+func PrintVersion() Action {
+	return RenderTemplate("Version", nil)
 }
 
 func defaultData(c *Context) interface{} {
@@ -225,10 +227,10 @@ func defaultData(c *Context) interface{} {
 
 // RenderTemplate provides an action that renders the specified template using the factory function that
 // creates the data that is passed to the template
-func RenderTemplate(name string, data func(*Context) interface{}) ActionFunc {
-	return func(c *Context) error {
+func RenderTemplate(name string, data func(*Context) interface{}) Action {
+	return ActionFunc(func(c *Context) error {
 		return c.RenderTemplate(name, data)
-	}
+	})
 }
 
 // RegisterTemplate will register the specified template by name.
@@ -501,107 +503,6 @@ func (b *buffer) String() string {
 func (*placeholderExpr) exprSigil() {}
 func (*literal) exprSigil()         {}
 
-func bold(s string) string {
-	res := newBuffer()
-	res.SetStyle(Bold)
-	res.WriteString(s)
-	res.Reset()
-	return res.String()
-}
-
-// bold command name, flag names
-// underline arg names, value placeholders
-func sprintSynopsisTokens(c *commandSynopsis, enableColor bool) []string {
-	tokens := make([]string, 0)
-
-	var (
-		add = func(s string) {
-			tokens = append(tokens, s)
-		}
-	)
-	add(bold(c.name))
-
-	groups := c.flags
-	if len(groups[actionGroup]) > 0 {
-		res := newBuffer()
-		res.WriteString("{")
-		for i, f := range groups[actionGroup] {
-			if i > 0 {
-				res.WriteString(" | ")
-			}
-			f.write(res, true)
-		}
-		res.WriteString("}")
-		add(res.String())
-	}
-
-	// short option list -abc
-	if len(groups[onlyShortNoValue]) > 0 {
-		res := newBuffer()
-		res.WriteString("-")
-		for _, f := range groups[onlyShortNoValue] {
-			res.WriteString(f.short)
-		}
-		add(res.String())
-	}
-
-	if len(groups[onlyShortNoValueOptional]) > 0 {
-		res := newBuffer()
-		res.WriteString("[-")
-		for _, f := range groups[onlyShortNoValueOptional] {
-			res.WriteString(f.short)
-		}
-		res.WriteString("]")
-		add(res.String())
-	}
-
-	for _, f := range groups[otherOptional] {
-		res := newBuffer()
-		res.WriteString("[")
-		f.write(res, true)
-		res.WriteString("]")
-		add(res.String())
-	}
-
-	for _, f := range groups[other] {
-		res := newBuffer()
-		f.write(res, true)
-		add(res.String())
-	}
-
-	if c.rtl {
-		var start int
-		for i, p := range c.args {
-			if p.optional {
-				start = i
-				break
-			}
-			add(p.String())
-		}
-
-		optionalArgs := c.args[start:]
-		open := strings.Repeat("[", len(optionalArgs))
-		for i, p := range optionalArgs {
-			if i == 0 {
-				add(open + p.String() + "]")
-			} else {
-				add(p.String() + "]")
-			}
-		}
-	} else {
-
-		for _, a := range c.args {
-			if a.optional {
-				add("[" + a.String() + "]")
-			} else {
-				add(a.String())
-			}
-		}
-	}
-
-	return tokens
-}
-
 func (u *usage) helpText() string {
 	var b bytes.Buffer
 	w := NewWriter(&b)
@@ -690,10 +591,6 @@ func newExpr(token []byte) expr {
 	pos, _ := strconv.Atoi(positionAndName[0])
 	name := positionAndName[1]
 	return &placeholderExpr{name: name, pos: pos}
-}
-
-func lenIgnoringCSI(s string) int {
-	return len(controlCodes.ReplaceAllString(s, ""))
 }
 
 func displayHelp(c *Context) error {

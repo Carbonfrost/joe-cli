@@ -144,10 +144,13 @@ type exprPipelineFactory struct {
 }
 
 type exprSynopsis struct {
-	long  string
-	short string
-	args  []*argSynopsis
-	usage *usage
+	Long         string
+	Short        string
+	usage        *usage
+	Names        []string
+	Args         []*argSynopsis
+	RequiredArgs []*argSynopsis
+	OptionalArgs []*argSynopsis
 }
 
 type boundExpr struct {
@@ -203,12 +206,14 @@ func (e *Expression) Initializer() Action {
 
 func (e *Expression) renderDescription(c *Context) string {
 	var buf bytes.Buffer
-	tpl := c.Template("expressions")
+	tpl := c.Template("Expressions")
 
 	data := struct {
 		Description *exprDescriptionData
+		Debug       bool
 	}{
 		Description: exprDescription(e),
+		Debug:       tpl.Debug,
 	}
 
 	w := ansiterm.NewTabWriter(&buf, 1, 8, 2, ' ', tabwriter.StripEscape)
@@ -385,7 +390,7 @@ func (e *Expr) Synopsis() string {
 }
 
 func (e *Expr) WriteSynopsis(w Writer) {
-	e.newSynopsis().write(w)
+	synopsisTemplate.ExecuteTemplate(w, "ExpressionSynopsis", e.newSynopsis())
 }
 
 // Arg gets the expression operator by name
@@ -407,12 +412,23 @@ func (e *Expr) newSynopsis() *exprSynopsis {
 		}
 	}
 	long, short := canonicalNames(e.Name, e.Aliases)
+	names := func() []string {
+		if len(long) == 0 {
+			return []string{fmt.Sprintf("-%s", string(short[0]))}
+		}
+		if len(short) == 0 {
+			return []string{fmt.Sprintf("-%s", long[0])}
+		}
+		return []string{fmt.Sprintf("-%s", string(short[0])), fmt.Sprintf("-%s", string(long[0]))}
+	}
 
 	return &exprSynopsis{
-		long:  longName(long),
-		short: shortName(short),
-		usage: usage,
-		args:  args,
+		Long:         longName(long),
+		Short:        shortName(short),
+		usage:        usage,
+		Args:         args,
+		RequiredArgs: args,
+		Names:        names(),
 	}
 }
 
@@ -668,29 +684,6 @@ func (e *Expression) applyFactory(c *Context, fac *exprPipelineFactory) error {
 
 func (b *exprBinding) Expr() *Expr {
 	return b.expr
-}
-
-func (e *exprSynopsis) names() string {
-	if len(e.long) == 0 {
-		return fmt.Sprintf("-%s", e.short)
-	}
-	if len(e.short) == 0 {
-		return fmt.Sprintf("-%s", e.long)
-	}
-	return fmt.Sprintf("-%s, -%s", e.short, e.long)
-}
-
-func (e *exprSynopsis) write(w Writer) {
-	w.SetStyle(Bold)
-	w.WriteString(e.names())
-	w.Reset()
-
-	for _, a := range e.args {
-		w.WriteString(" ")
-		w.SetStyle(Underline)
-		w.WriteString(a.String())
-		w.Reset()
-	}
 }
 
 func emptyYielder(interface{}) error {

@@ -133,18 +133,21 @@ func ListProviders(name string) cli.Action {
 				f.Value = new(bool)
 				f.Options |= cli.Exits
 			}
-			c.RegisterTemplate("providers", listTemplate)
+			c.RegisterTemplate("Providers", listTemplate)
 			return nil
 		},
 		Action: func(c *cli.Context) error {
 			registry := Services(c).Registry(name)
+			tpl := c.Template("Providers")
 			data := struct {
 				Providers []providerData
+				Debug     bool
 			}{
 				Providers: toData(registry),
+				Debug:     tpl.Debug,
 			}
 
-			return c.Template("providers").Execute(c.Stdout, data)
+			return tpl.Execute(c.Stdout, data)
 		},
 	}
 }

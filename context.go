@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -504,10 +505,28 @@ func (c *Context) Do(actions ...Action) error {
 // Template retrieves a template by name
 func (c *Context) Template(name string) *Template {
 	str := c.App().ensureTemplates()[name]
+	t := template.New(name)
+
 	funcMap := c.App().ensureTemplateFuncs()
+
+	// Execute function needs a closure containing the template itself, so is
+	// added afterwars
+	funcMap["Execute"] = func(name string, data interface{}) (string, error) {
+		buf := bytes.NewBuffer(nil)
+		if err := t.ExecuteTemplate(buf, name, data); err != nil {
+			return "", err
+		}
+		return buf.String(), nil
+	}
+
+	// Synopsis templates are imported into the template context
+	for _, n := range synopsisTemplate.Templates() {
+		t.AddParseTree(n.Name(), n.Tree)
+	}
+
 	return &Template{
 		Template: template.Must(
-			template.New(name).Funcs(funcMap).Parse(str),
+			t.Funcs(funcMap).Parse(str),
 		),
 		Debug: os.Getenv("CLI_DEBUG_TEMPLATES") == "1",
 	}

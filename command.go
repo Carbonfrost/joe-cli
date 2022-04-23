@@ -2,7 +2,6 @@ package cli
 
 import (
 	"sort"
-	"strings"
 )
 
 // Command represents a command with arguments, flags, and expressions
@@ -88,10 +87,12 @@ type CommandCategory struct {
 type CommandsByCategory []*CommandCategory
 
 type commandSynopsis struct {
-	name  string
-	flags map[optionGroup][]*flagSynopsis
-	args  []*argSynopsis
-	rtl   bool
+	Name         string
+	Flags        map[optionGroup][]*flagSynopsis
+	Args         []*argSynopsis
+	RequiredArgs []*argSynopsis
+	OptionalArgs []*argSynopsis
+	RTL          bool
 }
 
 type optionGroup int
@@ -189,7 +190,7 @@ func (c *Command) Synopsis() string {
 }
 
 func (c *Command) WriteSynopsis(w Writer) {
-	w.WriteString(strings.Join(sprintSynopsisTokens(c.newSynopsis(), false), " "))
+	synopsisTemplate.ExecuteTemplate(w, "CommandSynopsis", c.newSynopsis())
 }
 
 // Command tries to obtain a sub-command by name or alias
@@ -325,6 +326,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 		onlyBoolLong:             {},
 		hidden:                   {},
 		otherOptional:            {},
+		actionGroup:              {},
 		other:                    {},
 	}
 	args := make([]*argSynopsis, 0)
@@ -339,11 +341,37 @@ func (c *Command) newSynopsis() *commandSynopsis {
 	sortedByName(groups[onlyShortNoValueOptional])
 	sortedByName(groups[onlyShortNoValue])
 
+	var required []*argSynopsis
+	var optional []*argSynopsis
+
+	rtl := c.internalFlags().rightToLeft()
+	if rtl {
+		var start int
+		for i, p := range args {
+			if p.Optional {
+				start = i
+				break
+			}
+		}
+		required = args[0:start]
+		optional = args[start:]
+	} else {
+		for _, p := range args {
+			if p.Optional {
+				optional = append(optional, p)
+			} else {
+				required = append(required, p)
+			}
+		}
+	}
+
 	return &commandSynopsis{
-		name:  c.Name,
-		flags: groups,
-		args:  args,
-		rtl:   c.internalFlags().rightToLeft(),
+		Name:         c.Name,
+		Flags:        groups,
+		Args:         args,
+		RequiredArgs: required,
+		OptionalArgs: optional,
+		RTL:          rtl,
 	}
 }
 
@@ -538,7 +566,7 @@ func getGroup(f *Flag) optionGroup {
 
 func sortedByName(flags []*flagSynopsis) {
 	sort.Slice(flags, func(i, j int) bool {
-		return flags[i].short < flags[j].short
+		return flags[i].Short < flags[j].Short
 	})
 }
 

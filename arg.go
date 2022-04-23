@@ -142,9 +142,9 @@ type matchesArgsCounter struct {
 }
 
 type argSynopsis struct {
-	value    string
-	multi    bool
-	optional bool
+	Value    string
+	Multi    bool
+	Optional bool
 }
 
 const (
@@ -251,7 +251,7 @@ func (a *Arg) Synopsis() string {
 }
 
 func (a *Arg) WriteSynopsis(w Writer) {
-	w.WriteString(a.newSynopsis().String())
+	synopsisTemplate.ExecuteTemplate(w, "ArgSynopsis", a.newSynopsis())
 }
 
 func (a *Arg) newSynopsis() *argSynopsis {
@@ -266,9 +266,9 @@ func (a *Arg) newSynopsisCore(defaultUsage string) *argSynopsis {
 
 	opt, mul := aboutArgCounter(a.NArg)
 	return &argSynopsis{
-		value:    usage,
-		multi:    mul,
-		optional: opt,
+		Value:    usage,
+		Multi:    mul,
+		Optional: opt,
 	}
 }
 
@@ -344,10 +344,10 @@ func (a *Arg) ensureData() map[string]interface{} {
 }
 
 func (a *argSynopsis) String() string {
-	if a.multi {
-		return a.value + "..."
+	if a.Multi {
+		return a.Value + "..."
 	}
-	return a.value
+	return a.Value
 }
 
 func (o *argContext) initialize(c *Context) error {

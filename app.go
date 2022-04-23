@@ -118,13 +118,13 @@ var (
 	ExitHandler func(*Context, string, int)
 
 	defaultTemplates = map[string]func() string{
-		"help": func() string {
+		"Help": func() string {
 			return HelpTemplate
 		},
-		"version": func() string {
+		"Version": func() string {
 			return VersionTemplate
 		},
-		"expressions": func() string {
+		"Expressions": func() string {
 			return expressionTemplate
 		},
 	}
@@ -394,56 +394,33 @@ func adaptWriter(w io.Writer) Writer {
 
 func setupDefaultTemplateFuncs(c *Context) error {
 	width := guessWidth()
+	wrap := func(indent int, s string) string {
+		buf := bytes.NewBuffer(nil)
+		indentText := strings.Repeat(" ", indent)
+		Wrap(buf, s, indentText, width)
+		return buf.String()
+	}
 
 	funcMap := template.FuncMap{
-		"Join": func(v string, args []string) string {
-			return strings.Join(args, v)
-		},
-		"Trim": strings.TrimSpace,
-		"Wrap": func(indent int, s string) string {
-			buf := bytes.NewBuffer(nil)
-			indentText := strings.Repeat(" ", indent)
-			Wrap(buf, s, indentText, width)
-			return buf.String()
-		},
-		"BoldFirst": func(args []string) []string {
-			args[0] = bold(args[0])
-			return args
-		},
+		"Wrap": wrap,
 		"ExtraSpaceBeforeFlag": func(s string) string {
 			if strings.HasPrefix(controlCodes.ReplaceAllString(s, ""), "--") {
 				return "    " + s
 			}
 			return s
 		},
-		"SynopsisHangingIndent": func(d *commandData) string {
-			var buf bytes.Buffer
-			hang := strings.Repeat(
-				" ",
-				len("usage:")+lenIgnoringCSI(d.Lineage)+len(d.Name)+1,
-			)
-
-			buf.WriteString(d.Lineage)
-
-			limit := width - len("usage:") - lenIgnoringCSI(d.Lineage) - 1
-			for _, t := range d.Synopsis {
-				tLength := lenIgnoringCSI(t)
-				if limit-tLength < 0 {
-					buf.WriteString("\n")
-					buf.WriteString(hang)
-					limit = width - len(hang)
-				}
-
-				buf.WriteString(" ")
-				buf.WriteString(t)
-				limit = limit - 1 - tLength
-			}
-			return buf.String()
+		"HangingIndent": func(indent int, s string) string {
+			return strings.TrimSpace(wrap(indent, s))
 		},
 	}
 
 	a := c.App()
 	funcs := a.ensureTemplateFuncs()
+	for k, v := range builtinFuncs {
+		if _, ok := funcs[k]; !ok {
+			funcs[k] = v
+		}
+	}
 	for k, v := range funcMap {
 		if _, ok := funcs[k]; !ok {
 			funcs[k] = v

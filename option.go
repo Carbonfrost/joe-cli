@@ -391,7 +391,10 @@ func noOption(c *Context) error {
 	f := c.Flag()
 
 	syn := f.synopsis()
-	syn.long = "[no-]" + syn.long
+	_ = syn.withLongAndShort(
+		[]string{"[no-]" + syn.Long},
+		syn.Shorts,
+	)
 	wrapAction := func(v Action) ActionFunc {
 		return func(c *Context) error {
 			return execute(v, c.copy(

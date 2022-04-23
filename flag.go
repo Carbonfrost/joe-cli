@@ -183,14 +183,18 @@ type wrapLookupContext struct {
 }
 
 type flagSynopsis struct {
-	short string
-	long  string
-	sep   string
-	value *valueSynopsis
+	Short          string
+	Shorts         []rune
+	Long           string
+	Primary        string // Long if present, otherwise Short
+	Separator      string
+	Names          []string
+	AlternateNames []string
+	Value          *valueSynopsis
 }
 
 type valueSynopsis struct {
-	placeholder string
+	Placeholder string
 	helpText    string
 	usage       *usage
 }
@@ -227,7 +231,7 @@ func (f *Flag) Synopsis() string {
 }
 
 func (f *Flag) WriteSynopsis(w Writer) {
-	f.synopsis().write(w, false)
+	synopsisTemplate.ExecuteTemplate(w, "FlagSynopsis", f.synopsis())
 }
 
 func (f *Flag) cacheSynopsis(syn *flagSynopsis) *flagSynopsis {
@@ -251,13 +255,59 @@ func (f *Flag) newSynopsis() *flagSynopsis {
 	if len(long) == 0 {
 		sep = " "
 	}
-
-	return &flagSynopsis{
-		short: shortName(short),
-		long:  longName(long),
-		sep:   sep,
-		value: getValueSynopsis(f),
+	value := getValueSynopsis(f)
+	if len(value.Placeholder) == 0 {
+		sep = ""
 	}
+
+	return (&flagSynopsis{
+		Separator: sep,
+		Value:     value,
+	}).withLongAndShort(long, short)
+}
+
+func (f *flagSynopsis) withLongAndShort(long []string, short []rune) *flagSynopsis {
+	var primary string
+
+	if len(long) == 0 {
+		primary = "-" + string(short[0])
+	} else {
+		primary = "--" + long[0]
+	}
+
+	var (
+		shorts = func() []string {
+			res := make([]string, len(short))
+			for i := range short {
+				res[i] = "-" + string(short[i])
+			}
+			return res
+		}()
+		longs = func() []string {
+			res := make([]string, len(long))
+			for i := range long {
+				res[i] = "--" + long[i]
+			}
+			return res
+		}()
+
+		names, alternateNames = func() ([]string, []string) {
+			if len(longs) == 0 {
+				return []string{shorts[0]}, shorts[1:]
+			}
+			if len(short) == 0 {
+				return []string{longs[0]}, longs[1:]
+			}
+			return []string{shorts[0], longs[0]}, append(shorts[1:], longs[1:]...)
+		}()
+	)
+	f.Short = shortName(short)
+	f.Shorts = short
+	f.Long = longName(long)
+	f.Primary = primary
+	f.Names = names
+	f.AlternateNames = alternateNames
+	return f
 }
 
 // SetData sets the specified metadata on the flag
@@ -301,37 +351,6 @@ func (f *Flag) ensureData() map[string]interface{} {
 		f.Data = map[string]interface{}{}
 	}
 	return f.Data
-}
-
-func (f *flagSynopsis) names(hideAlternates bool) string {
-	if len(f.long) == 0 {
-		return fmt.Sprintf("-%s", f.short)
-	}
-	if len(f.short) == 0 {
-		return fmt.Sprintf("--%s", f.long)
-	}
-	if hideAlternates {
-		return fmt.Sprintf("--%s", f.long)
-	}
-	return fmt.Sprintf("-%s, --%s", f.short, f.long)
-}
-
-func (f *flagSynopsis) write(w Writer, hideAlternates bool) {
-	sepIfNeeded := ""
-	place := f.value.placeholder
-	if len(place) > 0 {
-		sepIfNeeded = f.sep
-	}
-
-	w.SetStyle(Bold)
-	w.WriteString(f.names(hideAlternates))
-	w.Reset()
-
-	w.WriteString(sepIfNeeded)
-
-	w.SetStyle(Underline)
-	w.WriteString(place)
-	w.Reset()
 }
 
 func (o *flagContext) initialize(c *Context) error {
@@ -399,13 +418,13 @@ func getValueSynopsis(o option) *valueSynopsis {
 	placeholders := strings.Join(usage.Placeholders(), " ")
 	if len(placeholders) > 0 {
 		return &valueSynopsis{
-			placeholder: placeholders,
+			Placeholder: placeholders,
 			usage:       usage,
 			helpText:    usage.WithoutPlaceholders(),
 		}
 	}
 	return &valueSynopsis{
-		placeholder: placeholder(o.value()),
+		Placeholder: placeholder(o.value()),
 		helpText:    usage.WithoutPlaceholders(),
 		usage:       usage,
 	}

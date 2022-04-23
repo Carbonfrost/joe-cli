@@ -32,8 +32,10 @@ func (a *Arg) ActualArgCounter() ArgCounter {
 
 func NewFlagSynopsis(long string) *flagSynopsis {
 	return &flagSynopsis{
-		long:  long,
-		value: &valueSynopsis{},
+		Long:    long,
+		Primary: long,
+		Names:   []string{"--" + long},
+		Value:   &valueSynopsis{},
 	}
 }
 

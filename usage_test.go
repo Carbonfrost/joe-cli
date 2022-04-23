@@ -82,7 +82,7 @@ var _ = Describe("PrintVersion", func() {
 		app := &cli.App{
 			Name:    "demo",
 			Version: "hello.5.0",
-			Before:  cli.RegisterTemplate("version", "custom template {{ .App.Name }} {{ .App.Version }}"),
+			Before:  cli.RegisterTemplate("Version", "custom template {{ .App.Name }} {{ .App.Version }}"),
 			Commands: []*cli.Command{
 				{
 					Name: "sub",
@@ -159,7 +159,7 @@ var _ = Describe("DisplayHelpScreen", func() {
 	It("uses the help template", func() {
 		app := &cli.App{
 			Name:   "demo",
-			Before: cli.RegisterTemplate("help", "custom help template"),
+			Before: cli.RegisterTemplate("Help", "custom help template"),
 			Commands: []*cli.Command{
 				{
 					Name: "sub",
