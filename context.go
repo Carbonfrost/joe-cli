@@ -22,7 +22,8 @@ type Context struct {
 	timing   Timing
 	argList  []string
 
-	parent *Context
+	parent    *Context
+	pathCache ContextPath
 }
 
 // WalkFunc provides the callback for the Walk function
@@ -180,6 +181,30 @@ func (c *Context) Args() []string {
 	return c.argList
 }
 
+// LookupCommand finds the command by name.  The name can be a string or *Command
+func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
+	if c == nil {
+		return nil, false
+	}
+	switch v := name.(type) {
+	case string:
+		if v == "" {
+			return nil, false
+		}
+		if aa, ok := c.target().(*Command); ok {
+			if r, found := findCommandByName(aa.Subcommands, v); found {
+				return r, true
+			}
+		}
+	case *Command:
+		return v, true
+	default:
+		panic(fmt.Sprintf("unexpected type: %T", name))
+	}
+
+	return nil, false
+}
+
 // LookupFlag finds the flag by name.  The name can be a string, rune, or *Flag
 func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
 	if c == nil {
@@ -235,6 +260,45 @@ func (c *Context) LookupArg(name interface{}) (*Arg, bool) {
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
 	return c.Parent().LookupArg(name)
+}
+
+// FindTarget finds the given target corresponding to the context path.
+func (c *Context) FindTarget(path ContextPath) (res *Context, ok bool) {
+	res = c
+	ok = true
+	if len(path) == 0 || path[0] == "" {
+		return res, true
+	}
+	if !matchField(path[0], res.Name()) {
+		return res, false
+	}
+	for _, p := range path[1:] {
+		res, ok = res.findTarget(p)
+		if !ok {
+			break
+		}
+	}
+	return
+}
+
+func (c *Context) findTarget(name string) (*Context, bool) {
+	switch {
+	case name == "":
+		return c, false
+	case matchFlag(name):
+		if f, ok := c.LookupFlag(name); ok {
+			return c.flagContext(f, nil), true
+		}
+	case matchArg(name):
+		if a, ok := c.LookupArg(name); ok {
+			return c.argContext(a, nil), true
+		}
+	default:
+		if m, ok := c.LookupCommand(name); ok {
+			return c.commandContext(m), true
+		}
+	}
+	return nil, false
 }
 
 // Seen returns true if the specified flag or argument has been used at least once
@@ -443,11 +507,22 @@ func (c *Context) Template(name string) *Template {
 // Name gets the name of the context, which is the name of the command, arg, flag, or expression
 // operator in use
 func (c *Context) Name() string {
+	// This is to avoid complexity in test setup; internal should never actually be nil
+	if c.internal == nil {
+		return ""
+	}
 	return c.internal.Name()
 }
 
 // Path retrieves all of the names on the context and its ancetors to the root
 func (c *Context) Path() ContextPath {
+	if len(c.pathCache) == 0 {
+		c.pathCache = c.pathSlow()
+	}
+	return c.pathCache
+}
+
+func (c *Context) pathSlow() ContextPath {
 	res := make([]string, 0)
 	c.lineageFunc(func(ctx *Context) {
 		res = append(res, ctx.Name())
@@ -670,6 +745,9 @@ func (cp contextPathPattern) Match(c ContextPath) bool {
 }
 
 func matchField(pattern, field string) bool {
+	if pattern == "" {
+		return true
+	}
 	if pattern == "*" {
 		return matchCommand(field)
 	}
@@ -683,6 +761,11 @@ func matchField(pattern, field string) bool {
 		return matchExpr(field)
 	}
 	if pattern == field {
+		return true
+	}
+
+	// Special case: long flag names are allowed to use one dash
+	if strings.HasPrefix(pattern, "-") && ("-"+pattern) == field {
 		return true
 	}
 	return false

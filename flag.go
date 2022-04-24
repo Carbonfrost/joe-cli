@@ -624,6 +624,7 @@ func loadFlagValueFromEnvironment(f option) (string, bool) {
 }
 
 func findFlagByName(items []*Flag, name string) (*Flag, bool) {
+	name = strings.TrimLeft(name, "-")
 	for _, sub := range items {
 		if sub.Name == name {
 			return sub, true

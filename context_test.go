@@ -245,6 +245,60 @@ var _ = Describe("Context", func() {
 		})
 
 	})
+
+	Describe("FindTarget", func() {
+
+		DescribeTable("examples",
+			func(name []string, id string) {
+				var actualID interface{}
+				app := &cli.App{
+					Action: func(c *cli.Context) {
+						if actual, ok := c.FindTarget(cli.ContextPath(name)); ok {
+							switch a := actual.Target().(type) {
+							case *cli.Flag:
+								actualID = a.Data["id"]
+							case *cli.Arg:
+								actualID = a.Data["id"]
+							case *cli.Command:
+								actualID = a.Data["id"]
+							}
+						}
+					},
+					Commands: []*cli.Command{
+						{
+							Name: "sub",
+							Args: []*cli.Arg{
+								{
+									Name: "arg",
+									Uses: cli.Data("id", "2"),
+								},
+								{
+									Name: "arg2",
+									Uses: cli.Data("id", "3"),
+								},
+							},
+							Uses: cli.Data("id", "1"),
+						},
+					},
+					Flags: []*cli.Flag{
+						{
+							Name:  "f",
+							Value: new(bool),
+						},
+					},
+					Uses: cli.Data("id", "0"),
+					Name: "app",
+				}
+
+				_ = app.RunContext(context.TODO(), []string{"app"})
+				Expect(actualID).To(Equal(id))
+			},
+			Entry("empty self", []string{}, "0"),
+			Entry("app name", []string{"app"}, "0"),
+			Entry("sub-command", []string{"app", "sub"}, "1"),
+			Entry("arg", []string{"app", "sub", "<arg>"}, "2"),
+		)
+	})
 })
 
 var _ = Describe("ContextPath", func() {
@@ -259,6 +313,7 @@ var _ = Describe("ContextPath", func() {
 		Entry("nested command", "sub", "app app sub"),
 		Entry("simple flag", "--flag", "app --flag"),
 		Entry("nested flag", "--flag", "app app sub --flag"),
+		Entry("flag one dash", "-flag", "app --flag"),
 		Entry("expression", "<-expr>", "app <expr> <-expr>"),
 		Entry("any command", "*", "app"),
 		Entry("any sub-command", "*", "app sub"),

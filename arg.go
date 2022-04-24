@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Arg provides the representation of a positional argument.
@@ -449,6 +450,8 @@ func (*matchesArgsCounter) Done() error {
 }
 
 func findArgByName(items []*Arg, name string) (*Arg, bool) {
+	name = strings.TrimPrefix(name, "<")
+	name = strings.TrimSuffix(name, ">")
 	for _, sub := range items {
 		if sub.Name == name {
 			return sub, true
