@@ -482,7 +482,9 @@ func AddCommands(commands ...*Command) Action {
 // timing and only if setup hasn't been blocked by PreventSetup.
 func FlagSetup(fn func(*Flag)) Action {
 	return optionalSetup(func(c *Context) {
-		fn(c.Flag())
+		if f := c.Flag(); f != nil {
+			fn(f)
+		}
 	})
 }
 
@@ -492,7 +494,9 @@ func FlagSetup(fn func(*Flag)) Action {
 // timing and only if setup hasn't been blocked by PreventSetup.
 func ArgSetup(fn func(*Arg)) Action {
 	return optionalSetup(func(c *Context) {
-		fn(c.Arg())
+		if a := c.Arg(); a != nil {
+			fn(a)
+		}
 	})
 }
 
@@ -502,7 +506,9 @@ func ArgSetup(fn func(*Arg)) Action {
 // timing and only if setup hasn't been blocked by PreventSetup.
 func CommandSetup(fn func(*Command)) Action {
 	return optionalSetup(func(c *Context) {
-		fn(c.Command())
+		if cmd := c.Command(); cmd != nil {
+			fn(cmd)
+		}
 	})
 }
 

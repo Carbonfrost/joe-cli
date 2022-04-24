@@ -928,6 +928,24 @@ var _ = Describe("FlagSetup", func() {
 		_ = app.RunContext(context.Background(), []string{"app"})
 		Expect(called).To(BeTrue())
 	})
+
+	It("is ignored on non-Flag", func() {
+		var called bool
+		app := &cli.App{
+			Name: "any",
+			Args: []*cli.Arg{
+				{
+					Name: "ok",
+					Uses: cli.FlagSetup(func(f *cli.Flag) {
+						called = true
+					}),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(called).To(BeFalse())
+	})
 })
 
 var _ = Describe("ArgSetup", func() {
@@ -948,6 +966,24 @@ var _ = Describe("ArgSetup", func() {
 
 		_ = app.RunContext(context.Background(), []string{"app"})
 		Expect(called).To(BeTrue())
+	})
+
+	It("is ignored on non-Arg", func() {
+		var called bool
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Name: "ok",
+					Uses: cli.ArgSetup(func(f *cli.Arg) {
+						called = true
+					}),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(called).To(BeFalse())
 	})
 })
 
@@ -970,6 +1006,27 @@ var _ = Describe("CommandSetup", func() {
 
 		_ = app.RunContext(context.Background(), []string{"app"})
 		Expect(called).To(BeTrue())
+	})
+
+	It("can apply to inherited command scope", func() {
+		var called bool
+		var which string
+		app := &cli.App{
+			Name: "root",
+			Flags: []*cli.Flag{
+				{
+					Name: "ok",
+					Uses: cli.CommandSetup(func(c *cli.Command) {
+						called = true
+						which = c.Name
+					}),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(called).To(BeTrue())
+		Expect(which).To(Equal("root"))
 	})
 })
 

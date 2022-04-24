@@ -123,6 +123,9 @@ func (c *Context) app() (*App, bool) {
 // Command obtains the command.  The command could be a synthetic command that was
 // created to represent the root command of the app.
 func (c *Context) Command() *Command {
+	if c == nil {
+		return nil
+	}
 	if cmd, ok := c.target().(*Command); ok {
 		return cmd
 	}
@@ -131,6 +134,9 @@ func (c *Context) Command() *Command {
 
 // Arg retrieves the argument in scope if any
 func (c *Context) Arg() *Arg {
+	if c == nil {
+		return nil
+	}
 	if a, ok := c.target().(*Arg); ok {
 		return a
 	}
@@ -139,6 +145,9 @@ func (c *Context) Arg() *Arg {
 
 // Flag retrieves the flag in scope if any
 func (c *Context) Flag() *Flag {
+	if c == nil {
+		return nil
+	}
 	if f, ok := c.target().(*Flag); ok {
 		return f
 	}
