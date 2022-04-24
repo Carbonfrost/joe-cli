@@ -146,18 +146,15 @@ func NewApp(cmd *Command) *App {
 // Run the application and exit using the exit handler.  This function exits using the
 // ExitHandler if an error occurs.  If you want to process the error yourself, use RunContext.
 func (a *App) Run(args []string) {
-	a.runContextCore(context.Background(), args, func(c *Context, err error) error {
-		exit(c, err)
-		return nil
-	})
+	c, err := a.runContextCore(context.Background(), args)
+	exit(c, err)
 }
 
 // RunContext runs the application with the specified context and returns any error
 // that occurred.
 func (a *App) RunContext(c context.Context, args []string) error {
-	return a.runContextCore(c, args, func(_ *Context, err error) error {
-		return err
-	})
+	_, err := a.runContextCore(c, args)
+	return err
 }
 
 // Command gets the command by name
@@ -227,12 +224,22 @@ func (a *App) ensureData() map[string]interface{} {
 	return a.Data
 }
 
-func (a *App) runContextCore(c context.Context, args []string, exit func(*Context, error) error) error {
-	ctx := rootContext(c, a, args)
-	ctx.initialize()
+func (a *App) runContextCore(c context.Context, args []string) (*Context, error) {
+	ctx, err := a.Initialize(c)
+	if err != nil {
+		return ctx, err
+	}
+
 	root := a.createRoot()
-	err := root.parseAndExecuteSelf(ctx)
-	return exit(ctx, err)
+	err = root.parseAndExecuteSelf(ctx, args)
+	return ctx, err
+}
+
+// Initialize sets up the app with the given context and arguments
+func (a *App) Initialize(c context.Context) (*Context, error) {
+	ctx := rootContext(c, a)
+	err := ctx.initialize()
+	return ctx, err
 }
 
 func (a *App) ensureTemplates() map[string]string {

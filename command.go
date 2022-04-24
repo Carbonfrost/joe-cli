@@ -125,8 +125,8 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 			return err
 		}
 		c.Parent().internal.setDidSubcommandExecute()
-		newCtx := c.Parent().commandContext(cmd, invoke).setTiming(ActionTiming)
-		return cmd.parseAndExecuteSelf(newCtx)
+		newCtx := c.Parent().commandContext(cmd).setTiming(ActionTiming)
+		return cmd.parseAndExecuteSelf(newCtx, invoke)
 	}
 }
 
@@ -240,8 +240,8 @@ func (c *Command) appendArg(arg *Arg) *Command {
 	return c
 }
 
-func (c *Command) parseAndExecuteSelf(ctx *Context) error {
-	args := ctx.argList
+func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
+	ctx.argList = args
 	set := c.buildSet(ctx)
 	if c.internalFlags().skipFlagParsing() {
 		args = append([]string{args[0], "--"}, args[1:]...)
@@ -458,7 +458,7 @@ func initializeFlagsArgs(ctx *Context) error {
 func initializeSubcommands(ctx *Context) error {
 	cmd := ctx.target().(*Command)
 	for _, sub := range cmd.Subcommands {
-		err := ctx.commandContext(sub, nil).initialize()
+		err := ctx.commandContext(sub).initialize()
 		if err != nil {
 			return err
 		}

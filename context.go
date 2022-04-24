@@ -391,7 +391,7 @@ func (c *Context) walkCore(fn WalkFunc) error {
 	switch err {
 	case nil:
 		for _, sub := range current.Subcommands {
-			if err := c.commandContext(sub, nil).walkCore(fn); err != nil {
+			if err := c.commandContext(sub).walkCore(fn); err != nil {
 				return err
 			}
 		}
@@ -695,7 +695,7 @@ func matchFlag(field string) bool {
 	return strings.HasPrefix(field, "-")
 }
 
-func rootContext(cctx context.Context, app *App, args []string) *Context {
+func rootContext(cctx context.Context, app *App) *Context {
 	internal := &appContext{
 		commandContext: &commandContext{
 			cmd: nil, // This will be set after initialization
@@ -707,7 +707,6 @@ func rootContext(cctx context.Context, app *App, args []string) *Context {
 		contextData:   &contextData{},
 		internal:      internal,
 		lookupSupport: newLookupSupport(internal, nil),
-		argList:       args,
 	}
 }
 
@@ -721,10 +720,10 @@ func newLookupSupport(t internalContext, parent lookupCore) *lookupSupport {
 	}
 }
 
-func (c *Context) commandContext(cmd *Command, args []string) *Context {
+func (c *Context) commandContext(cmd *Command) *Context {
 	return c.copy(&commandContext{
 		cmd: cmd,
-	}, args, true)
+	}, nil, true)
 }
 
 func (c *Context) flagContext(opt *Flag, args []string) *Context {
