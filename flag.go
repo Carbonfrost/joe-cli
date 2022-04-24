@@ -165,7 +165,6 @@ type option interface {
 	SetRequired()
 
 	applyToSet(s *set)
-	wrapAction(func(Action) ActionFunc)
 	value() interface{}
 	name() string
 	envVars() []string
@@ -363,22 +362,23 @@ func (o *flagContext) initialize(c *Context) error {
 
 	rest := newPipelines(ActionOf(f.Uses), &f.Options)
 	f.setPipelines(rest)
-	return executeAll(c, rest.Initializers, defaultOption.Initializers)
+	return execute(c, Pipeline(rest.Initializers, defaultOption.Initializers))
 }
 
 func (o *flagContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses().Before, ActionOf(tt.Before), defaultOption.Before)
+	return execute(ctx, Pipeline(tt.uses().Before, tt.Before, defaultOption.Before))
 }
 
 func (o *flagContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *flagContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *flagContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses().After, ActionOf(tt.After), defaultOption.After)
+	return execute(ctx, Pipeline(tt.uses().After, tt.After, defaultOption.After))
 }
 func (o *flagContext) execute(ctx *Context) error {
-	return executeAll(ctx, o.option.uses().Action, ActionOf(o.option.Action))
+	p := Pipeline(o.option.uses().Action, o.option.Action)
+	return execute(ctx, p)
 }
 func (c *flagContext) lookupBinding(name string) []string {
 	return nil
@@ -510,10 +510,6 @@ func (f *Flag) internalFlags() internalFlags {
 
 func (f *Flag) setInternalFlags(i internalFlags) {
 	f.option.flags |= i
-}
-
-func (f *Flag) wrapAction(fn func(Action) ActionFunc) {
-	f.Action = fn(ActionOf(f.Action))
 }
 
 func (f *Flag) name() string {

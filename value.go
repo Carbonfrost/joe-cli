@@ -690,19 +690,19 @@ func (g *generic) smartOptionalDefault() interface{} {
 }
 
 func (v *valueContext) initialize(c *Context) error {
-	return executeAll(c, v.v.uses().Initializers)
+	return execute(c, v.v.uses().Initializers)
 }
 
 func (v *valueContext) executeBefore(ctx *Context) error {
-	return executeAll(ctx, v.v.uses().Before)
+	return execute(ctx, v.v.uses().Before)
 }
 
 func (v *valueContext) executeAfter(ctx *Context) error {
-	return executeAll(ctx, v.v.uses().After)
+	return execute(ctx, v.v.uses().After)
 }
 
 func (v *valueContext) execute(ctx *Context) error {
-	return executeAll(ctx, v.v.uses().Action)
+	return execute(ctx, v.v.uses().Action)
 }
 
 func (v *valueContext) executeBeforeDescendent(ctx *Context) error { return nil }

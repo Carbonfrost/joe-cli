@@ -276,10 +276,6 @@ func (a *Arg) setInternalFlags(i internalFlags) {
 	a.option.flags |= i
 }
 
-func (a *Arg) wrapAction(fn func(Action) ActionFunc) {
-	a.Action = fn(ActionOf(a.Action))
-}
-
 func (a *Arg) applyToSet(s *set) {
 	s.defineArg(&a.option)
 	a.Name = a.option.uname
@@ -361,23 +357,23 @@ func (o *argContext) initialize(c *Context) error {
 
 	rest := newPipelines(ActionOf(o.option.Uses), &o.option.Options)
 	o.option.setPipelines(rest)
-	return executeAll(c, rest.Initializers, defaultOption.Initializers)
+	return execute(c, Pipeline(rest.Initializers, defaultOption.Initializers))
 }
 
 func (o *argContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses().Before, ActionOf(tt.Before), defaultOption.Before)
+	return execute(ctx, Pipeline(tt.uses().Before, tt.Before, defaultOption.Before))
 }
 
 func (o *argContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *argContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *argContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return executeAll(ctx, tt.uses().After, ActionOf(tt.After), defaultOption.After)
+	return execute(ctx, Pipeline(tt.uses().After, tt.After, defaultOption.After))
 }
 
 func (o *argContext) execute(ctx *Context) error {
-	return executeAll(ctx, o.option.uses().Action, ActionOf(o.option.Action))
+	return execute(ctx, Pipeline(o.option.uses().Action, o.option.Action))
 }
 
 func (c *argContext) lookupBinding(name string) []string {

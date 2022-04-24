@@ -432,7 +432,7 @@ func (c *commandContext) initialize(ctx *Context) error {
 }
 
 func (c *commandContext) initializeCore(ctx *Context) error {
-	return executeAll(ctx, ActionOf(c.cmd.uses().Initializers), defaultCommand.Initializers)
+	return execute(ctx, Pipeline(c.cmd.uses().Initializers, defaultCommand.Initializers))
 }
 
 func initializeFlagsArgs(ctx *Context) error {
@@ -500,18 +500,18 @@ func (c *commandContext) executeBefore(ctx *Context) error {
 		return err
 	}
 
-	if err := execute(c.cmd.uses().Before, ctx); err != nil {
+	if err := execute(ctx, c.cmd.uses().Before); err != nil {
 		return err
 	}
 
-	return executeAll(ctx, ActionOf(c.cmd.Before), defaultCommand.Before)
+	return execute(ctx, Pipeline(c.cmd.Before, defaultCommand.Before))
 }
 
 func (c *commandContext) executeAfter(ctx *Context) error {
 	if err := c.cmd.executeAfterHooks(ctx); err != nil {
 		return err
 	}
-	return executeAll(ctx, c.cmd.uses().After, ActionOf(c.cmd.After), defaultCommand.After)
+	return execute(ctx, Pipeline(c.cmd.uses().After, c.cmd.After, defaultCommand.After))
 }
 
 func (c *commandContext) executeAfterDescendent(ctx *Context) error {
@@ -520,7 +520,7 @@ func (c *commandContext) executeAfterDescendent(ctx *Context) error {
 
 func (c *commandContext) execute(ctx *Context) error {
 	if !c.didSubcommandExecute {
-		return executeAll(ctx, c.cmd.uses().Action, ActionOf(c.cmd.Action))
+		return execute(ctx, Pipeline(c.cmd.uses().Action, c.cmd.Action))
 	}
 	return nil
 }

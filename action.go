@@ -25,6 +25,18 @@ type Action interface {
 	Execute(*Context) error
 }
 
+//counterfeiter:generate . Middleware
+
+// Middleware provides an action which controls how and whether the next
+// action in the pipeline is executed
+type Middleware interface {
+	Action
+
+	// ExecuteWithNext will execute the action and invoke Execute on the next
+	// action
+	ExecuteWithNext(*Context, Action) error
+}
+
 // ActionPipeline represents an action composed of several steps.  To create
 // this value, use the Pipeline function
 type ActionPipeline []Action
@@ -86,15 +98,17 @@ type actionPipelines struct {
 	After        Action
 }
 
-type actionWithTiming interface {
-	Action
-	timing() Timing
-}
-
 type withTimingWrapper struct {
 	Action
 	t Timing
 }
+
+type cons struct {
+	action Action
+	next   *cons
+}
+
+type middlwareFunc func(*Context, Action) error
 
 // Timing enumerates the timing of an action
 type Timing int
@@ -172,11 +186,17 @@ func (s Setup) Execute(c *Context) error {
 	return nil
 }
 
-// Pipeline combines various actions into a single action
+// Pipeline combines various actions into a single action.  Compared to using
+// ActionPipeline directly, the actions are flattened if any nested pipelines are
+// present.
 func Pipeline(actions ...interface{}) ActionPipeline {
-	myActions := make([]Action, len(actions))
-	for i, a := range actions {
-		myActions[i] = ActionOf(a)
+	myActions := make([]Action, 0, len(actions))
+	for _, a := range actions {
+		if pipe, ok := a.(ActionPipeline); ok {
+			myActions = append(myActions, pipe.flatten()...)
+			continue
+		}
+		myActions = append(myActions, ActionOf(a))
 	}
 
 	return myActions
@@ -221,29 +241,26 @@ func failWithContextError(c *Context) error {
 // This function is used to wrap actions in the initialization pipeline that will be
 // deferred until later.
 func Before(a Action) Action {
-	return withTiming(a, BeforeTiming)
+	return AtTiming(a, BeforeTiming)
 }
 
 // After revises the timing of the action so that it runs in the After pipeline.
 // This function is used to wrap actions in the initialization pipeline that will be
 // deferred until later.
 func After(a Action) Action {
-	return withTiming(a, AfterTiming)
+	return AtTiming(a, AfterTiming)
 }
 
 // Initializer marks an action handler as being for the initialization phase.  When such a handler
 // is added to the Uses pipeline, it will automatically be associated correctly with the initialization
 // of the value.  Otherwise, this handler is not special
 func Initializer(a Action) Action {
-	return withTiming(a, InitialTiming)
+	return AtTiming(a, InitialTiming)
 }
 
-func timingOf(a Action, defaultTiming Timing) Timing {
-	switch val := a.(type) {
-	case actionWithTiming:
-		return val.timing()
-	}
-	return defaultTiming
+// AtTiming wraps an action and causes it to execute at the given timing.
+func AtTiming(a Action, t Timing) Action {
+	return withTiming(a, t)
 }
 
 func withTiming(a Action, t Timing) Action {
@@ -259,6 +276,15 @@ func withTiming(a Action, t Timing) Action {
 //   * func() error
 //   * func()
 //   * Action
+//
+// As a special case, these signatures are allowed in order to provide middleware:
+//
+//    * func(Action)Action
+//    * func(*Context, Action) error
+//
+// Remember that the next action can be nil, and indeed the implementation of
+// Execute (for implementing plain Action) the approach is to delegate to this function
+// using a nil next action.
 //
 // Any other type causes a panic.
 func ActionOf(item interface{}) Action {
@@ -291,6 +317,12 @@ func ActionOf(item interface{}) Action {
 		return ActionFunc(func(*Context) error {
 			a()
 			return nil
+		})
+	case func(*Context, Action) error:
+		return middlwareFunc(a)
+	case func(Action) Action:
+		return middlwareFunc(func(c *Context, next Action) error {
+			return c.Do(a(next))
 		})
 	}
 	panic(fmt.Sprintf("unexpected type: %T", item))
@@ -575,7 +607,57 @@ func (p ActionPipeline) Execute(c *Context) (err error) {
 	if p == nil {
 		return nil
 	}
-	return c.Do(p...)
+	return p.toCons().Execute(c)
+}
+
+func (p ActionPipeline) flatten() []Action {
+	if !p.anyNested() {
+		return p
+	}
+
+	result := make([]Action, 0, len(p))
+	for _, a := range p {
+		if n, ok := a.(ActionPipeline); ok {
+			result = append(result, n.flatten()...)
+			continue
+		}
+		result = append(result, a)
+	}
+	return result
+}
+
+func (p ActionPipeline) anyNested() bool {
+	for _, i := range p {
+		if _, ok := i.(ActionPipeline); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (p ActionPipeline) toCons() *cons {
+	var head *cons
+	for i := len(p) - 1; i >= 0; i-- {
+		head = &cons{
+			action: p[i],
+			next:   head,
+		}
+	}
+	return head
+}
+
+func (o *cons) Execute(c *Context) error {
+	if o == nil {
+		return nil
+	}
+	if m, ok := o.action.(Middleware); ok {
+		return m.ExecuteWithNext(c, o.next)
+	}
+
+	if err := execute(c, o.action); err != nil {
+		return err
+	}
+	return execute(c, o.next)
 }
 
 func (p *actionPipelines) add(t Timing, h Action) {
@@ -601,8 +683,8 @@ func (p *actionPipelines) exceptInitializers() *actionPipelines {
 	}
 }
 
-func (w withTimingWrapper) timing() Timing {
-	return w.t
+func (w withTimingWrapper) Execute(c *Context) error {
+	return c.act(w.Action, w.t)
 }
 
 func (i *hooksSupport) hookBefore(pat string, a Action) error {
@@ -666,34 +748,33 @@ func (s *pipelinesSupport) appendAction(t Timing, ah Action) {
 	s.p.add(t, ah)
 }
 
+func (m middlwareFunc) Execute(c *Context) error {
+	return m.ExecuteWithNext(c, nil)
+}
+
+func (m middlwareFunc) ExecuteWithNext(c *Context, a Action) error {
+	return m(c, a)
+}
+
 func emptyActionImpl(*Context) error {
 	return nil
 }
 
-func execute(af Action, c *Context) error {
+func execute(c *Context, af Action) error {
 	if af == nil {
 		return nil
 	}
 	return af.Execute(c)
 }
 
-func executeAll(c *Context, x ...Action) error {
-	for _, y := range x {
-		if err := execute(y, c); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func doThenExit(a Action) ActionFunc {
-	return func(c *Context) error {
+func doThenExit(a Action) Action {
+	return ActionFunc(func(c *Context) error {
 		err := a.Execute(c)
 		if err != nil {
 			return err
 		}
 		return Exit(0)
-	}
+	})
 }
 
 func newPipelines(uses Action, opts *Option) *actionPipelines {
@@ -708,7 +789,8 @@ func newPipelines(uses Action, opts *Option) *actionPipelines {
 }
 
 var (
-	_ actionWithTiming = withTimingWrapper{}
-	_ Action           = Setup{}
-	_ hookable         = (*hooksSupport)(nil)
+	_ Action   = withTimingWrapper{}
+	_ Action   = Setup{}
+	_ Action   = (*cons)(nil)
+	_ hookable = (*hooksSupport)(nil)
 )

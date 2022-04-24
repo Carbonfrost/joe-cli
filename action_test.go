@@ -16,7 +16,7 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-var _ = Describe("middleware", func() {
+var _ = Describe("timings", func() {
 
 	Describe("before", func() {
 		var (
@@ -700,6 +700,8 @@ var _ = Describe("ActionOf", func() {
 		Entry("func(context.Context) error", func(context.Context) error { act(); return nil }),
 		Entry("func(context.Context)", func(context.Context) { act() }),
 		Entry("func() error", func() error { act(); return nil }),
+		Entry("middleware: func(Action) Action", func(cli.Action) cli.Action { act(); return nil }),
+		Entry("middleware: func(*cli.Context, Action) error", func(*cli.Context, cli.Action) error { act(); return nil }),
 	)
 })
 
@@ -817,6 +819,48 @@ var _ = Describe("Pipeline", func() {
 		Expect(act1.ExecuteCallCount()).To(Equal(1))
 		Expect(act2.ExecuteCallCount()).To(Equal(1))
 	})
+
+	It("delegates to middleware when it exists", func() {
+		act1 := new(joeclifakes.FakeMiddleware)
+		act2 := new(joeclifakes.FakeAction)
+
+		pipe := cli.Pipeline().Append(act1).Append(act2)
+		pipe.Execute(&cli.Context{})
+
+		Expect(act1.ExecuteWithNextCallCount()).To(Equal(1))
+	})
+
+	It("invoking middleware calls next", func() {
+		act1 := new(joeclifakes.FakeMiddleware)
+		act2 := new(joeclifakes.FakeAction)
+
+		act1.ExecuteWithNextStub = func(_ *cli.Context, a cli.Action) error {
+			return a.Execute(nil)
+		}
+
+		pipe := cli.Pipeline().Append(act1).Append(act2)
+		pipe.Execute(&cli.Context{})
+
+		Expect(act2.ExecuteCallCount()).To(Equal(1))
+	})
+
+	It("invoking middleware calls next two", func() {
+		act1 := new(joeclifakes.FakeMiddleware)
+		act2 := new(joeclifakes.FakeAction)
+		act3 := new(joeclifakes.FakeAction)
+
+		act1.ExecuteWithNextStub = func(_ *cli.Context, a cli.Action) error {
+			return a.Execute(nil)
+		}
+		act2.ExecuteStub = func(_ *cli.Context) error {
+			return nil
+		}
+
+		pipe := cli.Pipeline().Append(act1).Append(act2).Append(act3)
+		pipe.Execute(&cli.Context{})
+
+		Expect(act3.ExecuteCallCount()).To(Equal(1))
+	})
 })
 
 var _ = Describe("HandleSignal", Ordered, func() {
@@ -906,6 +950,27 @@ var _ = Describe("Recover", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("panic in action"))
 		Expect(capture.String()).To(ContainSubstring("runtime/debug.Stack()"))
+	})
+
+	It("can be used as middleware", func() {
+		app := &cli.App{
+			Name:   "any",
+			Stderr: ioutil.Discard,
+			Action: cli.Pipeline(
+				cli.Recover,
+				func() {
+					// this intervening action is fine
+				},
+				func() {
+					panic("panic in action")
+				},
+			),
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("panic in action"))
 	})
 })
 

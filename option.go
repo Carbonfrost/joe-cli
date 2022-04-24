@@ -337,8 +337,7 @@ func requiredOption(c *Context) error {
 
 func wrapWithExit(c *Context) error {
 	c.option().setInternalFlags(internalFlagExits)
-	c.option().wrapAction(doThenExit)
-	return nil
+	return c.Do(AtTiming(ActionOf(doThenExit), ActionTiming))
 }
 
 func nonPersistentOption(c *Context) error {
@@ -397,14 +396,14 @@ func noOption(c *Context) error {
 	)
 	wrapAction := func(v Action) ActionFunc {
 		return func(c *Context) error {
-			return execute(v, c.copy(
+			return execute(c.copy(
 				&wrapLookupContext{
 					flagContext: c.internal.(*flagContext),
 					actual:      f,
 				},
 				c.argList,
 				false,
-			))
+			), v)
 		}
 	}
 
@@ -420,7 +419,7 @@ func noOption(c *Context) error {
 		After:     wrapAction(ActionOf(f.After)),
 		Action: func(c *Context) error {
 			f.Set("false")
-			return execute(wrapAction(ActionOf(f.Action)), c)
+			return execute(c, wrapAction(ActionOf(f.Action)))
 		},
 	})
 	return nil

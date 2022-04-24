@@ -286,7 +286,7 @@ func (a *appContext) defaultInitRootCommand(c *Context) error {
 	a.commandContext.cmd = a.app.createRoot()
 	a.commandContext.cmd.setPipelines(rest)
 
-	if err := executeAll(c, rest.Initializers, defaultApp.Initializers); err != nil {
+	if err := execute(c, Pipeline(rest.Initializers, defaultApp.Initializers)); err != nil {
 		return err
 	}
 
@@ -304,7 +304,7 @@ func (a *appContext) defaultInitRootCommand(c *Context) error {
 
 func (a *appContext) factoryInitRootCommand(c *Context) error {
 	a.commandContext.cmd = a.app.rootCommandCreator()
-	if err := executeAll(c, defaultApp.Initializers); err != nil {
+	if err := execute(c, defaultApp.Initializers); err != nil {
 		return err
 	}
 

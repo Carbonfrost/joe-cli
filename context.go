@@ -399,9 +399,9 @@ func (c *Context) SetValue(arg string) error {
 
 // Action either stores or executes the action. When called from the initialization or before pipelines, this
 // appends the action to the pipeline for the current flag, arg, or command/app.
-// When called from the action or after pipelines, this simply causes the action to be invoked immediately.
+// When called from the action pipeline, this simply causes the action to be invoked immediately.
 func (c *Context) Action(v interface{}) error {
-	return c.act(v, ActionTiming)
+	return c.Do(AtTiming(ActionOf(v), ActionTiming))
 }
 
 // Before either stores or executes the action.  When called from the initialization pipeline, this appends
@@ -409,14 +409,14 @@ func (c *Context) Action(v interface{}) error {
 // from the Before pipeline, this causes the action to be invoked immeidately.  If called
 // at any other time, this causes the action to be ignored and an error to be returned.
 func (c *Context) Before(v interface{}) error {
-	return c.act(v, BeforeTiming)
+	return c.Do(AtTiming(ActionOf(v), BeforeTiming))
 }
 
 // After either stores or executes the action.  When called from the initialization, before, or action pipelines,
 // this appends the action to the After pipeline for the current flag, arg, expression, or command/app.  If called
 // from the After pipeline itself, the action is invoked immediately
 func (c *Context) After(v interface{}) error {
-	return c.act(v, AfterTiming)
+	return c.Do(AtTiming(ActionOf(v), AfterTiming))
 }
 
 func (c *Context) act(v interface{}, desired Timing) error {
@@ -489,12 +489,11 @@ func (c *Context) walkCore(fn WalkFunc) error {
 // Do executes the specified actions in succession.  If an action returns an error, that
 // error is returned and the rest of the actions aren't run
 func (c *Context) Do(actions ...Action) error {
-	currentTiming := c.Timing()
 	for _, a := range actions {
 		if a == nil {
 			continue
 		}
-		err := c.act(a, timingOf(a, currentTiming))
+		err := a.Execute(c)
 		if err != nil {
 			return err
 		}
