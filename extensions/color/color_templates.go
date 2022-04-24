@@ -1,16 +1,10 @@
 package color
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/Carbonfrost/joe-cli"
 )
-
-type buffer struct {
-	cli.Writer
-	res *bytes.Buffer
-}
 
 type templateContext struct {
 	c *cli.Context
@@ -18,6 +12,8 @@ type templateContext struct {
 
 func templateFuncs(c *cli.Context) map[string]interface{} {
 	t := &templateContext{c}
+	bold := t.sprintStyle(cli.Bold)
+	underline := t.sprintStyle(cli.Underline)
 	return map[string]interface{}{
 		"Black":         t.sprintForegroundColor(cli.Black),
 		"Red":           t.sprintForegroundColor(cli.Red),
@@ -37,10 +33,10 @@ func templateFuncs(c *cli.Context) map[string]interface{} {
 		"White":         t.sprintForegroundColor(cli.White),
 		"ResetColor":    t.resetColor(),
 
-		"Bold":          t.sprintStyle(cli.Bold),
+		"Bold":          bold,
 		"Faint":         t.sprintStyle(cli.Faint),
 		"Italic":        t.sprintStyle(cli.Italic),
-		"Underline":     t.sprintStyle(cli.Underline),
+		"Underline":     underline,
 		"Blink":         t.sprintStyle(cli.Blink),
 		"Reverse":       t.sprintStyle(cli.Reverse),
 		"Strikethrough": t.sprintStyle(cli.Strikethrough),
@@ -59,9 +55,14 @@ func (t *templateContext) newBuffer() *buffer {
 func (t *templateContext) sprintStyle(s cli.Style) func(...interface{}) string {
 	return func(a ...interface{}) string {
 		res := t.newBuffer()
+		text := fmt.Sprint(a...)
+		if len(a) > 0 && len(text) == 0 {
+			return ""
+		}
+
 		res.SetStyle(s)
 		if len(a) > 0 {
-			fmt.Fprint(res, a...)
+			fmt.Fprint(res, text)
 			res.Reset()
 		}
 		return res.String()
@@ -79,9 +80,14 @@ func (t *templateContext) reset() func() string {
 func (t *templateContext) sprintForegroundColor(f cli.Color) func(...interface{}) string {
 	return func(a ...interface{}) string {
 		res := t.newBuffer()
+		text := fmt.Sprint(a...)
+		if len(a) > 0 && len(text) == 0 {
+			return ""
+		}
+
 		res.SetForeground(f)
 		if len(a) > 0 {
-			fmt.Fprint(res, a...)
+			fmt.Fprint(res, text)
 			res.SetForeground(cli.Default)
 		}
 		return res.String()
@@ -94,8 +100,4 @@ func (t *templateContext) resetColor() func() string {
 		res.SetForeground(cli.Default)
 		return res.String()
 	}
-}
-
-func (b *buffer) String() string {
-	return b.res.String()
 }

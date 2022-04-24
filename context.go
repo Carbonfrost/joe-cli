@@ -657,6 +657,7 @@ func (c *Context) PreventSetup() error {
 
 // SetColor sets whether terminal color and styles are enabled on stdout.
 func (c *Context) SetColor(v bool) {
+	c.Stderr.SetColorCapable(v)
 	c.Stdout.SetColorCapable(v)
 }
 
@@ -664,6 +665,7 @@ func (c *Context) SetColor(v bool) {
 // detect support for stdout.  Auto-detection is the default behavior, but this
 // is provided to reset if SetColor has modified.
 func (c *Context) AutodetectColor() {
+	c.Stderr.ResetColorCapable()
 	c.Stdout.ResetColorCapable()
 }
 

@@ -45,8 +45,8 @@ var (
 			Name:  "color",
 			Value: new(Mode),
 			Uses: cli.Pipeline(
-				cli.OptionalValue(Auto),
-				SetModeFlag(),
+				cli.OptionalValue(Always),
+				SetMode(),
 			),
 			HelpText: helpText,
 		}),
@@ -82,38 +82,53 @@ func RegisterTemplateFuncs() cli.Action {
 }
 
 // SetMode returns an action that sets the color mode.
-func SetMode(m Mode) cli.Action {
-	switch m {
-	case Always:
-		return cli.SetColor(true)
-	case Never:
-		return cli.SetColor(false)
-	case Auto:
-		fallthrough
+// If specified on a flag or argument, it provides the action for a Boolean or Mode value
+// that controls whether color is set.  The flag or arg must have Value that is either
+// *bool or *Mode.  The initializer sets *Mode if it is unset.
+// If the argument modeopt is specified, the value will be used; otherwise, it will be
+// obtained from the context.
+func SetMode(modeopt ...Mode) cli.Action {
+	switch len(modeopt) {
+	case 0:
+		return cli.Setup{
+			Uses: cli.Pipeline(
+				cli.FlagSetup(func(f *cli.Flag) {
+					if f.Value == nil {
+						f.Value = new(Mode)
+					}
+				}),
+				cli.ArgSetup(func(a *cli.Arg) {
+					if a.Value == nil {
+						a.Value = new(Mode)
+					}
+				}),
+			),
+			Action: func(c *cli.Context) error {
+				switch v := c.Value("").(type) {
+				case bool:
+					c.SetColor(v)
+					return nil
+				case *Mode:
+					return c.Do(SetMode(*v))
+				default:
+					c.SetColor(true)
+					return nil
+				}
+			},
+		}
+	case 1:
+		switch modeopt[0] {
+		case Always:
+			return cli.SetColor(true)
+		case Never:
+			return cli.SetColor(false)
+		case Auto:
+			fallthrough
+		default:
+			return cli.AutodetectColor()
+		}
 	default:
-		return cli.AutodetectColor()
-	}
-}
-
-// SetModeFlag provides the action for a Boolean or Mode flag that controls whether color
-// is set.  The top level Options for the color extensions creates flags for you, and therefore,
-// this action is typically only needed if you want to set up actions for custom flags.
-// The flag must have Value that is either *bool or *Mode.  The initializer sets *Mode
-// if it is unset
-func SetModeFlag() cli.Action {
-	return cli.Setup{
-		Action: func(c *cli.Context) error {
-			switch v := c.Value("").(type) {
-			case bool:
-				c.SetColor(v)
-				return nil
-			case *Mode:
-				return c.Do(SetMode(*v))
-			default:
-				c.SetColor(true)
-				return nil
-			}
-		},
+		panic("expected 0 or 1 argument")
 	}
 }
 

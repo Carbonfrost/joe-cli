@@ -92,6 +92,7 @@ var _ = Describe("Templates", func() {
 			Entry("pipe func", "{{ .Data | Bold }}", Equal("\x1b[1m string \x1b[0m")),
 			Entry("direct func color", "{{ Red }} {{ .Int }} {{ ResetColor }}", Equal("\x1b[31m 420 \x1b[39m")),
 			Entry("direct func style", "{{ Underline }} {{ .Int }} {{ Reset }}", Equal("\x1b[4m 420 \x1b[0m")),
+			Entry("empty string", `{{ "" | Underline }}`, Equal("")),
 		)
 
 		It("disables color if stdout has no color", func() {
