@@ -1,1 +1,5 @@
 bin/darwin_*
+
+# samples, assuming they were built according to their READMEs
+joefind
+joegit
