@@ -585,6 +585,10 @@ func (e *Expression) Walk(fn func(ExprBinding) error) error {
 	return nil
 }
 
+func (e *Expression) Prepend(expr ExprBinding) {
+	e.items = append([]ExprBinding{expr}, e.items...)
+}
+
 func (e *Expression) Append(expr ExprBinding) {
 	e.items = append(e.items, expr)
 }
