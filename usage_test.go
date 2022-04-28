@@ -36,6 +36,29 @@ var _ = Describe("usage", func() {
 	})
 })
 
+var _ = Describe("Wrap", func() {
+	DescribeTable("examples", func(width int, indent string, text string, expected string) {
+		var buf bytes.Buffer
+		cli.Wrap(&buf, text, indent, width)
+		Expect(buf.String()).To(Equal(expected))
+	},
+		Entry("empty has trailing newline", 8, "", "", "\n"),
+		Entry("no wraps", 80, "", "this text will not wrap", "this text will not wrap\n"),
+		Entry("wraps", 8, "", "some text wraps", "some text\nwraps\n"),
+		Entry("wraps with indent", 8, "  ", "some text wraps", "some text\n  wraps\n"),
+		Entry("large indent trivializes width", 8, "    ", "some text wraps past", "some text\n    wraps\n    past\n"),
+		Entry("leading spaces removed on next line", 10, "", "some  text   wraps", "some  text\nwraps\n"),
+		Entry("retain user's leading spaces", 10, "", "    some text", "    some text\n"),
+		Entry("retain user's leading spaces on wrapping", 10, "", "some  text\n   I indented", "some  text\n   I indented\n"),
+		Entry("ANSI control codes don't get wrapped",
+			3,
+			"",
+			"\x1B[38;2;249;38;114m(\x1B[0m\x1B[38;2;248;248;242mwell wishing well\x1B[38;2;249;38;114m)\x1B[0m",
+			"\x1B[38;2;249;38;114m(\x1B[0m\x1B[38;2;248;248;242mwell\nwishing\nwell\x1B[38;2;249;38;114m)\x1B[0m\n",
+		),
+	)
+})
+
 var _ = Describe("RenderTemplate", func() {
 	It("uses the template and custom funcs", func() {
 		app := &cli.App{

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"github.com/juju/ansiterm"
 	"github.com/juju/ansiterm/tabwriter"
@@ -66,6 +67,14 @@ type stringHelper struct {
 type buffer struct {
 	Writer
 	res *bytes.Buffer
+}
+
+type wrapper struct {
+	io.Writer
+
+	pending bytes.Buffer
+	Limit   int
+	Indent  string
 }
 
 const (
@@ -256,6 +265,133 @@ func (c *Context) RegisterTemplate(name string, template string) {
 // RegisterTemplateFunc will register the specified function for use in template rendering.
 func (c *Context) RegisterTemplateFunc(name string, fn interface{}) {
 	c.App().ensureTemplateFuncs()[name] = fn
+}
+
+// Wrap wraps the given text using a maximum line width and indentation.
+// Wrapping text using this method is aware of ANSI escape sequences.
+func Wrap(w io.Writer, text string, indent string, width int) {
+	f := &wrapper{
+		Writer: w,
+		Limit:  width,
+		Indent: indent,
+	}
+	_, _ = f.Write([]byte(text))
+	_ = f.Close()
+}
+
+func (w *wrapper) Write(b []byte) (int, error) {
+	if w.Limit == 0 {
+		return w.Writer.Write(b)
+	}
+
+	s := w.pending.String() + string(b)
+	w.pending.Reset()
+
+	var (
+		ansi      bool
+		userSpace = true
+		buf       bytes.Buffer
+
+		// lengths are based on printable rune widths
+		lineLen int
+
+		tryWrite = func(from *bytes.Buffer, len int) (res bool) {
+			res = lineLen+len < w.Limit
+			if res {
+				lineLen += len
+				from.WriteTo(w.Writer)
+				from.Reset()
+			}
+			return
+		}
+	)
+
+	for _, c := range s {
+		switch {
+		case c == '\x1B':
+			// start ANSI escape sequence
+			_, _ = buf.WriteRune(c)
+			ansi = true
+
+		case ansi:
+			_, _ = buf.WriteRune(c)
+			if isCSITerminator(c) {
+				ansi = false
+			}
+
+		case unicode.IsSpace(c) && c != '\n':
+			// This is the case were the user has placed space right after
+			// a new line, which indicates that they have purposely done their
+			// own indentation
+			if lineLen == 0 && userSpace {
+				w.pending.WriteRune(c)
+				break
+			}
+
+			bufLen := printableWidth(buf.String())
+
+			// Otherwise for non-user space, skip leading space on a new line
+			if bufLen+lineLen == 0 {
+				break
+			}
+
+			if tryWrite(&buf, bufLen) {
+				w.pending.WriteRune(c)
+				break
+			}
+
+			fallthrough
+
+		case c == '\n':
+			lineLen = 0
+			buf.WriteTo(w.Writer)
+			buf.Reset()
+			w.Writer.Write([]byte("\n"))
+
+			w.pending.Reset()
+			w.pending.WriteString(w.Indent)
+			userSpace = c == '\n' // will be false on fallthrough from previous case
+
+		default:
+			tryWrite(&w.pending, w.pending.Len())
+			buf.WriteRune(c)
+			userSpace = false
+		}
+	}
+
+	buf.WriteTo(&w.pending)
+	return len(b), nil
+}
+
+func (w *wrapper) Close() error {
+	w.Write([]byte("\n"))
+	return nil
+}
+
+func printableWidth(s string) int {
+	var (
+		n    int
+		ansi bool
+	)
+
+	for _, c := range s {
+		if c == '\x1B' {
+			// start ANSI escape sequence
+			ansi = true
+		} else if ansi {
+			if isCSITerminator(c) {
+				ansi = false
+			}
+		} else {
+			n += 1
+		}
+	}
+
+	return n
+}
+
+func isCSITerminator(c rune) bool {
+	return (c >= 0x40 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)
 }
 
 func defaultHelpCommand() *Command {

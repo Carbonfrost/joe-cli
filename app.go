@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go/doc"
 	"io"
 	"io/fs"
 	"os"
@@ -404,7 +403,7 @@ func setupDefaultTemplateFuncs(c *Context) error {
 		"Wrap": func(indent int, s string) string {
 			buf := bytes.NewBuffer(nil)
 			indentText := strings.Repeat(" ", indent)
-			doc.ToText(buf, s, "", "  "+indentText, width-indent)
+			Wrap(buf, s, indentText, width)
 			return buf.String()
 		},
 		"BoldFirst": func(args []string) []string {
