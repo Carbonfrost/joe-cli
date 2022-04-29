@@ -1097,8 +1097,6 @@ func (v *valueTarget) LookupData(name string) (interface{}, bool) {
 	return nil, false
 }
 
-func (*valueTarget) WriteSynopsis(Writer) {}
-
 func (v *valueTarget) actualArgs() []*Arg {
 	if a, ok := v.v.(hasArguments); ok {
 		return a.actualArgs()

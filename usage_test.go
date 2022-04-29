@@ -143,6 +143,63 @@ var _ = Describe("AutodetectColor", func() {
 	})
 })
 
+var _ = Describe("NewBuffer", func() {
+	It("sets whether color will be enabled", func() {
+		var actual string
+		app := &cli.App{
+			Name: "demo",
+			Action: cli.Pipeline(cli.SetColor(true), func(c *cli.Context) {
+				buf := c.NewBuffer()
+				buf.SetStyle(cli.Bold)
+				buf.WriteString(" BOLD TEXT ")
+				buf.Reset()
+				actual = buf.String()
+			}),
+		}
+		renderScreen(app, "demo")
+		Expect(actual).To(Equal("\x1b[1m BOLD TEXT \x1b[0m"))
+	})
+
+	It("sets whether color will be enabled nested", func() {
+		var actual string
+		app := &cli.App{
+			Name: "demo",
+			Uses: cli.SetColor(true),
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Action: func(c *cli.Context) {
+						buf := c.NewBuffer()
+						buf.SetStyle(cli.Bold)
+						buf.WriteString(" BOLD TEXT ")
+						buf.Reset()
+						actual = buf.String()
+					},
+				},
+			},
+		}
+		renderScreen(app, "demo sub")
+		Expect(actual).To(Equal("\x1b[1m BOLD TEXT \x1b[0m"))
+	})
+
+	It("will be set when TERM=dumb", func() {
+		var actual string
+
+		app := &cli.App{
+			Name: "demo",
+			Action: cli.Pipeline(cli.AutodetectColor(), func(c *cli.Context) {
+				buf := c.NewBuffer()
+				buf.SetStyle(cli.Bold)
+				buf.WriteString("BOLD TEXT")
+				buf.Reset()
+				actual = buf.String()
+			}),
+		}
+		renderScreen(app, "demo")
+		Expect(actual).To(Equal("BOLD TEXT"))
+	})
+})
+
 var _ = Describe("DisplayHelpScreen", func() {
 	It("is the default action for an app with sub-commands", func() {
 		app := &cli.App{

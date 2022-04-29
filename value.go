@@ -33,8 +33,6 @@ import (
 //
 // * Synopsis() string         obtains the synopsis text
 //
-// * WriteSynopsis(Writer)     called to write the synopsis
-//
 type Value = flag.Value
 
 //counterfeiter:generate . Value
@@ -74,10 +72,6 @@ type valueDereference interface {
 
 type valueProvidesSynopsis interface {
 	Synopsis() string
-}
-
-type valueWritesSynopsis interface {
-	WriteSynopsis(Writer)
 }
 
 type generic struct {

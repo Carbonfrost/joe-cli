@@ -62,6 +62,7 @@ type Style = ansiterm.Style
 
 type stringHelper struct {
 	*ansiterm.Writer
+	enabled bool
 }
 
 type buffer struct {
@@ -108,17 +109,33 @@ const (
 	White         = ansiterm.White
 )
 
-func newBuffer() *buffer {
+// NewBuffer creates a buffer which is a Writer that can be used to accumulate
+// text into a buffer.  Color is enabled using auto-detection on stdout.
+func NewBuffer() *buffer {
 	res := new(bytes.Buffer)
+	w := NewWriter(res)
+	w.SetColorCapable(colorEnabled(os.Stdout))
 	return &buffer{
-		Writer: NewWriter(res),
+		Writer: w,
 		res:    res,
 	}
 }
 
+// NewBuffer creates a buffer which is a Writer that can be used to accumulate
+// text into a buffer.  Color is enabled depending upon whether it has been enabled
+// for stdout.
+func (c *Context) NewBuffer() *buffer {
+	res := NewBuffer()
+	res.SetColorCapable(colorEnabled(c.Stdout))
+	return res
+}
+
 // NewWriter creates a new writer
 func NewWriter(w io.Writer) Writer {
-	return &stringHelper{ansiterm.NewWriter(w)}
+	return &stringHelper{
+		Writer:  ansiterm.NewWriter(w),
+		enabled: colorEnabled(w),
+	}
 }
 
 type usage struct {
@@ -525,34 +542,35 @@ func (w *stringHelper) WriteString(s string) (int, error) {
 }
 
 func (w *stringHelper) ResetColorCapable() {
-	enabled := func(w io.Writer) bool {
-		f, ok := w.(*os.File)
-		if !ok {
-			return false
-		}
-
-		// https://no-color.org/, which requires any value to be treated as true
-		if _, ok := os.LookupEnv("NO_COLOR"); ok {
-			return false
-		}
-		return os.Getenv("TERM") != "dumb" && term.IsTerminal(int(f.Fd()))
-	}
-
-	w.SetColorCapable(enabled(w.Writer))
+	w.SetColorCapable(colorEnabled(w.Writer))
 }
 
-func sprintSynopsis(t valueWritesSynopsis, enableColor bool) string {
-	var buf bytes.Buffer
-	w := NewWriter(&buf)
+func (w *stringHelper) SetColorCapable(value bool) {
+	w.enabled = value
+	w.Writer.SetColorCapable(value)
+}
 
-	if enableColor {
-		_, ok := os.LookupEnv("NO_COLOR")
-		enableColor = !ok
+func colorEnabled(w io.Writer) bool {
+	if s, ok := w.(*stringHelper); ok {
+		return s.enabled
 	}
 
-	w.SetColorCapable(enableColor)
-	t.WriteSynopsis(w)
-	return buf.String()
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+
+	// https://no-color.org/, which requires any value to be treated as true
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return false
+	}
+	return os.Getenv("TERM") != "dumb" && term.IsTerminal(int(f.Fd()))
+}
+
+func sprintSynopsis(template string, data interface{}) string {
+	w := bytes.NewBuffer(nil)
+	synopsisTemplate.ExecuteTemplate(w, template, data)
+	return w.String()
 }
 
 func parseUsage(text string) *usage {

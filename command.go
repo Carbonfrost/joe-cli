@@ -186,11 +186,7 @@ func (c CommandsByCategory) Swap(i, j int) {
 // Synopsis returns the UsageTexzt for the command or produces a succint representation
 // that names each flag and arg
 func (c *Command) Synopsis() string {
-	return sprintSynopsis(c, false)
-}
-
-func (c *Command) WriteSynopsis(w Writer) {
-	synopsisTemplate.ExecuteTemplate(w, "CommandSynopsis", c.newSynopsis())
+	return sprintSynopsis("CommandSynopsis", c.newSynopsis())
 }
 
 // Command tries to obtain a sub-command by name or alias

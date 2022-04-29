@@ -227,11 +227,7 @@ func (f *Flag) applyToSet(s *set) {
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
 // is inferred from the HelpText.  Up to one short and one long name will be used.
 func (f *Flag) Synopsis() string {
-	return sprintSynopsis(f, false)
-}
-
-func (f *Flag) WriteSynopsis(w Writer) {
-	synopsisTemplate.ExecuteTemplate(w, "FlagSynopsis", f.synopsis())
+	return sprintSynopsis("FlagSynopsis", f.synopsis())
 }
 
 func (f *Flag) cacheSynopsis(syn *flagSynopsis) *flagSynopsis {
@@ -456,8 +452,6 @@ func placeholder(v interface{}) string {
 		return "IP"
 	case **regexp.Regexp:
 		return "PATTERN"
-	case valueWritesSynopsis:
-		return sprintSynopsis(m, true)
 	case valueProvidesSynopsis:
 		return m.Synopsis()
 	default:

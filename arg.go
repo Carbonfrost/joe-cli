@@ -247,11 +247,7 @@ func (a *Arg) SetRequired() {
 
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
-	return sprintSynopsis(a, false)
-}
-
-func (a *Arg) WriteSynopsis(w Writer) {
-	synopsisTemplate.ExecuteTemplate(w, "ArgSynopsis", a.newSynopsis())
+	return sprintSynopsis("ArgSynopsis", a.newSynopsis())
 }
 
 func (a *Arg) newSynopsis() *argSynopsis {

@@ -64,7 +64,6 @@ type target interface {
 type targetConventions interface {
 	target
 	customizable
-	WriteSynopsis(Writer)
 }
 
 type hooksSupport struct {

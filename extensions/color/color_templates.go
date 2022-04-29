@@ -45,16 +45,9 @@ func templateFuncs(c *cli.Context) map[string]interface{} {
 	}
 }
 
-func (t *templateContext) newBuffer() *buffer {
-	res := new(bytes.Buffer)
-	return &buffer{
-		Writer: t.c.Stdout,
-		res:    res,
-	}
-}
 func (t *templateContext) sprintStyle(s cli.Style) func(...interface{}) string {
 	return func(a ...interface{}) string {
-		res := t.newBuffer()
+		res := t.c.NewBuffer()
 		text := fmt.Sprint(a...)
 		if len(a) > 0 && len(text) == 0 {
 			return ""
@@ -71,7 +64,7 @@ func (t *templateContext) sprintStyle(s cli.Style) func(...interface{}) string {
 
 func (t *templateContext) reset() func() string {
 	return func() string {
-		res := t.newBuffer()
+		res := t.c.NewBuffer()
 		res.Reset()
 		return res.String()
 	}
@@ -79,7 +72,7 @@ func (t *templateContext) reset() func() string {
 
 func (t *templateContext) sprintForegroundColor(f cli.Color) func(...interface{}) string {
 	return func(a ...interface{}) string {
-		res := t.newBuffer()
+		res := t.c.NewBuffer()
 		text := fmt.Sprint(a...)
 		if len(a) > 0 && len(text) == 0 {
 			return ""
@@ -96,7 +89,7 @@ func (t *templateContext) sprintForegroundColor(f cli.Color) func(...interface{}
 
 func (t *templateContext) resetColor() func() string {
 	return func() string {
-		res := t.newBuffer()
+		res := t.c.NewBuffer()
 		res.SetForeground(cli.Default)
 		return res.String()
 	}

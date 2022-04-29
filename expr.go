@@ -386,11 +386,7 @@ func (e *Expr) Names() []string {
 
 // Synopsis retrieves the synopsis for the expression operator.
 func (e *Expr) Synopsis() string {
-	return sprintSynopsis(e, false)
-}
-
-func (e *Expr) WriteSynopsis(w Writer) {
-	synopsisTemplate.ExecuteTemplate(w, "ExpressionSynopsis", e.newSynopsis())
+	return sprintSynopsis("ExpressionSynopsis", e.newSynopsis())
 }
 
 // Arg gets the expression operator by name
