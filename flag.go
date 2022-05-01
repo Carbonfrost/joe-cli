@@ -164,6 +164,7 @@ type option interface {
 	envVars() []string
 	filePath() string
 	helpText() string
+	usageText() string
 }
 
 type flagContext struct {
@@ -405,6 +406,15 @@ func (o *wrapLookupContext) Name() string {
 func getValueSynopsis(o option) *valueSynopsis {
 	usage := parseUsage(o.helpText())
 	placeholders := strings.Join(usage.Placeholders(), " ")
+
+	if o.usageText() != "" {
+		return &valueSynopsis{
+			Placeholder: o.usageText(),
+			helpText:    usage.WithoutPlaceholders(),
+			usage:       usage,
+		}
+	}
+
 	if len(placeholders) > 0 {
 		return &valueSynopsis{
 			Placeholder: placeholders,
@@ -524,6 +534,10 @@ func (f *Flag) value() interface{} {
 
 func (f *Flag) helpText() string {
 	return f.HelpText
+}
+
+func (f *Flag) usageText() string {
+	return f.UsageText
 }
 
 func (f *Flag) longNamePreferred() string {

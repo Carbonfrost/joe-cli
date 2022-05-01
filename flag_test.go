@@ -516,6 +516,14 @@ var _ = Describe("Flag", func() {
 				},
 				"--[no-]reason",
 			),
+			Entry(
+				"Synopsis via UsageText",
+				&cli.Flag{
+					Name:      "f",
+					UsageText: "Usage",
+				},
+				"-f Usage",
+			),
 		)
 
 	})

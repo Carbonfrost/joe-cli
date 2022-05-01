@@ -297,6 +297,10 @@ func (a *Arg) helpText() string {
 	return a.HelpText
 }
 
+func (a *Arg) usageText() string {
+	return a.UsageText
+}
+
 func (a *Arg) value() interface{} {
 	_, multi := aboutArgCounter(a.NArg)
 	a.Value = ensureDestination(a, a.Value, multi)
