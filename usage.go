@@ -179,8 +179,8 @@ func AutodetectColor() Action {
 
 // DisplayHelpScreen displays the help screen for the specified command.  If the command
 // is nested, each sub-command is named.
-func DisplayHelpScreen(command ...string) ActionFunc {
-	return func(c *Context) error {
+func DisplayHelpScreen(command ...string) Action {
+	return ActionFunc(func(c *Context) error {
 		current := c.App().createRoot()
 		persistentFlags := make([]*Flag, 0)
 
@@ -224,7 +224,7 @@ func DisplayHelpScreen(command ...string) ActionFunc {
 		_ = tpl.Execute(w, data)
 		_ = w.Flush()
 		return nil
-	}
+	})
 }
 
 // PrintVersion displays the version string.  The VersionTemplate provides the Go template

@@ -17,7 +17,15 @@ import (
 type Context struct {
 	context.Context
 
-	*contextData
+	// Stdout is the output writer to Stdout
+	Stdout Writer
+
+	// Stderr is the output writer to Stderr
+	Stderr Writer
+
+	// Stdin is the input reader
+	Stdin io.Reader
+
 	*lookupSupport
 	internal internalContext
 	timing   Timing
@@ -79,13 +87,6 @@ type ContextPath []string
 
 type contextPathPattern struct {
 	parts []string
-}
-
-// contextData provides data that is copied into child contexts
-type contextData struct {
-	Stdout Writer
-	Stderr Writer
-	Stdin  io.Reader
 }
 
 var (
@@ -837,7 +838,6 @@ func rootContext(cctx context.Context, app *App) *Context {
 	}
 	return &Context{
 		Context:       cctx,
-		contextData:   &contextData{},
 		internal:      internal,
 		lookupSupport: newLookupSupport(internal, nil),
 	}
@@ -954,7 +954,9 @@ func (c *Context) copy(t internalContext, args []string, reparent bool) *Context
 	}
 	return &Context{
 		Context:       c.Context,
-		contextData:   c.contextData,
+		Stdin:         c.Stdin,
+		Stdout:        c.Stdout,
+		Stderr:        c.Stderr,
 		internal:      t,
 		parent:        p,
 		argList:       args,

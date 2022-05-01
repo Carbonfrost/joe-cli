@@ -143,17 +143,11 @@ type Flag struct {
 // FlagsByName is a sortable slice for flags
 type FlagsByName []*Flag
 
-// FlagsByCategory provides a slice that can sort on category names and the flags
-// themselves
-type FlagsByCategory []*FlagCategory
+type flagsByCategory []*flagCategory
 
-// FlagCategory names a category and the flags it contains
-type FlagCategory struct {
-	// Category is the name of the category
+type flagCategory struct {
 	Category string
-
-	// Flags in the category
-	Flags []*Flag
+	Flags    []*Flag
 }
 
 type option interface {
@@ -198,15 +192,14 @@ type valueSynopsis struct {
 	usage       *usage
 }
 
-// GroupFlagsByCategory groups together flags by category and sorts the groupings.
-func GroupFlagsByCategory(flags []*Flag) FlagsByCategory {
-	res := FlagsByCategory{}
-	all := map[string]*FlagCategory{}
-	category := func(name string) *FlagCategory {
+func groupFlagsByCategory(flags []*Flag) flagsByCategory {
+	res := flagsByCategory{}
+	all := map[string]*flagCategory{}
+	category := func(name string) *flagCategory {
 		if c, ok := all[name]; ok {
 			return c
 		}
-		c := &FlagCategory{Category: name, Flags: []*Flag{}}
+		c := &flagCategory{Category: name, Flags: []*Flag{}}
 		all[name] = c
 		res = append(res, c)
 		return c
@@ -558,7 +551,7 @@ func (f FlagsByName) Swap(i, j int) {
 }
 
 // VisibleFlags filters all flags in the flag category by whether they are not hidden
-func (f *FlagCategory) VisibleFlags() []*Flag {
+func (f *flagCategory) VisibleFlags() []*Flag {
 	res := make([]*Flag, 0, len(f.Flags))
 	for _, o := range f.Flags {
 		if o.internalFlags().hidden() {
@@ -571,7 +564,7 @@ func (f *FlagCategory) VisibleFlags() []*Flag {
 
 // Undocumented determines whether the category is undocumented (i.e. has no HelpText set
 // on any of its flags)
-func (f *FlagCategory) Undocumented() bool {
+func (f *flagCategory) Undocumented() bool {
 	for _, x := range f.Flags {
 		if x.HelpText != "" {
 			return false
@@ -580,15 +573,15 @@ func (f *FlagCategory) Undocumented() bool {
 	return true
 }
 
-func (f FlagsByCategory) Less(i, j int) bool {
+func (f flagsByCategory) Less(i, j int) bool {
 	return f[i].Category < f[j].Category
 }
 
-func (f FlagsByCategory) Len() int {
+func (f flagsByCategory) Len() int {
 	return len(f)
 }
 
-func (f FlagsByCategory) Swap(i, j int) {
+func (f flagsByCategory) Swap(i, j int) {
 	f[i], f[j] = f[j], f[i]
 }
 

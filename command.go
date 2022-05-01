@@ -74,17 +74,12 @@ type Command struct {
 // CommandsByName provides a slice that can sort on name
 type CommandsByName []*Command
 
-// CommandCategory names a category and the commands it contains
-type CommandCategory struct {
-	// Category is the name of the category
+type commandCategory struct {
 	Category string
-	// Commands in the category
 	Commands []*Command
 }
 
-// CommandsByCategory provides a slice that can sort on category names and the commands
-// themselves
-type CommandsByCategory []*CommandCategory
+type commandsByCategory []*commandCategory
 
 type commandSynopsis struct {
 	Name         string
@@ -119,8 +114,8 @@ const (
 // is generated, which you can intercept with custom handling using interceptErr.  It is uncommon
 // to use this action because this action is implicitly bound to a synthetic argument when a
 // command defines any sub-commands.
-func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) ActionFunc {
-	return func(c *Context) error {
+func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Action {
+	return ActionFunc(func(c *Context) error {
 		invoke := c.List("")
 		cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], interceptErr)
 		if err != nil {
@@ -129,16 +124,15 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 		c.Parent().internal.setDidSubcommandExecute()
 		newCtx := c.Parent().commandContext(cmd).setTiming(ActionTiming)
 		return cmd.parseAndExecuteSelf(newCtx, invoke)
-	}
+	})
 }
 
-// GroupedByCategory will group the commands by category and sort the commands
-func GroupedByCategory(cmds []*Command) CommandsByCategory {
-	res := CommandsByCategory{}
+func groupedByCategory(cmds []*Command) commandsByCategory {
+	res := commandsByCategory{}
 	for _, command := range cmds {
 		cc := res.Category(command.Category)
 		if cc == nil {
-			cc = &CommandCategory{
+			cc = &commandCategory{
 				Category: command.Category,
 				Commands: []*Command{},
 			}
@@ -150,8 +144,7 @@ func GroupedByCategory(cmds []*Command) CommandsByCategory {
 	return res
 }
 
-// Category gets a category by name
-func (c CommandsByCategory) Category(name string) *CommandCategory {
+func (c commandsByCategory) Category(name string) *commandCategory {
 	for _, cc := range c {
 		if cc.Category == name {
 			return cc
@@ -162,7 +155,7 @@ func (c CommandsByCategory) Category(name string) *CommandCategory {
 
 // Undocumented determines whether the category is undocumented (i.e. has no HelpText set
 // on any of its commands)
-func (e *CommandCategory) Undocumented() bool {
+func (e *commandCategory) Undocumented() bool {
 	for _, x := range e.Commands {
 		if x.HelpText != "" {
 			return false
@@ -171,15 +164,15 @@ func (e *CommandCategory) Undocumented() bool {
 	return true
 }
 
-func (c CommandsByCategory) Less(i, j int) bool {
+func (c commandsByCategory) Less(i, j int) bool {
 	return c[i].Category < c[j].Category
 }
 
-func (c CommandsByCategory) Len() int {
+func (c commandsByCategory) Len() int {
 	return len(c)
 }
 
-func (c CommandsByCategory) Swap(i, j int) {
+func (c commandsByCategory) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
 }
 

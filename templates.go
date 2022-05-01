@@ -17,14 +17,14 @@ type commandData struct {
 	VisibleFlags       flagDataList
 	VisibleArgs        flagDataList
 	Persistent         *persistentCommandData
-	CommandsByCategory []*commandCategory
-	FlagsByCategory    []*flagCategory
+	CommandsByCategory []*commandDataCategory
+	FlagsByCategory    []*flagDataCategory
 	Data               map[string]interface{}
 	HangingIndent      int
 }
 
 type persistentCommandData struct {
-	FlagsByCategory []*flagCategory
+	FlagsByCategory []*flagDataCategory
 	VisibleFlags    flagDataList
 }
 
@@ -46,21 +46,21 @@ type exprData struct {
 	Data        map[string]interface{}
 }
 
-type commandCategory struct {
+type commandDataCategory struct {
 	Category        string
 	VisibleCommands []*commandData
 	Data            map[string]interface{}
 }
 
 type flagDataList []*flagData
-type flagCategory struct {
+type flagDataCategory struct {
 	Undocumented bool
 	Category     string
 	VisibleFlags flagDataList
 	Data         map[string]interface{}
 }
 
-type exprCategory struct {
+type exprDataCategory struct {
 	Undocumented bool
 	Category     string
 	VisibleExprs []*exprData
@@ -69,7 +69,7 @@ type exprCategory struct {
 
 type exprDescriptionData struct {
 	VisibleExprs    []*exprData
-	ExprsByCategory []*exprCategory
+	ExprsByCategory []*exprDataCategory
 }
 
 var (
@@ -303,7 +303,7 @@ func (c *commandData) withLineage(lineage string, persistent []*Flag) *commandDa
 	c.Lineage = lineage
 	c.Persistent = &persistentCommandData{
 		VisibleFlags:    visibleFlags(persistent),
-		FlagsByCategory: visibleFlagCategories(GroupFlagsByCategory(persistent)),
+		FlagsByCategory: visibleFlagCategories(groupFlagsByCategory(persistent)),
 	}
 	c.HangingIndent = len("usage: ") + len(lineage) + 1 + len(c.Name)
 	return c
@@ -325,10 +325,10 @@ func visibleFlags(items []*Flag) []*flagData {
 	return res
 }
 
-func visibleFlagCategories(items FlagsByCategory) []*flagCategory {
-	res := make([]*flagCategory, 0, len(items))
+func visibleFlagCategories(items flagsByCategory) []*flagDataCategory {
+	res := make([]*flagDataCategory, 0, len(items))
 	for _, a := range items {
-		res = append(res, &flagCategory{
+		res = append(res, &flagDataCategory{
 			Category:     a.Category,
 			Undocumented: a.Undocumented(),
 			VisibleFlags: visibleFlags(a.VisibleFlags()),
@@ -358,10 +358,10 @@ func commandAdapter(val *Command) *commandData {
 			return res
 		}
 
-		visibleCategories = func(items CommandsByCategory) []*commandCategory {
-			res := make([]*commandCategory, 0, len(items))
+		visibleCategories = func(items commandsByCategory) []*commandDataCategory {
+			res := make([]*commandDataCategory, 0, len(items))
 			for _, a := range items {
-				res = append(res, &commandCategory{
+				res = append(res, &commandDataCategory{
 					Category:        a.Category,
 					VisibleCommands: visibleCommands(a.Commands),
 				})
@@ -380,8 +380,8 @@ func commandAdapter(val *Command) *commandData {
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
 		VisibleCommands:    visibleCommands(val.Subcommands),
-		CommandsByCategory: visibleCategories(GroupedByCategory(val.Subcommands)),
-		FlagsByCategory:    visibleFlagCategories(GroupFlagsByCategory(val.Flags)),
+		CommandsByCategory: visibleCategories(groupedByCategory(val.Subcommands)),
+		FlagsByCategory:    visibleFlagCategories(groupFlagsByCategory(val.Flags)),
 		Persistent: &persistentCommandData{
 			VisibleFlags: []*flagData{},
 		},
@@ -433,10 +433,10 @@ func exprDescription(e *Expression) *exprDescriptionData {
 			}
 			return res
 		}
-		visibleExprCategories = func(items ExprsByCategory) []*exprCategory {
-			res := make([]*exprCategory, 0, len(items))
+		visibleExprCategories = func(items exprsByCategory) []*exprDataCategory {
+			res := make([]*exprDataCategory, 0, len(items))
 			for _, a := range items {
-				res = append(res, &exprCategory{
+				res = append(res, &exprDataCategory{
 					Category:     a.Category,
 					Undocumented: a.Undocumented(),
 					VisibleExprs: visibleExprs(a.VisibleExprs()),
@@ -450,6 +450,6 @@ func exprDescription(e *Expression) *exprDescriptionData {
 	)
 	return &exprDescriptionData{
 		VisibleExprs:    visibleExprs(exprs),
-		ExprsByCategory: visibleExprCategories(GroupExprsByCategory(exprs)),
+		ExprsByCategory: visibleExprCategories(groupExprsByCategory(exprs)),
 	}
 }

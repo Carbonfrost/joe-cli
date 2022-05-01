@@ -379,9 +379,9 @@ func setupDefaultIO(c *Context) error {
 		a.Stderr = os.Stderr
 	}
 
-	c.contextData.Stdin = a.Stdin
-	c.contextData.Stdout = adaptWriter(a.Stdout)
-	c.contextData.Stderr = adaptWriter(a.Stderr)
+	c.Stdin = a.Stdin
+	c.Stdout = adaptWriter(a.Stdout)
+	c.Stderr = adaptWriter(a.Stderr)
 	return nil
 }
 

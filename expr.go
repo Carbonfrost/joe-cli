@@ -120,17 +120,11 @@ type ExprBinding interface {
 // ExprsByName is a sortable slice for exprs
 type ExprsByName []*Expr
 
-// ExprsByCategory provides a slice that can sort on category names and the expression operators
-// themselves
-type ExprsByCategory []*ExprCategory
+type exprsByCategory []*exprCategory
 
-// ExprCategory names a category and the expression operators it contains
-type ExprCategory struct {
-	// Category is the name of the category
+type exprCategory struct {
 	Category string
-
-	// Exprs contains the expression operators in the category
-	Exprs []*Expr
+	Exprs    []*Expr
 }
 
 //counterfeiter:generate . Yielder
@@ -330,7 +324,7 @@ func EvaluatorOf(v interface{}) Evaluator {
 // Predicate provides a simple predicate which filters values.  The filter function
 // takes the prior operand and returns true or false depending upon whether the
 // operand should be yielded to the next step in the expression pipeline.
-func Predicate(filter func(v interface{}) bool) EvaluatorFunc {
+func Predicate(filter func(v interface{}) bool) Evaluator {
 	return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
 		if ok := filter(v); ok {
 			return y(v)
@@ -339,15 +333,14 @@ func Predicate(filter func(v interface{}) bool) EvaluatorFunc {
 	})
 }
 
-// GroupExprsByCategory groups together expression operators by category and sorts the groupings.
-func GroupExprsByCategory(exprs []*Expr) ExprsByCategory {
-	res := ExprsByCategory{}
-	all := map[string]*ExprCategory{}
-	category := func(name string) *ExprCategory {
+func groupExprsByCategory(exprs []*Expr) exprsByCategory {
+	res := exprsByCategory{}
+	all := map[string]*exprCategory{}
+	category := func(name string) *exprCategory {
 		if c, ok := all[name]; ok {
 			return c
 		}
-		c := &ExprCategory{Category: name, Exprs: []*Expr{}}
+		c := &exprCategory{Category: name, Exprs: []*Expr{}}
 		all[name] = c
 		res = append(res, c)
 		return c
@@ -499,7 +492,7 @@ func (e ExprsByName) Swap(i, j int) {
 
 // VisibleExprs filters all operatorss in the expression operators category by whether
 // they are not hidden
-func (e *ExprCategory) VisibleExprs() []*Expr {
+func (e *exprCategory) VisibleExprs() []*Expr {
 	res := make([]*Expr, 0, len(e.Exprs))
 	for _, o := range e.Exprs {
 		if o.flags.hidden() {
@@ -512,7 +505,7 @@ func (e *ExprCategory) VisibleExprs() []*Expr {
 
 // Undocumented determines whether the category is undocumented (i.e. has no HelpText set
 // on any of its expression operators)
-func (e *ExprCategory) Undocumented() bool {
+func (e *exprCategory) Undocumented() bool {
 	for _, x := range e.Exprs {
 		if x.HelpText != "" {
 			return false
@@ -521,15 +514,15 @@ func (e *ExprCategory) Undocumented() bool {
 	return true
 }
 
-func (e ExprsByCategory) Less(i, j int) bool {
+func (e exprsByCategory) Less(i, j int) bool {
 	return e[i].Category < e[j].Category
 }
 
-func (e ExprsByCategory) Len() int {
+func (e exprsByCategory) Len() int {
 	return len(e)
 }
 
-func (e ExprsByCategory) Swap(i, j int) {
+func (e exprsByCategory) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
 }
 
