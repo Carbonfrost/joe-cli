@@ -73,12 +73,12 @@ var (
 //   {{ "Text to make bold" | Bold }}
 //
 func RegisterTemplateFuncs() cli.Action {
-	return cli.Before(cli.ActionFunc(func(c *cli.Context) error {
+	return cli.ActionFunc(func(c *cli.Context) error {
 		for k, v := range templateFuncs(c) {
 			c.RegisterTemplateFunc(k, v)
 		}
 		return nil
-	}))
+	})
 }
 
 // SetMode returns an action that sets the color mode.

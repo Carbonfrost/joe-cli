@@ -79,11 +79,13 @@ var _ = Describe("Templates", func() {
 				),
 				Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
 					return struct {
-						Data string
-						Int  int
+						Data  string
+						Int   int
+						Items []string
 					}{
-						Data: " string ",
-						Int:  420,
+						Data:  " string ",
+						Int:   420,
+						Items: []string{"A", "B"},
 					}
 				}),
 			}
@@ -93,6 +95,18 @@ var _ = Describe("Templates", func() {
 			Entry("direct func color", "{{ Red }} {{ .Int }} {{ ResetColor }}", Equal("\x1b[31m 420 \x1b[39m")),
 			Entry("direct func style", "{{ Underline }} {{ .Int }} {{ Reset }}", Equal("\x1b[4m 420 \x1b[0m")),
 			Entry("empty string", `{{ "" | Underline }}`, Equal("")),
+			Entry("Color pipe func", `{{ .Data | Color "Red" }}`, Equal("\x1b[31m string \x1b[39m")),
+			Entry("Color direct func", `{{ Color "Red" }} {{ .Int }} {{ ResetColor }}`, Equal("\x1b[31m 420 \x1b[39m")),
+			Entry("Background pipe func", `{{ .Data | Background "Red" }}`, Equal("\x1b[41m string \x1b[49m")),
+			Entry("Background direct func", `{{ Background "Red" }} {{ .Int }} {{ ResetColor }}`, Equal("\x1b[41m 420 \x1b[39m")),
+			Entry("Style pipe func", `{{ .Data | Style "Bold" }}`, Equal("\x1b[1m string \x1b[0m")),
+			Entry("Style direct func", `{{ Style "Bold" }} {{ .Int }} {{ ResetColor }}`, Equal("\x1b[1m 420 \x1b[39m")),
+			Entry("Multiple styles", `{{ .Data | Style "Bold Underline" }}`, Equal("\x1b[1m\x1b[4m string \x1b[0m")),
+			Entry("No styles", `{{ .Data | Style "" }}`, Equal(" string ")),
+			Entry("invalid style", `{{ Style "Superscript" }} Style`, Equal("")),
+			Entry("invalid styles", `{{ Style "Bold Superscript" }} Style`, Equal("")),
+			Entry("empty style", `{{ Style "" }} Style`, Equal(" Style")),
+			Entry("BoldFirst", `{{ .Items | BoldFirst | Join ", " }}`, Equal("\x1b[1mA\x1b[0m, B")),
 		)
 
 		It("disables color if stdout has no color", func() {
@@ -110,26 +124,6 @@ var _ = Describe("Templates", func() {
 			Expect(renderScreen(app, "app")).To(Equal(" BOLD TEXT "))
 		})
 	})
-})
-
-var _ = Describe("Mode", func() {
-
-	Describe("Set", func() {
-		DescribeTable("examples",
-			func(arg string, expected int) {
-				actual := new(color.Mode)
-				err := actual.Set(arg)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(*actual).To(Equal(color.Mode(expected)))
-			},
-			Entry("nominal", "auto", color.Auto),
-			Entry("bool true", "true", color.Always),
-			Entry("bool on", "on", color.Always),
-			Entry("always", "always", color.Always),
-		)
-	})
-
 })
 
 func renderScreen(app *cli.App, args string) string {
