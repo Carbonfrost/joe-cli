@@ -1356,3 +1356,116 @@ var _ = Describe("Customize", func() {
 		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
 	})
 })
+
+var _ = Describe("Bind", func() {
+
+	It("invokes bind func with value from flag", func() {
+		var value uint64
+		binder := func(r uint64) error {
+			value = r
+			return nil
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:   "memory",
+					Value:  new(uint64),
+					Action: cli.Bind(binder),
+				},
+			},
+		}
+		args, _ := cli.Split("app --memory 33")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(value).To(Equal(uint64(33)))
+	})
+
+	It("invokes bind func with static value", func() {
+		var value uint64
+		binder := func(r uint64) error {
+			value = r
+			return nil
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "max-memory",
+					Value: new(bool),
+					Uses:  cli.Bind(binder, 1024),
+				},
+			},
+		}
+		args, _ := cli.Split("app --max-memory")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(value).To(Equal(uint64(1024)))
+	})
+})
+
+var _ = Describe("BindIndirect", func() {
+
+	It("copies the implied value of the function", func() {
+		fs := &cli.FileSet{Recursive: true}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "no-recursive",
+					Uses: cli.BindIndirect("files", (*cli.FileSet).SetRecursive, false),
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: fs,
+				},
+			},
+		}
+		app.Initialize(context.Background())
+		Expect(app.Flags[0].Value).To(Equal(new(bool)))
+	})
+
+	It("invokes bind func with static value", func() {
+		fs := &cli.FileSet{Recursive: true}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "no-recursive",
+					Value: new(bool),
+					Uses:  cli.BindIndirect("files", (*cli.FileSet).SetRecursive, false),
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: fs,
+				},
+			},
+		}
+		args, _ := cli.Split("app --no-recursive .")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(fs.Recursive).To(BeFalse())
+	})
+
+	It("invokes bind func with corresponding value", func() {
+		fs := new(cli.FileSet)
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:   "recursive",
+					Value:  new(bool),
+					Action: act,
+					Uses:   cli.BindIndirect("files", (*cli.FileSet).SetRecursive),
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: fs,
+				},
+			},
+		}
+		args, _ := cli.Split("app --recursive .")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(act.ExecuteCallCount()).To(Equal(1), "action should still be called")
+		Expect(fs.Recursive).To(BeTrue())
+	})
+})

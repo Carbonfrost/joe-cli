@@ -220,6 +220,13 @@ func (f *FileSet) Initializer() Action {
 	return ActionFunc(f.setupOptionRequireFS)
 }
 
+// SetRecursive updates the file set Recursive field.  This is generally meant to be
+// used with BindIndirect.  Never returns an error.
+func (f *FileSet) SetRecursive(b bool) error {
+	f.Recursive = b
+	return nil
+}
+
 func (f *FileSet) setupOptionRequireFS(c *Context) error {
 	if f.FS == nil {
 		f.FS = c.App().defaultFS()

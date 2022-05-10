@@ -396,6 +396,89 @@ func SetValue(v string) Action {
 	})
 }
 
+// Bind invokes a function, either using the value specified or the value read from
+// the flag or arg.  The bind function is the function to execute, and valopt is optional,
+// and if specified, indicates the value to set; otherwise, the value is read from the flag.
+func Bind[V any](bind func(V) error, valopt ...V) Action {
+	proto := &Prototype{Value: new(V)}
+	switch len(valopt) {
+	case 0:
+		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			return bind(c.Value("").(V))
+		})))
+
+	case 1:
+		val := valopt[0]
+		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			return bind(val)
+		})))
+	default:
+		panic("expected 0 or 1 args for valopt")
+	}
+}
+
+// BindContext binds a value to a context value.
+// The value function determines how to obtain the value from the context.  Usually, this
+// is a call to context/Context.Value.   The bind function is the function to set the value,
+// and valopt is optional, and if specified, indicates the value to set; otherwise, the
+// value is read from the flag.
+func BindContext[T, V any](value func(context.Context) *T, bind func(*T, V) error, valopt ...V) Action {
+	return bindThunk(func(c *Context) *T {
+		return value(c)
+	}, bind, valopt...)
+}
+
+// BindIndirect binds a value to the specified option indirectly.
+// For example, it is common to define a FileSet arg and a Boolean flag that
+// controls whether or not the file set is enumerated recursively.  You can use
+// BindIndirect to update the arg indirectly by naming it and the bind function:
+//
+//    &cli.Arg{
+//        Name: "files",
+//        Value: new(cli.FileSet),
+//    }
+//    &cli.Flag{
+//        Name: "recursive",
+//        HelpText: "Whether files is recursively searched",
+//        Action: cli.BindIndirect("files", (*cli.FileSet).SetRecursive),
+//    }
+//
+// The name parameter specifies the name of the flag or arg that is affected.  The
+// bind function is the function to set the value, and valopt is optional, and if specified,
+// indicates the value to set; otherwise, the value is read from the flag.
+func BindIndirect[T, V any](name string, bind func(*T, V) error, valopt ...V) Action {
+	return bindThunk(func(c *Context) *T {
+		return c.Value(name).(*T)
+	}, bind, valopt...)
+}
+
+func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt ...V) Action {
+	proto := &Prototype{Value: new(V)}
+	switch len(valopt) {
+	case 0:
+		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			return bind(thunk(c), c.Value("").(V))
+		})))
+
+	case 1:
+		val := valopt[0]
+		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			return bind(thunk(c), val)
+		})))
+	default:
+		panic("expected 0 or 1 args for valopt")
+	}
+}
+
+func notInitializer(a Action) ActionFunc {
+	return func(c *Context) error {
+		if c.IsInitializing() {
+			return c.act(a, BeforeTiming)
+		}
+		return c.Do(a)
+	}
+}
+
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
 // set up inside a Uses pipeline.
 func Data(name string, value interface{}) Action {
