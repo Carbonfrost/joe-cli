@@ -297,6 +297,10 @@ func (a *Arg) helpText() string {
 	return a.HelpText
 }
 
+func (a *Arg) manualText() string {
+	return a.ManualText
+}
+
 func (a *Arg) usageText() string {
 	return a.UsageText
 }

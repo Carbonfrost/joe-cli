@@ -51,6 +51,30 @@ type Setup struct {
 	After  interface{}
 }
 
+// Prototype implements an action which sets up a flag or arg.  The
+// prototype copies its values to the corresponding flag or arg if they have not
+// already been set.  Some values are merged rather than overwritten:
+// Data, Options, EnvVars, and Aliases.
+// If setup has been prevented with the PreventSetup action,
+// the protoype will do nothing.  The main use of prototype is in extensions to provide
+// reasonable defaults
+type Prototype struct {
+	Aliases     []string
+	Category    string
+	Data        map[string]interface{}
+	DefaultText string
+	Description string
+	EnvVars     []string
+	FilePath    string
+	HelpText    string
+	ManualText  string
+	Name        string
+	Options     Option
+	UsageText   string
+	Value       interface{}
+	Setup       Setup
+}
+
 type hookable interface {
 	hookAfter(pattern string, handler Action) error
 	hookBefore(pattern string, handler Action) error
@@ -171,11 +195,15 @@ var (
 // Execute executes the Setup, which assignes the various parts to their
 // pipelines
 func (s Setup) Execute(c *Context) error {
-	if err := c.act(s.Uses, InitialTiming); err != nil {
-		return err
+	if s.Uses != nil {
+		if err := c.act(s.Uses, InitialTiming); err != nil {
+			return err
+		}
 	}
-	if err := c.Before(s.Before); err != nil {
-		return err
+	if s.Before != nil {
+		if err := c.Before(s.Before); err != nil {
+			return err
+		}
 	}
 	if err := c.Action(s.Action); err != nil {
 		return err
@@ -589,6 +617,76 @@ func Customize(pattern string, a ...Action) Action {
 	})
 }
 
+func (p Prototype) Execute(c *Context) error {
+	return c.Do(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), p.Setup)
+}
+
+func (p *Prototype) copyToArg(o *Arg) {
+	if o.Name == "" {
+		o.Name = p.Name
+	}
+	if o.HelpText == "" {
+		o.HelpText = p.HelpText
+	}
+	if o.ManualText == "" {
+		o.ManualText = p.ManualText
+	}
+	if o.UsageText == "" {
+		o.UsageText = p.UsageText
+	}
+	if o.Description == "" {
+		o.Description = p.Description
+	}
+	if o.FilePath == "" {
+		o.FilePath = p.FilePath
+	}
+	if o.DefaultText == "" {
+		o.DefaultText = p.DefaultText
+	}
+	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
+		o.Value = p.Value
+	}
+
+	o.EnvVars = append(o.EnvVars, p.EnvVars...)
+	o.Options |= p.Options
+	update(o.Data, p.Data)
+}
+
+func (p *Prototype) copyToFlag(o *Flag) {
+	if o.Name == "" {
+		o.Name = p.Name
+	}
+	if o.Category == "" {
+		o.Category = p.Category
+	}
+	if o.HelpText == "" {
+		o.HelpText = p.HelpText
+	}
+	if o.ManualText == "" {
+		o.ManualText = p.ManualText
+	}
+	if o.UsageText == "" {
+		o.UsageText = p.UsageText
+	}
+	if o.Description == "" {
+		o.Description = p.Description
+	}
+	if o.FilePath == "" {
+		o.FilePath = p.FilePath
+	}
+	if o.DefaultText == "" {
+		o.DefaultText = p.DefaultText
+	}
+	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
+		o.Value = p.Value
+	}
+
+	o.Aliases = append(o.Aliases, p.Aliases...)
+	o.EnvVars = append(o.EnvVars, p.EnvVars...)
+	o.Options |= p.Options
+	update(o.Data, p.Data)
+}
+
 // Execute the action by calling the function
 func (af ActionFunc) Execute(c *Context) error {
 	if af == nil {
@@ -791,6 +889,7 @@ func newPipelines(uses Action, opts *Option) *actionPipelines {
 var (
 	_ Action   = withTimingWrapper{}
 	_ Action   = Setup{}
+	_ Action   = Prototype{}
 	_ Action   = (*cons)(nil)
 	_ hookable = (*hooksSupport)(nil)
 )

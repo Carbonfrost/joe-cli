@@ -164,6 +164,7 @@ type option interface {
 	envVars() []string
 	filePath() string
 	helpText() string
+	manualText() string
 	usageText() string
 }
 
@@ -344,6 +345,11 @@ func (f *Flag) ensureData() map[string]interface{} {
 
 func (o *flagContext) initialize(c *Context) error {
 	f := o.option
+	var flags internalFlags
+	if f.Value == nil {
+		flags = internalFlagDestinationImplicitlyCreated
+	}
+
 	p := f.value()
 	long, short := canonicalNames(f.Name, f.Aliases)
 	f.option = internalOption{
@@ -351,7 +357,7 @@ func (o *flagContext) initialize(c *Context) error {
 		long:  long,
 		value: wrapGeneric(p),
 		uname: f.Name,
-		flags: isFlagType(p),
+		flags: flags | isFlagType(p),
 	}
 
 	rest := newPipelines(ActionOf(f.Uses), &f.Options)
@@ -534,6 +540,10 @@ func (f *Flag) value() interface{} {
 
 func (f *Flag) helpText() string {
 	return f.HelpText
+}
+
+func (f *Flag) manualText() string {
+	return f.ManualText
 }
 
 func (f *Flag) usageText() string {

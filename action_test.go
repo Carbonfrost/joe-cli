@@ -13,6 +13,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
@@ -972,6 +973,106 @@ var _ = Describe("Recover", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("panic in action"))
 	})
+})
+
+var _ = Describe("Prototype", func() {
+
+	DescribeTable("examples", func(proto cli.Prototype, expected Fields) {
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Uses:    proto,
+					Options: cli.Required,
+					EnvVars: []string{"V"},
+					Data:    map[string]interface{}{"A": 1},
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Uses:    proto,
+					Options: cli.Required,
+					EnvVars: []string{"V"},
+					Data:    map[string]interface{}{"A": 1},
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(app.Flags[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+		Expect(app.Args[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+	},
+		Entry("DefaultText", cli.Prototype{DefaultText: "e"}, Fields{"DefaultText": Equal("e")}),
+		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
+		Entry("FilePath", cli.Prototype{FilePath: "f"}, Fields{"FilePath": Equal("f")}),
+		Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
+		Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
+		Entry("Name", cli.Prototype{Name: "nom"}, Fields{"Name": Equal("nom")}),
+		Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
+		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Options": Equal(cli.Hidden | cli.Required)}),
+		Entry("EnvVars", cli.Prototype{EnvVars: []string{"A"}}, Fields{"EnvVars": Equal([]string{"V", "A"})}),
+		Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
+		Entry("Value", cli.Prototype{Value: new(time.Duration)}, Fields{"Value": Equal(new(time.Duration))}),
+	)
+
+	DescribeTable("preserve existing values", func(proto cli.Prototype, expected Fields) {
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Uses:        proto,
+					Value:       new(int),
+					DefaultText: "existing DefaultText",
+					HelpText:    "existing HelpText",
+					ManualText:  "existing ManualText",
+					UsageText:   "existing UsageText",
+					Description: "existing Description",
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Uses:        proto,
+					Value:       new(int),
+					DefaultText: "existing DefaultText",
+					HelpText:    "existing HelpText",
+					ManualText:  "existing ManualText",
+					UsageText:   "existing UsageText",
+					Description: "existing Description",
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(app.Flags[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+		Expect(app.Args[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+	},
+		Entry("DefaultText", cli.Prototype{DefaultText: "e"}, Fields{"DefaultText": Equal("existing DefaultText")}),
+		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("existing Description")}),
+		Entry("HelpText", cli.Prototype{HelpText: "e"}, Fields{"HelpText": Equal("existing HelpText")}),
+		Entry("ManualText", cli.Prototype{ManualText: "d"}, Fields{"ManualText": Equal("existing ManualText")}),
+		Entry("UsageText", cli.Prototype{UsageText: "d"}, Fields{"UsageText": Equal("existing UsageText")}),
+		Entry("FilePath", cli.Prototype{FilePath: "f"}, Fields{"FilePath": Equal("f")}),
+		Entry("Name", cli.Prototype{Name: "nom"}, Fields{"Name": Equal("nom")}),
+		Entry("Value", cli.Prototype{Value: new(time.Duration)}, Fields{"Value": Equal(new(int))}),
+	)
+
+	DescribeTable("flag-only examples", func(proto cli.Prototype, expected Fields) {
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Uses:    proto,
+					Aliases: []string{"r"},
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(app.Flags[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+	},
+		Entry("Category", cli.Prototype{Category: "nom"}, Fields{"Category": Equal("nom")}),
+		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
+	)
 })
 
 var _ = Describe("FlagSetup", func() {

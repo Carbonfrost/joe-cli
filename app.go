@@ -191,9 +191,7 @@ func (a *App) _createRootCore(force bool) *Command {
 			data = a.rootCommand.Data
 		}
 		flags |= a.flags
-		for k, v := range a.Data {
-			data[k] = v
-		}
+		update(data, a.Data)
 
 		a.rootCommand = &Command{
 			Name:                a.Name,
@@ -453,6 +451,12 @@ func addAppCommand(name string, f *Flag, cmd *Command) ActionFunc {
 			app.Flags = append(app.Flags, f)
 		}
 		return nil
+	}
+}
+
+func update(dst, src map[string]interface{}) {
+	for k, v := range src {
+		dst[k] = v
 	}
 }
 
