@@ -625,6 +625,9 @@ func (p *Prototype) copyToArg(o *Arg) {
 	if o.Name == "" {
 		o.Name = p.Name
 	}
+	if o.Category == "" {
+		o.Category = p.Category
+	}
 	if o.HelpText == "" {
 		o.HelpText = p.HelpText
 	}

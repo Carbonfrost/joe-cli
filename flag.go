@@ -166,6 +166,7 @@ type option interface {
 	helpText() string
 	manualText() string
 	usageText() string
+	category() string
 }
 
 type flagContext struct {
@@ -536,6 +537,10 @@ func (f *Flag) filePath() string {
 func (f *Flag) value() interface{} {
 	f.Value = ensureDestination(f, f.Value, false)
 	return f.Value
+}
+
+func (f *Flag) category() string {
+	return f.Category
 }
 
 func (f *Flag) helpText() string {

@@ -1005,6 +1005,7 @@ var _ = Describe("Prototype", func() {
 		Entry("DefaultText", cli.Prototype{DefaultText: "e"}, Fields{"DefaultText": Equal("e")}),
 		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
 		Entry("FilePath", cli.Prototype{FilePath: "f"}, Fields{"FilePath": Equal("f")}),
+		Entry("Category", cli.Prototype{Category: "f"}, Fields{"Category": Equal("f")}),
 		Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
 		Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
 		Entry("Name", cli.Prototype{Name: "nom"}, Fields{"Name": Equal("nom")}),
@@ -1027,6 +1028,7 @@ var _ = Describe("Prototype", func() {
 					ManualText:  "existing ManualText",
 					UsageText:   "existing UsageText",
 					Description: "existing Description",
+					Category:    "existing Category",
 				},
 			},
 			Args: []*cli.Arg{
@@ -1038,6 +1040,7 @@ var _ = Describe("Prototype", func() {
 					ManualText:  "existing ManualText",
 					UsageText:   "existing UsageText",
 					Description: "existing Description",
+					Category:    "existing Category",
 				},
 			},
 		}
@@ -1048,6 +1051,7 @@ var _ = Describe("Prototype", func() {
 	},
 		Entry("DefaultText", cli.Prototype{DefaultText: "e"}, Fields{"DefaultText": Equal("existing DefaultText")}),
 		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("existing Description")}),
+		Entry("Category", cli.Prototype{Category: "d"}, Fields{"Category": Equal("existing Category")}),
 		Entry("HelpText", cli.Prototype{HelpText: "e"}, Fields{"HelpText": Equal("existing HelpText")}),
 		Entry("ManualText", cli.Prototype{ManualText: "d"}, Fields{"ManualText": Equal("existing ManualText")}),
 		Entry("UsageText", cli.Prototype{UsageText: "d"}, Fields{"UsageText": Equal("existing UsageText")}),

@@ -35,6 +35,9 @@ type Arg struct {
 	// not used in any templates by default
 	Description string
 
+	// Category specifies the arg category.  Categories are not used by the help screen.
+	Category string
+
 	// UsageText provides the usage for the argument.  If left blank, a succint synopsis
 	// is generated from the type of the argument's value
 	UsageText string
@@ -293,6 +296,10 @@ func (a *Arg) filePath() string {
 	return a.FilePath
 }
 
+func (a *Arg) category() string {
+	return a.Category
+}
+
 func (a *Arg) helpText() string {
 	return a.HelpText
 }
@@ -322,7 +329,9 @@ func (a *Arg) LookupData(name string) (interface{}, bool) {
 	return v, ok
 }
 
-func (a *Arg) setCategory(name string) {}
+func (a *Arg) setCategory(name string) {
+	a.Category = name
+}
 
 func (a *Arg) setDescription(value string) {
 	a.Description = value
