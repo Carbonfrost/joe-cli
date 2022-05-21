@@ -1357,6 +1357,66 @@ var _ = Describe("Customize", func() {
 	})
 })
 
+var _ = Describe("Accessory", func() {
+
+	It("creates the flag", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:     "files",
+					Value:    new(cli.FileSet),
+					Category: "same category",
+					Uses:     cli.Accessory("custom", (*cli.FileSet).RecursiveFlag),
+				},
+			},
+			Action: act,
+		}
+		_ = app.RunContext(context.TODO(), []string{"app"})
+		flag := act.ExecuteArgsForCall(0).Command().Flags[2]
+
+		Expect(flag.Name).To(Equal("custom"))
+		Expect(flag.Value).To(Equal(new(bool)))
+		Expect(flag.Category).To(Equal("same category"))
+	})
+
+	It("creates the flag with user specified name", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: new(cli.FileSet),
+					Uses:  cli.Accessory("", (*cli.FileSet).RecursiveFlag),
+				},
+			},
+			Action: act,
+		}
+
+		_ = app.RunContext(context.TODO(), []string{"app"})
+		flag := act.ExecuteArgsForCall(0).Command().Flags[2]
+		Expect(flag.Name).To(Equal("recursive"))
+	})
+
+	It("creates the flag with implied name", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: new(cli.FileSet),
+					Uses:  cli.Accessory("-", (*cli.FileSet).RecursiveFlag),
+				},
+			},
+			Action: act,
+		}
+
+		_ = app.RunContext(context.TODO(), []string{"app"})
+		flag := act.ExecuteArgsForCall(0).Command().Flags[2]
+		Expect(flag.Name).To(Equal("files-recursive"))
+	})
+})
+
 var _ = Describe("Bind", func() {
 
 	It("invokes bind func with value from flag", func() {

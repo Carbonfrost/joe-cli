@@ -55,10 +55,7 @@ var _ = Describe("SetArgument", func() {
 				{
 					Name:  "provider",
 					Value: value,
-				},
-				{
-					Name: "provider-arg",
-					Uses: provider.SetArgument("provider"),
+					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
 				},
 			},
 		}

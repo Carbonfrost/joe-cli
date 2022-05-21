@@ -352,7 +352,7 @@ func (c *lookupSupport) valueCore(name string) interface{} {
 		return nil
 	}
 	// Strip possible decorators --flag, <arg>
-	name = strings.Trim(name, "-<>")
+	name = withoutDecorators(name)
 	if v, ok := c.lookupValue(name); ok {
 		return dereference(v)
 	}
@@ -382,6 +382,10 @@ func nameToString(name interface{}) string {
 	default:
 		return ""
 	}
+}
+
+func withoutDecorators(name string) string {
+	return strings.Trim(name, "-<>")
 }
 
 func lookupBool(c Lookup, name interface{}) (res bool) {

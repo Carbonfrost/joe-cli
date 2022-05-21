@@ -227,6 +227,17 @@ func (f *FileSet) SetRecursive(b bool) error {
 	return nil
 }
 
+// RecursiveFlag obtains a conventions-based flag for making the file set recursive.
+func (f *FileSet) RecursiveFlag() Prototype {
+	return Prototype{
+		Name:     "recursive",
+		HelpText: "Include files and directories recursively",
+		Setup: Setup{
+			Uses: Bind(f.SetRecursive),
+		},
+	}
+}
+
 func (f *FileSet) setupOptionRequireFS(c *Context) error {
 	if f.FS == nil {
 		f.FS = c.App().defaultFS()

@@ -479,6 +479,38 @@ func notInitializer(a Action) ActionFunc {
 	}
 }
 
+// Accessory provides an action which sets up an accessory flag for the current flag or argument.
+// A common pattern is that a flag has a related sibling flag that can be used to refine the value.
+// For example, you might define a --recursive flag next to a FileSet argument.  When a Value
+// supports an accessory flag prototype, you can use this action to activate it from its Uses pipeline.
+func Accessory[T Value](name string, fn func(T) Prototype) Action {
+	return ActionFunc(func(c *Context) error {
+		val := c.Value("").(T)
+		proto := fn(val)
+
+		if proto.Category == "" {
+			proto.Category = c.option().category()
+		}
+		proto.HelpText = fmt.Sprintf(proto.HelpText, c.Name())
+		proto.ManualText = fmt.Sprintf(proto.ManualText, c.Name())
+		proto.Description = fmt.Sprintf(proto.Description, c.Name())
+
+		switch name {
+		case "":
+			// user specified value
+		case "-":
+			proto.Name = withoutDecorators(c.Name()) + "-" + proto.Name
+		default:
+			proto.Name = name
+		}
+
+		f := &Flag{
+			Uses: proto,
+		}
+		return c.Do(AddFlag(f))
+	})
+}
+
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
 // set up inside a Uses pipeline.
 func Data(name string, value interface{}) Action {

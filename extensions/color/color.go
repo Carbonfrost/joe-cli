@@ -91,18 +91,9 @@ func SetMode(modeopt ...Mode) cli.Action {
 	switch len(modeopt) {
 	case 0:
 		return cli.Setup{
-			Uses: cli.Pipeline(
-				cli.FlagSetup(func(f *cli.Flag) {
-					if f.Value == nil {
-						f.Value = new(Mode)
-					}
-				}),
-				cli.ArgSetup(func(a *cli.Arg) {
-					if a.Value == nil {
-						a.Value = new(Mode)
-					}
-				}),
-			),
+			Uses: cli.Prototype{
+				Value: new(Mode),
+			},
 			Action: func(c *cli.Context) error {
 				switch v := c.Value("").(type) {
 				case bool:

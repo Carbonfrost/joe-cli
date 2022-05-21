@@ -84,6 +84,18 @@ var (
 {{ end }}`
 )
 
+// ArgumentFlag obtains a conventions-based flag for setting an argument
+func (v *Value) ArgumentFlag() cli.Prototype {
+	return cli.Prototype{
+		Name:     "arg",
+		Value:    new(string),
+		HelpText: "Sets an argument for %s",
+		Setup: cli.Setup{
+			Uses: cli.Bind(v.Set),
+		},
+	}
+}
+
 // SetArgument provides an action that can be used to set the argument for a provider.
 // This enables you to have a dedicated flag to handle setting provider arguments:
 //
@@ -101,19 +113,11 @@ var (
 //
 //  If the action is set to initialize a flag that is unnamed, the suffix -arg is implied.
 func SetArgument(name string) cli.Action {
-	return cli.Setup{
-		Uses: func(c *cli.Context) {
-			if c.Path().IsFlag() {
-				f := c.Flag()
-				if f.Name == "" {
-					f.Name = name + "-arg"
-				}
-				f.Value = new(string)
-			}
-		},
-		Action: func(c *cli.Context) error {
-			value := c.Value(name).(*Value)
-			return cli.Set(value.Args, c.String(""))
+	return cli.Prototype{
+		Name:  name + "-arg",
+		Value: new(string),
+		Setup: cli.Setup{
+			Action: cli.BindIndirect(name, (*Value).Set),
 		},
 	}
 }
@@ -123,31 +127,25 @@ func SetArgument(name string) cli.Action {
 // If the action is set to initialize a flag that is unnamed, the prefix list- is implied.
 // The template "providers" is used, which is set to a default if unspecified.
 func ListProviders(name string) cli.Action {
-	return cli.Setup{
-		Uses: func(c *cli.Context) error {
-			if c.Path().IsFlag() {
-				f := c.Flag()
-				if f.Name == "" {
-					f.Name = "list-" + name
+	return cli.Prototype{
+		Name:    "list-" + name,
+		Value:   new(bool),
+		Options: cli.Exits,
+		Setup: cli.Setup{
+			Uses: cli.RegisterTemplate("Providers", listTemplate),
+			Action: func(c *cli.Context) error {
+				registry := Services(c).Registry(name)
+				tpl := c.Template("Providers")
+				data := struct {
+					Providers []providerData
+					Debug     bool
+				}{
+					Providers: toData(registry),
+					Debug:     tpl.Debug,
 				}
-				f.Value = new(bool)
-				f.Options |= cli.Exits
-			}
-			c.RegisterTemplate("Providers", listTemplate)
-			return nil
-		},
-		Action: func(c *cli.Context) error {
-			registry := Services(c).Registry(name)
-			tpl := c.Template("Providers")
-			data := struct {
-				Providers []providerData
-				Debug     bool
-			}{
-				Providers: toData(registry),
-				Debug:     tpl.Debug,
-			}
 
-			return tpl.Execute(c.Stdout, data)
+				return tpl.Execute(c.Stdout, data)
+			},
 		},
 	}
 }
