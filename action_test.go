@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"regexp"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -1458,6 +1459,45 @@ var _ = Describe("Bind", func() {
 		_ = app.RunContext(context.TODO(), args)
 		Expect(value).To(Equal(uint64(1024)))
 	})
+
+	DescribeTable("generics",
+		func(uses cli.Action, expected interface{}) {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+						Uses: uses,
+					},
+				},
+				Action: act,
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(act.ExecuteArgsForCall(0).Value("f")).To(BeAssignableToTypeOf(expected))
+		},
+
+		Entry("bool",
+			cli.Bind(func(_ bool) error { return nil }),
+			false),
+		Entry("File",
+			cli.Bind(func(_ *cli.File) error { return nil }),
+			new(cli.File)),
+		Entry("FileSet",
+			cli.Bind(func(_ *cli.FileSet) error { return nil }),
+			new(cli.FileSet)),
+		Entry("Regexp",
+			cli.Bind(func(_ *regexp.Regexp) error { return nil }),
+			new(regexp.Regexp)),
+		Entry("NameValue",
+			cli.Bind(func(_ *cli.NameValue) error { return nil }),
+			new(cli.NameValue)),
+		Entry("List",
+			cli.Bind(func(_ []string) error { return nil }),
+			[]string{}),
+		Entry("Map",
+			cli.Bind(func(_ map[string]string) error { return nil }),
+			map[string]string{}),
+	)
 })
 
 var _ = Describe("BindIndirect", func() {

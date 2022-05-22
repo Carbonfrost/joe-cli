@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"reflect"
 	"runtime/debug"
 	"time"
 )
@@ -150,6 +151,7 @@ const (
 
 var (
 	emptyAction Action = ActionFunc(emptyActionImpl)
+	valueType          = reflect.TypeOf((*Value)(nil)).Elem()
 
 	defaultApp = actionPipelines{
 		Initializers: Pipeline(
@@ -400,16 +402,22 @@ func SetValue(v string) Action {
 // the flag or arg.  The bind function is the function to execute, and valopt is optional,
 // and if specified, indicates the value to set; otherwise, the value is read from the flag.
 func Bind[V any](bind func(V) error, valopt ...V) Action {
-	proto := &Prototype{Value: new(V)}
+	proto := &Prototype{Value: bindSupportedValue(new(V))}
 	switch len(valopt) {
 	case 0:
 		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			if !c.Seen("") {
+				return nil
+			}
 			return bind(c.Value("").(V))
 		})))
 
 	case 1:
 		val := valopt[0]
 		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			if !c.Seen("") {
+				return nil
+			}
 			return bind(val)
 		})))
 	default:
@@ -453,16 +461,22 @@ func BindIndirect[T, V any](name string, bind func(*T, V) error, valopt ...V) Ac
 }
 
 func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt ...V) Action {
-	proto := &Prototype{Value: new(V)}
+	proto := &Prototype{Value: bindSupportedValue(new(V))}
 	switch len(valopt) {
 	case 0:
 		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			if !c.Seen("") {
+				return nil
+			}
 			return bind(thunk(c), c.Value("").(V))
 		})))
 
 	case 1:
 		val := valopt[0]
 		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+			if !c.Seen("") {
+				return nil
+			}
 			return bind(thunk(c), val)
 		})))
 	default:
@@ -477,6 +491,24 @@ func notInitializer(a Action) ActionFunc {
 		}
 		return c.Do(a)
 	}
+}
+
+func bindSupportedValue(v interface{}) interface{} {
+	// Bind functions will either use *V or V depending upon what
+	// supports the built-in convention values or implements Value.
+	// Any built-in primitive will work as is.  However, if v is actually
+	// *V but V is **W and W is a Value implementation, then unwrap this
+	// so we end up with *W.  For example, instead of **FileSet, just use *FileSet.
+	val := reflect.ValueOf(v)
+	if val.Kind() == reflect.Ptr && val.Elem().Kind() == reflect.Ptr {
+		pointsToValue := val.Elem().Type()
+		if pointsToValue.Implements(valueType) {
+			return reflect.New(pointsToValue.Elem()).Interface()
+		}
+	}
+
+	// Primitives and other values
+	return v
 }
 
 // Accessory provides an action which sets up an accessory flag for the current flag or argument.
