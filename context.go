@@ -29,7 +29,6 @@ type Context struct {
 	*lookupSupport
 	internal internalContext
 	timing   Timing
-	argList  []string
 
 	parent    *Context
 	pathCache ContextPath
@@ -40,16 +39,21 @@ type WalkFunc func(cmd *Context) error
 
 type internalContext interface {
 	lookupCore
+	lookupBinding(name string, occurs bool) []string
 	initialize(*Context) error
 	executeBeforeDescendent(*Context) error
 	executeBefore(*Context) error
 	executeAfter(*Context) error
 	executeAfterDescendent(*Context) error
 	execute(*Context) error
-	lookupBinding(string) []string
 	target() target // *Command, *Arg, *Flag, or *Expr
 	setDidSubcommandExecute()
 	Name() string
+}
+
+type internalCommandContext interface {
+	set() *set
+	lookupBinding(name string, occurs bool) []string
 }
 
 type parentLookup struct {
@@ -180,7 +184,7 @@ func (c *Context) isOption() bool {
 // represent the name of the command plus the arguments passed to it.  For flags and arguments,
 // this is the value passed to them
 func (c *Context) Args() []string {
-	return c.argList
+	return c.internal.lookupBinding("", false)
 }
 
 // LookupCommand finds the command by name.  The name can be a string or *Command
@@ -289,15 +293,15 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 		return c, false
 	case matchFlag(name):
 		if f, ok := c.LookupFlag(name); ok {
-			return c.optionContext(f, nil), true
+			return c.optionContext(f), true
 		}
 	case matchArg(name):
 		if a, ok := c.LookupArg(name); ok {
-			return c.optionContext(a, nil), true
+			return c.optionContext(a), true
 		}
 	default:
 		if m, ok := c.LookupCommand(name); ok {
-			return c.commandContext(m), true
+			return c.commandContext(m, nil), true
 		}
 	}
 	return nil, false
@@ -362,6 +366,35 @@ func (c *Context) Value(name interface{}) interface{} {
 		return c.lookupSupport.Value(c.nameToString(v))
 	default:
 		return c.Context.Value(name)
+	}
+}
+
+// Raw gets the exact value which was passed to the arg, flag including
+// the name that was used.  Value can be the empty string if no value
+// was passed
+func (c *Context) Raw(name interface{}) []string {
+	return c.rawCore(name, false)
+}
+
+// RawOccurrences gets the exact value which was passed to the arg, flag
+// excluding the name that was used.  Value can be the empty string if no value
+// was passed
+func (c *Context) RawOccurrences(name interface{}) []string {
+	return c.rawCore(name, true)
+}
+
+func (c *Context) rawCore(name interface{}, occurs bool) []string {
+	if c == nil {
+		return []string{}
+	}
+
+	switch f := name.(type) {
+	case rune, string, nil, int, *Arg, *Flag:
+		d := c.internal.lookupBinding(c.nameToString(f), occurs)
+		return append(d, c.Parent().Raw(name)...)
+
+	default:
+		return []string{}
 	}
 }
 
@@ -475,7 +508,7 @@ func (c *Context) walkCore(fn WalkFunc) error {
 	switch err {
 	case nil:
 		for _, sub := range current.Subcommands {
-			if err := c.commandContext(sub).walkCore(fn); err != nil {
+			if err := c.commandContext(sub, nil).walkCore(fn); err != nil {
 				return err
 			}
 		}
@@ -853,24 +886,25 @@ func newLookupSupport(t internalContext, parent lookupCore) *lookupSupport {
 	}
 }
 
-func (c *Context) commandContext(cmd *Command) *Context {
+func (c *Context) commandContext(cmd *Command, args []string) *Context {
 	return c.copy(&commandContext{
-		cmd: cmd,
-	}, nil, true)
+		cmd:  cmd,
+		args: args,
+	}, true)
 }
 
-func (c *Context) optionContext(opt option, args []string) *Context {
+func (c *Context) optionContext(opt option) *Context {
 	return c.copy(&optionContext{
-		option:  opt,
-		argList: args,
-	}, args, true)
+		option:       opt,
+		parentLookup: c.internal.(internalCommandContext),
+	}, true)
 }
 
 func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
 	return c.copy(&valueContext{
 		v:    adapter,
 		name: name,
-	}, nil, true)
+	}, true)
 }
 
 func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
@@ -884,7 +918,7 @@ func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
 		v:      adapter,
 		name:   expr.Name,
 		lookup: data,
-	}, args, true)
+	}, true)
 }
 
 func (c *Context) setTiming(t Timing) *Context {
@@ -934,7 +968,7 @@ func (c *Context) initialize() error {
 	return c.internal.initialize(c)
 }
 
-func (c *Context) copy(t internalContext, args []string, reparent bool) *Context {
+func (c *Context) copy(t internalContext, reparent bool) *Context {
 	p := c.parent
 	if reparent {
 		p = c
@@ -946,7 +980,6 @@ func (c *Context) copy(t internalContext, args []string, reparent bool) *Context
 		Stderr:        c.Stderr,
 		internal:      t,
 		parent:        p,
-		argList:       args,
 		lookupSupport: newLookupSupport(t, p),
 	}
 }
@@ -1101,7 +1134,6 @@ func triggerBeforeArgs(ctx *Context) error {
 }
 
 func triggerBeforeOptions(ctx *Context, opts []option) error {
-	bindings := ctx.internal.lookupBinding
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
 			if flag.option.flags.persistent() {
@@ -1111,7 +1143,7 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 			}
 		}
 
-		err := ctx.optionContext(f, bindings(f.name())).executeBefore()
+		err := ctx.optionContext(f).executeBefore()
 		if err != nil {
 			return err
 		}
@@ -1121,7 +1153,7 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 	// Action when the flag or arg was set
 	for _, f := range opts {
 		if f.Seen() {
-			err := ctx.optionContext(f, bindings(f.name())).executeSelf()
+			err := ctx.optionContext(f).executeSelf()
 			if err != nil {
 				return err
 			}
@@ -1139,7 +1171,6 @@ func triggerAfterArgs(ctx *Context) error {
 }
 
 func triggerAfterOptions(ctx *Context, opts []option) error {
-	bindings := ctx.internal.lookupBinding
 	for _, f := range opts {
 		if flag, ok := f.(*Flag); ok {
 			if flag.option.flags.persistent() {
@@ -1149,7 +1180,7 @@ func triggerAfterOptions(ctx *Context, opts []option) error {
 			}
 		}
 
-		err := ctx.optionContext(f, bindings(f.name())).setTiming(AfterTiming).executeAfter()
+		err := ctx.optionContext(f).setTiming(AfterTiming).executeAfter()
 		if err != nil {
 			return err
 		}

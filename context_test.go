@@ -50,7 +50,8 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app -f dom sub")
-			_ = app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
 
 			capturedContext := act.ExecuteArgsForCall(0)
 			Expect(capturedContext.Value("f")).To(Equal("dom"))
@@ -94,6 +95,152 @@ var _ = Describe("Context", func() {
 
 			capturedContext := act.ExecuteArgsForCall(0)
 			Expect(capturedContext.Value("f")).To(Equal([]string{"s", "r", "o"}))
+		})
+	})
+
+	Describe("Raw", func() {
+		It("contains flag value at the app level", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+					},
+				},
+				Action: act,
+			}
+
+			args, _ := cli.Split("app -f")
+			_ = app.RunContext(context.TODO(), args)
+
+			capturedContext := act.ExecuteArgsForCall(0)
+			Expect(capturedContext.Raw("f")).To(Equal([]string{"-f", ""}))
+		})
+
+		It("contains flag value from inherited context", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.String(),
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name:   "sub",
+						Action: act,
+					},
+				},
+			}
+
+			args, _ := cli.Split("app -f dom sub")
+			_ = app.RunContext(context.TODO(), args)
+
+			capturedContext := act.ExecuteArgsForCall(0)
+			Expect(capturedContext.Raw("f")).To(Equal([]string{"-f", "dom"}))
+		})
+
+		It("contains flag value from self context", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:   "f",
+						Value:  cli.String(),
+						Action: act,
+					},
+				},
+			}
+
+			args, _ := cli.Split("app -f sub")
+			_ = app.RunContext(context.TODO(), args)
+
+			capturedContext := act.ExecuteArgsForCall(0)
+			Expect(capturedContext.Raw("")).To(Equal([]string{"-f", "sub"}))
+		})
+
+		DescribeTable("examples",
+			func(flag *cli.Flag, arguments string, raw, rawOccurrences []string) {
+				act := new(joeclifakes.FakeAction)
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						flag,
+					},
+					Action: act,
+				}
+
+				args, _ := cli.Split(arguments)
+				_ = app.RunContext(context.TODO(), args)
+
+				capturedContext := act.ExecuteArgsForCall(0)
+				Expect(capturedContext.Raw("f")).To(Equal(raw))
+				Expect(capturedContext.RawOccurrences("f")).To(Equal(rawOccurrences))
+			},
+			Entry(
+				"bool flags",
+				&cli.Flag{Name: "f", Value: cli.Bool()},
+				"app -f",
+				[]string{"-f", ""},
+				[]string{""},
+			),
+			Entry(
+				"multiple bool calls",
+				&cli.Flag{Name: "f", Value: cli.Bool()},
+				"app -f -f -f",
+				[]string{"-f", "", "-f", "", "-f", ""},
+				[]string{"", "", ""},
+			),
+			Entry(
+				"string with quotes",
+				&cli.Flag{Name: "f", Value: cli.String()},
+				`app -f "text has spaces" -f ""`,
+				[]string{"-f", "text has spaces", "-f", ""},
+				[]string{"text has spaces", ""},
+			),
+			Entry(
+				"alias flags",
+				&cli.Flag{
+					Name:    "f",
+					Aliases: []string{"alias"},
+					Value:   cli.Bool(),
+				},
+				"app --alias",
+				[]string{"--alias", ""},
+				[]string{""},
+			),
+			Entry(
+				"long with equals",
+				&cli.Flag{
+					Name:    "f",
+					Aliases: []string{"alias"},
+					Value:   cli.Duration(),
+				},
+				"app --alias=9m32s",
+				[]string{"--alias", "9m32s"},
+				[]string{"9m32s"},
+			),
+		)
+
+		It("contains arg value", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name:  "f",
+						Value: cli.List(),
+						NArg:  -1,
+					},
+				},
+				Action: act,
+			}
+
+			args, _ := cli.Split("app s r o")
+			_ = app.RunContext(context.TODO(), args)
+
+			capturedContext := act.ExecuteArgsForCall(0)
+			Expect(capturedContext.Raw("f")).To(Equal([]string{"s", "r", "o"}))
 		})
 	})
 

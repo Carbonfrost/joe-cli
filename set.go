@@ -12,7 +12,7 @@ type set struct {
 	longOptions       map[string]*internalOption
 	positionalOptions []*internalOption
 	values            genericValues
-	bindings          map[string][]string
+	bindings          bindingsMap
 	isRTL             bool
 }
 
@@ -21,6 +21,9 @@ type argBinding struct {
 	takers []ArgCounter
 	index  int
 }
+
+type argList []string
+type bindingsMap map[string][][]string
 
 type genericValues map[string]*generic
 
@@ -118,36 +121,29 @@ func (s *set) startArgBinding(count int) (res *argBinding, err error) {
 	return
 }
 
-func (s *set) parse(args []string, disallowFlagsAfterArgs bool) error {
-	if len(args) == 0 {
+func (s *set) parse(args argList, disallowFlagsAfterArgs bool) error {
+	if args.empty() {
 		return nil
 	}
 
-	bind, err := s.startArgBinding(len(args))
+	bind, err := s.startArgBinding(args.len())
 	if err != nil {
 		return err
 	}
-	s.bindings = map[string][]string{}
+	s.bindings = map[string][][]string{}
 
 	var (
 		state        = flagsOrArgs
 		anyArgs      bool
-		appendOutput = func(n, a string) {
-			if e, ok := s.bindings[n]; ok {
-				s.bindings[n] = append(e, a)
-			} else {
-				s.bindings[n] = []string{a}
-			}
-		}
+		appendOutput = s.bindings.appendOutput
 	)
 
 	// Skip program name
-	args = args[1:]
+	args.pop()
 
 Parsing:
-	for len(args) > 0 {
-		arg := args[0]
-		args = args[1:]
+	for !args.empty() {
+		arg := args.pop()
 
 		// end of options?
 		if arg == "" || arg == "-" || arg[0] != '-' || state == argsOnly {
@@ -172,17 +168,16 @@ Parsing:
 						return err
 					}
 				}
-				appendOutput(bind.name(), arg)
+				appendOutput(bind.name(), []string{arg})
 
-				if len(args) == 0 {
+				if args.empty() {
 					if err := bind.Done(); err != nil {
 						return err
 					}
 					continue Parsing
 				}
 
-				arg = args[0]
-				args = args[1:]
+				arg = args.pop()
 				anyArgs = true
 			}
 		}
@@ -221,19 +216,25 @@ Parsing:
 			// If we require an option and did not have an =
 			// then use the next argument as an option.
 			if !opt.flags.flagOnly() && e < 0 && !opt.flags.optional() {
-				if len(args) == 0 {
+				if args.empty() {
 					return missingArgument(opt)
 				}
-				value = args[0]
-				args = args[1:]
+
+				if outputs, err := args.take(opt); err != nil {
+					return setFlagError(opt, value, err)
+				} else {
+					appendOutput(opt.uname, append([]string{"--" + arg[2:]}, outputs...))
+				}
+
+				continue Parsing
 			}
+
 			opt.count++
 
 			if err := opt.value.Set(value, opt); err != nil {
 				return setFlagError(opt, value, err)
 			}
-			appendOutput(opt.uname, "--"+arg[2:])
-			appendOutput(opt.uname, arg)
+			appendOutput(opt.uname, []string{arg, value})
 			continue Parsing
 		}
 
@@ -252,28 +253,30 @@ Parsing:
 				return unknownOption(c)
 			}
 
-			appendOutput(opt.uname, "-"+arg)
 			opt.flags = opt.flags & (^internalFlagSpecifiedLong)
-			opt.count++
+
 			var value string
 			if !opt.flags.flagOnly() {
 				value = arg[1+i:]
 				if value == "" && !opt.flags.optional() {
-					if len(args) == 0 {
+					if args.empty() {
 						return missingArgument(opt)
 					}
-					value = args[0]
-					args = args[1:]
+
+					if outputs, err := args.take(opt); err != nil {
+						return setFlagError(opt, value, err)
+					} else {
+						appendOutput(opt.uname, append([]string{"-" + arg}, outputs...))
+					}
+					continue Parsing
 				}
 			}
+
 			if err := opt.value.Set(value, opt); err != nil {
 				return setFlagError(opt, value, err)
 			}
-			appendOutput(opt.uname, value)
-
-			if !opt.flags.flagOnly() {
-				continue Parsing
-			}
+			opt.count++
+			appendOutput(opt.uname, []string{"-" + arg, value})
 		}
 	}
 
@@ -317,6 +320,87 @@ func (s genericValues) lookupValue(name string) (interface{}, bool) {
 		return g.p, true
 	}
 	return nil, false
+}
+
+func (m bindingsMap) appendOutput(name string, args []string) {
+	if e, ok := m[name]; ok {
+		m[name] = append(e, args)
+	} else {
+		m[name] = [][]string{args}
+	}
+}
+
+func (m bindingsMap) lookup(name string, occurs bool) []string {
+	res := make([]string, 0)
+	var index int
+	if occurs {
+		index = 1
+	}
+	for _, v := range m[name] {
+		res = append(res, v[index:]...)
+	}
+	return res
+}
+
+func (a *argList) next() bool {
+	r := *a
+	if len(r) == 0 {
+		return false
+	}
+	*a = r[1:]
+	return true
+}
+
+func (a *argList) pop() string {
+	res := a.current()
+	a.next()
+	return res
+}
+
+func (a argList) len() int {
+	return len(a)
+}
+
+func (a argList) empty() bool {
+	return a.len() == 0
+}
+
+func (a argList) current() string {
+	return a[0]
+}
+
+func (a *argList) take(opt *internalOption) (output []string, err error) {
+	bind := newArgBinding([]*internalOption{opt})
+	output = make([]string, 0)
+	const possibleFlag = true
+	for !a.empty() {
+		arg := a.current()
+		err = bind.SetArg(arg, possibleFlag)
+		if err != nil {
+			// Not accepted as an argument, possibly a flag per usual out of
+			// order
+			if arg[0] == '-' && possibleFlag {
+				break
+			}
+
+			// HACK This should not unwrap the Error type, which is a bit fragile
+			if e, ok := err.(*Error); ok {
+				if e.Code == UnexpectedArgument {
+					break
+				}
+			}
+
+			if isHardArgCountErr(err) {
+				return
+			}
+			break
+		}
+		output = append(output, arg)
+		arg = a.pop()
+	}
+
+	err = bind.Done()
+	return
 }
 
 func (a *argBinding) next() bool {

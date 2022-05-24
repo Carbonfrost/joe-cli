@@ -401,7 +401,6 @@ func noOption(c *Context) error {
 					optionContext: c.internal.(*optionContext),
 					actual:        f,
 				},
-				c.argList,
 				false,
 			), v)
 		}

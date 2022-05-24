@@ -146,19 +146,6 @@ var _ = Describe("Value", func() {
 				}),
 			),
 			Entry(
-				"name-value only name sets true",
-				&cli.Flag{
-					Name:  "o",
-					Value: &cli.NameValue{},
-				},
-				"app -o hello",
-				Equal(&cli.NameValue{
-					Name:  "hello",
-					Value: "true",
-				}),
-			),
-
-			Entry(
 				"name-values",
 				&cli.Flag{
 					Name:  "o",

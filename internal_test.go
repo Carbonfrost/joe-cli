@@ -45,7 +45,7 @@ func InitializeFlag(f *Flag) *Context {
 	}
 	c = c.copy(&optionContext{
 		option: f,
-	}, []string{}, true)
+	}, true)
 	c.initialize()
 	return c
 }
@@ -56,7 +56,7 @@ func InitializeCommand(f *Command) *Context {
 	}
 	c = c.copy(&commandContext{
 		cmd: f,
-	}, []string{}, true)
+	}, true)
 	c.initialize()
 	return c
 }

@@ -708,11 +708,15 @@ func (v *valueContext) execute(ctx *Context) error {
 func (v *valueContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (v *valueContext) executeAfterDescendent(ctx *Context) error  { return nil }
 
-func (v *valueContext) lookupBinding(name string) []string {
+func (v *valueContext) lookupBinding(name string, occurs bool) []string {
 	if v.lookup == nil {
 		return nil
 	}
-	return v.lookup.bindings[name]
+	return v.lookup.bindings.lookup(name, occurs)
+}
+
+func (v *valueContext) set() *set {
+	return v.lookup
 }
 
 func (v *valueContext) setDidSubcommandExecute() {

@@ -121,8 +121,8 @@ type ArgCounter interface {
 }
 
 type optionContext struct {
-	option  option
-	argList []string
+	option       option
+	parentLookup internalCommandContext
 }
 
 type discreteCounter struct {
@@ -419,9 +419,10 @@ func (o *optionContext) execute(ctx *Context) error {
 	return execute(ctx, Pipeline(o.option.uses().Action, o.option.pipeline(ActionTiming)))
 }
 
-func (c *optionContext) lookupBinding(name string) []string {
-	return c.argList
+func (o *optionContext) lookupBinding(name string, occurs bool) []string {
+	return o.parentLookup.lookupBinding(o.option.name(), occurs)
 }
+
 func (o *optionContext) target() target           { return o.option }
 func (o *optionContext) setDidSubcommandExecute() {}
 func (o *optionContext) lookupValue(name string) (interface{}, bool) {

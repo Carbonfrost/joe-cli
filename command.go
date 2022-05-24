@@ -96,6 +96,7 @@ type commandContext struct {
 	cmd                  *Command
 	flagSet              *set
 	didSubcommandExecute bool
+	args                 []string
 }
 
 const (
@@ -122,7 +123,7 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 			return err
 		}
 		c.Parent().internal.setDidSubcommandExecute()
-		newCtx := c.Parent().commandContext(cmd).setTiming(ActionTiming)
+		newCtx := c.Parent().commandContext(cmd, invoke).setTiming(ActionTiming)
 		return cmd.parseAndExecuteSelf(newCtx, invoke)
 	})
 }
@@ -232,7 +233,6 @@ func (c *Command) appendArg(arg *Arg) *Command {
 }
 
 func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
-	ctx.argList = args
 	set := c.buildSet(ctx)
 	if c.internalFlags().skipFlagParsing() {
 		args = append([]string{args[0], "--"}, args[1:]...)
@@ -444,7 +444,7 @@ func initializeFlagsArgs(ctx *Context) error {
 			flagStart = len(cmd.actualFlags())
 
 			for _, sub := range flags {
-				err := ctx.optionContext(sub, nil).initialize()
+				err := ctx.optionContext(sub).initialize()
 				if err != nil {
 					return err
 				}
@@ -459,7 +459,7 @@ func initializeFlagsArgs(ctx *Context) error {
 			argStart = len(cmd.actualArgs())
 
 			for _, sub := range args {
-				err := ctx.optionContext(sub, nil).initialize()
+				err := ctx.optionContext(sub).initialize()
 				if err != nil {
 					return err
 				}
@@ -476,7 +476,7 @@ func initializeFlagsArgs(ctx *Context) error {
 func initializeSubcommands(ctx *Context) error {
 	cmd := ctx.target().(*Command)
 	for _, sub := range cmd.Subcommands {
-		err := ctx.commandContext(sub).initialize()
+		err := ctx.commandContext(sub, nil).initialize()
 		if err != nil {
 			return err
 		}
@@ -518,8 +518,14 @@ func (c *commandContext) execute(ctx *Context) error {
 	return nil
 }
 
-func (c *commandContext) lookupBinding(name string) []string {
-	return c.flagSet.bindings[name]
+func (c *commandContext) lookupBinding(name string, occurs bool) []string {
+	if name == "" {
+		return c.args
+	}
+	return c.flagSet.bindings.lookup(name, occurs)
+}
+func (c *commandContext) set() *set {
+	return c.flagSet
 }
 func (c *commandContext) target() target { return c.cmd }
 func (c *commandContext) lookupValue(name string) (interface{}, bool) {
