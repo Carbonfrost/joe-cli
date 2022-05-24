@@ -43,7 +43,7 @@ func InitializeFlag(f *Flag) *Context {
 	c := &Context{
 		Context: context.TODO(),
 	}
-	c = c.copy(&flagContext{
+	c = c.copy(&optionContext{
 		option: f,
 	}, []string{}, true)
 	c.initialize()

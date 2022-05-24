@@ -398,8 +398,8 @@ func noOption(c *Context) error {
 		return func(c *Context) error {
 			return execute(c.copy(
 				&wrapLookupContext{
-					flagContext: c.internal.(*flagContext),
-					actual:      f,
+					optionContext: c.internal.(*optionContext),
+					actual:        f,
 				},
 				c.argList,
 				false,

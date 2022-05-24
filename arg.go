@@ -120,8 +120,8 @@ type ArgCounter interface {
 	Done() error
 }
 
-type argContext struct {
-	option  *Arg
+type optionContext struct {
+	option  option
 	argList []string
 }
 
@@ -352,15 +352,30 @@ func (a *Arg) ensureData() map[string]interface{} {
 	return a.Data
 }
 
-func (a *argSynopsis) String() string {
-	if a.Multi {
-		return a.Value + "..."
+func (a *Arg) pipeline(t Timing) interface{} {
+	switch t {
+	case AfterTiming:
+		return a.After
+	case BeforeTiming:
+		return a.Before
+	case InitialTiming:
+		return a.Uses
+	case ActionTiming:
+		fallthrough
+	default:
+		return a.Action
 	}
-	return a.Value
 }
 
-func (o *argContext) initialize(c *Context) error {
-	a := o.option
+func (a *Arg) options() *Option {
+	return &a.Options
+}
+
+func (a *Arg) contextName() string {
+	return fmt.Sprintf("<%s>", a.Name)
+}
+
+func (a *Arg) ensureInternalOpt() {
 	var flags internalFlags
 	if a.Value == nil {
 		flags = internalFlagDestinationImplicitlyCreated
@@ -371,41 +386,52 @@ func (o *argContext) initialize(c *Context) error {
 		uname: a.Name,
 		flags: flags,
 	}
+}
 
-	rest := newPipelines(ActionOf(o.option.Uses), &o.option.Options)
+func (a *argSynopsis) String() string {
+	if a.Multi {
+		return a.Value + "..."
+	}
+	return a.Value
+}
+
+func (o *optionContext) initialize(c *Context) error {
+	o.option.ensureInternalOpt()
+
+	rest := newPipelines(ActionOf(o.option.pipeline(InitialTiming)), o.option.options())
 	o.option.setPipelines(rest)
 	return execute(c, Pipeline(rest.Initializers, defaultOption.Initializers))
 }
 
-func (o *argContext) executeBefore(ctx *Context) error {
+func (o *optionContext) executeBefore(ctx *Context) error {
 	tt := o.option
-	return execute(ctx, Pipeline(tt.uses().Before, tt.Before, defaultOption.Before))
+	return execute(ctx, Pipeline(tt.uses().Before, tt.pipeline(BeforeTiming), defaultOption.Before))
 }
 
-func (o *argContext) executeBeforeDescendent(ctx *Context) error { return nil }
-func (o *argContext) executeAfterDescendent(ctx *Context) error  { return nil }
-func (o *argContext) executeAfter(ctx *Context) error {
+func (o *optionContext) executeBeforeDescendent(ctx *Context) error { return nil }
+func (o *optionContext) executeAfterDescendent(ctx *Context) error  { return nil }
+func (o *optionContext) executeAfter(ctx *Context) error {
 	tt := o.option
-	return execute(ctx, Pipeline(tt.uses().After, tt.After, defaultOption.After))
+	return execute(ctx, Pipeline(tt.uses().After, tt.pipeline(AfterTiming), defaultOption.After))
 }
 
-func (o *argContext) execute(ctx *Context) error {
-	return execute(ctx, Pipeline(o.option.uses().Action, o.option.Action))
+func (o *optionContext) execute(ctx *Context) error {
+	return execute(ctx, Pipeline(o.option.uses().Action, o.option.pipeline(ActionTiming)))
 }
 
-func (c *argContext) lookupBinding(name string) []string {
-	return nil
+func (c *optionContext) lookupBinding(name string) []string {
+	return c.argList
 }
-func (o *argContext) target() target           { return o.option }
-func (o *argContext) setDidSubcommandExecute() {}
-func (o *argContext) lookupValue(name string) (interface{}, bool) {
+func (o *optionContext) target() target           { return o.option }
+func (o *optionContext) setDidSubcommandExecute() {}
+func (o *optionContext) lookupValue(name string) (interface{}, bool) {
 	if name == "" {
 		return o.option.value(), true
 	}
 	return nil, false
 }
-func (o *argContext) Name() string {
-	return fmt.Sprintf("<%s>", o.option.Name)
+func (o *optionContext) Name() string {
+	return o.option.contextName()
 }
 
 func (d *discreteCounter) Take(arg string, possibleFlag bool) error {

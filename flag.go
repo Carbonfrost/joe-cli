@@ -159,6 +159,12 @@ type option interface {
 	SetRequired()
 
 	applyToSet(s *set)
+	ensureInternalOpt()
+	pipeline(Timing) interface{}
+	contextName() string
+	options() *Option
+	uses() *actionPipelines
+	setPipelines(*actionPipelines)
 	value() interface{}
 	name() string
 	envVars() []string
@@ -169,12 +175,8 @@ type option interface {
 	category() string
 }
 
-type flagContext struct {
-	option *Flag
-}
-
 type wrapLookupContext struct {
-	*flagContext
+	*optionContext
 	actual *Flag
 }
 
@@ -344,8 +346,7 @@ func (f *Flag) ensureData() map[string]interface{} {
 	return f.Data
 }
 
-func (o *flagContext) initialize(c *Context) error {
-	f := o.option
+func (f *Flag) ensureInternalOpt() {
 	var flags internalFlags
 	if f.Value == nil {
 		flags = internalFlagDestinationImplicitlyCreated
@@ -360,43 +361,32 @@ func (o *flagContext) initialize(c *Context) error {
 		uname: f.Name,
 		flags: flags | isFlagType(p),
 	}
-
-	rest := newPipelines(ActionOf(f.Uses), &f.Options)
-	f.setPipelines(rest)
-	return execute(c, Pipeline(rest.Initializers, defaultOption.Initializers))
 }
 
-func (o *flagContext) executeBefore(ctx *Context) error {
-	tt := o.option
-	return execute(ctx, Pipeline(tt.uses().Before, tt.Before, defaultOption.Before))
-}
-
-func (o *flagContext) executeBeforeDescendent(ctx *Context) error { return nil }
-func (o *flagContext) executeAfterDescendent(ctx *Context) error  { return nil }
-func (o *flagContext) executeAfter(ctx *Context) error {
-	tt := o.option
-	return execute(ctx, Pipeline(tt.uses().After, tt.After, defaultOption.After))
-}
-func (o *flagContext) execute(ctx *Context) error {
-	p := Pipeline(o.option.uses().Action, o.option.Action)
-	return execute(ctx, p)
-}
-func (c *flagContext) lookupBinding(name string) []string {
-	return nil
-}
-func (o *flagContext) target() target           { return o.option }
-func (o *flagContext) setDidSubcommandExecute() {}
-func (o *flagContext) lookupValue(name string) (interface{}, bool) {
-	if name == "" {
-		return o.option.value(), true
+func (f *Flag) pipeline(t Timing) interface{} {
+	switch t {
+	case AfterTiming:
+		return f.After
+	case BeforeTiming:
+		return f.Before
+	case InitialTiming:
+		return f.Uses
+	case ActionTiming:
+		fallthrough
+	default:
+		return f.Action
 	}
-	return nil, false
 }
-func (o *flagContext) Name() string {
-	if len(o.option.Name) == 1 {
-		return fmt.Sprintf("-%s", o.option.Name)
+
+func (f *Flag) options() *Option {
+	return &f.Options
+}
+
+func (f *Flag) contextName() string {
+	if len(f.Name) == 1 {
+		return fmt.Sprintf("-%s", f.Name)
 	}
-	return fmt.Sprintf("--%s", o.option.Name)
+	return fmt.Sprintf("--%s", f.Name)
 }
 
 func (o *wrapLookupContext) lookupValue(name string) (interface{}, bool) {

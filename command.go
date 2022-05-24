@@ -444,7 +444,7 @@ func initializeFlagsArgs(ctx *Context) error {
 			flagStart = len(cmd.actualFlags())
 
 			for _, sub := range flags {
-				err := ctx.flagContext(sub, nil).initialize()
+				err := ctx.optionContext(sub, nil).initialize()
 				if err != nil {
 					return err
 				}
@@ -459,7 +459,7 @@ func initializeFlagsArgs(ctx *Context) error {
 			argStart = len(cmd.actualArgs())
 
 			for _, sub := range args {
-				err := ctx.argContext(sub, nil).initialize()
+				err := ctx.optionContext(sub, nil).initialize()
 				if err != nil {
 					return err
 				}

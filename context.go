@@ -289,11 +289,11 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 		return c, false
 	case matchFlag(name):
 		if f, ok := c.LookupFlag(name); ok {
-			return c.flagContext(f, nil), true
+			return c.optionContext(f, nil), true
 		}
 	case matchArg(name):
 		if a, ok := c.LookupArg(name); ok {
-			return c.argContext(a, nil), true
+			return c.optionContext(a, nil), true
 		}
 	default:
 		if m, ok := c.LookupCommand(name); ok {
@@ -859,24 +859,11 @@ func (c *Context) commandContext(cmd *Command) *Context {
 	}, nil, true)
 }
 
-func (c *Context) flagContext(opt *Flag, args []string) *Context {
-	return c.copy(&flagContext{
-		option: opt,
-	}, args, true)
-}
-
-func (c *Context) argContext(opt *Arg, args []string) *Context {
-	return c.copy(&argContext{
+func (c *Context) optionContext(opt option, args []string) *Context {
+	return c.copy(&optionContext{
 		option:  opt,
 		argList: args,
 	}, args, true)
-}
-
-func (c *Context) optionContext(opt option, args []string) *Context {
-	if f, ok := opt.(*Flag); ok {
-		return c.flagContext(f, args)
-	}
-	return c.argContext(opt.(*Arg), args)
 }
 
 func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
@@ -1254,8 +1241,7 @@ var (
 	_ hasArguments    = (*Expr)(nil)
 	_ Lookup          = (*Context)(nil)
 	_ internalContext = (*commandContext)(nil)
-	_ internalContext = (*flagContext)(nil)
-	_ internalContext = (*argContext)(nil)
+	_ internalContext = (*optionContext)(nil)
 	_ internalContext = (*valueContext)(nil)
 	_ internalContext = (*appContext)(nil)
 )
