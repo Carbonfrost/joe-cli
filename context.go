@@ -1124,7 +1124,7 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 			}
 		}
 
-		err := ctx.optionContext(f, bindings(f.name())).setTiming(BeforeTiming).executeBefore()
+		err := ctx.optionContext(f, bindings(f.name())).executeBefore()
 		if err != nil {
 			return err
 		}
@@ -1134,7 +1134,7 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 	// Action when the flag or arg was set
 	for _, f := range opts {
 		if f.Seen() {
-			err := ctx.optionContext(f, bindings(f.name())).setTiming(ActionTiming).executeSelf()
+			err := ctx.optionContext(f, bindings(f.name())).executeSelf()
 			if err != nil {
 				return err
 			}
