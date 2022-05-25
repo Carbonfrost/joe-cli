@@ -63,6 +63,7 @@ func newSet(isRTL bool) *set {
 		values:            values,
 		shortOptions:      map[rune]*internalOption{},
 		longOptions:       map[string]*internalOption{},
+		bindings:          bindingsMap{},
 		positionalOptions: []*internalOption{},
 		isRTL:             isRTL,
 		lookupSupport: &lookupSupport{
@@ -240,6 +241,9 @@ Parsing:
 
 		// Short option processing
 		arg = arg[1:] // strip -
+		if disallowFlagsAfterArgs && anyArgs {
+			return flagAfterArgError(arg)
+		}
 		for i, c := range arg {
 			opt := s.shortOptions[c]
 			if opt == nil {

@@ -554,6 +554,11 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 	panic(fmt.Sprintf("unsupported flag type: %T", dest))
 }
 
+func (v *NameValue) Reset() {
+	v.Name = ""
+	v.Value = ""
+}
+
 func (v *NameValue) Set(arg string) error {
 	if v.Name == "" {
 		v.Name, v.Value, _ = splitValuePair(arg)
@@ -575,9 +580,7 @@ func (v *NameValue) NewCounter() ArgCounter {
 func (v *valuePairCounter) Done() error {
 	switch v.count {
 	case 0:
-		return errors.New("filter missing name and value")
-	case 1:
-		return errors.New("filter missing value")
+		return errors.New("missing name and value")
 	}
 	return nil
 }
@@ -770,6 +773,63 @@ func wrapGeneric(v interface{}) *generic {
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))
 	}
+}
+
+// cloneZero creates a clone with the same type
+func (g *generic) cloneZero() *generic {
+	return wrapGeneric(func() interface{} {
+		switch val := g.p.(type) {
+		case *bool:
+			return Bool()
+		case *string:
+			return String()
+		case *[]string:
+			return List()
+		case *int:
+			return Int()
+		case *int8:
+			return Int8()
+		case *int16:
+			return Int16()
+		case *int32:
+			return Int32()
+		case *int64:
+			return Int64()
+		case *uint:
+			return UInt()
+		case *uint8:
+			return UInt8()
+		case *uint16:
+			return UInt16()
+		case *uint32:
+			return UInt32()
+		case *uint64:
+			return UInt64()
+		case *float32:
+			return Float32()
+		case *float64:
+			return Float64()
+		case *time.Duration:
+			return Duration()
+		case *map[string]string:
+			return Map()
+		case *[]*NameValue:
+			return NameValues()
+		case **url.URL:
+			return URL()
+		case *net.IP:
+			return IP()
+		case **regexp.Regexp:
+			return Regexp()
+		case **big.Int:
+			return BigInt()
+		case **big.Float:
+			return BigFloat()
+		case valueResetOrMerge:
+			return val
+		}
+		panic(fmt.Sprintf("unsupported flag type: %T", g.p))
+	}())
 }
 
 func dereference(v interface{}) interface{} {

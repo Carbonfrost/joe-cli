@@ -1569,3 +1569,110 @@ var _ = Describe("BindIndirect", func() {
 		Expect(fs.Recursive).To(BeTrue())
 	})
 })
+
+var _ = Describe("EachOccurrence", func() {
+
+	It("provides access to Raw and RawOccurrence", func() {
+		act := new(joeclifakes.FakeAction)
+		raw := [][]string{}
+		rawOccurrences := [][]string{}
+		act.ExecuteCalls(func(c *cli.Context) error {
+			raw = append(raw, c.Raw(""))
+			rawOccurrences = append(rawOccurrences, c.RawOccurrences(""))
+			return nil
+		})
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Value:   new(string),
+					Action:  act,
+					Options: cli.EachOccurrence,
+				},
+			},
+		}
+		args, _ := cli.Split("app -f h -f i")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(rawOccurrences).To(Equal([][]string{{"h"}, {"i"}}))
+		Expect(raw).To(Equal([][]string{{"-f", "h"}, {"-f", "i"}}))
+	})
+
+	DescribeTable("examples", func(flag *cli.Flag, arguments string, expected []interface{}) {
+		act := new(joeclifakes.FakeAction)
+		var callIndex int // keep track of which index is called
+		act.ExecuteCalls(func(c *cli.Context) error {
+			actual := c.Value("")
+			Expect(actual).To(Equal(expected[callIndex]))
+			callIndex++
+			return nil
+		})
+		flag.Action = act
+		flag.Options |= cli.EachOccurrence
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				flag,
+			},
+		}
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(callIndex).To(Equal(len(expected)))
+	},
+		Entry("string",
+			&cli.Flag{
+				Name:  "f",
+				Value: new(string),
+			},
+			"app -f h -f u -f g",
+			[]interface{}{"h", "u", "g"},
+		),
+		Entry("string merged",
+			&cli.Flag{
+				Name:    "f",
+				Value:   new(string),
+				Options: cli.Merge,
+			},
+			"app -f h -f u -f g",
+			[]interface{}{"h", "h u", "h u g"},
+		),
+		Entry("string initial value",
+			&cli.Flag{
+				Name: "f",
+				Value: func() *string {
+					s := "hello"
+					return &s
+				}(),
+			},
+			"app -f world -f earth",
+			[]interface{}{"world", "earth"},
+		),
+		Entry("int",
+			&cli.Flag{
+				Name:  "f",
+				Value: new(int),
+			},
+			"app -f 1 -f 2",
+			[]interface{}{1, 2},
+		),
+		Entry("bool",
+			&cli.Flag{
+				Name:  "f",
+				Value: new(bool),
+			},
+			"app -f -f -f",
+			[]interface{}{true, true, true},
+		),
+		Entry("NameValue",
+			&cli.Flag{
+				Name:  "f",
+				Value: new(cli.NameValue),
+			},
+			"app -f a=b -f d=e -f j=k",
+			[]interface{}{&cli.NameValue{"a", "b"}, &cli.NameValue{"d", "e"}, &cli.NameValue{"j", "k"}},
+		),
+	)
+})

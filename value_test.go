@@ -32,7 +32,8 @@ var _ = Describe("Value", func() {
 				}
 
 				args, _ := cli.Split(arguments)
-				app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.TODO(), args)
+				Expect(err).NotTo(HaveOccurred())
 				captured := act.ExecuteArgsForCall(0)
 				Expect(captured.Value("o")).To(expected)
 			},
@@ -145,6 +146,43 @@ var _ = Describe("Value", func() {
 					Value: "world",
 				}),
 			),
+			Entry(
+				"name-value arg counter semantics",
+				&cli.Flag{
+					Name:  "o",
+					Value: &cli.NameValue{},
+				},
+				"app -o hello world",
+				Equal(&cli.NameValue{
+					Name:  "hello",
+					Value: "world",
+				}),
+			),
+			XEntry(
+				"name-value last occurrence wins",
+				&cli.Flag{
+					Name:  "o",
+					Value: &cli.NameValue{},
+				},
+				"app -o hello=world -o goodbye=earth",
+				Equal(&cli.NameValue{
+					Name:  "goodbye",
+					Value: "earth",
+				}),
+			),
+			Entry(
+				"name-value only name sets true",
+				&cli.Flag{
+					Name:  "o",
+					Value: &cli.NameValue{},
+				},
+				"app -o hello",
+				Equal(&cli.NameValue{
+					Name:  "hello",
+					Value: "true",
+				}),
+			),
+
 			Entry(
 				"name-values",
 				&cli.Flag{
@@ -483,14 +521,9 @@ var _ = Describe("NameValueCounter", func() {
 			Expect(err).To(MatchError(expected))
 		},
 		Entry(
-			"filter missing value",
-			[]string{"name"},
-			"filter missing value",
-		),
-		Entry(
 			"missing both",
 			[]string{},
-			"filter missing name and value",
+			"missing name and value",
 		),
 	)
 

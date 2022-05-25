@@ -133,7 +133,7 @@ type cons struct {
 	next   *cons
 }
 
-type middlwareFunc func(*Context, Action) error
+type middlewareFunc func(*Context, Action) error
 
 // Timing enumerates the timing of an action
 type Timing int
@@ -349,9 +349,9 @@ func ActionOf(item interface{}) Action {
 			return nil
 		})
 	case func(*Context, Action) error:
-		return middlwareFunc(a)
+		return middlewareFunc(a)
 	case func(Action) Action:
-		return middlwareFunc(func(c *Context, next Action) error {
+		return middlewareFunc(func(c *Context, next Action) error {
 			return c.Do(a(next))
 		})
 	}
@@ -996,11 +996,11 @@ func (s *pipelinesSupport) appendAction(t Timing, ah Action) {
 	s.p.add(t, ah)
 }
 
-func (m middlwareFunc) Execute(c *Context) error {
+func (m middlewareFunc) Execute(c *Context) error {
 	return m.ExecuteWithNext(c, nil)
 }
 
-func (m middlwareFunc) ExecuteWithNext(c *Context, a Action) error {
+func (m middlewareFunc) ExecuteWithNext(c *Context, a Action) error {
 	return m(c, a)
 }
 

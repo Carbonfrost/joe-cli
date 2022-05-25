@@ -180,6 +180,12 @@ type wrapLookupContext struct {
 	actual *Flag
 }
 
+type wrapOccurrenceContext struct {
+	*optionContext
+	index int
+	val   interface{}
+}
+
 type flagSynopsis struct {
 	Short          string
 	Shorts         []rune
@@ -387,6 +393,39 @@ func (f *Flag) contextName() string {
 		return fmt.Sprintf("-%s", f.Name)
 	}
 	return fmt.Sprintf("--%s", f.Name)
+}
+
+func (c *wrapOccurrenceContext) rawOccurrences() [][]string {
+	m := c.parentLookup.set().bindings
+	return m[c.option.name()]
+}
+
+func (c *wrapOccurrenceContext) current() []string {
+	return c.lookupBinding("", true)
+}
+
+func (c *wrapOccurrenceContext) numOccurs() int {
+	return len(c.rawOccurrences())
+}
+
+func (c *wrapOccurrenceContext) lookupBinding(name string, occurs bool) []string {
+	if name == "" {
+		var index int
+		if occurs {
+			index = 1
+		}
+		v := c.rawOccurrences()[c.index]
+		return v[index:]
+	}
+
+	return c.optionContext.lookupBinding(name, occurs)
+}
+
+func (c *wrapOccurrenceContext) lookupValue(name string) (interface{}, bool) {
+	if name == "" {
+		return c.val, true
+	}
+	return c.optionContext.lookupValue(name)
 }
 
 func (o *wrapLookupContext) lookupValue(name string) (interface{}, bool) {

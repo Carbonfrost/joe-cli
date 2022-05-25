@@ -126,6 +126,19 @@ const (
 	// the scope of the app, flag, arg, or command.
 	PreventSetup
 
+	// EachOccurrence causes the Action for a flag or arg to be called once for each occurrence
+	// rather than just once for the winning value.  This makes sense for flags or args
+	// where each occurrence is treated as distinct whereas by default, clients are usually
+	// only concerned with the last occurrence or the aggregated value.  For example, for the
+	// command "app -a first -a last", the value for -a is "last" (or "first last" if -a is set to Merge);
+	// however, if EachOccurrence were specified, then the
+	// Action associated with -a will be called twice with the context value set equal to the corresponding
+	// occurrence.  Note that only the default lookup will contain the occurrence; other lookups will
+	// use the winning value.  (i.e. for the example, String("") will vary as "first" and "last" in the
+	// two corresponding Action calls; however String("a") will always be "last").  This also applies to
+	// Raw("").
+	EachOccurrence
+
 	maxOption
 
 	// None represents no options
@@ -165,6 +178,7 @@ var (
 		Merge:                  setInternalFlag(internalFlagMerge),
 		RightToLeft:            setInternalFlag(internalFlagRightToLeft),
 		PreventSetup:           ActionOf((*Context).PreventSetup),
+		EachOccurrence:         ActionFunc(eachOccurrenceOpt),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -182,6 +196,7 @@ var (
 		Merge:                  "MERGE",
 		RightToLeft:            "RIGHT_TO_LEFT",
 		PreventSetup:           "PREVENT_SETUP",
+		EachOccurrence:         "EACH_OCCURRENCE",
 	}
 )
 
@@ -422,6 +437,44 @@ func noOption(c *Context) error {
 		},
 	})
 	return nil
+}
+
+func eachOccurrenceOpt(c1 *Context) error {
+	return c1.Do(AtTiming(middlewareFunc(func(c *Context, next Action) error {
+		opt := func() *internalOption {
+			switch o := c.option().(type) {
+			case *Flag:
+				return &o.option
+			case *Arg:
+				return &o.option
+			}
+			return nil
+		}()
+		start := opt.value
+		mini := &wrapOccurrenceContext{
+			optionContext: c.internal.(*optionContext),
+		}
+
+		scope := c.copy(mini, true)
+
+		// Obtain either the zero value or Reset() the value
+		start = start.cloneZero()
+		for i := 0; i < mini.numOccurs(); i++ {
+			mini.index = i
+
+			// Pretend this is the first occurrence
+			start.applyValueConventions(opt.flags, 1)
+			for _, s := range mini.current() {
+				start.Set(s, opt)
+			}
+			mini.val = start.p
+
+			if err := next.Execute(scope); err != nil {
+				return err
+			}
+		}
+		return nil
+	}), ActionTiming))
 }
 
 var (

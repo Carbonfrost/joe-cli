@@ -200,6 +200,20 @@ var _ = Describe("Context", func() {
 				[]string{"text has spaces", ""},
 			),
 			Entry(
+				"name-value arg counter semantics",
+				&cli.Flag{Name: "f", Value: new(cli.NameValue)},
+				`app -f hello space`,
+				[]string{"-f", "hello", "space"},
+				[]string{"hello", "space"},
+			),
+			Entry(
+				"name-value arg counter semantics (long flag)",
+				&cli.Flag{Name: "f", Value: new(cli.NameValue)},
+				`app --f hello space`,
+				[]string{"--f", "hello", "space"},
+				[]string{"hello", "space"},
+			),
+			Entry(
 				"alias flags",
 				&cli.Flag{
 					Name:    "f",

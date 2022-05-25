@@ -131,11 +131,12 @@ var _ = Describe("Command", func() {
 	})
 
 	Describe("DisallowFlagsAfterArgs", func() {
-		It("causes flags after args error", func() {
+		DescribeTable("causes flags after args error", func(arguments string) {
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
-						Name: "whitespace",
+						Name:    "whitespace",
+						Aliases: []string{"w"},
 					},
 				},
 				Args: []*cli.Arg{
@@ -146,12 +147,14 @@ var _ = Describe("Command", func() {
 				},
 				Options: cli.DisallowFlagsAfterArgs,
 			}
-			arguments := "app arg --whitespace"
 			args, _ := cli.Split(arguments)
 			err := app.RunContext(context.TODO(), args)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("can't use --whitespace after arguments"))
-		})
+			Expect(err).To(MatchError(MatchRegexp("can't use -.+ after arguments")))
+		},
+			Entry("short", "app arg -w"),
+			Entry("long", "app arg --whitespace"),
+		)
 	})
 
 	Describe("RightToLeft", func() {

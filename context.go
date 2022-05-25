@@ -391,7 +391,10 @@ func (c *Context) rawCore(name interface{}, occurs bool) []string {
 	switch f := name.(type) {
 	case rune, string, nil, int, *Arg, *Flag:
 		d := c.internal.lookupBinding(c.nameToString(f), occurs)
-		return append(d, c.Parent().Raw(name)...)
+		if len(d) == 0 {
+			return c.Parent().rawCore(name, occurs)
+		}
+		return d
 
 	default:
 		return []string{}
