@@ -13,7 +13,6 @@ type set struct {
 	positionalOptions []*internalOption
 	values            genericValues
 	bindings          bindingsMap
-	isRTL             bool
 }
 
 type argBinding struct {
@@ -57,7 +56,7 @@ const (
 	argsOnly
 )
 
-func newSet(isRTL bool) *set {
+func newSet() *set {
 	values := genericValues{}
 	return &set{
 		values:            values,
@@ -65,7 +64,6 @@ func newSet(isRTL bool) *set {
 		longOptions:       map[string]*internalOption{},
 		bindings:          bindingsMap{},
 		positionalOptions: []*internalOption{},
-		isRTL:             isRTL,
 		lookupSupport: &lookupSupport{
 			values,
 		},
@@ -85,12 +83,12 @@ func newArgBinding(args []*internalOption) *argBinding {
 	}
 }
 
-func (s *set) startArgBinding(count int) (res *argBinding, err error) {
+func (s *set) startArgBinding(count int, rtl bool) (res *argBinding, err error) {
 	res = newArgBinding(s.positionalOptions)
 
 	// When in RTL mode, identify the first argument to actually fill by
 	// counting the number of arguments required by arguments right-to-left.
-	if s.isRTL {
+	if rtl {
 		pos := s.positionalOptions
 		skip := len(pos)
 
@@ -122,12 +120,12 @@ func (s *set) startArgBinding(count int) (res *argBinding, err error) {
 	return
 }
 
-func (s *set) parse(args argList, disallowFlagsAfterArgs bool) error {
+func (s *set) parse(args argList, disallowFlagsAfterArgs bool, rtl bool) error {
 	if args.empty() {
 		return nil
 	}
 
-	bind, err := s.startArgBinding(args.len())
+	bind, err := s.startArgBinding(args.len(), rtl)
 	if err != nil {
 		return err
 	}

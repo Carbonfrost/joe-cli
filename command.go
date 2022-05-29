@@ -238,7 +238,7 @@ func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
 		args = append([]string{args[0], "--"}, args[1:]...)
 	}
 
-	err := set.parse(args, c.internalFlags().disallowFlagsAfterArgs())
+	err := set.parse(args, c.internalFlags().disallowFlagsAfterArgs(), c.internalFlags().rightToLeft())
 	if err != nil {
 		return err
 	}
@@ -247,12 +247,12 @@ func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
 }
 
 func (c *Command) buildSet(ctx *Context) *set {
-	set := newSet(c.internalFlags().rightToLeft())
+	var set *set
 	switch internal := ctx.internal.(type) {
 	case *commandContext:
-		internal.flagSet = set
+		set = internal.flagSet
 	case *appContext:
-		internal.commandContext.flagSet = set
+		set = internal.commandContext.flagSet
 	}
 
 	for _, f := range c.actualFlags() {

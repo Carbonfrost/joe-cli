@@ -358,7 +358,7 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 		exprs: map[string]*boundExpr{},
 	}
 	for _, e := range exprs {
-		set := newSet(e.internalFlags().rightToLeft()).withArgs(e.Args)
+		set := newSet().withArgs(e.Args)
 		fac := &boundExpr{
 			expr:   e,
 			set:    set,
@@ -637,7 +637,7 @@ Parsing:
 			continue Parsing
 		}
 
-		bind, err := boundExpr.set.startArgBinding(len(args))
+		bind, err := boundExpr.set.startArgBinding(len(args), false)
 		if err != nil {
 			return nil, err
 		}
