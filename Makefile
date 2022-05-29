@@ -6,6 +6,8 @@
 	watch \
 	lint \
 	examples \
+	install \
+	-install-%
 
 BUILD_VERSION=$(shell git rev-parse --short HEAD)
 GO_LDFLAGS=-X 'github.com/Carbonfrost/joe-cli/internal/build.Version=$(BUILD_VERSION)'
@@ -25,3 +27,8 @@ examples:
 	$(Q) go build -o . ./examples/joegit
 	$(Q) go build -o . ./examples/joefind
 	$(Q) go build -o . ./examples/joeopen
+
+install: -install-joe
+
+-install-%: build -check-env-PREFIX -check-env-_GO_OUTPUT_DIR
+	$(Q) eng/install "${_GO_OUTPUT_DIR}/$*" $(PREFIX)/bin
