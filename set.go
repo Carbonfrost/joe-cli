@@ -244,6 +244,7 @@ Parsing:
 		if disallowFlagsAfterArgs && anyArgs {
 			return flagAfterArgError(arg)
 		}
+
 		for i, c := range arg {
 			opt := s.shortOptions[c]
 			if opt == nil {
@@ -281,6 +282,10 @@ Parsing:
 			}
 			opt.count++
 			appendOutput(opt.uname, []string{"-" + arg, value})
+
+			if !opt.flags.flagOnly() {
+				continue Parsing
+			}
 		}
 	}
 

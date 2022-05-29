@@ -127,16 +127,19 @@ var _ = Describe("RunContext", func() {
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
-						Name:  "flag1",
-						Value: &result.Flag1,
+						Name:    "flag1",
+						Aliases: []string{"a"},
+						Value:   &result.Flag1,
 					},
 					{
-						Name:  "flag2",
-						Value: &result.Flag2,
+						Name:    "flag2",
+						Aliases: []string{"b"},
+						Value:   &result.Flag2,
 					},
 					{
-						Name:  "flag3",
-						Value: &result.Flag3,
+						Name:    "flag3",
+						Aliases: []string{"c"},
+						Value:   &result.Flag3,
 					},
 				},
 				Args: []*cli.Arg{
@@ -204,6 +207,32 @@ var _ = Describe("RunContext", func() {
 				Flag1: false,
 				Flag2: false,
 				Arg:   "--flag1",
+			}),
+		),
+		Entry(
+			"inline booleans",
+			"-ab",
+			Equal(mappedValues{
+				Flag1: true,
+				Flag2: true,
+			}),
+		),
+		Entry(
+			"inline parameter",
+			"-acHasValue",
+			Equal(mappedValues{
+				Flag1: true,
+				Flag2: false,
+				Flag3: "HasValue",
+			}),
+		),
+		Entry(
+			"erroneous use of long syntax with short",
+			"--a --b --c Value",
+			Equal(mappedValues{
+				Flag1: true,
+				Flag2: true,
+				Flag3: "Value",
 			}),
 		),
 	)
