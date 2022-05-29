@@ -1600,6 +1600,36 @@ var _ = Describe("EachOccurrence", func() {
 		Expect(raw).To(Equal([][]string{{"-f", "h"}, {"-f", "i"}}))
 	})
 
+	It("works with Bind in Uses pipeline", func() {
+		// Tests for a bug:  pipeline additions provided by Bind
+		// where not wrapped in EachOccurrence
+		fs := new(cli.FileSet)
+		var values []uint64
+		binder := func(r uint64) error {
+			values = append(values, r)
+			return nil
+		}
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Options: cli.EachOccurrence,
+					Uses:    cli.Bind(binder),
+				},
+				{
+					Name:  "vars",
+					Value: fs,
+				},
+			},
+		}
+		args, _ := cli.Split("app -f 1019 -f 1044")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(values).To(Equal([]uint64{1019, 1044}))
+	})
+
 	DescribeTable("examples", func(flag *cli.Flag, arguments string, expected []interface{}) {
 		act := new(joeclifakes.FakeAction)
 		var callIndex int // keep track of which index is called

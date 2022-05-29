@@ -405,7 +405,7 @@ func Bind[V any](bind func(V) error, valopt ...V) Action {
 	proto := &Prototype{Value: bindSupportedValue(new(V))}
 	switch len(valopt) {
 	case 0:
-		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
 			if !c.Seen("") {
 				return nil
 			}
@@ -414,7 +414,7 @@ func Bind[V any](bind func(V) error, valopt ...V) Action {
 
 	case 1:
 		val := valopt[0]
-		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
 			if !c.Seen("") {
 				return nil
 			}
@@ -464,7 +464,7 @@ func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt
 	proto := &Prototype{Value: bindSupportedValue(new(V))}
 	switch len(valopt) {
 	case 0:
-		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
 			if !c.Seen("") {
 				return nil
 			}
@@ -473,7 +473,7 @@ func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt
 
 	case 1:
 		val := valopt[0]
-		return Pipeline(proto, notInitializer(ActionFunc(func(c *Context) error {
+		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
 			if !c.Seen("") {
 				return nil
 			}
@@ -484,13 +484,8 @@ func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt
 	}
 }
 
-func notInitializer(a Action) ActionFunc {
-	return func(c *Context) error {
-		if c.IsInitializing() {
-			return c.act(a, BeforeTiming)
-		}
-		return c.Do(a)
-	}
+func bindTiming(a Action) Action {
+	return AtTiming(a, ActionTiming)
 }
 
 func bindSupportedValue(v interface{}) interface{} {
@@ -915,7 +910,15 @@ func (p *actionPipelines) add(t Timing, h Action) {
 	case BeforeTiming:
 		p.Before = Pipeline(p.Before, h)
 	case ActionTiming:
-		p.Action = Pipeline(p.Action, h)
+		// As a rule, middleware wraps the existing Action pipeline.
+		// This solves for when middleware was added in the Uses or Before
+		// pipelines.  This may place middleware in the wrong nesting but
+		// hopefully most middleware is designed to work without ordering
+		if _, ok := h.(Middleware); ok {
+			p.Action = Pipeline(h, p.Action)
+		} else {
+			p.Action = Pipeline(p.Action, h)
+		}
 	case AfterTiming:
 		p.After = Pipeline(p.After, h)
 	default:
