@@ -414,6 +414,14 @@ var _ = Describe("Flag", func() {
 				"-o",
 			),
 			Entry(
+				"IsBoolFlag convention",
+				&cli.Flag{
+					Name:  "o",
+					Value: new(boolFlag),
+				},
+				"-o",
+			),
+			Entry(
 				"int flag no placeholders",
 				&cli.Flag{
 					Name:  "o",
@@ -552,4 +560,19 @@ func (*temperature) Synopsis() string {
 	return "{Fahrenheit|Celsius}"
 }
 
+type boolFlag string
+
+func (_ *boolFlag) Set(s string) error {
+	return nil
+}
+
+func (_ *boolFlag) IsBoolFlag() bool {
+	return true
+}
+
+func (_ *boolFlag) String() string {
+	return ""
+}
+
 var _ flag.Value = (*temperature)(nil)
+var _ flag.Value = (*boolFlag)(nil)

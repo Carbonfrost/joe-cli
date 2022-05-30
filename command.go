@@ -547,7 +547,7 @@ func getGroup(f *Flag) optionGroup {
 	if f.internalFlags().exits() {
 		return actionGroup
 	}
-	if hasOnlyShortName(f) && hasNoValue(f) {
+	if hasOnlyShortName(f) && impliesValueFlagOnly(f.Value) {
 		if f.internalFlags().required() {
 			return onlyShortNoValue
 		}

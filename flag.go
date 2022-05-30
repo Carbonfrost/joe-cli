@@ -469,6 +469,11 @@ func placeholder(v interface{}) string {
 	switch m := v.(type) {
 	case *bool:
 		return ""
+	case interface{ IsBoolFlag() bool }:
+		if m.IsBoolFlag() {
+			return ""
+		}
+
 	case *int, *int8, *int16, *int32, *int64:
 		return "NUMBER"
 	case *uint, *uint8, *uint16, *uint32, *uint64:
@@ -494,8 +499,8 @@ func placeholder(v interface{}) string {
 	case valueProvidesSynopsis:
 		return m.Synopsis()
 	default:
-		return "VALUE"
 	}
+	return "VALUE"
 }
 
 // Seen returns true if the flag was used on the command line at least once
@@ -647,9 +652,12 @@ func hasOnlyShortName(f *Flag) bool {
 	return len(f.Name) == 1
 }
 
-func hasNoValue(f *Flag) bool {
-	if _, ok := f.Value.(*bool); ok {
+func impliesValueFlagOnly(p interface{}) bool {
+	switch val := p.(type) {
+	case *bool:
 		return true
+	case interface{ IsBoolFlag() bool }:
+		return val.IsBoolFlag()
 	}
 	return false
 }
@@ -709,8 +717,7 @@ func shortName(s []rune) string {
 }
 
 func isFlagType(p interface{}) internalFlags {
-	switch p.(type) {
-	case *bool:
+	if impliesValueFlagOnly(p) {
 		return internalFlagFlagOnly
 	}
 	return 0
