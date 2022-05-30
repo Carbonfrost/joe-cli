@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"regexp"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
+	"github.com/spf13/afero"
 )
 
 var _ = Describe("Arg", func() {
@@ -240,6 +242,37 @@ var _ = Describe("Arg", func() {
 			),
 		)
 
+	})
+
+	Describe("FilePath", func() {
+
+		It("sets up value from option", func() {
+
+			var testFileSystem = func() fs.FS {
+				appFS := afero.NewMemMapFs()
+
+				appFS.MkdirAll("src/a", 0755)
+				afero.WriteFile(appFS, "src/a/b.txt", []byte("b contents"), 0644)
+				return afero.NewIOFS(appFS)
+			}()
+			var actual string
+
+			app := &cli.App{
+				FS: testFileSystem,
+				Args: []*cli.Arg{
+					{
+						Name:     "f",
+						FilePath: "src/a/b.txt",
+						Value:    &actual,
+					},
+				},
+			}
+
+			args, _ := cli.Split("app")
+			app.RunContext(context.TODO(), args)
+
+			Expect(actual).To(Equal("b contents"))
+		})
 	})
 
 	Context("when environment variables are set", func() {

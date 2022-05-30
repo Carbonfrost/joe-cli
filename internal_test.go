@@ -2,6 +2,8 @@ package cli // Intentional
 
 import (
 	"context"
+	"io/fs"
+	"os"
 )
 
 // Expose some members for testing
@@ -59,4 +61,10 @@ func InitializeCommand(f *Command) *Context {
 	}, true)
 	c.initialize()
 	return c
+}
+
+// DefaultFS is the FS that is expected to be created when no
+// other is set up
+func DefaultFS() fs.FS {
+	return newDefaultFS(os.Stdin, NewWriter(os.Stdout))
 }

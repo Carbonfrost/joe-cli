@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"io/fs"
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -195,6 +196,18 @@ var _ = Describe("App", func() {
 			Expect(err).To(Equal(cli.NewWriter(os.Stderr)))
 		})
 
+		It("sets up default file system", func() {
+			var f fs.FS
+			app := &cli.App{
+				Action: func(c *cli.Context) {
+					f = c.FS
+				},
+			}
+
+			app.RunContext(context.TODO(), []string{"app"})
+			Expect(f).To(Equal(cli.DefaultFS()))
+		})
+
 		It("sets up I/O in nested commands", func() {
 			var (
 				in  io.Reader
@@ -217,6 +230,23 @@ var _ = Describe("App", func() {
 			Expect(in).To(Equal(os.Stdin))
 			Expect(out).To(Equal(cli.NewWriter(os.Stdout)))
 			Expect(err).To(Equal(cli.NewWriter(os.Stderr)))
+		})
+
+		It("sets up file system nested", func() {
+			var f fs.FS
+			app := &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "s",
+						Action: func(c *cli.Context) {
+							f = c.FS
+						},
+					},
+				},
+			}
+
+			app.RunContext(context.TODO(), []string{"app", "s"})
+			Expect(f).To(Equal(cli.DefaultFS()))
 		})
 	})
 })

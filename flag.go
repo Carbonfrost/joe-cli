@@ -2,11 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -672,7 +671,7 @@ func ensureDestination(o option, dest interface{}, multi bool) interface{} {
 	return dest
 }
 
-func loadFlagValueFromEnvironment(f option) (string, bool) {
+func loadFlagValueFromEnvironment(c *Context, f option) (string, bool) {
 	envVars := f.envVars()
 	for _, envVar := range envVars {
 		envVar = strings.TrimSpace(envVar)
@@ -683,10 +682,9 @@ func loadFlagValueFromEnvironment(f option) (string, bool) {
 
 	filePath := f.filePath()
 	if len(filePath) > 0 {
-		for _, fileVar := range filepath.SplitList(filePath) {
-			if data, err := ioutil.ReadFile(fileVar); err == nil {
-				return string(data), true
-			}
+		data, err := fs.ReadFile(c.FS, filePath)
+		if err == nil {
+			return string(data), true
 		}
 	}
 	return "", false

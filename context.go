@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"text/template"
@@ -25,6 +26,14 @@ type Context struct {
 
 	// Stdin is the input reader
 	Stdin io.Reader
+
+	// FS is the filesystem used by the context.
+	// If the FS implements func OpenContext(context.Context, string)(fs.File, error), note that
+	// this will be called instead of Open in places where the Context is available.
+	// For os.File this means that if the context has a Deadline, SetReadDeadline
+	// and/or SetWriteDeadline will be set.  Clients can implement similar functions in their
+	// own fs.File implementations provided from an FS implementation.
+	FS fs.FS
 
 	*lookupSupport
 	internal internalContext
@@ -1001,6 +1010,7 @@ func (c *Context) copy(t internalContext, reparent bool) *Context {
 		Stdin:         c.Stdin,
 		Stdout:        c.Stdout,
 		Stderr:        c.Stderr,
+		FS:            c.FS,
 		internal:      t,
 		parent:        p,
 		lookupSupport: newLookupSupport(t, p),
@@ -1082,6 +1092,13 @@ func (c *Context) lookupOption(name string) (option, bool) {
 
 func (c *Context) option() option {
 	return c.target().(option)
+}
+
+func (c *Context) actualFS() fs.FS {
+	if c.FS == nil {
+		return newDefaultFS(c.Stdin, c.Stdout)
+	}
+	return c.FS
 }
 
 func (v *valueTarget) setDescription(arg string) {
@@ -1260,10 +1277,18 @@ func fixupOptionInternals(c *Context) error {
 }
 
 func setupOptionFromEnv(ctx *Context) error {
-	o := ctx.option()
-	return ctx.Do(ImplicitValue(func() (string, bool) {
-		return loadFlagValueFromEnvironment(o)
-	}))
+	return ctx.Do(Before(ActionFunc(func(c *Context) error {
+		// It would be better to use ImplicitValue here, but unfortunately,
+		// this depends upon the context, which the implicit value func does not have
+		// available at the time it gets executed
+		o := c.option()
+		if c.Occurrences("") == 0 {
+			if v, ok := loadFlagValueFromEnvironment(c, o); ok {
+				c.SetValue(v)
+			}
+		}
+		return nil
+	})))
 }
 
 func handleCustomizations(target *Context) error {

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -22,7 +23,12 @@ type fileExtension interface {
 type fsExtension interface {
 	fs.FS
 	fs.StatFS
+	fsOpenContext
 	OpenFile(string, int, os.FileMode) (*os.File, error)
+}
+
+type fsOpenContext interface {
+	OpenContext(context.Context, string) (fs.File, error)
 }
 
 // fileExists tests whether file exists or all files in the file set exist
@@ -64,6 +70,11 @@ type stdFile struct {
 
 type defaultFS struct {
 	std *stdFile
+}
+
+type contextFile struct {
+	*os.File
+	ctx context.Context
 }
 
 type fsExtensionWrapper struct {
@@ -136,7 +147,7 @@ func (f *File) Initializer() Action {
 
 func (f *File) setupOptionRequireFS(c *Context) error {
 	if f.FS == nil {
-		f.FS = c.App().defaultFS()
+		f.FS = c.actualFS()
 	}
 	return nil
 }
@@ -240,16 +251,13 @@ func (f *FileSet) RecursiveFlag() Prototype {
 
 func (f *FileSet) setupOptionRequireFS(c *Context) error {
 	if f.FS == nil {
-		f.FS = c.App().defaultFS()
+		f.FS = c.FS
 	}
 	return nil
 }
 
 func (d defaultFS) Open(name string) (fs.File, error) {
-	if name == "-" && d.std != nil {
-		return d.std, nil
-	}
-	return os.Open(name)
+	return d.OpenContext(context.TODO(), name)
 }
 
 func (d defaultFS) Stat(name string) (fs.FileInfo, error) {
@@ -276,6 +284,17 @@ func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (*os.File, 
 	return os.OpenFile(name, flag, perm)
 }
 
+func (d defaultFS) OpenContext(c context.Context, name string) (fs.File, error) {
+	if name == "-" && d.std != nil {
+		return d.std, nil
+	}
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return wrapContextFile(c, f), nil
+}
+
 func (f fsExtensionWrapper) Stat(name string) (fs.FileInfo, error) {
 	if s, ok := f.FS.(fs.StatFS); ok {
 		return s.Stat(name)
@@ -285,6 +304,13 @@ func (f fsExtensionWrapper) Stat(name string) (fs.FileInfo, error) {
 		Path: name,
 		Err:  errors.New("not supported"),
 	}
+}
+
+func (f fsExtensionWrapper) OpenContext(c context.Context, name string) (fs.File, error) {
+	if s, ok := f.FS.(fsOpenContext); ok {
+		return s.OpenContext(c, name)
+	}
+	return f.FS.Open(name)
 }
 
 func (f fsExtensionWrapper) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
@@ -338,6 +364,28 @@ func (s *stdFile) Write(p []byte) (n int, err error) {
 	return s.out.Write(p)
 }
 
+func (c *contextFile) Read(p []byte) (n int, err error) {
+	if err = c.ctx.Err(); err != nil {
+		return
+	}
+	if n, err = c.File.Read(p); err != nil {
+		return
+	}
+	err = c.ctx.Err()
+	return
+}
+
+func (c *contextFile) Write(p []byte) (n int, err error) {
+	if err = c.ctx.Err(); err != nil {
+		return
+	}
+	if n, err = c.File.Write(p); err != nil {
+		return
+	}
+	err = c.ctx.Err()
+	return
+}
+
 func fileNotExists(err error) bool {
 	return errors.Is(err, fs.ErrNotExist)
 }
@@ -349,12 +397,24 @@ func wrapFS(f fs.FS) fsExtension {
 	return fsExtensionWrapper{f}
 }
 
+func wrapContextFile(ctx context.Context, f *os.File) fs.File {
+	if ctx == nil {
+		return f
+	}
+	if deadline, ok := ctx.Deadline(); ok {
+		f.SetWriteDeadline(deadline)
+		f.SetReadDeadline(deadline)
+	}
+	return &contextFile{f, ctx}
+}
+
 func walkFile(ff fsExtension, name string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(ff, name, fn)
 }
 
 var (
 	_ fileExtension    = &stdFile{}
+	_ fileExtension    = &contextFile{}
 	_ fsExtension      = (*defaultFS)(nil)
 	_ flag.Value       = (*File)(nil)
 	_ flag.Value       = (*FileSet)(nil)

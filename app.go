@@ -87,6 +87,11 @@ type App struct {
 	Options Option
 
 	// FS specifies the file system that is used by default for Files.
+	// If the FS implements func OpenContext(context.Context, string)(fs.File, error), note that
+	// this will be called instead of Open in places where the Context is available.
+	// For os.File this means that if the context has a Deadline, SetReadDeadline
+	// and/or SetWriteDeadline will be set.  Clients can implement similar functions in their
+	// own fs.File implementations provided from an FS implementation.
 	FS fs.FS
 
 	// HelpText describes the help text displayed for the app
@@ -257,13 +262,6 @@ func (a *App) ensureTemplateFuncs() map[string]interface{} {
 	return a.templateFuncs
 }
 
-func (a *App) defaultFS() fs.FS {
-	if a.FS == nil {
-		return newDefaultFS(a.Stdin, a.Stdout)
-	}
-	return a.FS
-}
-
 func (a *appContext) initialize(c *Context) error {
 	var err error
 	if a.app.rootCommandCreator == nil {
@@ -380,6 +378,11 @@ func setupDefaultIO(c *Context) error {
 	c.Stdin = a.Stdin
 	c.Stdout = adaptWriter(a.Stdout)
 	c.Stderr = adaptWriter(a.Stderr)
+	c.FS = a.FS
+
+	// ensure some actual FS is set up if a.FS is nil
+	c.FS = c.actualFS()
+
 	return nil
 }
 
