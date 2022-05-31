@@ -170,7 +170,7 @@ var _ = Describe("Arg", func() {
 					Name: "app",
 					Args: []*cli.Arg{
 						{
-							Name:  "f",
+							Name:  "a",
 							NArg:  count,
 							Value: &items,
 						},

@@ -238,7 +238,8 @@ func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
 		args = append([]string{args[0], "--"}, args[1:]...)
 	}
 
-	err := set.parse(args, c.internalFlags().disallowFlagsAfterArgs(), c.internalFlags().rightToLeft())
+	flags := c.internalFlags().toRaw() | RawSkipProgramName
+	err := set.parse(args, flags)
 	if err != nil {
 		return err
 	}

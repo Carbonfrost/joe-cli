@@ -159,6 +159,11 @@ type exprBinding struct {
 	expr *Expr
 }
 
+type exprArgs struct {
+	positionalOptions []*internalOption
+	names             map[string]*internalOption
+}
+
 // BindExpression is an action that binds expression handling to an argument.  This
 // is set up automatically when a command defines any expression operators.  The exprFunc
 // argument is used to determine which expressions to used.  If nil, the default behavior
@@ -610,56 +615,83 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
+func newExprArgs(o []*internalOption) *exprArgs {
+	names := map[string]*internalOption{}
+	for _, v := range o {
+		names[v.uname] = v
+	}
+	return &exprArgs{
+		positionalOptions: o,
+		names:             names,
+	}
+}
+
+func (b *exprArgs) Lookup(name string) (ArgCounter, bool) {
+	a, ok := b.names[name]
+	if ok {
+		return a.actualArgCounter(), true
+	}
+	return nil, false
+}
+
+func (b *exprArgs) FlagName(name string) (string, bool) {
+	if _, ok := b.names[name]; ok {
+		return name, true
+	}
+	return "", false
+}
+
+func (b *exprArgs) IsOptionalValue(name string) bool {
+	if o, ok := b.names[name]; ok {
+		return o.flags.optional()
+	}
+	return false
+}
+
+func (b *exprArgs) Args() []string {
+	args := make([]string, len(b.positionalOptions))
+	for i, o := range b.positionalOptions {
+		args[i] = o.uname
+	}
+	return args
+}
+
 func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, error) {
 	results := make([]ExprBinding, 0)
-
-	if len(args) == 0 {
-		return results, nil
-	}
-
-Parsing:
 	for len(args) > 0 {
 		arg := args[0]
 		args = args[1:]
 
-		if arg[0] != '-' {
-			return nil, argsMustPrecedeExprs(arg)
-		}
-
-	ParseExprFlag:
 		boundExpr, ok := e.exprs[arg[1:]]
 		if !ok {
 			return nil, unknownExpr(arg)
 		}
 
 		results = append(results, boundExpr)
-		if len(boundExpr.set.positionalOptions) == 0 {
-			continue Parsing
+		ea := newExprArgs(boundExpr.set.positionalOptions)
+		bin, err := RawParse(args, ea, boundExpr.expr.internalFlags().toRaw())
+
+		var pe *ParseError
+		if err != nil {
+			pe = err.(*ParseError)
+			args = pe.Remaining
+
+			switch pe.Code {
+			case UnexpectedArgument:
+				return nil, argsMustPrecedeExprs(args[0])
+			case ExpectedArgument:
+				return nil, pe
+			}
 		}
 
-		bind, err := boundExpr.set.startArgBinding(len(args), false)
+		err = applyBindings(bin, ea.names)
 		if err != nil {
 			return nil, err
 		}
-		for len(args) > 0 {
-			arg = args[0]
-			args = args[1:]
 
-			err := bind.SetArg(arg, true)
-			if err != nil {
-				if isNextExpr(arg, err) {
-					goto ParseExprFlag
-				}
-				if isHardArgCountErr(err) {
-					return nil, wrapExprError(boundExpr.expr.Name, err)
-				}
-			}
-			if !bind.hasCurrent() {
-				break
-			}
-		}
-		if err := bind.Done(); err != nil {
-			return nil, wrapExprError(boundExpr.expr.Name, err)
+		// If the parse completed successfully, there is nothing else to do
+		if pe == nil {
+			break
 		}
 	}
 	return results, nil

@@ -8,8 +8,8 @@ import (
 // ErrorCode provides common error codes in the CLI framework.
 type ErrorCode int
 
-// Error provides the common representation of errors
-type Error struct {
+// ParseError provides the common representation of errors during parsing
+type ParseError struct {
 	// Code is the code to use.
 	Code ErrorCode
 
@@ -21,7 +21,10 @@ type Error struct {
 	Name string
 
 	// Value is the value that caused the error
-	Value interface{}
+	Value string
+
+	// Remaining contains arguments which could not be parsed
+	Remaining []string
 }
 
 // ExitCoder is an error that knows how to convert to its exit code
@@ -79,7 +82,7 @@ func Exit(message ...interface{}) ExitCoder {
 	case 1:
 		switch msg := message[0].(type) {
 		case ErrorCode:
-			return &Error{
+			return &ParseError{
 				Code: msg,
 			}
 		case ExitCoder:
@@ -115,11 +118,11 @@ func exitCore(message string, code int) ExitCoder {
 }
 
 // ExitCode always returns 2
-func (e *Error) ExitCode() int {
+func (e *ParseError) ExitCode() int {
 	return 2
 }
 
-func (e *Error) Error() string {
+func (e *ParseError) Error() string {
 	if e.Err == nil {
 		return e.Code.String()
 	}
@@ -127,7 +130,7 @@ func (e *Error) Error() string {
 }
 
 // Unwrap returns the internal error
-func (e *Error) Unwrap() error {
+func (e *ParseError) Unwrap() error {
 	return e.Err
 }
 
@@ -165,68 +168,69 @@ func (e *exitError) ExitCode() int {
 }
 
 func commandMissing(name string) error {
-	return &Error{
+	return &ParseError{
 		Code: CommandNotFound,
 		Err:  fmt.Errorf("%q is not a command", name),
 		Name: name,
 	}
 }
 
-func unexpectedArgument(value string) *Error {
-	return &Error{
-		Code: UnexpectedArgument,
-		Err:  fmt.Errorf("unexpected argument %q", value),
+func unexpectedArgument(value string, remaining []string) *ParseError {
+	return &ParseError{
+		Code:      UnexpectedArgument,
+		Err:       fmt.Errorf("unexpected argument %q", value),
+		Remaining: remaining,
 	}
 }
 
-func expectedArgument(count int) *Error {
+func expectedArgument(count int) *ParseError {
 	msg := "expected argument"
 	if count > 1 {
 		msg = fmt.Sprintf("expected %d arguments", count)
 	}
-	return &Error{
+	return &ParseError{
 		Code: ExpectedArgument,
 		Err:  errors.New(msg),
 	}
 }
 
-func unknownOption(name interface{}) error {
+func unknownOption(name interface{}, remaining []string) error {
 	nameStr := optionName(name)
-	return &Error{
-		Code: UnknownOption,
-		Name: nameStr,
-		Err:  fmt.Errorf("unknown option: %s", nameStr),
+	return &ParseError{
+		Code:      UnknownOption,
+		Name:      nameStr,
+		Remaining: remaining,
+		Err:       fmt.Errorf("unknown option: %s", nameStr),
 	}
 }
 
 func flagAfterArgError(name interface{}) error {
 	nameStr := optionName(name)
-	return &Error{
+	return &ParseError{
 		Code: FlagUsedAfterArgs,
 		Name: nameStr,
 		Err:  fmt.Errorf("can't use %s after arguments", nameStr),
 	}
 }
 
-func missingArgument(o *internalOption) error {
-	return &Error{
-		Code: MissingArgument,
-		Name: o.Name(),
-		Err:  fmt.Errorf("missing parameter for %s", o.Name()),
+func argTakerError(name string, value string, err error, remaining []string) error {
+	if p, ok := err.(*ParseError); ok {
+		p.Name = name
+		p.Value = value
+		p.Remaining = remaining
+		return p
 	}
-}
-
-func setFlagError(o *internalOption, value string, err error) error {
-	return &Error{
-		Code:  InvalidArgument,
-		Name:  o.Name(),
-		Value: value,
-		Err:   err,
+	return &ParseError{
+		Code:      InvalidArgument,
+		Name:      name,
+		Value:     value,
+		Err:       err,
+		Remaining: remaining,
 	}
 }
 
 func unknownExpr(name string) error {
-	return &Error{
+	return &ParseError{
 		Code: UnknownExpr,
 		Name: name,
 		Err:  fmt.Errorf("unknown expression: %s", name),
@@ -234,18 +238,10 @@ func unknownExpr(name string) error {
 }
 
 func argsMustPrecedeExprs(arg string) error {
-	return &Error{
+	return &ParseError{
 		Code:  ArgsMustPrecedeExprs,
 		Value: arg,
 		Err:   fmt.Errorf("arguments must precede expressions: %q", arg),
-	}
-}
-
-func wrapExprError(name string, err error) error {
-	return &Error{
-		Code: InvalidArgument,
-		Name: name,
-		Err:  err,
 	}
 }
 

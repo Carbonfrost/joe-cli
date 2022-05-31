@@ -158,7 +158,7 @@ var _ = Describe("Value", func() {
 					Value: "world",
 				}),
 			),
-			XEntry(
+			Entry(
 				"name-value last occurrence wins",
 				&cli.Flag{
 					Name:  "o",

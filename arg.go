@@ -210,6 +210,11 @@ func ArgCount(v interface{}) ArgCounter {
 	}
 }
 
+// NoArgs provides an argument counter that takes no args.
+func NoArgs() ArgCounter {
+	return &discreteCounter{0, 0}
+}
+
 // OptionalArg provides an argument counter which matches zero or one
 // argument using the specified function.
 func OptionalArg(fn func(string) bool) ArgCounter {
@@ -455,6 +460,9 @@ func (d *discreteCounter) Done() error {
 }
 
 func (d *optionalCounter) Take(arg string, possibleFlag bool) error {
+	if allowFlag(arg, possibleFlag) {
+		return EndOfArguments
+	}
 	if d.seen {
 		return EndOfArguments
 	}

@@ -409,6 +409,11 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		return nil
 	case *map[string]string:
 		var key, value string
+		m := *p
+		if m == nil {
+			m = map[string]string{}
+			*p = m
+		}
 		for _, kvp := range values() {
 			k := SplitList(kvp, "=", 2)
 			switch len(k) {
@@ -420,7 +425,6 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 				// -m key=value,s,t  --> interpreted as key=value,s,t rather than s and t keys
 				value = value + "," + k[0]
 			}
-			m := *p
 			m[key] = value
 		}
 
@@ -606,8 +610,6 @@ func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
 }
 
 func (g *generic) Set(value string, opt *internalOption) error {
-	g.applyValueConventions(opt.flags, opt.Occurrences())
-
 	if trySetOptional(g.p, func() (interface{}, bool) {
 		return opt.optionalValue, (value == "" && opt.flags.optional())
 	}) {
@@ -625,6 +627,8 @@ func (g *generic) applyValueConventions(flags internalFlags, occurs int) {
 			switch p := g.p.(type) {
 			case *string:
 				*p = ""
+			case valueResetOrMerge:
+				p.Reset()
 			}
 		}
 		return

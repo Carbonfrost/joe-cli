@@ -6,25 +6,32 @@ import (
 	"strings"
 )
 
+// BindingMap contains the occurrences of the values passed to each flag and arg.
+type BindingMap map[string][][]string
+
 type set struct {
 	*lookupSupport
 	shortOptions      map[rune]*internalOption
 	longOptions       map[string]*internalOption
 	positionalOptions []*internalOption
-	values            genericValues
-	bindings          bindingsMap
+	names             map[string]*internalOption
+	bindings          BindingMap
+}
+
+type bindingImpl struct {
+	shortOptions      map[string]*internalOption
+	longOptions       map[string]*internalOption
+	positionalOptions []*internalOption
+	names             map[string]*internalOption
 }
 
 type argBinding struct {
-	items  []*internalOption
+	names  []string
 	takers []ArgCounter
 	index  int
 }
 
 type argList []string
-type bindingsMap map[string][][]string
-
-type genericValues map[string]*generic
 
 type internalOption struct {
 	short         []rune
@@ -39,6 +46,24 @@ type internalOption struct {
 
 type argCountError int
 type parserState int
+
+// RawParseFlag enumerates rules for RawParse
+type RawParseFlag int
+
+// Binding provides the representation of how a flag set is bound to values.  It defines the
+// names and aliases of flags, order of args, and how values passed to an arg or flag are counted.
+type Binding interface {
+	Lookup(name string) (ArgCounter, bool)
+	FlagName(name string) (string, bool)
+	Args() []string
+	IsOptionalValue(name string) bool
+}
+
+const (
+	RawRTL = RawParseFlag(1 << iota)
+	RawDisallowFlagsAfterArgs
+	RawSkipProgramName
+)
 
 const (
 	argCannotUseFlag = argCountError(iota) // arg looks like a flag and cannot be used
@@ -57,44 +82,82 @@ const (
 )
 
 func newSet() *set {
-	values := genericValues{}
 	return &set{
-		values:            values,
+		names:             map[string]*internalOption{},
 		shortOptions:      map[rune]*internalOption{},
 		longOptions:       map[string]*internalOption{},
-		bindings:          bindingsMap{},
+		bindings:          BindingMap{},
 		positionalOptions: []*internalOption{},
-		lookupSupport: &lookupSupport{
-			values,
-		},
 	}
 }
 
-func newArgBinding(args []*internalOption) *argBinding {
-	items := make([]*internalOption, len(args))
+func newArgBinding(bind Binding) *argBinding {
+	args := bind.Args()
 	takers := make([]ArgCounter, len(args))
-
-	for i, x := range args {
-		items[i] = x
-		takers[i] = x.actualArgCounter()
+	names := make([]string, len(args))
+	for i, a := range args {
+		names[i] = a
+		if c, ok := bind.Lookup(a); ok {
+			takers[i] = c
+		} else {
+			takers[i] = ArgCount(TakeUntilNextFlag)
+		}
 	}
+
 	return &argBinding{
-		items, takers, 0,
+		names:  names,
+		takers: takers,
+		index:  0,
 	}
 }
 
-func (s *set) startArgBinding(count int, rtl bool) (res *argBinding, err error) {
-	res = newArgBinding(s.positionalOptions)
+func newArgBindingSingle(name string, taker ArgCounter) *argBinding {
+	return &argBinding{
+		names:  []string{name},
+		takers: []ArgCounter{taker},
+		index:  0,
+	}
+}
+
+func (f RawParseFlag) rightToLeft() bool {
+	return f&RawRTL == RawRTL
+}
+
+func (f RawParseFlag) disallowFlagsAfterArgs() bool {
+	return f&RawDisallowFlagsAfterArgs == RawDisallowFlagsAfterArgs
+}
+
+func (f RawParseFlag) skipProgramName() bool {
+	return f&RawSkipProgramName == RawSkipProgramName
+}
+
+// RawParse does low-level parsing that will parse from the given input arguments.   (This is for
+// advanced use.) The bindings parameter determines how to resolve flags and args.  The return values
+// are a map of data corresponding to the raw occurrences using the same names.  An error,
+// if it occurs is ParseError, which can provide more information about why the
+// parse did not complete.
+func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings BindingMap, err error) {
+	args := argList(arguments)
+	bindings = BindingMap{}
+	positionalOpts := newArgBinding(b)
+
+	if args.empty() {
+		err = positionalOpts.Done()
+		return
+	}
+
+	pos := positionalOpts.takers
+	disallowFlagsAfterArgs := flags.disallowFlagsAfterArgs()
 
 	// When in RTL mode, identify the first argument to actually fill by
 	// counting the number of arguments required by arguments right-to-left.
-	if rtl {
-		pos := s.positionalOptions
+	count := len(arguments)
+	if flags.rightToLeft() {
 		skip := len(pos)
 
 		for i := len(pos) - 1; i >= 0 && i < len(pos); i-- {
 			current := pos[i]
-			switch counter := current.actualArgCounter().(type) {
+			switch counter := current.(type) {
 			case *varArgsCounter:
 				count--
 			case *discreteCounter:
@@ -111,34 +174,23 @@ func (s *set) startArgBinding(count int, rtl bool) (res *argBinding, err error) 
 		}
 
 		for i := 0; i < skip; i++ {
-			if err = res.Done(); err != nil {
+			if err = positionalOpts.Done(); err != nil {
 				return
 			}
-			res.next()
+			positionalOpts.next()
 		}
 	}
-	return
-}
-
-func (s *set) parse(args argList, disallowFlagsAfterArgs bool, rtl bool) error {
-	if args.empty() {
-		return nil
-	}
-
-	bind, err := s.startArgBinding(args.len(), rtl)
-	if err != nil {
-		return err
-	}
-	s.bindings = map[string][][]string{}
 
 	var (
 		state        = flagsOrArgs
 		anyArgs      bool
-		appendOutput = s.bindings.appendOutput
+		appendOutput = bindings.appendOutput
 	)
 
 	// Skip program name
-	args.pop()
+	if flags.skipProgramName() {
+		args.pop()
+	}
 
 Parsing:
 	for !args.empty() {
@@ -149,14 +201,14 @@ Parsing:
 			for {
 				if arg == "--" {
 					state = argsOnly
-					if err := bind.Done(); err != nil {
-						return err
+					if err = positionalOpts.Done(); err != nil {
+						return
 					}
-					bind.next()
+					positionalOpts.next()
 					continue Parsing
 				}
 
-				err := bind.SetArg(arg, state == flagsOrArgs)
+				err = positionalOpts.SetArg(arg, state == flagsOrArgs)
 				if err != nil {
 					// Not accepted as an argument, possibly a flag per usual out of
 					// order
@@ -164,14 +216,16 @@ Parsing:
 						break
 					}
 					if isHardArgCountErr(err) {
-						return err
+						return
 					}
 				}
-				appendOutput(bind.name(), []string{"<" + bind.name() + ">", arg})
+				argName := "<" + positionalOpts.name() + ">"
+				appendOutput(positionalOpts.name(), []string{argName, arg})
 
 				if args.empty() {
-					if err := bind.Done(); err != nil {
-						return err
+					if err = positionalOpts.Done(); err != nil {
+						err = argTakerError(argName, "", err, nil)
+						return
 					}
 					continue Parsing
 				}
@@ -191,103 +245,184 @@ Parsing:
 		}
 
 		// Long option processing
-		if len(s.longOptions) > 0 && arg[1] == '-' {
+		if arg[1] == '-' {
 			e := strings.IndexRune(arg, '=')
 			var value string
 			if e > 0 {
 				value = arg[e+1:]
 				arg = arg[:e]
 			}
-			opt := s.longOptions[arg[2:]]
-			// If we are processing long options then --f is -f
-			// if f is not defined as a long option.
-			// This lets you say --f=false
-			if opt == nil && len(arg[2:]) == 1 {
-				opt = s.shortOptions[rune(arg[2])]
+
+			// Lookup the flag uname given the possible alias name.
+			// If the flag name is only one character, then also check
+			// whether it can be handled as a short flag (--f=false)
+			flag, ok := b.FlagName(arg[2:])
+
+			if !ok {
+				err = unknownOption(arg[2:], append([]string{"--" + arg[2:]}, args...))
+				return
 			}
-			if opt == nil {
-				return unknownOption(arg[2:])
-			}
+
 			if disallowFlagsAfterArgs && anyArgs {
-				return flagAfterArgError(arg[2:])
+				err = flagAfterArgError(arg[2:])
+				return
 			}
-			opt.flags |= internalFlagSpecifiedLong
+
 			// If we require an option and did not have an =
 			// then use the next argument as an option.
-			if !opt.flags.flagOnly() && e < 0 && !opt.flags.optional() {
-				if args.empty() {
-					return missingArgument(opt)
+			opt, _ := b.Lookup(flag)
+			if e < 0 {
+				var outputs []string
+				var oldArgs = append([]string{"--" + arg[2:]}, args...)
+				if outputs, err = args.take(flag, opt); err != nil {
+					err = argTakerError("--"+arg[2:], "", err, oldArgs)
+					return
 				}
-
-				if outputs, err := args.take(opt); err != nil {
-					return setFlagError(opt, value, err)
-				} else {
-					appendOutput(opt.uname, append([]string{"--" + arg[2:]}, outputs...))
-				}
+				appendOutput(flag, append([]string{"--" + arg[2:]}, outputs...))
 
 				continue Parsing
 			}
 
-			opt.count++
-
-			if err := opt.value.Set(value, opt); err != nil {
-				return setFlagError(opt, value, err)
-			}
-			appendOutput(opt.uname, []string{arg, value})
+			appendOutput(flag, []string{arg, value})
 			continue Parsing
 		}
 
 		// Short option processing
 		arg = arg[1:] // strip -
 		if disallowFlagsAfterArgs && anyArgs {
-			return flagAfterArgError(arg)
+			err = flagAfterArgError(arg)
+			return
 		}
 
 		for i, c := range arg {
-			opt := s.shortOptions[c]
-			if opt == nil {
-				// In traditional getopt, if - is not registered
-				// as an option, a lone - is treated as
-				// if there were a -- in front of it.
-				if arg == "-" {
-					// TODO Handle solitary dash
-					continue
-				}
-				return unknownOption(c)
+			short := "-" + string(c)
+			flag, ok := b.FlagName(string(c))
+			if !ok {
+				err = unknownOption(c, append([]string{"-" + arg[i:]}, args...))
+				return
 			}
 
-			opt.flags = opt.flags & (^internalFlagSpecifiedLong)
+			opt, _ := b.Lookup(flag)
+			value := arg[1+i:]
 
-			var value string
-			if !opt.flags.flagOnly() {
-				value = arg[1+i:]
-				if value == "" && !opt.flags.optional() {
-					if args.empty() {
-						return missingArgument(opt)
-					}
-
-					if outputs, err := args.take(opt); err != nil {
-						return setFlagError(opt, value, err)
-					} else {
-						appendOutput(opt.uname, append([]string{"-" + arg}, outputs...))
-					}
+			if value != "" {
+				err = instanceTake(value, false, opt)
+				if err == nil {
+					appendOutput(flag, []string{short, value})
 					continue Parsing
 				}
+
+				if err == EndOfArguments {
+					// Should be flag-only
+					appendOutput(flag, []string{short, ""})
+					continue
+				}
+
+				return
 			}
 
-			if err := opt.value.Set(value, opt); err != nil {
-				return setFlagError(opt, value, err)
+			if value == "" && b.IsOptionalValue(flag) {
+				appendOutput(flag, []string{short, ""})
+				continue
 			}
-			opt.count++
-			appendOutput(opt.uname, []string{"-" + arg, value})
 
-			if !opt.flags.flagOnly() {
-				continue Parsing
+			var outputs []string
+			var oldArgs = append([]string{short}, args...)
+			if outputs, err = args.take(flag, opt); err != nil {
+				err = argTakerError(flag, value, err, oldArgs)
+				return
 			}
+
+			appendOutput(flag, append([]string{short}, outputs...))
 		}
 	}
 
-	return bind.Done()
+	err = positionalOpts.Done()
+	return
+}
+
+func (s *set) parse(args argList, flags RawParseFlag) error {
+	err := s.parseBindings(args, flags)
+	if err != nil {
+		return err
+	}
+	return applyBindings(s.bindings, s.names)
+}
+
+func applyBindings(bindings BindingMap, names map[string]*internalOption) error {
+	for k, v := range bindings {
+		opt := names[k]
+
+		for occurrence, values := range v {
+			opt.startOccurrence(occurrence + 1)
+
+			for _, value := range values[1:] {
+				err := opt.Set(value)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (s *set) parseBindings(args argList, flags RawParseFlag) error {
+	bindings, err := RawParse(args, &bindingImpl{
+		shortOptions:      setShortOptions(s.shortOptions),
+		longOptions:       s.longOptions,
+		positionalOptions: s.positionalOptions,
+		names:             s.names,
+	}, flags)
+	s.bindings = bindings
+	return err
+}
+
+func setShortOptions(m map[rune]*internalOption) map[string]*internalOption {
+	res := map[string]*internalOption{}
+	for k, v := range m {
+		res[string(k)] = v
+	}
+	return res
+}
+
+func (b *bindingImpl) Lookup(name string) (ArgCounter, bool) {
+	a, ok := b.names[name]
+	if ok {
+		return a.actualArgCounter(), true
+	}
+	return nil, false
+}
+
+func (b *bindingImpl) FlagName(name string) (string, bool) {
+	if _, ok := b.names[name]; ok {
+		return name, true
+	}
+	if len(name) == 1 {
+		if r, ok := b.shortOptions[name]; ok {
+			return r.uname, ok
+		}
+		return "", false
+	}
+	if r, ok := b.longOptions[name]; ok {
+		return r.uname, ok
+	}
+	return "", false
+}
+
+func (b *bindingImpl) IsOptionalValue(name string) bool {
+	if o, ok := b.names[name]; ok {
+		return o.flags.optional()
+	}
+	return false
+}
+
+func (b *bindingImpl) Args() []string {
+	args := make([]string, len(b.positionalOptions))
+	for i, o := range b.positionalOptions {
+		args[i] = o.uname
+	}
+	return args
 }
 
 func (s *set) defineFlag(res *internalOption) {
@@ -303,7 +438,7 @@ func (s *set) defineFlag(res *internalOption) {
 		s.longOptions[long] = res
 	}
 
-	s.values[res.uname] = res.value
+	s.names[res.uname] = res
 }
 
 func (s *set) defineArg(res *internalOption) {
@@ -311,7 +446,7 @@ func (s *set) defineArg(res *internalOption) {
 		res.uname = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
 	}
 
-	s.values[res.uname] = res.value
+	s.names[res.uname] = res
 	s.positionalOptions = append(s.positionalOptions, res)
 }
 
@@ -322,14 +457,14 @@ func (s *set) withArgs(args []*Arg) *set {
 	return s
 }
 
-func (s genericValues) lookupValue(name string) (interface{}, bool) {
-	if g, ok := s[name]; ok {
-		return g.p, true
+func (s *set) lookupValue(name string) (interface{}, bool) {
+	if g, ok := s.names[name]; ok {
+		return g.value.p, true
 	}
 	return nil, false
 }
 
-func (m bindingsMap) appendOutput(name string, args []string) {
+func (m BindingMap) appendOutput(name string, args []string) {
 	if e, ok := m[name]; ok {
 		m[name] = append(e, args)
 	} else {
@@ -337,7 +472,7 @@ func (m bindingsMap) appendOutput(name string, args []string) {
 	}
 }
 
-func (m bindingsMap) lookup(name string, occurs bool) []string {
+func (m BindingMap) lookup(name string, occurs bool) []string {
 	res := make([]string, 0)
 	var index int
 	if occurs {
@@ -347,6 +482,14 @@ func (m bindingsMap) lookup(name string, occurs bool) []string {
 		res = append(res, v[index:]...)
 	}
 	return res
+}
+
+func (m BindingMap) Raw(name string) []string {
+	return m.lookup(name, false)
+}
+
+func (m BindingMap) RawOcurrences(name string) []string {
+	return m.lookup(name, true)
 }
 
 func (a *argList) next() bool {
@@ -376,8 +519,8 @@ func (a argList) current() string {
 	return a[0]
 }
 
-func (a *argList) take(opt *internalOption) (output []string, err error) {
-	bind := newArgBinding([]*internalOption{opt})
+func (a *argList) take(name string, opt ArgCounter) (output []string, err error) {
+	bind := newArgBindingSingle(name, opt)
 	output = make([]string, 0)
 	const possibleFlag = true
 	for !a.empty() {
@@ -391,7 +534,7 @@ func (a *argList) take(opt *internalOption) (output []string, err error) {
 			}
 
 			// HACK This should not unwrap the Error type, which is a bit fragile
-			if e, ok := err.(*Error); ok {
+			if e, ok := err.(*ParseError); ok {
 				if e.Code == UnexpectedArgument {
 					break
 				}
@@ -406,32 +549,32 @@ func (a *argList) take(opt *internalOption) (output []string, err error) {
 		arg = a.pop()
 	}
 
+	if len(output) == 0 {
+		output = []string{""}
+	}
+
 	err = bind.Done()
 	return
 }
 
 func (a *argBinding) next() bool {
 	a.index++
-	return a.index < len(a.items)
+	return a.index < len(a.takers)
 }
 
 func (a *argBinding) name() string {
-	return a.items[a.index].uname
+	return a.names[a.index]
 }
 
-func (a *argBinding) hasCurrent() bool {
-	return a.index < len(a.items)
-}
-
-func (a *argBinding) current() (*internalOption, ArgCounter) {
-	if a.index < len(a.items) {
-		return a.items[a.index], a.takers[a.index]
+func (a *argBinding) current() ArgCounter {
+	if a.index < len(a.takers) {
+		return a.takers[a.index]
 	}
-	return nil, nil
+	return nil
 }
 
 func (a *argBinding) Done() error {
-	if _, c := a.current(); c != nil {
+	if c := a.current(); c != nil {
 		return c.Done()
 	}
 	return nil
@@ -439,15 +582,14 @@ func (a *argBinding) Done() error {
 
 func (a *argBinding) SetArg(arg string, possibleFlag bool) error {
 	for {
-		c, t := a.current()
-		if c == nil {
-			return unexpectedArgument(arg)
+		t := a.current()
+		if t == nil {
+			return unexpectedArgument(arg, []string{arg})
 		}
 
 		err := t.Take(arg, possibleFlag)
 		if err == nil {
-			c.Occurrence()
-			return c.Set(arg)
+			return nil
 		}
 
 		if isHardArgCountErr(err) {
@@ -456,6 +598,10 @@ func (a *argBinding) SetArg(arg string, possibleFlag bool) error {
 
 		a.next()
 	}
+}
+
+func instanceTake(arg string, possibleFlag bool, t ArgCounter) error {
+	return t.Take(arg, possibleFlag)
 }
 
 func (e argCountError) Error() string {
@@ -480,17 +626,11 @@ func isHardArgCountErr(e error) bool {
 	return true
 }
 
-func isNextExpr(arg string, err error) bool {
-	// HACK This should not unwrap the Error type, which is a bit fragile
-	if e, ok := err.(*Error); ok {
-		if e.Code == UnexpectedArgument {
-			return arg[0] == '-'
-		}
-	}
-	return false
-}
-
 func allowFlag(arg string, possibleFlag bool) bool {
+	if arg == "-" {
+		// Solitary dash is treated as if an argument
+		return false
+	}
 	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
 }
 
@@ -502,12 +642,13 @@ func (o *internalOption) Set(arg string) error {
 	return o.value.Set(arg, o)
 }
 
-func (o *internalOption) Occurrence() {
-	o.count++
+func (o *internalOption) startOccurrence(n int) {
+	o.count = n
+	o.value.applyValueConventions(o.flags, n)
 }
 
 func (o *internalOption) Name() string {
-	if !o.flags.specifiedLong() && len(o.short) > 0 {
+	if len(o.short) > 0 {
 		return "-" + string(o.short[0])
 	}
 	return "--" + o.long[0]
@@ -522,6 +663,9 @@ func (o *internalOption) Occurrences() int {
 }
 
 func (o *internalOption) actualArgCounter() ArgCounter {
+	if o.flags.flagOnly() {
+		return NoArgs()
+	}
 	if o.narg == nil {
 		if o.value == nil || o.value.p == nil {
 			return ArgCount(0)
@@ -536,4 +680,4 @@ func (o *internalOption) actualArgCounter() ArgCounter {
 	return ArgCount(o.narg)
 }
 
-var _ Lookup = (*set)(nil)
+var _ lookupCore = (*set)(nil)

@@ -156,10 +156,9 @@ const (
 	internalFlagDisableSplitting
 	internalFlagMerge
 	internalFlagRightToLeft
-	internalFlagSpecifiedLong // True if they specified the long name during parsing
-	internalFlagFlagOnly      // true for Flag without an argument
-	internalFlagOptional      // true if value is optional
-	internalFlagPersistent    // true when the option is a clone of a peristent parent flag
+	internalFlagFlagOnly   // true for Flag without an argument
+	internalFlagOptional   // true if value is optional
+	internalFlagPersistent // true when the option is a clone of a peristent parent flag
 	internalFlagDestinationImplicitlyCreated
 )
 
@@ -311,10 +310,6 @@ func (f internalFlags) rightToLeft() bool {
 	return f&internalFlagRightToLeft == internalFlagRightToLeft
 }
 
-func (f internalFlags) specifiedLong() bool {
-	return f&internalFlagSpecifiedLong == internalFlagSpecifiedLong
-}
-
 func (f internalFlags) flagOnly() bool {
 	return f&internalFlagFlagOnly == internalFlagFlagOnly
 }
@@ -329,6 +324,17 @@ func (f internalFlags) persistent() bool {
 
 func (f internalFlags) destinationImplicitlyCreated() bool {
 	return f&internalFlagDestinationImplicitlyCreated == internalFlagDestinationImplicitlyCreated
+}
+
+func (f internalFlags) toRaw() RawParseFlag {
+	var flags RawParseFlag
+	if f.disallowFlagsAfterArgs() {
+		flags |= RawDisallowFlagsAfterArgs
+	}
+	if f.rightToLeft() {
+		flags |= RawRTL
+	}
+	return flags
 }
 
 func splitOptionsHO(opts Option, fn func(Option)) {
