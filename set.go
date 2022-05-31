@@ -167,7 +167,7 @@ Parsing:
 						return err
 					}
 				}
-				appendOutput(bind.name(), []string{arg})
+				appendOutput(bind.name(), []string{"<" + bind.name() + ">", arg})
 
 				if args.empty() {
 					if err := bind.Done(); err != nil {

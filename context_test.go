@@ -254,7 +254,8 @@ var _ = Describe("Context", func() {
 			_ = app.RunContext(context.TODO(), args)
 
 			capturedContext := act.ExecuteArgsForCall(0)
-			Expect(capturedContext.Raw("f")).To(Equal([]string{"s", "r", "o"}))
+			Expect(capturedContext.Raw("f")).To(Equal([]string{"<f>", "s", "<f>", "r", "<f>", "o"}))
+			Expect(capturedContext.RawOccurrences("f")).To(Equal([]string{"s", "r", "o"}))
 		})
 	})
 
