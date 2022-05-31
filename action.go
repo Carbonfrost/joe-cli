@@ -560,10 +560,7 @@ func Category(name string) Action {
 // the syntax of patterns and how they are matched.
 func HookBefore(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
-		if h, ok := c.hookable(); ok {
-			return h.hookBefore(pattern, handler)
-		}
-		return cantHookError
+		return c.HookBefore(pattern, handler)
 	})
 }
 
@@ -571,10 +568,7 @@ func HookBefore(pattern string, handler Action) Action {
 // the syntax of patterns and how they are matched.
 func HookAfter(pattern string, handler Action) Action {
 	return ActionFunc(func(c *Context) error {
-		if h, ok := c.hookable(); ok {
-			return h.hookAfter(pattern, handler)
-		}
-		return cantHookError
+		return c.HookAfter(pattern, handler)
 	})
 }
 
@@ -739,15 +733,34 @@ func optionalSetup(a func(*Context)) ActionFunc {
 
 // ImplicitValue sets the implicit value which is specified for the arg or flag
 // if it was not specified for the command.  Any errors are suppressed
-func ImplicitValue(fn func() (string, bool)) Action {
+func ImplicitValue(fn func(*Context) (string, bool)) Action {
 	return Before(ActionFunc(func(c *Context) error {
 		if c.Occurrences("") == 0 {
-			if v, ok := fn(); ok {
+			if v, ok := fn(c); ok {
 				c.SetValue(v)
 			}
 		}
 		return nil
 	}))
+}
+
+// Implies is used to set the implied value of another flag.   For example,
+// an app might have two flags, --mode and --encryption-key, and you might allow --encryption-key
+// to imply --mode=encrypt which saves power users from having to type both.  Because it is an
+// implied value, if the other flag is explicitly specified, the explicit value wins regardless of
+// its position in the command line.  If the name is the empty string, returns a no-op.
+func Implies(name, value string) Action {
+	if name == "" {
+		return nil
+	}
+	if name[0] != '-' {
+		name = "--" + name
+	}
+	return ActionFunc(func(c *Context) error {
+		return c.Parent().HookBefore(name, ImplicitValue(func(_ *Context) (string, bool) {
+			return value, true
+		}))
+	})
 }
 
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize

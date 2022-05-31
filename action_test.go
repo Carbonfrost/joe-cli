@@ -1706,3 +1706,42 @@ var _ = Describe("EachOccurrence", func() {
 		),
 	)
 })
+
+var _ = Describe("Implies", func() {
+
+	DescribeTable("examples", func(arguments string, expected map[string]string) {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "encryption-key",
+					Uses: cli.Implies("mode", "encrypt"),
+				},
+				{
+					Name: "mode",
+				},
+			},
+			Action: act,
+		}
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		c := act.ExecuteArgsForCall(0)
+		actual := map[string]string{
+			"encryption-key": c.String("encryption-key"),
+			"mode":           c.String("mode"),
+		}
+
+		Expect(actual).To(Equal(expected))
+	},
+		Entry("implicit value", "app --encryption-key=AAA", map[string]string{
+			"mode":           "encrypt",
+			"encryption-key": "AAA",
+		}),
+		Entry("explicit value wins no matter order", "app --mode=decrypt --encryption-key=AAA", map[string]string{
+			"mode":           "decrypt",
+			"encryption-key": "AAA",
+		}),
+	)
+})

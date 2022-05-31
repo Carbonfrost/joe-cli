@@ -484,6 +484,24 @@ func (c *Context) target() target {
 	return c.internal.target()
 }
 
+// HookBefore registers a hook that runs for the matching elements.  See ContextPath for
+// the syntax of patterns and how they are matched.
+func (c *Context) HookBefore(pattern string, handler Action) error {
+	if h, ok := c.hookable(); ok {
+		return h.hookBefore(pattern, handler)
+	}
+	return cantHookError
+}
+
+// HookAfter registers a hook that runs for the matching elements.  See ContextPath for
+// the syntax of patterns and how they are matched.
+func (c *Context) HookAfter(pattern string, handler Action) error {
+	if h, ok := c.hookable(); ok {
+		return h.hookAfter(pattern, handler)
+	}
+	return cantHookError
+}
+
 func (c *Context) hookable() (hookable, bool) {
 	h, ok := c.internal.target().(hookable)
 	return h, ok
