@@ -623,6 +623,8 @@ func HandleSignal(s os.Signal) Action {
 // This example implies that --secure without a value is set to the value TLS1.2 (presumably other versions
 // are allowed).  This example is a fair use case of this feature: making a flag opt-in to some sort of default
 // configuration and allowing an expert configuration by using a value.
+// For short options, no space can be between the flag and value (e.g. you need -sString to
+// specify a String to the -s option).
 // In general, making the value of a non-Boolean flag optional is not recommended when
 // the command also allows arguments because it can make the syntax ambiguous.
 func OptionalValue(v interface{}) Action {

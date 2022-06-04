@@ -307,14 +307,85 @@ var _ = Describe("Flag", func() {
 	})
 
 	Context("when the value is Optional", func() {
-		DescribeTable("examples", func(flag interface{}, expected interface{}) {
+		DescribeTable("examples", func(flag interface{}, args string, expected interface{}) {
+			var actual interface{}
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "show",
+						Aliases: []string{"s"},
+						Value:   flag,
+						Options: cli.Optional,
+					},
+				},
+				Action: func(c *cli.Context) {
+					actual = c.Value("show")
+				},
+			}
+
+			arguments, _ := cli.Split(args)
+			err := app.RunContext(context.TODO(), arguments)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(expected))
+		},
+			Entry("bool", cli.Bool(), "app -s", true),
+			Entry("float32", cli.Float32(), "app -s", float32(1.0)),
+			Entry("float64", cli.Float64(), "app -s", float64(1.0)),
+			Entry("int", cli.Int(), "app -s", 1),
+			Entry("uint64", cli.UInt64(), "app -s", uint64(1)),
+			Entry("IP", cli.IP(), "app -s", net.ParseIP("127.0.0.1")),
+			Entry("Duration", cli.Duration(), "app -s", time.Second),
+
+			Entry("long bool", cli.Bool(), "app --show", true),
+			Entry("long float32", cli.Float32(), "app --show", float32(1.0)),
+			Entry("long float64", cli.Float64(), "app --show", float64(1.0)),
+			Entry("long int", cli.Int(), "app --show", 1),
+			Entry("long uint64", cli.UInt64(), "app --show", uint64(1)),
+			Entry("long IP", cli.IP(), "app --show", net.ParseIP("127.0.0.1")),
+			Entry("long Duration", cli.Duration(), "app --show", time.Second),
+		)
+
+		It("following is treated as argument", func() {
+			var actual, args interface{}
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "s",
+						Value:   cli.Float64(),
+						Options: cli.Optional,
+					},
+				},
+				Args: []*cli.Arg{
+					{
+						Name: "a",
+					},
+				},
+				Action: func(c *cli.Context) {
+					actual = c.Value("s")
+					args = c.Value("a")
+				},
+			}
+
+			arguments, _ := cli.Split("app -s following")
+			err := app.RunContext(context.TODO(), arguments)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(float64(1.0)))
+			Expect(args).To(Equal("following"))
+		})
+
+		It("run-in is treated as argument on short option", func() {
 			var actual interface{}
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
 						Name:    "s",
-						Value:   flag,
+						Value:   cli.Float64(),
 						Options: cli.Optional,
+					},
+				},
+				Args: []*cli.Arg{
+					{
+						Name: "a",
 					},
 				},
 				Action: func(c *cli.Context) {
@@ -322,19 +393,37 @@ var _ = Describe("Flag", func() {
 				},
 			}
 
-			arguments, _ := cli.Split("app -s")
+			arguments, _ := cli.Split("app -s2.0")
 			err := app.RunContext(context.TODO(), arguments)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actual).To(Equal(expected))
-		},
-			Entry("bool", cli.Bool(), true),
-			Entry("float32", cli.Float32(), float32(1.0)),
-			Entry("float64", cli.Float64(), float64(1.0)),
-			Entry("int", cli.Int(), 1),
-			Entry("uint64", cli.UInt64(), uint64(1)),
-			Entry("IP", cli.IP(), net.ParseIP("127.0.0.1")),
-			Entry("Duration", cli.Duration(), time.Second),
-		)
+			Expect(actual).To(Equal(float64(2.0)))
+		})
+
+		It("equals is treated as argument on long option", func() {
+			var actual interface{}
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "show",
+						Value:   cli.Float64(),
+						Options: cli.Optional,
+					},
+				},
+				Args: []*cli.Arg{
+					{
+						Name: "a",
+					},
+				},
+				Action: func(c *cli.Context) {
+					actual = c.Value("show")
+				},
+			}
+
+			arguments, _ := cli.Split("app --show=2.0")
+			err := app.RunContext(context.TODO(), arguments)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(float64(2.0)))
+		})
 	})
 
 	Context("when the value is OptionalValue", func() {

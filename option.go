@@ -62,7 +62,6 @@ const (
 	//
 	//   integers (int, int32, int64, etc.)     1
 	//   floats (float32, float64, etc.)        1.0
-	//   time.Time                              time.Now()
 	//   time.Duration                          1 second
 	//   bool                                   true
 	//   string                                 *
@@ -71,6 +70,8 @@ const (
 	//
 	//   * For string, []string, and any other Value implementation, using this option panics.
 	//
+	// For short options, no space can be between the flag and value (e.g. you need -sString to
+	// specify a String to the -s option).
 	// This option is available to but not useful for bool because this is the default behavior
 	// for bool.  If you need more customization, then you can use OptionalValue middleware.
 	//
