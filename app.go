@@ -43,6 +43,10 @@ type App struct {
 	// provides no special behavior.
 	Copyright string
 
+	// Comment provides a short comment.  This is
+	// usually a few words to summarize the purpose of the app.
+	Comment string
+
 	// In corresponds to standard in
 	Stdin io.Reader
 
@@ -205,6 +209,7 @@ func (a *App) _createRootCore(force bool) *Command {
 			Subcommands:         a.Commands,
 			Action:              a.Action,
 			Description:         a.Description,
+			Comment:             a.Comment,
 			Data:                data,
 			After:               a.After,
 			Uses:                a.Uses,

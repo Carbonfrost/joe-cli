@@ -51,6 +51,10 @@ type Command struct {
 	// displayed on the help screen
 	Description string
 
+	// Comment provides a short descriptive comment.  This is
+	// usually a few words to summarize the purpose of the command.
+	Comment string
+
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
 	Data map[string]interface{}
