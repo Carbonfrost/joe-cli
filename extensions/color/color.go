@@ -138,7 +138,7 @@ func standaloneNoFlag(c *cli.Context) error {
 		Name:     "no-color",
 		Value:    new(bool),
 		Action:   SetMode(Never),
-		HelpText: helpText,
+		HelpText: "Disable terminal color and styles",
 	})
 }
 
