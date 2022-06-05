@@ -68,6 +68,8 @@ type Lookup interface {
 	BigInt(name interface{}) *big.Int
 	// BigFloat obtains the value and converts it to a BigFloat
 	BigFloat(name interface{}) *big.Float
+	// Bytes obtains the value and converts it to a slice of bytes
+	Bytes(name interface{}) []byte
 }
 
 // LookupValues provides a Lookup backed by a map
@@ -231,6 +233,11 @@ func (c LookupValues) BigFloat(name interface{}) *big.Float {
 	return lookupBigFloat(c, name)
 }
 
+// Bytes obtains the bytes for the specified name
+func (c LookupValues) Bytes(name interface{}) []byte {
+	return lookupBytes(c, name)
+}
+
 func (c *lookupSupport) Bool(name interface{}) bool {
 	return lookupBool(c, name)
 }
@@ -333,6 +340,10 @@ func (c *lookupSupport) BigInt(name interface{}) *big.Int {
 
 func (c *lookupSupport) BigFloat(name interface{}) *big.Float {
 	return lookupBigFloat(c, name)
+}
+
+func (c *lookupSupport) Bytes(name interface{}) []byte {
+	return lookupBytes(c, name)
 }
 
 func (c *lookupSupport) Value(name interface{}) interface{} {
@@ -592,6 +603,14 @@ func lookupBigFloat(c Lookup, name interface{}) (res *big.Float) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*big.Float)
+	}
+	return
+}
+
+func lookupBytes(c Lookup, name interface{}) (res []byte) {
+	val := c.Value(name)
+	if val != nil {
+		res = val.([]byte)
 	}
 	return
 }

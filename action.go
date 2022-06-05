@@ -774,6 +774,21 @@ func Customize(pattern string, a ...Action) Action {
 	})
 }
 
+// Transform defines how to interpret raw values passed to a flag or arg.  The action
+// is added to the Uses pipeline.  The typical use of transforms is to interpret the
+// value passed to an argument as instead a reference to a file which is loaded.
+// The function fn can return string, []byte, or io.Reader.  If the Value implements
+// method SetData(io.Reader) error, then this is called instead when setting the Value.
+// If it doesn't, then bytes or readers are read in and treated as a string and the
+// usual Set method is used.  See also: FileReference and AllowFileReference, which provide
+// common transforms.
+func Transform(fn func([]string) (interface{}, error)) Action {
+	return ActionFunc(func(c *Context) error {
+		c.option().setTransform(fn)
+		return nil
+	})
+}
+
 func (p Prototype) Execute(c *Context) error {
 	return c.Do(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), p.Setup)
 }

@@ -163,6 +163,64 @@ var _ = Describe("File", func() {
 	})
 })
 
+var _ = Describe("FileReference", func() {
+
+	var testFileSystem = func() fs.FS {
+		appFS := afero.NewMemMapFs()
+
+		appFS.MkdirAll("d", 0755)
+		afero.WriteFile(appFS, "d/b.bin", []byte("facade"), 0644)
+
+		return afero.NewIOFS(appFS)
+	}()
+
+	It("gets the contents of a file", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:    "b",
+					Value:   cli.Bytes(),
+					Options: cli.FileReference,
+				},
+			},
+			FS:     testFileSystem,
+			Action: act,
+		}
+		_ = app.RunContext(context.TODO(), []string{"app", "d/b.bin"})
+
+		context := act.ExecuteArgsForCall(0)
+		Expect(context.Bytes("b")).NotTo(BeNil())
+		Expect(context.Bytes("b")).To(Equal([]byte("facade")))
+		Expect(context.Raw("b")).To(Equal([]string{"<b>", "d/b.bin"}))
+	})
+
+	It("gets the contents of a @file when allowed", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:    "b",
+					Value:   cli.String(),
+					Options: cli.AllowFileReference,
+				},
+				{
+					Name:    "c",
+					Value:   cli.String(),
+					Options: cli.AllowFileReference,
+				},
+			},
+			FS:     testFileSystem,
+			Action: act,
+		}
+		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "d/b.bin"})
+
+		context := act.ExecuteArgsForCall(0)
+		Expect(context.String("b")).To(Equal("facade"))
+		Expect(context.String("c")).To(Equal("d/b.bin"))
+	})
+})
+
 var _ = Describe("FileSet", func() {
 
 	It("as an argument can be retrieved", func() {

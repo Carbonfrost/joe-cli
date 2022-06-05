@@ -305,6 +305,51 @@ var _ = Describe("Value", func() {
 					return f
 				}, Equal(float64(150.2))),
 			),
+			Entry(
+				"bytes",
+				&cli.Flag{Name: "o", Value: cli.Bytes()},
+				"app -o beadedfacade",
+				Equal([]byte{0xbe, 0xad, 0xed, 0xfa, 0xca, 0xde}),
+			),
+			Entry(
+				"bytes from AllowFileReference",
+				&cli.Flag{
+					Name: "o",
+					// Note that using AllowFileReference causes the value to be
+					// a literal file (and not hex bytes)
+					Options: cli.AllowFileReference,
+					Value:   cli.Bytes(),
+				},
+				"app -o literal",
+				Equal([]byte("literal")),
+			),
+		)
+
+		DescribeTable("errors",
+			func(f *cli.Flag, arguments string, expected types.GomegaMatcher) {
+				act := new(joeclifakes.FakeAction)
+				app := &cli.App{
+					Name: "app",
+					Flags: []*cli.Flag{
+						f,
+					},
+					Action: act,
+				}
+
+				args, _ := cli.Split(arguments)
+				err := app.RunContext(context.TODO(), args)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(expected)
+			},
+			Entry(
+				"bytes non-hex",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.Bytes(),
+				},
+				"app -o itsbad",
+				MatchError("invalid bytes: encoding/hex: invalid byte: U+0069 'i'"),
+			),
 		)
 
 		DescribeTable("List flag examples", func(arguments string, expected types.GomegaMatcher) {

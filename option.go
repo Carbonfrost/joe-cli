@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding"
 	"fmt"
+	"io"
 	"math/bits"
 	"os"
 	"sort"
@@ -66,9 +67,10 @@ const (
 	//   bool                                   true
 	//   string                                 *
 	//   []string                               *
+	//   []byte                                 *
 	//   other Value                            *
 	//
-	//   * For string, []string, and any other Value implementation, using this option panics.
+	//   * For string, []string, []byte, and any other Value implementation, using this option panics.
 	//
 	// For short options, no space can be between the flag and value (e.g. you need -sString to
 	// specify a String to the -s option).
@@ -140,6 +142,16 @@ const (
 	// Raw("").
 	EachOccurrence
 
+	// FileReference indicates that the flag or argument is a reference to a file which is loaded
+	// and whose contents provide the actual value of the flag.
+	FileReference
+
+	// AllowFileReference allows a flag or argument to use the special syntax @file to mean that
+	// the value is obtained by loading the contents of a file rather than directly.  When the
+	// plain syntax without @ is used, the value is taken as the literal contents of an unnamed
+	// file.
+	AllowFileReference
+
 	maxOption
 
 	// None represents no options
@@ -179,6 +191,8 @@ var (
 		RightToLeft:            setInternalFlag(internalFlagRightToLeft),
 		PreventSetup:           ActionOf((*Context).PreventSetup),
 		EachOccurrence:         ActionFunc(eachOccurrenceOpt),
+		AllowFileReference:     ActionFunc(allowFileReferenceOpt),
+		FileReference:          ActionFunc(fileReferenceOpt),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -197,6 +211,8 @@ var (
 		RightToLeft:            "RIGHT_TO_LEFT",
 		PreventSetup:           "PREVENT_SETUP",
 		EachOccurrence:         "EACH_OCCURRENCE",
+		AllowFileReference:     "ALLOW_FILE_REFERENCE",
+		FileReference:          "FILE_REFERENCE",
 	}
 )
 
@@ -482,6 +498,40 @@ func eachOccurrenceOpt(c1 *Context) error {
 		}
 		return nil
 	}), ActionTiming))
+}
+
+func allowFileReferenceOpt(c *Context) error {
+	f := c.FS
+	return c.Do(Transform(func(raw []string) (interface{}, error) {
+		readers := make([]io.Reader, len(raw)-1)
+		for i, s := range raw[1:] {
+			if strings.HasPrefix(s, "@") {
+				f, err := f.Open(s[1:])
+				if err != nil {
+					return nil, err
+				}
+				readers[i] = f
+			} else {
+				readers[i] = strings.NewReader(s)
+			}
+		}
+		return io.MultiReader(readers...), nil
+	}))
+}
+
+func fileReferenceOpt(c *Context) error {
+	f := c.FS
+	return c.Do(Transform(func(raw []string) (interface{}, error) {
+		readers := make([]io.Reader, len(raw)-1)
+		for i, s := range raw[1:] {
+			f, err := f.Open(s)
+			if err != nil {
+				return nil, err
+			}
+			readers[i] = f
+		}
+		return io.MultiReader(readers...), nil
+	}))
 }
 
 var (

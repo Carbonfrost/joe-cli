@@ -149,6 +149,8 @@ type flagCategory struct {
 	Flags    []*Flag
 }
 
+type transformFunc func(raw []string) (interface{}, error)
+
 type option interface {
 	target
 	Occurrences() int
@@ -172,6 +174,7 @@ type option interface {
 	manualText() string
 	usageText() string
 	category() string
+	setTransform(fn transformFunc)
 }
 
 type wrapLookupContext struct {
@@ -392,6 +395,10 @@ func (f *Flag) contextName() string {
 		return fmt.Sprintf("-%s", f.Name)
 	}
 	return fmt.Sprintf("--%s", f.Name)
+}
+
+func (f *Flag) setTransform(fn transformFunc) {
+	f.option.transform = fn
 }
 
 func (c *wrapOccurrenceContext) rawOccurrences() [][]string {

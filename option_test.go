@@ -34,6 +34,8 @@ var _ = Describe("Option", func() {
 			Entry("DisableSplitting", cli.DisableSplitting, "DISABLE_SPLITTING"),
 			Entry("Merge", cli.Merge, "MERGE"),
 			Entry("RightToLeft", cli.RightToLeft, "RIGHT_TO_LEFT"),
+			Entry("FileReference", cli.FileReference, "FILE_REFERENCE"),
+			Entry("AllowFileReference", cli.AllowFileReference, "ALLOW_FILE_REFERENCE"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 	})

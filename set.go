@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -42,6 +44,7 @@ type internalOption struct {
 	narg          interface{}
 	optionalValue interface{} // set when blank and optional
 	flags         internalFlags
+	transform     transformFunc
 }
 
 type argCountError int
@@ -353,9 +356,23 @@ func applyBindings(bindings BindingMap, names map[string]*internalOption) error 
 	for k, v := range bindings {
 		opt := names[k]
 
+		if opt.transform != nil {
+			for occurrence, values := range v {
+				opt.startOccurrence(occurrence + 1)
+				d, err := opt.transform(values)
+				if err != nil {
+					return err
+				}
+				if err := opt.setViaTransformOutput(d); err != nil {
+					return err
+				}
+			}
+
+			continue
+		}
+
 		for occurrence, values := range v {
 			opt.startOccurrence(occurrence + 1)
-
 			for _, value := range values[1:] {
 				err := opt.Set(value)
 				if err != nil {
@@ -640,6 +657,52 @@ func (o *internalOption) Seen() bool {
 
 func (o *internalOption) Set(arg string) error {
 	return o.value.Set(arg, o)
+}
+
+func (o *internalOption) setViaTransformOutput(v interface{}) error {
+	if s, ok := o.value.p.(valueSetData); ok {
+		switch val := v.(type) {
+		case string:
+			return s.SetData(strings.NewReader(val))
+		case io.Reader:
+			return s.SetData(val)
+		case []byte:
+			return s.SetData(bytes.NewReader(val))
+		}
+	}
+
+	if s, ok := o.value.p.(*[]byte); ok {
+		switch val := v.(type) {
+		case io.Reader:
+			buf := bytes.NewBuffer(*s)
+			if _, err := io.Copy(buf, val); err != nil {
+				return err
+			}
+			*s = buf.Bytes()
+			return nil
+
+		case []byte:
+			buf := bytes.NewBuffer(*s)
+			buf.Write(val)
+			*s = buf.Bytes()
+			return nil
+		}
+	}
+
+	switch val := v.(type) {
+	case string:
+		return o.Set(val)
+	case io.Reader:
+		bb, err := io.ReadAll(val)
+		if err != nil {
+			return err
+		}
+		return o.Set(string(bb))
+	case []byte:
+		return o.Set(string(val))
+	}
+
+	panic(fmt.Sprintf("unexpected transform output %T", v))
 }
 
 func (o *internalOption) startOccurrence(n int) {

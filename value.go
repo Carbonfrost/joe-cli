@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"net/url"
@@ -32,6 +34,8 @@ import (
 // * Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
 //
 // * Synopsis() string         obtains the synopsis text
+//
+// * SetData(io.Reader)error   read from a reader to set the value
 //
 type Value = flag.Value
 
@@ -72,6 +76,10 @@ type valueDereference interface {
 
 type valueProvidesSynopsis interface {
 	Synopsis() string
+}
+
+type valueSetData interface {
+	SetData(io.Reader) error
 }
 
 type generic struct {
@@ -196,6 +204,11 @@ func BigInt() **big.Int {
 // BigFloat creates a big float value.  This is for convenience to obtain the right pointer.
 func BigFloat() **big.Float {
 	return new(*big.Float)
+}
+
+// Bytes creates a slice of bytes.  This is for convenience to obtain the right pointer.
+func Bytes() *[]byte {
+	return new([]byte)
 }
 
 // NameValues creates a list of name-value pairs, optionally specifying the values to
@@ -406,6 +419,13 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		return nil
 	case *[]string:
 		*p = append(*p, values()...)
+		return nil
+	case *[]byte:
+		bb, err := hex.DecodeString(value)
+		if err != nil {
+			return fmt.Errorf("invalid bytes: %s", err)
+		}
+		*p = append(*p, bb...)
 		return nil
 	case *map[string]string:
 		var key, value string
@@ -774,6 +794,8 @@ func wrapGeneric(v interface{}) *generic {
 		return &generic{v}
 	case **big.Float:
 		return &generic{v}
+	case *[]byte:
+		return &generic{v}
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))
 	}
@@ -829,6 +851,8 @@ func (g *generic) cloneZero() *generic {
 			return BigInt()
 		case **big.Float:
 			return BigFloat()
+		case *[]byte:
+			return Bytes()
 		case valueResetOrMerge:
 			return val
 		}

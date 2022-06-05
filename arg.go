@@ -393,6 +393,10 @@ func (a *Arg) ensureInternalOpt() {
 	}
 }
 
+func (a *Arg) setTransform(fn transformFunc) {
+	a.option.transform = fn
+}
+
 func (a *argSynopsis) String() string {
 	if a.Multi {
 		return a.Value + "..."
