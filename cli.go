@@ -19,10 +19,13 @@
 package cli
 
 import (
+	"bufio"
+	"io"
 	"regexp"
 	"strings"
 
 	"github.com/kballard/go-shellquote"
+	"golang.org/x/term"
 )
 
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
@@ -80,4 +83,36 @@ func SplitList(s, sep string, n int) []string {
 	return strings.SplitN(s, sep, n)
 }
 
+// ReadPasswordString securely gets a password, without the trailing '\n'.
+// An error will be returned if the reader is not stdin connected to TTY.
+func ReadPasswordString(in io.Reader) (string, error) {
+	if f, ok := in.(interface{ Fd() uintptr }); ok {
+		fd := int(f.Fd())
+		if fd == 0 {
+			data, err := term.ReadPassword(fd)
+			return string(data), err
+		}
+	}
+	return "", errorNotTty
+}
+
+// ReadString gets a line of text, without the trailing '\n'.
+// An error will be returned if the reader is not stdin connected to TTY.
+func ReadString(in io.Reader) (string, error) {
+	if f, ok := in.(interface{ Fd() uintptr }); ok {
+		fd := int(f.Fd())
+		if fd == 0 {
+			reader := bufio.NewReader(in)
+			s, err := reader.ReadString('\n')
+			if err != nil {
+				return "", err
+			}
+			return s[0 : len(s)-1], nil
+		}
+	}
+
+	return "", errorNotTty
+}
+
 var unsafeShlexChars = regexp.MustCompile(`[^\w@%+=:,./-]`)
+var errorNotTty = Exit("stdin not tty")

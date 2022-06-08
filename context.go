@@ -792,6 +792,28 @@ func (c *Context) Customize(pattern string, a ...Action) error {
 	return cantHookError
 }
 
+// ReadPasswordString securely gets a password, without the trailing '\n'.
+// An error will be returned if the reader is not stdin connected to TTY.
+func (c *Context) ReadPasswordString(prompt string) (string, error) {
+	return c.displayPrompt(prompt, ReadPasswordString, true)
+}
+
+// ReadString securely gets a password, without the trailing '\n'.
+// An error will be returned if the reader is not stdin connected to TTY.
+func (c *Context) ReadString(prompt string) (string, error) {
+	return c.displayPrompt(prompt, ReadString, false)
+}
+
+func (c *Context) displayPrompt(prompt string, fn func(io.Reader) (string, error), nlAfter bool) (string, error) {
+	fmt.Fprint(c.Stderr, prompt)
+	defer func() {
+		if nlAfter && prompt != "" {
+			c.Stderr.WriteString("\n")
+		}
+	}()
+	return fn(c.Stdin)
+}
+
 // Last gets the last name in the path
 func (c ContextPath) Last() string {
 	return c[len(c)-1]
