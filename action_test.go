@@ -616,7 +616,7 @@ var _ = Describe("Do", func() {
 
 		It("applies Before timing if specified", func() {
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("too late to exec action"))
+			Expect(err).To(MatchError("too late for requested action timing"))
 		})
 	})
 })
@@ -1078,6 +1078,49 @@ var _ = Describe("Prototype", func() {
 		Entry("Category", cli.Prototype{Category: "nom"}, Fields{"Category": Equal("nom")}),
 		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
 	)
+})
+
+var _ = Describe("Setup", func() {
+	var (
+		setup cli.Setup
+		err   error
+	)
+
+	JustBeforeEach(func() {
+		app := &cli.App{
+			Name:   "app",
+			Action: setup,
+		}
+
+		err = app.RunContext(context.Background(), []string{"app"})
+	})
+
+	Context("when Optional is true", func() {
+		BeforeEach(func() {
+			setup = cli.Setup{
+				Optional: true,
+				Uses:     func() {},
+			}
+		})
+
+		It("does not return timing mismatch error ", func() {
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("when Optional is false", func() {
+		BeforeEach(func() {
+			setup = cli.Setup{
+				Optional: false,
+				Uses:     func() {},
+			}
+		})
+
+		It("returns timing mismatch error ", func() {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(cli.ErrTimingTooLate))
+		})
+	})
 })
 
 var _ = Describe("FlagSetup", func() {

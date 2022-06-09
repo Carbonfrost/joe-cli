@@ -50,6 +50,21 @@ type Setup struct {
 	Before interface{}
 	Action interface{}
 	After  interface{}
+
+	// Optional causes setup to ignore timing errors.  By default, Setup depends upon the
+	// timing, which means that an error will occur if Setup is used within a timing context
+	// that is later than the corresponding pipelines.  For example, if you have Setup.Uses set,
+	// this implies that the Setup can only be itself added to a Uses pipeline; if you add it
+	// to a Before, Action, or After pipeline, an error will occur because it is too late to process
+	// the pipeline set in Setup.Uses.  Setting Optional to true will prevent this error.
+	//
+	// The common use case for this is to allow defining new actions by simply returning a Setup, and letting
+	// the user of the new action decide which parts of Setup get used by allowing them to specify the
+	// setup in the pipeline of their choice.  In the example, if the user
+	// assigned the action in the Action pipeline, this would imply that they don't care about the
+	// initialization behavior the action provides.  If the initialization is genuinely optional
+	// (and not a usage error of the new action), it is appropriate to set Optional to true.
+	Optional bool
 }
 
 // Prototype implements an action which sets up a flag or arg.  The
@@ -198,7 +213,7 @@ var (
 // pipelines
 func (s Setup) Execute(c *Context) error {
 	if s.Uses != nil {
-		if err := c.act(s.Uses, InitialTiming); err != nil {
+		if err := c.act(s.Uses, InitialTiming, s.Optional); err != nil {
 			return err
 		}
 	}
@@ -965,7 +980,7 @@ func (p *actionPipelines) exceptInitializers() *actionPipelines {
 }
 
 func (w withTimingWrapper) Execute(c *Context) error {
-	return c.act(w.Action, w.t)
+	return c.act(w.Action, w.t, false)
 }
 
 func (i *hooksSupport) hookBefore(pat string, a Action) error {

@@ -106,7 +106,9 @@ var (
 	// SkipCommand is used as a return value from WalkFunc to indicate that the command in the call is to be skipped.
 	SkipCommand = errors.New("skip this command")
 
-	errModifyAfterInit = errors.New("modification has no effect at this time")
+	// ErrTimingTooLate occurs when attempting to run an action in a pipeline
+	// when the pipeline is later than requested by the action.
+	ErrTimingTooLate = errors.New("too late for requested action timing")
 )
 
 func newContextPathPattern(pat string) contextPathPattern {
@@ -465,7 +467,7 @@ func (c *Context) After(v interface{}) error {
 	return c.Do(AtTiming(ActionOf(v), AfterTiming))
 }
 
-func (c *Context) act(v interface{}, desired Timing) error {
+func (c *Context) act(v interface{}, desired Timing, optional bool) error {
 	if c.timing < desired {
 		c.target().appendAction(desired, ActionOf(v))
 		return nil
@@ -473,8 +475,11 @@ func (c *Context) act(v interface{}, desired Timing) error {
 	if c.timing == desired {
 		return ActionOf(v).Execute(c)
 	}
+	if optional {
+		return nil
+	}
 	if c.timing > desired {
-		return errors.New("too late to exec action")
+		return ErrTimingTooLate
 	}
 	return nil
 }
@@ -653,7 +658,7 @@ func (c *Context) logicalArg(index int) *Arg {
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddFlag(f *Flag) error {
 	if !c.IsInitializing() {
-		return errModifyAfterInit
+		return ErrTimingTooLate
 	}
 	if app, ok := c.app(); ok {
 		app.Flags = append(app.Flags, f)
@@ -667,7 +672,7 @@ func (c *Context) AddFlag(f *Flag) error {
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddCommand(v *Command) error {
 	if !c.IsInitializing() {
-		return errModifyAfterInit
+		return ErrTimingTooLate
 	}
 	if app, ok := c.app(); ok {
 		app.Commands = append(app.Commands, v)
@@ -681,7 +686,7 @@ func (c *Context) AddCommand(v *Command) error {
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddArg(v *Arg) error {
 	if !c.IsInitializing() {
-		return errModifyAfterInit
+		return ErrTimingTooLate
 	}
 	if app, ok := c.app(); ok {
 		app.Args = append(app.Args, v)
@@ -731,7 +736,7 @@ func (c *Context) SkipImplicitSetup() bool {
 // returns an error if the timing is not initial timing.
 func (c *Context) PreventSetup() error {
 	if !c.IsInitializing() {
-		return errModifyAfterInit
+		return ErrTimingTooLate
 	}
 	c.SetData("_taintSetup", true)
 	return nil
