@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -270,6 +271,9 @@ func RegisterTemplateFunc(name string, fn interface{}) Action {
 // creates the data that is passed to the template
 func (c *Context) RenderTemplate(name string, data func(*Context) interface{}) error {
 	tpl := c.Template(name)
+	if tpl == nil {
+		return fmt.Errorf("template does not exist: %q", name)
+	}
 	if data == nil {
 		data = defaultData
 	}

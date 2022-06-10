@@ -75,6 +75,31 @@ var _ = Describe("RenderTemplate", func() {
 		}
 		Expect(renderScreen(app, "app")).To(ContainSubstring("template customFunc result 1"))
 	})
+
+	It("is error when not registered", func() {
+		app := &cli.App{
+			Name: "demo",
+			Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
+				return nil
+			}),
+		}
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).To(MatchError(`template does not exist: "custom"`))
+	})
+})
+
+var _ = Describe("Template", func() {
+	It("is nil when not registered", func() {
+		tpl := &cli.Template{}
+		app := &cli.App{
+			Name: "demo",
+			Action: func(c *cli.Context) {
+				tpl = c.Template("missing")
+			},
+		}
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(tpl).To(BeNil())
+	})
 })
 
 var _ = Describe("PrintVersion", func() {

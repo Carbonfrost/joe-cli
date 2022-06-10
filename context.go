@@ -572,7 +572,10 @@ func (c *Context) Do(actions ...Action) error {
 
 // Template retrieves a template by name
 func (c *Context) Template(name string) *Template {
-	str := c.App().ensureTemplates()[name]
+	str, ok := c.App().ensureTemplates()[name]
+	if !ok {
+		return nil
+	}
 	t := template.New(name)
 
 	funcMap := c.App().ensureTemplateFuncs()
