@@ -835,6 +835,7 @@ func (p *Prototype) copyToArg(o *Arg) {
 	}
 	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value
+		o.option.flags = o.option.flags & ^internalFlagDestinationImplicitlyCreated
 	}
 
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
@@ -869,6 +870,7 @@ func (p *Prototype) copyToFlag(o *Flag) {
 	}
 	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value
+		o.option.flags = o.option.flags & ^internalFlagDestinationImplicitlyCreated
 	}
 
 	o.Aliases = append(o.Aliases, p.Aliases...)

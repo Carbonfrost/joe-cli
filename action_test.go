@@ -1078,6 +1078,33 @@ var _ = Describe("Prototype", func() {
 		Entry("Category", cli.Prototype{Category: "nom"}, Fields{"Category": Equal("nom")}),
 		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
 	)
+
+	It("ensures value inside nested prototype (addresses bug)", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					// The inner prototype value should not apply because
+					// the outer should have cleared the owner bit
+					Name: "b",
+					Uses: cli.Prototype{
+						Value: new(bool),
+						Setup: cli.Setup{
+							Uses: cli.Prototype{
+								Value: new(string),
+							},
+						},
+					},
+					Action: act,
+				},
+			},
+		}
+		args, _ := cli.Split("app -b")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		value := act.ExecuteArgsForCall(0).Value("")
+		Expect(value).To(BeTrue())
+	})
 })
 
 var _ = Describe("Setup", func() {
