@@ -1,13 +1,3 @@
-package provider
-
-import (
-	"flag"
-	"sort"
-	"strings"
-
-	"github.com/Carbonfrost/joe-cli"
-)
-
 // Package provider implements a technique for identifying named providers with arguments.
 // The main use case for providers is extensibility.  For example, in a command line tool that
 // lets the user decide which output format to use, you could use providers to name the output
@@ -19,13 +9,25 @@ import (
 // Notice that --format names the desired output format (JSON) and --format-arg provides
 // arguments that the JSON formatter presumably uses.
 //
-// The value Provider is used to implement the provider specification, which is the name of the
+// Value is used to implement the provider specification, which is the name of the
 // provider and optionally a shorthand for arg syntax.  In the case that you want a separate
 // flag to provide the arguments, you use the SetArgument action.
 //
 // Usually, a registry of well-known provider names is used.  To support this, you can use a Registry.
+//
+package provider
 
-// Provider implements a value which can be used as a flag that names a provider.
+import (
+	"bytes"
+	"flag"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/Carbonfrost/joe-cli"
+)
+
+// Value implements a value which can be used as a flag that names a provider.
 // A short syntax allows specifying parameters to the provider.  For example, given the flag
 //
 //   &cli.Flag{
@@ -40,17 +42,18 @@ type Value struct {
 	Name string
 
 	// Args provides the arguments to the provider.  Args should be any supported
-	// flag type
+	// flag type.  If unspecified, a map[string]string is used.
 	Args interface{}
 
 	setName bool
+	rawArgs map[string]string
 }
 
 // Map provides a map that names the providers and their the default values.
 type Map map[string]map[string]string
 
-// Registry can be used to add validation to the Provider value, to determine what
-// to be listed, and to actually create providers.  This value is used in the Uses
+// Registry can be used to add validation to the Provider value and to determine what
+// to be listed.  This value is used in the Uses
 // pipeline of either the flag or its containing command.
 type Registry struct {
 	// Name of the registry, which is the same as the name of the flag
@@ -64,11 +67,16 @@ type Registry struct {
 	//      Providers: provider.Map{
 	//          "json": {
 	//              "indent":   "2",
-	//              "encoding": "utf-18",
+	//              "encoding": "utf-16",
 	//          },
 	//      },
 	//  }
 	Providers map[string]map[string]string
+
+	// AllowUnknown determines whether unknown provider names are allowed.
+	// The default is false, which causes an error when trying to set an unknown
+	// name.
+	AllowUnknown bool
 }
 
 type providerData struct {
@@ -114,8 +122,9 @@ func (v *Value) ArgumentFlag() cli.Prototype {
 //  If the action is set to initialize a flag that is unnamed, the suffix -arg is implied.
 func SetArgument(name string) cli.Action {
 	return cli.Prototype{
-		Name:  name + "-arg",
-		Value: new(string),
+		Name:     name + "-arg",
+		Value:    new(string),
+		HelpText: fmt.Sprintf("Sets an argument for %s", name),
 		Setup: cli.Setup{
 			Action: cli.BindIndirect(name, (*Value).Set),
 		},
@@ -132,7 +141,8 @@ func ListProviders(name string) cli.Action {
 		Value:   new(bool),
 		Options: cli.Exits,
 		Setup: cli.Setup{
-			Uses: cli.RegisterTemplate("Providers", listTemplate),
+			Optional: true,
+			Uses:     cli.RegisterTemplate("Providers", listTemplate),
 			Action: func(c *cli.Context) error {
 				registry := Services(c).Registry(name)
 				tpl := c.Template("Providers")
@@ -165,12 +175,55 @@ func (v *Value) Set(arg string) error {
 		}
 		arg = args[1]
 	}
+	cli.Set(&v.rawArgs, arg)
 	return cli.Set(v.Args, arg)
 }
 
 // String obtains the textual representation
 func (v *Value) String() string {
-	panic("not impl")
+	var buf bytes.Buffer
+	buf.WriteString(v.Name)
+
+	switch val := v.Args.(type) {
+	case map[string]string:
+		buf.WriteString(",")
+		buf.WriteString(formatJoin(val, ","))
+	case fmt.Stringer:
+		buf.WriteString(",")
+		buf.WriteString(val.String())
+	default:
+		panic("not impl")
+	}
+	return buf.String()
+}
+
+func (v *Value) Initializer() cli.Action {
+	return cli.Setup{
+		Action: validateProviderExists,
+	}
+}
+
+func validateProviderExists(c *cli.Context) error {
+	v := c.Value("").(*Value)
+	provider := strings.TrimLeft(c.Name(), "-")
+	registry := Services(c).Registry(provider)
+	if registry == nil {
+		return nil
+	}
+	if registry.AllowUnknown {
+		return nil
+	}
+	p, exists := registry.Providers[v.Name]
+	if !exists {
+		return fmt.Errorf("unknown %q %s", v.Name, provider)
+	}
+	for k := range v.rawArgs {
+		if _, exists := p[k]; !exists {
+			return fmt.Errorf("unknown argument %q for %q %s", k, v.Name, provider)
+		}
+	}
+
+	return nil
 }
 
 func (r *Registry) Execute(c *cli.Context) error {
@@ -181,7 +234,7 @@ func (r *Registry) Execute(c *cli.Context) error {
 }
 
 func (d defaultsMap) String() string {
-	return formatJoin(d)
+	return formatJoin(d, ", ")
 }
 
 func toData(r *Registry) []providerData {
@@ -200,7 +253,7 @@ func toData(r *Registry) []providerData {
 	return res
 }
 
-func formatJoin(m map[string]string) string {
+func formatJoin(m map[string]string, sep string) string {
 	items := make([]string, len(m))
 	var i int
 	for k, v := range m {
@@ -208,7 +261,7 @@ func formatJoin(m map[string]string) string {
 		i++
 	}
 	sort.Strings(items)
-	return strings.Join(items, ", ")
+	return strings.Join(items, sep)
 }
 
 var (

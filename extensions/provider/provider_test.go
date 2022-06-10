@@ -159,7 +159,7 @@ var _ = Describe("Value", func() {
 			app := &cli.App{
 				Name: "app",
 				Uses: &provider.Registry{
-					Name: "providers",
+					Name: "provider",
 					Providers: provider.Map{
 						"csv": {
 							"comma": "default",
@@ -181,16 +181,49 @@ var _ = Describe("Value", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(expected))
 		},
-			XEntry(
+			Entry(
 				"invalid provider",
 				"app --provider invalid",
-				Equal("unexpected argument: invalid"),
+				Equal(`unknown "invalid" provider`),
 			),
-			XEntry(
+			Entry(
 				"invalid provider argument",
 				"app --provider csv,unknownProperty=true",
-				Equal("unexpected argument: unknownProperty"),
+				Equal(`unknown argument "unknownProperty" for "csv" provider`),
 			),
+		)
+
+		It("allows unknown when specified", func() {
+			app := &cli.App{
+				Name: "app",
+				Uses: &provider.Registry{
+					Name:         "encoding",
+					AllowUnknown: true,
+					Providers:    provider.Map{},
+				},
+				Flags: []*cli.Flag{
+					{
+						Name: "encoding",
+						Value: &provider.Value{
+							Args: &map[string]string{},
+						},
+					},
+				},
+			}
+
+			args, _ := cli.Split("app --encoding unknown")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("String", func() {
+		DescribeTable("examples", func(v *provider.Value, expected string) {
+			Expect(v.String()).To(Equal(expected))
+		},
+			Entry("map",
+				&provider.Value{Name: "orson", Args: map[string]string{"w": "ean", "d": "ells"}},
+				"orson,d=ells,w=ean"),
 		)
 	})
 
