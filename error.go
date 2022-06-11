@@ -180,6 +180,17 @@ func unexpectedArgument(value string, remaining []string) *ParseError {
 		Code:      UnexpectedArgument,
 		Err:       fmt.Errorf("unexpected argument %q", value),
 		Remaining: remaining,
+		Value:     value,
+	}
+}
+
+func flagUnexpectedArgument(name string, value string, remaining []string) *ParseError {
+	return &ParseError{
+		Code:      InvalidArgument,
+		Err:       fmt.Errorf("option %s does not take a value", name),
+		Remaining: remaining,
+		Name:      name,
+		Value:     value,
 	}
 }
 

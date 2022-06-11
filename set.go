@@ -315,6 +315,21 @@ Parsing:
 					continue Parsing
 				}
 
+				// If an equal sign is present, this is the syntax -s=value,
+				// which implies trying to set a value.  Include the = in
+				// the binding
+				if value[0] == '=' {
+					if err != nil {
+						// The flag previously checked for value but didn't
+						// support them
+						var oldArgs = append([]string{short + value}, args...)
+						err = flagUnexpectedArgument(short, value, oldArgs)
+						return
+					}
+					appendOutput(flag, []string{short, value})
+					continue Parsing
+				}
+
 				if err == EndOfArguments {
 					// Should be flag-only
 					appendOutput(flag, []string{short, ""})
@@ -324,7 +339,7 @@ Parsing:
 				return
 			}
 
-			if value == "" && b.IsOptionalValue(flag) {
+			if b.IsOptionalValue(flag) {
 				appendOutput(flag, []string{short, ""})
 				continue
 			}
@@ -563,7 +578,7 @@ func (a *argList) take(name string, opt ArgCounter) (output []string, err error)
 			break
 		}
 		output = append(output, arg)
-		arg = a.pop()
+		_ = a.pop()
 	}
 
 	if len(output) == 0 {

@@ -81,6 +81,28 @@ var _ = Describe("RawParse", func() {
 			HaveKeyWithValue("short", []string{"-s pace"}),
 			Not(HaveOccurred())),
 
+		// If an equal sign is present in the short flag syntax, it
+		// is always interpreted as setting the value (including the
+		// leading =)
+		Entry("equal in short flag is its value", "app -s=pace",
+			HaveKeyWithValue("short", []string{"-s =pace"}),
+			Not(HaveOccurred()),
+		),
+
+		// Equal sign leads to an error because value is unexpected
+		Entry("equal in short flag causes error", "app -vt=always",
+			Equal(map[string][]string{
+				"boolv": []string{"-v "}, // { "-v", ""}
+			}),
+			Equal(&cli.ParseError{
+				Code:      cli.InvalidArgument,
+				Name:      "-t",
+				Err:       errors.New("option -t does not take a value"),
+				Value:     "=always",
+				Remaining: []string{"-t=always"},
+			}),
+		),
+
 		Entry("stop on unknown long flag", "app --unknown rest of args",
 			BeEmpty(),
 			Equal(&cli.ParseError{
@@ -136,7 +158,7 @@ var _ = Describe("RawParse", func() {
 				Code:  cli.UnexpectedArgument,
 				Name:  "",
 				Err:   errors.New(`unexpected argument "other"`),
-				Value: "",
+				Value: "other",
 				// TODO This should also include args []string{"other", "args"}
 				Remaining: []string{"other"},
 			}),
