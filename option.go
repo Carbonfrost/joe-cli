@@ -152,10 +152,19 @@ const (
 	// file.
 	AllowFileReference
 
+	// SortedFlags causes flags to be sorted on the help screen generated for the command or app.
+	SortedFlags
+
+	// SortedFlags causes sub-commands to be sorted on the help screen generated for the command or app.
+	SortedCommands
+
 	maxOption
 
 	// None represents no options
 	None Option = 0
+
+	// Sorted causes flags and sub-commands to be sorted on the help screen generated for the command or app.
+	Sorted = SortedFlags | SortedCommands
 )
 
 const (
@@ -193,6 +202,8 @@ var (
 		EachOccurrence:         ActionFunc(eachOccurrenceOpt),
 		AllowFileReference:     ActionFunc(allowFileReferenceOpt),
 		FileReference:          ActionFunc(fileReferenceOpt),
+		SortedFlags:            Before(ActionFunc(sortedFlagsOpt)),
+		SortedCommands:         Before(ActionFunc(sortedCommandsOpt)),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -213,6 +224,8 @@ var (
 		EachOccurrence:         "EACH_OCCURRENCE",
 		AllowFileReference:     "ALLOW_FILE_REFERENCE",
 		FileReference:          "FILE_REFERENCE",
+		SortedFlags:            "SORTED_FLAGS",
+		SortedCommands:         "SORTED_COMMANDS",
 	}
 )
 
@@ -538,6 +551,18 @@ func fileReferenceOpt(c *Context) error {
 		}
 		return io.MultiReader(readers...), nil
 	}))
+}
+
+func sortedFlagsOpt(c *Context) error {
+	cmd := c.Command()
+	sort.Sort(FlagsByName(cmd.Flags))
+	return nil
+}
+
+func sortedCommandsOpt(c *Context) error {
+	cmd := c.Command()
+	sort.Sort(CommandsByName(cmd.Subcommands))
+	return nil
 }
 
 var (

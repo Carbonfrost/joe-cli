@@ -36,6 +36,8 @@ var _ = Describe("Option", func() {
 			Entry("RightToLeft", cli.RightToLeft, "RIGHT_TO_LEFT"),
 			Entry("FileReference", cli.FileReference, "FILE_REFERENCE"),
 			Entry("AllowFileReference", cli.AllowFileReference, "ALLOW_FILE_REFERENCE"),
+			Entry("SortedCommands", cli.SortedCommands, "SORTED_COMMANDS"),
+			Entry("SortedFlags", cli.SortedFlags, "SORTED_FLAGS"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 	})

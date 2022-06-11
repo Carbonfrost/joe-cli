@@ -335,6 +335,26 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 			ContainSubstring("e argument description")),
+
+		Entry("display sorted flags",
+			&cli.App{
+				Options: cli.SortedFlags,
+				Flags: []*cli.Flag{
+					{Name: "z,"},
+					{Name: "d,"},
+				},
+			},
+			MatchRegexp(`(?s)-d,.+-z,`)),
+
+		Entry("display sorted commands",
+			&cli.App{
+				Options: cli.SortedCommands,
+				Commands: []*cli.Command{
+					{Name: "z,"},
+					{Name: "d,"},
+				},
+			},
+			MatchRegexp(`(?s)d,.*z,`)),
 	)
 
 	DescribeTable("sub-command examples",
