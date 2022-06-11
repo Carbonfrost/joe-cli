@@ -399,7 +399,10 @@ func mustExistOption(c *Context) error {
 	}
 	if s, ok := v.(fileStat); ok {
 		_, err := s.Stat()
-		return err
+
+		// If the file name was blank, we ignore this error because
+		// it implies a blank value was set and the user must handle
+		return ignoreBlankPathError(err)
 	}
 	return fmt.Errorf("file not found: %v", v)
 }
@@ -407,6 +410,9 @@ func mustExistOption(c *Context) error {
 func workingDirectoryOption(c *Context) error {
 	if c.Seen("") {
 		newDir := fmt.Sprint(c.Value(""))
+		if newDir == "" {
+			return nil
+		}
 		return os.Chdir(newDir)
 	}
 	return nil

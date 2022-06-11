@@ -412,6 +412,15 @@ func walkFile(ff fsExtension, name string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(ff, name, fn)
 }
 
+func ignoreBlankPathError(err error) error {
+	if p, ok := err.(*fs.PathError); ok {
+		if p.Path == "" {
+			return nil
+		}
+	}
+	return err
+}
+
 var (
 	_ fileExtension    = &stdFile{}
 	_ fileExtension    = &contextFile{}

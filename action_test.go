@@ -276,6 +276,31 @@ var _ = Describe("timings", func() {
 				It("WorkingDirectory sets the working directory", func() {
 					Expect(os.Getwd()).To(Equal("/usr"))
 				})
+
+				Context("when unset File", func() {
+					BeforeEach(func() {
+						arguments = "app"
+					})
+
+					It("WorkingDirectory does nothing", func() {
+						Expect(os.Getwd()).To(Equal(original))
+					})
+
+					// It also generates no error (this is checked in JustBeforeEach for the context)
+				})
+
+				Context("when set to blank", func() {
+					BeforeEach(func() {
+						arguments = "app --dir="
+					})
+
+					It("WorkingDirectory does nothing", func() {
+						Expect(os.Getwd()).To(Equal(original))
+					})
+
+					// It also generates no error (this is checked in JustBeforeEach for the context)
+				})
+
 			})
 		})
 	})

@@ -43,20 +43,63 @@ var _ = Describe("File", func() {
 		Expect(context.File("f").Exists()).To(BeTrue())
 	})
 
-	It("returns an error if the file does not exist", func() {
-		app := &cli.App{
-			Args: []*cli.Arg{
-				{
-					Name:    "f",
-					Value:   &cli.File{},
-					Options: cli.MustExist,
+	Describe("MustExist", func() {
+
+		var (
+			arguments string
+			err       error
+		)
+
+		JustBeforeEach(func() {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name:    "f",
+						Value:   new(cli.File),
+						Options: cli.MustExist,
+					},
 				},
-			},
-		}
-		name := filepath.Join(os.TempDir(), "nonexistent")
-		err := app.RunContext(context.TODO(), []string{"app", name})
-		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError(ContainSubstring(name + ": no such file or directory")))
+			}
+
+			args, _ := cli.Split(arguments)
+			err = app.RunContext(context.TODO(), args)
+		})
+
+		Context("when the file does not exist", func() {
+
+			var name string
+
+			BeforeEach(func() {
+				name = filepath.Join(os.TempDir(), "nonexistent")
+				arguments = "app " + name
+			})
+
+			It("returns an error if the file does not exist", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring(name + ": no such file or directory")))
+			})
+		})
+
+		Context("when the file is not set", func() {
+			BeforeEach(func() {
+				arguments = "app"
+			})
+
+			It("does nothing", func() {
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the file is set to blank", func() {
+			BeforeEach(func() {
+				arguments = "app -f''"
+			})
+
+			It("does nothing", func() {
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
 	})
 
 	It("writes to the app output when - is used", func() {
