@@ -28,7 +28,7 @@ var _ = Describe("RawParse", func() {
 		Expect(err).To(Equal(&cli.ParseError{
 			Code:      cli.ExpectedArgument,
 			Name:      "<arg>",
-			Err:       errors.New("expected 2 arguments"),
+			Err:       errors.New("expected 2 arguments for <arg>"),
 			Value:     "",
 			Remaining: nil,
 		}))
@@ -43,7 +43,7 @@ var _ = Describe("RawParse", func() {
 			args: []string{"arg"},
 			counters: map[string]cli.ArgCounter{
 				"arg":   cli.ArgCount(cli.TakeUntilNextFlag),
-				"long":  cli.ArgCount(0),
+				"long":  cli.DefaultFlagCounter(),
 				"short": cli.ArgCount(1),
 				"boolt": cli.NoArgs(),
 				"boolv": cli.NoArgs(),
@@ -138,14 +138,25 @@ var _ = Describe("RawParse", func() {
 			}),
 		),
 
-		Entry("long flag missing arg", "app --short",
+		Entry("long flag missing required arg", "app --short",
 			BeEmpty(),
 			Equal(&cli.ParseError{
 				Code:      cli.ExpectedArgument,
 				Name:      "--short",
-				Err:       errors.New("expected argument"),
+				Err:       errors.New("expected argument for --short"),
 				Value:     "",
 				Remaining: []string{"--short"},
+			}),
+		),
+
+		Entry("long flag missing arg by default", "app --long",
+			BeEmpty(),
+			Equal(&cli.ParseError{
+				Code:      cli.ExpectedArgument,
+				Name:      "--long",
+				Err:       errors.New("expected argument for --long"),
+				Value:     "",
+				Remaining: []string{"--long"},
 			}),
 		),
 

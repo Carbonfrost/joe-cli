@@ -164,7 +164,7 @@ type exprArgs struct {
 	names             map[string]*internalOption
 }
 
-// BindExpression is an action that binds expression handling to an argument.  This
+// Initializer is an action that binds expression handling to an argument.  This
 // is set up automatically when a command defines any expression operators.  The exprFunc
 // argument is used to determine which expressions to used.  If nil, the default behavior
 // is used which is to lookup Command.Exprs from the context

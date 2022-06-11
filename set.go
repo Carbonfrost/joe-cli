@@ -165,7 +165,7 @@ func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings Bindi
 				count--
 			case *discreteCounter:
 				count -= counter.count
-			case *optionalCounter:
+			case *defaultCounter:
 				count--
 			default:
 				count--
@@ -745,17 +745,25 @@ func (o *internalOption) actualArgCounter() ArgCounter {
 		return NoArgs()
 	}
 	if o.narg == nil {
-		if o.value == nil || o.value.p == nil {
-			return ArgCount(0)
+		if o.value != nil {
+			switch value := o.value.p.(type) {
+			case *[]string:
+				return ArgCount(TakeUntilNextFlag)
+			case valueProvidesCounter:
+				return value.NewCounter()
+			}
 		}
-		switch value := o.value.p.(type) {
-		case *[]string:
-			return ArgCount(TakeUntilNextFlag)
-		case valueProvidesCounter:
-			return value.NewCounter()
+
+		return &defaultCounter{
+			requireSeen: o.isFlag() && !o.flags.optional(),
 		}
 	}
 	return ArgCount(o.narg)
+}
+
+func (o *internalOption) isFlag() bool {
+	// HACK Detecting whether a flag
+	return len(o.short)+len(o.long) > 0
 }
 
 var _ lookupCore = (*set)(nil)

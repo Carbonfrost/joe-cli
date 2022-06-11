@@ -32,6 +32,10 @@ func (a *Arg) ActualArgCounter() ArgCounter {
 	return a.option.actualArgCounter()
 }
 
+func DefaultFlagCounter() ArgCounter {
+	return &defaultCounter{requireSeen: true}
+}
+
 func NewFlagSynopsis(long string) *flagSynopsis {
 	return &flagSynopsis{
 		Long:    long,

@@ -651,15 +651,15 @@ func (*temperature) Synopsis() string {
 
 type boolFlag string
 
-func (_ *boolFlag) Set(s string) error {
+func (*boolFlag) Set(s string) error {
 	return nil
 }
 
-func (_ *boolFlag) IsBoolFlag() bool {
+func (*boolFlag) IsBoolFlag() bool {
 	return true
 }
 
-func (_ *boolFlag) String() string {
+func (*boolFlag) String() string {
 	return ""
 }
 

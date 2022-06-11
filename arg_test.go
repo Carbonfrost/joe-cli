@@ -212,7 +212,7 @@ var _ = Describe("Arg", func() {
 				Expect(err).To(MatchError(match))
 			},
 			Entry("missing when 1", 1, "", Equal("expected argument")),
-			Entry("too few by 1", 2, "a", Equal("expected 2 arguments")),
+			Entry("too few by 1", 2, "a", Equal("expected 2 arguments for <f>")),
 			Entry("too many by 1", 1, "a b", Equal(`unexpected argument "b"`)),
 		)
 	})

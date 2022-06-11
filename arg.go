@@ -130,8 +130,9 @@ type discreteCounter struct {
 	count int
 }
 
-type optionalCounter struct {
-	seen bool
+type defaultCounter struct {
+	seen        bool
+	requireSeen bool
 }
 
 type varArgsCounter struct {
@@ -198,7 +199,7 @@ func ArgCount(v interface{}) ArgCounter {
 			return &discreteCounter{count, count}
 		}
 		if count == 0 {
-			return &optionalCounter{}
+			return &defaultCounter{}
 		}
 		return &varArgsCounter{
 			stopOnFlags: count == -2,
@@ -463,7 +464,7 @@ func (d *discreteCounter) Done() error {
 	return nil
 }
 
-func (d *optionalCounter) Take(arg string, possibleFlag bool) error {
+func (d *defaultCounter) Take(arg string, possibleFlag bool) error {
 	if allowFlag(arg, possibleFlag) {
 		return EndOfArguments
 	}
@@ -474,7 +475,10 @@ func (d *optionalCounter) Take(arg string, possibleFlag bool) error {
 	return nil
 }
 
-func (d *optionalCounter) Done() error {
+func (d *defaultCounter) Done() error {
+	if d.requireSeen && !d.seen {
+		return expectedArgument(1)
+	}
 	return nil
 }
 
@@ -519,8 +523,10 @@ func aboutArgCounter(narg interface{}) (optional, multi bool) {
 		return c == 0, c < 0 || c > 1
 	case *varArgsCounter:
 		return true, true
-	case nil, *optionalCounter:
+	case nil:
 		return true, false
+	case *defaultCounter:
+		return !c.requireSeen, false
 	case *discreteCounter:
 		return false, c.count > 1
 	}

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -25,6 +24,11 @@ type ParseError struct {
 
 	// Remaining contains arguments which could not be parsed
 	Remaining []string
+
+	// fixErr is used to fixup the internal error message.  The ArgCounter API
+	// which can generate ParseError does not know the name of the arg that
+	// caused the error until this func is called
+	fixErr func(string) error
 }
 
 // ExitCoder is an error that knows how to convert to its exit code
@@ -195,13 +199,16 @@ func flagUnexpectedArgument(name string, value string, remaining []string) *Pars
 }
 
 func expectedArgument(count int) *ParseError {
-	msg := "expected argument"
+	w := "argument"
 	if count > 1 {
-		msg = fmt.Sprintf("expected %d arguments", count)
+		w = fmt.Sprint(count, " arguments")
 	}
 	return &ParseError{
 		Code: ExpectedArgument,
-		Err:  errors.New(msg),
+		Err:  fmt.Errorf("expected %s", w),
+		fixErr: func(name string) error {
+			return fmt.Errorf("expected %s for %s", w, name)
+		},
 	}
 }
 
@@ -229,6 +236,10 @@ func argTakerError(name string, value string, err error, remaining []string) err
 		p.Name = name
 		p.Value = value
 		p.Remaining = remaining
+		if p.fixErr != nil {
+			p.Err = p.fixErr(name)
+			p.fixErr = nil
+		}
 		return p
 	}
 	return &ParseError{
