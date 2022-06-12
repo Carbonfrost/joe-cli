@@ -2,6 +2,7 @@ package cli
 
 import (
 	"sort"
+	"strings"
 )
 
 // Command represents a command with arguments, flags, and expressions
@@ -72,6 +73,11 @@ type Command struct {
 	// is generated that lists each visible flag and arg
 	UsageText string
 
+	// Completion provides the completion for use in the command.  By default, the
+	// completion detects whether a flag or arg is being used and then delegates to
+	// the completion present there
+	Completion Completion
+
 	flags   internalFlags
 	fromApp *App
 	ifRoot  *rootCommandData
@@ -80,6 +86,11 @@ type Command struct {
 type rootCommandData struct {
 	templateFuncs map[string]interface{}
 	templates     map[string]string
+}
+
+type robustParseResult struct {
+	bindings BindingMap
+	err      error
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -266,15 +277,101 @@ func ensureSubcommands(c *Context) error {
 			cmd.Action = DisplayHelpScreen()
 		}
 		return c.Do(AddArg(&Arg{
-			Name:      "command",
-			UsageText: "<command> [<args>]",
-			Value:     List(),
-			NArg:      -1,
-			Action:    ExecuteSubcommand(nil),
-			Options:   DisableSplitting,
+			Name:       "command",
+			UsageText:  "<command> [<args>]",
+			Value:      List(),
+			NArg:       -1,
+			Action:     ExecuteSubcommand(nil),
+			Options:    DisableSplitting,
+			Completion: CompletionFunc(completeSubCommand),
 		}))
 	}
 	return nil
+}
+
+func completeSubCommand(cc *CompletionContext) []CompletionItem {
+	c := cc.Context
+	invoke := c.List("")
+	detect := func(s string) bool {
+		return strings.HasPrefix(s, cc.Incomplete)
+	}
+
+	if len(invoke) == 0 {
+		cmd := c.Command()
+		res := make([]CompletionItem, 0, len(cmd.Subcommands))
+
+		for _, s := range cmd.Subcommands {
+			if detect(s.Name) {
+				res = append(res, CompletionItem{Value: s.Name, HelpText: s.HelpText})
+			}
+		}
+		for _, s := range cmd.Subcommands {
+			for _, alias := range s.Aliases {
+				if detect(alias) {
+					res = append(res, CompletionItem{Value: alias, HelpText: s.HelpText})
+				}
+			}
+		}
+		return res
+	}
+
+	cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], nil)
+	if err != nil {
+		return nil
+	}
+
+	newCtx := c.Parent().commandContext(cmd, invoke)
+	return newCtx.Complete(invoke, cc.Incomplete)
+}
+
+func (c *Command) completion() Completion {
+	if c.Completion != nil {
+		return c.Completion
+	}
+	return CompletionFunc(defaultCommandCompletion)
+}
+
+func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
+	cmd := cc.Context.Target().(*Command)
+	items := []CompletionItem{}
+
+	if strings.HasPrefix(cc.Incomplete, "-") {
+		for _, f := range cmd.VisibleFlags() {
+			for _, n := range f.synopsis().Names {
+				if strings.HasPrefix(n, cc.Incomplete) {
+					var suffix string
+					if !f.internalFlags().flagOnly() && len(n) > 2 {
+						suffix = "="
+					}
+					items = append(items, CompletionItem{Value: n + suffix, HelpText: f.HelpText})
+				}
+			}
+		}
+		return items
+	}
+
+	if cc.Err != nil {
+		arg, ok := cmd.Arg(cc.Err.(*ParseError).Name)
+		if !ok {
+			// TODO This shouldn't happen (implies somewhere ParseError hasn't initialized Name)
+			arg = cmd.Args[0]
+		}
+		return actualCompletion(arg.completion()).Complete(cc)
+	}
+
+	// Request completion of the last argument that was seen
+	if len(cmd.Args) > 0 {
+		last := cmd.Args[0]
+		for _, a := range cmd.Args {
+			last = a
+			if len(cc.Bindings[a.Name]) == 0 {
+				break
+			}
+		}
+		return actualCompletion(last.completion()).Complete(cc.optionContext(last))
+	}
+
+	return items
 }
 
 func (c *Command) actualArgs() []*Arg {
@@ -509,7 +606,7 @@ func (c *commandContext) executeAfterDescendent(ctx *Context) error {
 
 func (c *commandContext) execute(ctx *Context) error {
 	if !c.didSubcommandExecute {
-		return execute(ctx, Pipeline(c.cmd.uses().Action, c.cmd.Action))
+		return execute(ctx, Pipeline(c.cmd.uses().Action, defaultCommand.Action, c.cmd.Action))
 	}
 	return nil
 }
@@ -586,6 +683,23 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 		}
 	}
 	return nil, commandMissing(sub)
+}
+
+func triggerRobustParsingAndCompletion(c *Context) error {
+	if c.robustParsingMode() && c.App() != nil {
+		cc := newCompletionData(c)
+		comp := cc.ShellComplete
+		if comp == nil {
+			return nil
+		}
+
+		args, incomplete := comp.GetCompletionRequest()
+		re := c.robustParseResult()
+		items := c.complete(args, incomplete, re)
+		c.Stdout.WriteString(comp.FormatCompletions(items))
+		return Exit(0)
+	}
+	return nil
 }
 
 var _ targetConventions = (*Command)(nil)

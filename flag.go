@@ -136,6 +136,9 @@ type Flag struct {
 	// function signature to use.
 	Action interface{}
 
+	// Completion specifies a callback function that determines the auto-complete results
+	Completion Completion
+
 	option internalOption
 }
 
@@ -399,6 +402,17 @@ func (f *Flag) contextName() string {
 
 func (f *Flag) setTransform(fn transformFunc) {
 	f.option.transform = fn
+}
+
+func (f *Flag) completion() Completion {
+	if f.Completion != nil {
+		return f.Completion
+	}
+	if v, ok := f.Value.(valueCompleter); ok {
+		return v.Completion()
+	}
+
+	return nil
 }
 
 func (c *wrapOccurrenceContext) rawOccurrences() [][]string {

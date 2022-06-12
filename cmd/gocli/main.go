@@ -3,13 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Carbonfrost/joe-cli"
 )
 
 func main() {
 	app := &cli.App{
-		Name: "cli",
+		Name: filepath.Base(os.Args[0]),
 		Flags: []*cli.Flag{
 			{
 				Name:     "will",
@@ -39,6 +40,21 @@ func main() {
 					fmt.Println("TODO: handle generating")
 					return nil
 				}),
+				Subcommands: []*cli.Command{
+					{
+						Name:     "loki",
+						HelpText: "Generate something useful",
+						Args: []*cli.Arg{
+							{
+								Name: "kind",
+							},
+						},
+						Action: cli.ActionOf(func() error {
+							fmt.Println("TODO: handle generating")
+							return nil
+						}),
+					},
+				},
 			},
 		},
 	}

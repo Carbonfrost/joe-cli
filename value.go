@@ -37,6 +37,8 @@ import (
 //
 // * SetData(io.Reader)error   read from a reader to set the value
 //
+// * Completion() Completion   called to obtain the default completion for a value
+//
 type Value = flag.Value
 
 //counterfeiter:generate . Value
@@ -80,6 +82,10 @@ type valueProvidesSynopsis interface {
 
 type valueSetData interface {
 	SetData(io.Reader) error
+}
+
+type valueCompleter interface {
+	Completion() Completion
 }
 
 type generic struct {

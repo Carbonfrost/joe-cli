@@ -104,6 +104,9 @@ type Arg struct {
 	// middleware and it is made available to templates
 	Data map[string]interface{}
 
+	// Completion specifies a callback function that determines the auto-complete results
+	Completion Completion
+
 	option internalOption
 }
 
@@ -396,6 +399,17 @@ func (a *Arg) ensureInternalOpt() {
 
 func (a *Arg) setTransform(fn transformFunc) {
 	a.option.transform = fn
+}
+
+func (a *Arg) completion() Completion {
+	if a.Completion != nil {
+		return a.Completion
+	}
+	if v, ok := a.Value.(valueCompleter); ok {
+		return v.Completion()
+	}
+
+	return nil
 }
 
 func (a *argSynopsis) String() string {

@@ -1040,6 +1040,11 @@ var _ = Describe("Prototype", func() {
 		Entry("EnvVars", cli.Prototype{EnvVars: []string{"A"}}, Fields{"EnvVars": Equal([]string{"V", "A"})}),
 		Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
 		Entry("Value", cli.Prototype{Value: new(time.Duration)}, Fields{"Value": Equal(new(time.Duration))}),
+		Entry("Completion", cli.Prototype{
+			Completion: cli.CompletionFunc(func(*cli.CompletionContext) []cli.CompletionItem {
+				return nil
+			}),
+		}, Fields{"Completion": Not(BeNil())}),
 	)
 
 	DescribeTable("preserve existing values", func(proto cli.Prototype, expected Fields) {
@@ -1469,7 +1474,8 @@ var _ = Describe("Accessory", func() {
 			Action: act,
 		}
 		_ = app.RunContext(context.TODO(), []string{"app"})
-		flag := act.ExecuteArgsForCall(0).Command().Flags[2]
+		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flag := flags[len(flags)-1]
 
 		Expect(flag.Name).To(Equal("custom"))
 		Expect(flag.Value).To(Equal(new(bool)))
@@ -1490,7 +1496,8 @@ var _ = Describe("Accessory", func() {
 		}
 
 		_ = app.RunContext(context.TODO(), []string{"app"})
-		flag := act.ExecuteArgsForCall(0).Command().Flags[2]
+		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("recursive"))
 	})
 
@@ -1508,7 +1515,8 @@ var _ = Describe("Accessory", func() {
 		}
 
 		_ = app.RunContext(context.TODO(), []string{"app"})
-		flag := act.ExecuteArgsForCall(0).Command().Flags[2]
+		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("files-recursive"))
 	})
 })

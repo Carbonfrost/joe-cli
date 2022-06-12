@@ -125,6 +125,12 @@ func (c *Context) Execute(args []string) error {
 
 	flags := root.internalFlags().toRaw() | RawSkipProgramName
 	err := set.parse(args, flags)
+
+	if c.robustParsingMode() {
+		c.setRobustParseResult(&robustParseResult{bindings: set.bindings, err: err})
+		err = nil
+	}
+
 	if err != nil {
 		return err
 	}
@@ -615,18 +621,7 @@ func (c *Context) Template(name string) *Template {
 		return nil
 	}
 	t := template.New(name)
-
-	funcMap := c.root().ensureTemplateFuncs()
-
-	// Execute function needs a closure containing the template itself, so is
-	// added afterwars
-	funcMap["Execute"] = func(name string, data interface{}) (string, error) {
-		buf := bytes.NewBuffer(nil)
-		if err := t.ExecuteTemplate(buf, name, data); err != nil {
-			return "", err
-		}
-		return buf.String(), nil
-	}
+	funcMap := withExecute(c.root().ensureTemplateFuncs(), t)
 
 	// Synopsis templates are imported into the template context
 	for _, n := range synopsisTemplate.Templates() {
@@ -637,8 +632,25 @@ func (c *Context) Template(name string) *Template {
 		Template: template.Must(
 			t.Funcs(funcMap).Parse(str),
 		),
-		Debug: os.Getenv("CLI_DEBUG_TEMPLATES") == "1",
+		Debug: debugTemplates(),
 	}
+}
+
+func withExecute(funcMap template.FuncMap, self *template.Template) template.FuncMap {
+	// Execute function needs a closure containing the template itself, so is
+	// added afterwars
+	funcMap["Execute"] = func(name string, data interface{}) (string, error) {
+		buf := bytes.NewBuffer(nil)
+		if err := self.ExecuteTemplate(buf, name, data); err != nil {
+			return "", err
+		}
+		return buf.String(), nil
+	}
+	return funcMap
+}
+
+func debugTemplates() bool {
+	return os.Getenv("CLI_DEBUG_TEMPLATES") == "1"
 }
 
 // Name gets the name of the context, which is the name of the command, arg, flag, or expression
@@ -1203,6 +1215,10 @@ func (v *valueTarget) actualArgs() []*Arg {
 	if a, ok := v.v.(hasArguments); ok {
 		return a.actualArgs()
 	}
+	return nil
+}
+
+func (*valueTarget) completion() Completion {
 	return nil
 }
 

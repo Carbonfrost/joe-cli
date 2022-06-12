@@ -89,6 +89,7 @@ type Prototype struct {
 	UsageText   string
 	Value       interface{}
 	Setup       Setup
+	Completion  Completion
 }
 
 type hookable interface {
@@ -111,6 +112,7 @@ type target interface {
 	LookupData(name string) (interface{}, bool)
 	setInternalFlags(internalFlags)
 	internalFlags() internalFlags
+	completion() Completion
 }
 
 type targetConventions interface {
@@ -180,12 +182,16 @@ var (
 					ActionFunc(optionalFlag("help", defaultHelpFlag)),
 					ActionFunc(optionalCommand("version", defaultVersionCommand)),
 					ActionFunc(optionalFlag("version", defaultVersionFlag)),
+					ActionFunc(setupCompletion),
 				),
 			),
 			ActionFunc(ensureSubcommands),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
 			ActionFunc(handleCustomizations),
+		),
+		Action: Pipeline(
+			ActionFunc(triggerRobustParsingAndCompletion),
 		),
 		Before: Pipeline(
 			ActionFunc(triggerBeforeFlags),
@@ -869,6 +875,9 @@ func (p *Prototype) copyToArg(o *Arg) {
 	if o.DefaultText == "" {
 		o.DefaultText = p.DefaultText
 	}
+	if o.Completion == nil {
+		o.Completion = p.Completion
+	}
 	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value
 		o.option.flags = o.option.flags & ^internalFlagDestinationImplicitlyCreated
@@ -903,6 +912,9 @@ func (p *Prototype) copyToFlag(o *Flag) {
 	}
 	if o.DefaultText == "" {
 		o.DefaultText = p.DefaultText
+	}
+	if o.Completion == nil {
+		o.Completion = p.Completion
 	}
 	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value

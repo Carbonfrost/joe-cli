@@ -475,6 +475,10 @@ func (e *Expr) internalFlags() internalFlags {
 	return e.flags
 }
 
+func (*Expr) completion() Completion {
+	return nil
+}
+
 // Evaluate provides the evaluation of the function and implements the Evaluator interface
 func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
 	if e == nil {
