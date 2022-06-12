@@ -24,3 +24,4 @@ lint:
 examples:
 	$(Q) go build -o . ./examples/joegit
 	$(Q) go build -o . ./examples/joefind
+	$(Q) go build -o . ./examples/joeopen
