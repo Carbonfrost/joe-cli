@@ -132,10 +132,23 @@ func (c *Context) App() *App {
 }
 
 func (c *Context) app() (*App, bool) {
-	if root, ok := c.internal.(*appContext); ok {
-		return root.app, true
+	if root, ok := c.internal.(*commandContext); ok {
+		return root.cmd.fromApp, true
 	}
 	return nil, false
+}
+
+// Root obtains the root command.
+func (c *Context) Root() *Context {
+	if c.Parent() == nil {
+		return c
+	}
+
+	return c.Parent().Root()
+}
+
+func (c *Context) root() *rootCommandData {
+	return c.Root().target().(*Command).rootData()
 }
 
 // Command obtains the command.  The command could be a synthetic command that was
@@ -572,13 +585,13 @@ func (c *Context) Do(actions ...Action) error {
 
 // Template retrieves a template by name
 func (c *Context) Template(name string) *Template {
-	str, ok := c.App().ensureTemplates()[name]
+	str, ok := c.root().ensureTemplates()[name]
 	if !ok {
 		return nil
 	}
 	t := template.New(name)
 
-	funcMap := c.App().ensureTemplateFuncs()
+	funcMap := c.root().ensureTemplateFuncs()
 
 	// Execute function needs a closure containing the template itself, so is
 	// added afterwars
@@ -663,11 +676,7 @@ func (c *Context) AddFlag(f *Flag) error {
 	if !c.IsInitializing() {
 		return ErrTimingTooLate
 	}
-	if app, ok := c.app(); ok {
-		app.Flags = append(app.Flags, f)
-	} else {
-		c.Command().Flags = append(c.Command().Flags, f)
-	}
+	c.Command().Flags = append(c.Command().Flags, f)
 	return nil
 }
 
@@ -677,11 +686,7 @@ func (c *Context) AddCommand(v *Command) error {
 	if !c.IsInitializing() {
 		return ErrTimingTooLate
 	}
-	if app, ok := c.app(); ok {
-		app.Commands = append(app.Commands, v)
-	} else {
-		c.Command().Subcommands = append(c.Command().Subcommands, v)
-	}
+	c.Command().Subcommands = append(c.Command().Subcommands, v)
 	return nil
 }
 
@@ -691,11 +696,7 @@ func (c *Context) AddArg(v *Arg) error {
 	if !c.IsInitializing() {
 		return ErrTimingTooLate
 	}
-	if app, ok := c.app(); ok {
-		app.Args = append(app.Args, v)
-	} else {
-		c.Command().Args = append(c.Command().Args, v)
-	}
+	c.Command().Args = append(c.Command().Args, v)
 	return nil
 }
 
@@ -923,12 +924,9 @@ func matchFlag(field string) bool {
 }
 
 func rootContext(cctx context.Context, app *App) *Context {
-	internal := &appContext{
-		commandContext: &commandContext{
-			cmd:     nil, // This will be set after initialization
-			flagSet: newSet(),
-		},
-		app: app,
+	internal := &commandContext{
+		cmd:     app.createRoot(),
+		flagSet: newSet(),
 	}
 	return &Context{
 		Context:       cctx,
@@ -1352,5 +1350,4 @@ var (
 	_ internalContext = (*commandContext)(nil)
 	_ internalContext = (*optionContext)(nil)
 	_ internalContext = (*valueContext)(nil)
-	_ internalContext = (*appContext)(nil)
 )

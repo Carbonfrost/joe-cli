@@ -72,7 +72,14 @@ type Command struct {
 	// is generated that lists each visible flag and arg
 	UsageText string
 
-	flags internalFlags
+	flags   internalFlags
+	fromApp *App
+	ifRoot  *rootCommandData
+}
+
+type rootCommandData struct {
+	templateFuncs map[string]interface{}
+	templates     map[string]string
 }
 
 // CommandsByName provides a slice that can sort on name
@@ -231,11 +238,6 @@ func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
 }
 
-func (c *Command) appendArg(arg *Arg) *Command {
-	c.Args = append(c.Args, arg)
-	return c
-}
-
 func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
 	set := c.buildSet(ctx)
 	if c.internalFlags().skipFlagParsing() {
@@ -252,14 +254,7 @@ func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
 }
 
 func (c *Command) buildSet(ctx *Context) *set {
-	var set *set
-	switch internal := ctx.internal.(type) {
-	case *commandContext:
-		set = internal.flagSet
-	case *appContext:
-		set = internal.commandContext.flagSet
-	}
-
+	set := ctx.internal.(*commandContext).flagSet
 	for _, f := range c.actualFlags() {
 		f.applyToSet(set)
 	}
@@ -279,24 +274,22 @@ func (c *Command) buildSet(ctx *Context) *set {
 }
 
 func ensureSubcommands(c *Context) error {
-	c.target().(*Command).ensureSubcommands()
-	return nil
-}
+	cmd := c.target().(*Command)
 
-func (c *Command) ensureSubcommands() {
-	if len(c.Subcommands) > 0 {
-		c.appendArg(&Arg{
+	if len(cmd.Subcommands) > 0 {
+		if cmd.Action == nil {
+			cmd.Action = DisplayHelpScreen()
+		}
+		return c.Do(AddArg(&Arg{
 			Name:      "command",
 			UsageText: "<command> [<args>]",
 			Value:     List(),
 			NArg:      -1,
 			Action:    ExecuteSubcommand(nil),
 			Options:   DisableSplitting,
-		})
-		if c.Action == nil {
-			c.Action = DisplayHelpScreen()
-		}
+		}))
 	}
+	return nil
 }
 
 func (c *Command) actualArgs() []*Arg {
@@ -411,6 +404,13 @@ func (c *Command) internalFlags() internalFlags {
 	return c.flags
 }
 
+func (c *Command) rootData() *rootCommandData {
+	if c.ifRoot == nil {
+		c.ifRoot = &rootCommandData{}
+	}
+	return c.ifRoot
+}
+
 func (c CommandsByName) Len() int {
 	return len(c)
 }
@@ -426,11 +426,17 @@ func (c CommandsByName) Swap(i, j int) {
 func (c *commandContext) initialize(ctx *Context) error {
 	rest := newPipelines(ActionOf(c.cmd.Uses), &c.cmd.Options)
 	c.cmd.setPipelines(rest)
-	return c.initializeCore(ctx)
+	return execute(ctx, Pipeline(c.cmd.uses().Initializers, defaultCommand.Initializers))
 }
 
-func (c *commandContext) initializeCore(ctx *Context) error {
-	return execute(ctx, Pipeline(c.cmd.uses().Initializers, defaultCommand.Initializers))
+func rootCommandInitializers(act Action) ActionFunc {
+	return func(c *Context) error {
+		if c.Command().fromApp == nil {
+			return nil
+		}
+
+		return c.Do(act)
+	}
 }
 
 func initializeFlagsArgs(ctx *Context) error {

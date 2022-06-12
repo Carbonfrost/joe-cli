@@ -182,7 +182,13 @@ func AutodetectColor() Action {
 // is nested, each sub-command is named.
 func DisplayHelpScreen(command ...string) Action {
 	return ActionFunc(func(c *Context) error {
-		current := c.App().createRoot()
+		current := c.Root().Command()
+
+		var appName string
+		if current.fromApp != nil {
+			appName = current.fromApp.Name
+		}
+
 		persistentFlags := make([]*Flag, 0)
 
 		// Find command and accumulate persistent flags
@@ -203,8 +209,8 @@ func DisplayHelpScreen(command ...string) Action {
 
 		if len(command) > 0 {
 			all := make([]string, 0)
-			if len(c.App().Name) > 0 {
-				all = append(all, c.App().Name)
+			if len(appName) > 0 {
+				all = append(all, appName)
 			}
 			all = append(all, command[0:len(command)-1]...)
 			lineage = strings.Join(all, " ")
@@ -282,12 +288,12 @@ func (c *Context) RenderTemplate(name string, data func(*Context) interface{}) e
 
 // RegisterTemplate will register the specified template by name.
 func (c *Context) RegisterTemplate(name string, template string) {
-	c.App().ensureTemplates()[name] = template
+	c.root().ensureTemplates()[name] = template
 }
 
 // RegisterTemplateFunc will register the specified function for use in template rendering.
 func (c *Context) RegisterTemplateFunc(name string, fn interface{}) {
-	c.App().ensureTemplateFuncs()[name] = fn
+	c.root().ensureTemplateFuncs()[name] = fn
 }
 
 // Wrap wraps the given text using a maximum line width and indentation.
@@ -415,49 +421,6 @@ func printableWidth(s string) int {
 
 func isCSITerminator(c rune) bool {
 	return (c >= 0x40 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)
-}
-
-func defaultHelpCommand() *Command {
-	return &Command{
-		Name:     "help",
-		HelpText: "Display help for a command",
-		Args: []*Arg{
-			{
-				Name:  "command",
-				Value: List(),
-				NArg:  -1,
-			},
-		},
-		Action: displayHelp,
-	}
-}
-
-func defaultHelpFlag() *Flag {
-	return &Flag{
-		Name:     "help",
-		HelpText: "Display this help screen then exit",
-		Value:    Bool(),
-		Options:  Exits,
-		Action:   displayHelp,
-	}
-}
-
-func defaultVersionFlag() *Flag {
-	return &Flag{
-		Name:     "version",
-		HelpText: "Print the build version then exit",
-		Value:    Bool(),
-		Options:  Exits,
-		Action:   PrintVersion(),
-	}
-}
-
-func defaultVersionCommand() *Command {
-	return &Command{
-		Name:     "version",
-		HelpText: "Print the build version then exit",
-		Action:   PrintVersion(),
-	}
 }
 
 // Execute the template

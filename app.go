@@ -15,9 +15,6 @@ import (
 
 // App provides the definition of an app, which is composed of commands, flags, and arguments.
 type App struct {
-	hooksSupport
-	customizableSupport
-
 	// Name provides the name of the app.  This value is inferred from the base name of the entry process if
 	// it is explicitly not set.  It will be displayed on the help screen and other templates.
 	Name string
@@ -111,13 +108,6 @@ type App struct {
 	rootCommandCreator func() *Command
 	rootCommand        *Command
 	flags              internalFlags
-	templateFuncs      map[string]interface{}
-	templates          map[string]string
-}
-
-type appContext struct {
-	*commandContext
-	app *App
 }
 
 var (
@@ -166,12 +156,16 @@ func (a *App) RunContext(c context.Context, args []string) error {
 	return err
 }
 
-// Command gets the command by name
+// Command gets the command by name.  If the name is the empty string,
+// this refers to the command which backs the app once it has been initialized.
 func (a *App) Command(name string) (*Command, bool) {
+	if name == "" {
+		return a.rootCommand, true
+	}
 	return findCommandByName(a.Commands, name)
 }
 
-// Flag gets the flag by name
+// Flag gets the flag by name.
 func (a *App) Flag(name string) (*Flag, bool) {
 	return findFlagByName(a.Flags, name)
 }
@@ -182,45 +176,29 @@ func (a *App) Arg(name string) (*Arg, bool) {
 }
 
 func (a *App) createRoot() *Command {
-	return a._createRootCore(false)
-}
-
-func (a *App) _createRootCore(force bool) *Command {
-	if a.rootCommand == nil || force {
-		var (
-			flags   internalFlags
-			hooks   hooksSupport
-			customs customizableSupport
-			data    map[string]interface{}
-		)
-		if a.rootCommand != nil {
-			flags = a.rootCommand.flags
-			hooks = a.rootCommand.hooksSupport
-			customs = a.rootCommand.customizableSupport
-			data = a.rootCommand.Data
+	cmd := func() *Command {
+		if a.rootCommandCreator == nil {
+			return &Command{
+				Name:        a.Name,
+				Flags:       a.Flags,
+				Args:        a.Args,
+				Subcommands: a.Commands,
+				Action:      a.Action,
+				Description: a.Description,
+				Comment:     a.Comment,
+				Data:        a.Data,
+				After:       a.After,
+				Uses:        a.Uses,
+				Before:      a.Before,
+				Options:     a.Options,
+			}
 		}
-		flags |= a.flags
-		update(data, a.Data)
+		return a.rootCommandCreator()
+	}()
 
-		a.rootCommand = &Command{
-			Name:                a.Name,
-			Flags:               a.Flags,
-			Args:                a.Args,
-			Subcommands:         a.Commands,
-			Action:              a.Action,
-			Description:         a.Description,
-			Comment:             a.Comment,
-			Data:                data,
-			After:               a.After,
-			Uses:                a.Uses,
-			Before:              a.Before,
-			Options:             a.Options,
-			flags:               flags,
-			hooksSupport:        hooks.append(&a.hooksSupport),
-			customizableSupport: customs.append(&a.customizableSupport),
-		}
-	}
-	return a.rootCommand
+	a.rootCommand = cmd
+	cmd.fromApp = a
+	return cmd
 }
 
 // SetData sets the specified metadata on the app
@@ -240,8 +218,7 @@ func (a *App) runContextCore(c context.Context, args []string) (*Context, error)
 	if err != nil {
 		return ctx, err
 	}
-
-	root := a.createRoot()
+	root, _ := a.Command("")
 	err = root.parseAndExecuteSelf(ctx, args)
 	return ctx, err
 }
@@ -253,71 +230,19 @@ func (a *App) Initialize(c context.Context) (*Context, error) {
 	return ctx, err
 }
 
-func (a *App) ensureTemplates() map[string]string {
+func (a *rootCommandData) ensureTemplates() map[string]string {
 	if a.templates == nil {
 		a.templates = map[string]string{}
 	}
 	return a.templates
 }
 
-func (a *App) ensureTemplateFuncs() map[string]interface{} {
+func (a *rootCommandData) ensureTemplateFuncs() map[string]interface{} {
 	if a.templateFuncs == nil {
 		a.templateFuncs = map[string]interface{}{}
 	}
 	return a.templateFuncs
 }
-
-func (a *appContext) initialize(c *Context) error {
-	var err error
-	if a.app.rootCommandCreator == nil {
-		err = a.defaultInitRootCommand(c)
-	} else {
-		err = a.factoryInitRootCommand(c)
-	}
-
-	if err != nil {
-		return err
-	}
-	return a.commandContext.initializeCore(c)
-}
-
-func (a *appContext) defaultInitRootCommand(c *Context) error {
-	rest := newPipelines(ActionOf(a.app.Uses), &a.app.Options)
-
-	a.commandContext.cmd = a.app.createRoot()
-	a.commandContext.cmd.setPipelines(rest)
-
-	if err := execute(c, Pipeline(rest.Initializers, defaultApp.Initializers)); err != nil {
-		return err
-	}
-
-	// Re-create the root command because middleware may have changed things.
-	a.commandContext.cmd = a.app._createRootCore(true)
-
-	// We must also pierce the encapsulation of command context initialization here
-	// (by calling initializeCore instead of initialize) because we
-	// don't want to calculate separating out action pipelines again, and we
-	// don't want to invoke app's initializers twice
-	a.commandContext.cmd.setPipelines(rest.exceptInitializers())
-
-	return nil
-}
-
-func (a *appContext) factoryInitRootCommand(c *Context) error {
-	a.commandContext.cmd = a.app.rootCommandCreator()
-	if err := execute(c, defaultApp.Initializers); err != nil {
-		return err
-	}
-
-	a.commandContext.cmd.setPipelines(&actionPipelines{})
-	return nil
-}
-
-func (a *appContext) target() target {
-	return a.commandContext.cmd
-}
-
-func (a *appContext) Name() string { return a.app.Name }
 
 func exit(c *Context, err error) {
 	if err == nil {
@@ -420,7 +345,7 @@ func setupDefaultTemplateFuncs(c *Context) error {
 		},
 	}
 
-	a := c.App()
+	a := c.root()
 	funcs := a.ensureTemplateFuncs()
 	for k, v := range builtinFuncs {
 		if _, ok := funcs[k]; !ok {
@@ -436,7 +361,7 @@ func setupDefaultTemplateFuncs(c *Context) error {
 }
 
 func setupDefaultTemplates(c *Context) error {
-	a := c.App()
+	a := c.root()
 	templates := a.ensureTemplates()
 	for k, v := range defaultTemplates {
 		if _, ok := templates[k]; !ok {
@@ -446,15 +371,21 @@ func setupDefaultTemplates(c *Context) error {
 	return nil
 }
 
-func addAppCommand(name string, f *Flag, cmd *Command) ActionFunc {
+func optionalCommand(name string, cmd *Command) ActionFunc {
 	return func(c *Context) error {
-		app := c.App()
-		if len(app.Commands) > 0 {
+		app := c.Command()
+		if len(app.Subcommands) > 0 {
 			if _, ok := app.Command(name); !ok {
-				app.Commands = append(app.Commands, cmd)
+				app.Subcommands = append(app.Subcommands, cmd)
 			}
 		}
+		return nil
+	}
+}
 
+func optionalFlag(name string, f *Flag) ActionFunc {
+	return func(c *Context) error {
+		app := c.Command()
 		if _, ok := app.Flag(name); !ok {
 			app.Flags = append(app.Flags, f)
 		}
@@ -467,5 +398,3 @@ func update(dst, src map[string]interface{}) {
 		dst[k] = v
 	}
 }
-
-var _ hookable = (*App)(nil)

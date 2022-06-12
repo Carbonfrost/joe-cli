@@ -168,19 +168,20 @@ var (
 	emptyAction Action = ActionFunc(emptyActionImpl)
 	valueType          = reflect.TypeOf((*Value)(nil)).Elem()
 
-	defaultApp = actionPipelines{
-		Initializers: Pipeline(
-			ActionFunc(setupDefaultIO),
-			ActionFunc(setupDefaultData),
-			ActionFunc(setupDefaultTemplateFuncs),
-			ActionFunc(setupDefaultTemplates),
-			ActionFunc(addAppCommand("help", defaultHelpFlag(), defaultHelpCommand())),
-			ActionFunc(addAppCommand("version", defaultVersionFlag(), defaultVersionCommand())),
-		),
-	}
-
 	defaultCommand = actionPipelines{
 		Initializers: Pipeline(
+			rootCommandInitializers(
+				Pipeline(
+					ActionFunc(setupDefaultIO),
+					ActionFunc(setupDefaultData),
+					ActionFunc(setupDefaultTemplateFuncs),
+					ActionFunc(setupDefaultTemplates),
+					ActionFunc(optionalCommand("help", defaultHelpCommand)),
+					ActionFunc(optionalFlag("help", defaultHelpFlag)),
+					ActionFunc(optionalCommand("version", defaultVersionCommand)),
+					ActionFunc(optionalFlag("version", defaultVersionFlag)),
+				),
+			),
 			ActionFunc(ensureSubcommands),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
@@ -207,6 +208,41 @@ var (
 	}
 
 	cantHookError = errors.New("hooks are not supported in this context")
+
+	defaultHelpCommand = &Command{
+		Name:     "help",
+		HelpText: "Display help for a command",
+		Args: []*Arg{
+			{
+				Name:  "command",
+				Value: List(),
+				NArg:  -1,
+			},
+		},
+		Action: displayHelp,
+	}
+
+	defaultHelpFlag = &Flag{
+		Name:     "help",
+		HelpText: "Display this help screen then exit",
+		Value:    Bool(),
+		Options:  Exits,
+		Action:   displayHelp,
+	}
+
+	defaultVersionFlag = &Flag{
+		Name:     "version",
+		HelpText: "Print the build version then exit",
+		Value:    Bool(),
+		Options:  Exits,
+		Action:   PrintVersion(),
+	}
+
+	defaultVersionCommand = &Command{
+		Name:     "version",
+		HelpText: "Print the build version then exit",
+		Action:   PrintVersion(),
+	}
 )
 
 // Execute executes the Setup, which assignes the various parts to their

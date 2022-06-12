@@ -103,7 +103,7 @@ var _ = Describe("App", func() {
 			)
 			app := &cli.App{
 				Action: func(c *cli.Context) {
-					help, _ = c.App().Flag("help")
+					help, _ = c.Command().Flag("help")
 				},
 			}
 
@@ -133,7 +133,7 @@ var _ = Describe("App", func() {
 			)
 			app := &cli.App{
 				Action: func(c *cli.Context) {
-					version, _ = c.App().Flag("version")
+					version, _ = c.Command().Flag("version")
 				},
 			}
 
@@ -165,7 +165,7 @@ var _ = Describe("App", func() {
 			app := cli.NewApp(&cli.Command{
 				Name: "app",
 				Action: func(c *cli.Context) {
-					version, _ = c.App().Flag("version")
+					version, _ = c.Command().Flag("version")
 				},
 			})
 
