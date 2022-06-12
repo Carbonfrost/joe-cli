@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 )
 
@@ -459,8 +458,7 @@ func (b *bindingImpl) Args() []string {
 
 func (s *set) defineFlag(res *internalOption) {
 	if len(res.short) == 0 && len(res.long) == 0 {
-		fmt.Fprintf(os.Stderr, "invalid flag definition, missing name or alias")
-		os.Exit(1)
+		panic("invalid flag definition, missing name or alias")
 	}
 
 	for _, short := range res.short {
