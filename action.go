@@ -924,8 +924,8 @@ func (af ActionFunc) Execute(c *Context) error {
 }
 
 // Append appends an action to the pipeline
-func (p ActionPipeline) Append(x Action) ActionPipeline {
-	return ActionPipeline(append(p, x))
+func (p ActionPipeline) Append(x ...Action) ActionPipeline {
+	return ActionPipeline(append(p, x...))
 }
 
 // Execute the pipeline by calling each action successively
