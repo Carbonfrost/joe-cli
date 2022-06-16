@@ -134,8 +134,8 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 			return err
 		}
 		c.Parent().internal.setDidSubcommandExecute()
-		newCtx := c.Parent().commandContext(cmd, invoke).setTiming(ActionTiming)
-		return cmd.parseAndExecuteSelf(newCtx, invoke)
+		newCtx := c.Parent().commandContext(cmd, invoke)
+		return newCtx.Execute(invoke)
 	})
 }
 
@@ -236,21 +236,6 @@ func (c *Command) VisibleFlags() []*Flag {
 // Names obtains the name of the command and its aliases
 func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
-}
-
-func (c *Command) parseAndExecuteSelf(ctx *Context, args []string) error {
-	set := c.buildSet(ctx)
-	if c.internalFlags().skipFlagParsing() {
-		args = append([]string{args[0], "--"}, args[1:]...)
-	}
-
-	flags := c.internalFlags().toRaw() | RawSkipProgramName
-	err := set.parse(args, flags)
-	if err != nil {
-		return err
-	}
-
-	return ctx.executeCommand()
 }
 
 func (c *Command) buildSet(ctx *Context) *set {

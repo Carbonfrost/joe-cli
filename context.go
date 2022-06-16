@@ -115,6 +115,31 @@ func newContextPathPattern(pat string) contextPathPattern {
 	return contextPathPattern{strings.Fields(pat)}
 }
 
+// Execute executes the context with the given arguments.
+func (c *Context) Execute(args []string) error {
+	root := c.Command()
+	set := root.buildSet(c)
+	if root.internalFlags().skipFlagParsing() {
+		args = append([]string{args[0], "--"}, args[1:]...)
+	}
+
+	flags := root.internalFlags().toRaw() | RawSkipProgramName
+	err := set.parse(args, flags)
+	if err != nil {
+		return err
+	}
+
+	if err := c.executeBefore(); err != nil {
+		return err
+	}
+
+	if err := c.executeSelf(); err != nil {
+		return err
+	}
+
+	return c.executeAfter()
+}
+
 // Parent obtains the parent context or nil if the root context
 func (c *Context) Parent() *Context {
 	if c == nil {
@@ -1089,18 +1114,6 @@ func (c *Context) executeAfter() error {
 		func(c1 *Context) error { return c1.internal.executeAfter(c) },
 		func(c1 *Context) error { return c1.internal.executeAfterDescendent(c) },
 	)
-}
-
-func (c *Context) executeCommand() error {
-	if err := c.executeBefore(); err != nil {
-		return err
-	}
-
-	if err := c.executeSelf(); err != nil {
-		return err
-	}
-
-	return c.executeAfter()
 }
 
 func (c *Context) executeSelf() error {

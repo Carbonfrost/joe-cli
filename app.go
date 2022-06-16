@@ -218,9 +218,7 @@ func (a *App) runContextCore(c context.Context, args []string) (*Context, error)
 	if err != nil {
 		return ctx, err
 	}
-	root, _ := a.Command("")
-	err = root.parseAndExecuteSelf(ctx, args)
-	return ctx, err
+	return ctx, ctx.Execute(args)
 }
 
 // Initialize sets up the app with the given context and arguments
