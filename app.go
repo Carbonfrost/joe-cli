@@ -107,7 +107,6 @@ type App struct {
 
 	rootCommandCreator func() *Command
 	rootCommand        *Command
-	flags              internalFlags
 }
 
 var (

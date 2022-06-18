@@ -28,8 +28,6 @@ type EvaluatorFunc func(*Context, interface{}, func(interface{}) error) error
 // A well-known implementation of an expression is in the Unix `find` command where
 // each file is processed through a series of operands to filter a list of files.
 type Expr struct {
-	pipelinesSupport
-	customizableSupport
 
 	// Name provides the name of the expression operator. This value must be set, and it is used to access
 	// the expression operator's value via the context
@@ -444,19 +442,19 @@ func (e *Expr) LookupData(name string) (interface{}, bool) {
 	return v, ok
 }
 
-func (e *Expr) setCategory(name string) {
+func (e *Expr) SetCategory(name string) {
 	e.Category = name
 }
 
-func (e *Expr) setHelpText(name string) {
+func (e *Expr) SetHelpText(name string) {
 	e.HelpText = name
 }
 
-func (e *Expr) setManualText(name string) {
+func (e *Expr) SetManualText(name string) {
 	e.ManualText = name
 }
 
-func (e *Expr) setDescription(value string) {
+func (e *Expr) SetDescription(value string) {
 	e.Description = value
 }
 
@@ -467,16 +465,8 @@ func (e *Expr) ensureData() map[string]interface{} {
 	return e.Data
 }
 
-func (e *Expr) setInternalFlags(f internalFlags) {
-	e.flags |= f
-}
-
 func (e *Expr) internalFlags() internalFlags {
 	return e.flags
-}
-
-func (*Expr) completion() Completion {
-	return nil
 }
 
 // Evaluate provides the evaluation of the function and implements the Evaluator interface
@@ -716,4 +706,3 @@ func emptyYielder(interface{}) error {
 }
 
 var _ Value = (*Expression)(nil)
-var _ targetConventions = (*Expr)(nil)

@@ -1021,14 +1021,6 @@ func (p *actionPipelines) add(t Timing, h Action) {
 	}
 }
 
-func (p *actionPipelines) exceptInitializers() *actionPipelines {
-	return &actionPipelines{
-		Before: p.Before,
-		Action: p.Action,
-		After:  p.After,
-	}
-}
-
 func (w withTimingWrapper) Execute(c *Context) error {
 	return c.act(w.Action, w.t, false)
 }
@@ -1061,21 +1053,8 @@ func (i *hooksSupport) executeAfterHooks(target *Context) error {
 	return nil
 }
 
-func (i *hooksSupport) append(other *hooksSupport) hooksSupport {
-	return hooksSupport{
-		before: append(i.before, other.before...),
-		after:  append(i.after, other.after...),
-	}
-}
-
 func (i *customizableSupport) customize(pat string, handler Action) {
 	i.items = append(i.items, &hook{newContextPathPattern(pat), handler})
-}
-
-func (i *customizableSupport) append(other *customizableSupport) customizableSupport {
-	return customizableSupport{
-		items: append(i.items, other.items...),
-	}
 }
 
 func (i *customizableSupport) customizations() []*hook {
