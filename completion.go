@@ -194,6 +194,35 @@ func setupRobustParsingMode(c *Context) {
 	c.SetData(robustParseModeEnabledKey, true)
 }
 
+// CompletionValues provides a static list of completion values.  This can be
+// specified as the Completion for flags or args.
+func CompletionValues(values ...string) Completion {
+	return CompletionFunc(func(c *CompletionContext) []CompletionItem {
+		switch o := c.Context.Target().(type) {
+		case *Flag:
+			res := make([]CompletionItem, 0, len(values))
+			for _, n := range o.synopsis().Names {
+				prefix := n + "="
+				for _, a := range values {
+					v := prefix + a
+					if strings.HasPrefix(v, c.Incomplete) {
+						res = append(res, CompletionItem{Value: v})
+					}
+				}
+			}
+			return res
+		default:
+			res := make([]CompletionItem, 0, len(values))
+			for _, v := range values {
+				if strings.HasPrefix(v, c.Incomplete) {
+					res = append(res, CompletionItem{Value: v})
+				}
+			}
+			return res
+		}
+	})
+}
+
 // Complete considers the given arguments and completion request to determine
 // completion items
 func (c *Context) Complete(args []string, incomplete string) []CompletionItem {

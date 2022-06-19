@@ -75,6 +75,29 @@ var _ = Describe("Complete", func() {
 			{Value: "--flag"},
 		}))),
 	)
+
+	DescribeTable("flag examples", func(arguments string, incomplete string, completion cli.Completion, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "flag", Completion: completion, Value: new(string)},
+			},
+			Action: func() {},
+		}
+
+		args, _ := cli.Split(arguments)
+		ctx, err := app.Initialize(context.TODO())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ctx.Complete(args, incomplete)).To(expected)
+	},
+		Entry("completion all values", "app", "--flag", cli.CompletionValues("roses", "violets"), WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
+			{Value: "--flag=roses"},
+			{Value: "--flag=violets"},
+		}))),
+		Entry("completion value prefix", "app", "--flag=r", cli.CompletionValues("roses", "violets"), WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
+			{Value: "--flag=roses"},
+		}))),
+	)
 })
 
 func ignoringDefaults(v interface{}) interface{} {

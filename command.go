@@ -334,10 +334,14 @@ func (c *Command) completion() Completion {
 func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
 	cmd := cc.Context.Target().(*Command)
 	items := []CompletionItem{}
+	flagName, _, hasArg := strings.Cut(cc.Incomplete, "=")
 
 	if strings.HasPrefix(cc.Incomplete, "-") {
 		for _, f := range cmd.VisibleFlags() {
 			for _, n := range f.synopsis().Names {
+				if n == cc.Incomplete || (hasArg && strings.HasPrefix(n, flagName)) {
+					return actualCompletion(f.completion()).Complete(cc.optionContext(f))
+				}
 				if strings.HasPrefix(n, cc.Incomplete) {
 					var suffix string
 					if !f.internalFlags().flagOnly() && len(n) > 2 {
