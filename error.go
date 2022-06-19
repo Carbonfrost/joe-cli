@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 )
 
@@ -24,11 +26,6 @@ type ParseError struct {
 
 	// Remaining contains arguments which could not be parsed
 	Remaining []string
-
-	// fixErr is used to fixup the internal error message.  The ArgCounter API
-	// which can generate ParseError does not know the name of the arg that
-	// caused the error until this func is called
-	fixErr func(string) error
 }
 
 // ExitCoder is an error that knows how to convert to its exit code
@@ -42,6 +39,16 @@ type ExitCoder interface {
 type exitError struct {
 	message  interface{}
 	exitCode int
+}
+
+type formattableError interface {
+	error
+	FillTemplate(*ParseError) error
+}
+
+type errorTemplate struct {
+	format   string
+	fallback string
 }
 
 const (
@@ -130,6 +137,11 @@ func (e *ParseError) Error() string {
 	if e.Err == nil {
 		return e.Code.String()
 	}
+
+	if t, ok := e.Err.(formattableError); ok {
+		return t.FillTemplate(e).Error()
+	}
+
 	return e.Err.Error()
 }
 
@@ -171,6 +183,17 @@ func (e *exitError) ExitCode() int {
 	return e.exitCode
 }
 
+func (f errorTemplate) Error() string {
+	return f.fallback
+}
+
+func (f errorTemplate) FillTemplate(p *ParseError) error {
+	if p.Name == "" {
+		return errors.New(f.fallback)
+	}
+	return fmt.Errorf(f.format, p.Name, p.Value)
+}
+
 func commandMissing(name string) error {
 	return &ParseError{
 		Code: CommandNotFound,
@@ -203,11 +226,12 @@ func expectedArgument(count int) *ParseError {
 	if count > 1 {
 		w = fmt.Sprint(count, " arguments")
 	}
+	fallback := fmt.Sprintf("expected %s", w)
 	return &ParseError{
 		Code: ExpectedArgument,
-		Err:  fmt.Errorf("expected %s", w),
-		fixErr: func(name string) error {
-			return fmt.Errorf("expected %s for %s", w, name)
+		Err: errorTemplate{
+			fallback: fallback,
+			format:   fallback + " for %[1]s",
 		},
 	}
 }
@@ -236,10 +260,6 @@ func argTakerError(name string, value string, err error, remaining []string) err
 		p.Name = name
 		p.Value = value
 		p.Remaining = remaining
-		if p.fixErr != nil {
-			p.Err = p.fixErr(name)
-			p.fixErr = nil
-		}
 		return p
 	}
 	return &ParseError{
@@ -279,3 +299,30 @@ func optionName(name interface{}) string {
 	}
 	panic("unreachable!")
 }
+
+func listOfValues(values []string) string {
+	switch len(values) {
+	case 0:
+		return ""
+	case 1:
+		return values[0]
+	case 2:
+		return fmt.Sprintf("`%s' or `%s'", values[0], values[1])
+	default:
+		var b bytes.Buffer
+		for i, v := range values {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			if i == len(values)-1 {
+				b.WriteString("or ")
+			}
+			b.WriteString("`")
+			b.WriteString(v)
+			b.WriteString("'")
+		}
+		return b.String()
+	}
+}
+
+var _ formattableError = errorTemplate{}

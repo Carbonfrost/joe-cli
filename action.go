@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"reflect"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
@@ -635,6 +636,46 @@ func Accessory[T Value](name string, fn func(T) Prototype) Action {
 	})
 }
 
+// Enum provides validation that a particular flag or arg value matches a given set of
+// legal values.  The operation applies to the raw values in the occurrences.
+// When used, it also sets the flag synopsis to a reasonable default derived from the values
+// unless the flag provides its own specific synopsis.  This enables completion on the enumerated
+// values.
+func Enum(options ...string) Action {
+	oset := map[string]bool{}
+	for _, o := range options {
+		oset[o] = true
+	}
+	var usageText string
+	if len(options) > 3 {
+		usageText = "(" + strings.Join(options[0:3], "|") + "|...)"
+	} else {
+		usageText = "(" + strings.Join(options, "|") + ")"
+	}
+
+	return &Prototype{
+		UsageText:  usageText,
+		Completion: CompletionValues(options...),
+		Setup: Setup{
+			Uses: ValidatorFunc(func(raw []string) error {
+				for _, occur := range raw {
+					if _, ok := oset[occur]; !ok {
+						expected := listOfValues(options)
+						return &ParseError{
+							Code: InvalidArgument,
+							Err: errorTemplate{
+								fallback: fmt.Sprintf("unrecognized value %q, expected %s", occur, expected),
+								format:   fmt.Sprintf("unrecognized value %q for %%[1]s, expected %s", occur, expected),
+							},
+						}
+					}
+				}
+				return nil
+			}),
+		},
+	}
+}
+
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
 // set up inside a Uses pipeline.
 // When value is nil, the corresponding
@@ -1150,7 +1191,7 @@ func (v ValidatorFunc) Execute(c *Context) error {
 	return c.Do(AtTiming(ActionFunc(func(c *Context) error {
 		occur := c.RawOccurrences("")
 		if err := v(occur); err != nil {
-			return err
+			return argTakerError(c.Name(), "", err, nil)
 		}
 
 		return nil

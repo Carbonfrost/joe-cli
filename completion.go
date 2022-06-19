@@ -202,7 +202,12 @@ func CompletionValues(values ...string) Completion {
 		case *Flag:
 			res := make([]CompletionItem, 0, len(values))
 			for _, n := range o.synopsis().Names {
-				prefix := n + "="
+				var prefix string
+				if len(n) == 2 { // as in -s short names
+					prefix = n // Force run-in style, which is most compatible
+				} else {
+					prefix = n + "="
+				}
 				for _, a := range values {
 					v := prefix + a
 					if strings.HasPrefix(v, c.Incomplete) {

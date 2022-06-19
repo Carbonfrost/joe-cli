@@ -1916,3 +1916,65 @@ var _ = Describe("Implies", func() {
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 })
+
+var _ = Describe("Enum", func() {
+
+	It("set expected values in prototype", func() {
+		flag := &cli.Flag{
+			Name:    "test",
+			Aliases: []string{"t"},
+			Uses:    cli.Enum("case", "suite"),
+		}
+		_ = cli.InitializeFlag(flag)
+
+		Expect(flag.UsageText).To(Equal("(case|suite)"))
+	})
+
+	DescribeTable("validation", func(arguments string, uses cli.Action, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "long", Uses: uses},
+			},
+			Action: func() {},
+		}
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(expected)
+	},
+		Entry("two options",
+			"app --long yes",
+			cli.Enum("ok", "no"),
+			MatchError("unrecognized value \"yes\" for --long, expected `ok' or `no'"),
+		),
+		Entry("three options",
+			"app --long oui",
+			cli.Enum("ok", "no", "yes"),
+			MatchError("unrecognized value \"oui\" for --long, expected `ok', `no', or `yes'"),
+		),
+	)
+
+	DescribeTable("completion", func(arguments string, incomplete string, uses cli.Action, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "long", Aliases: []string{"s"}, Uses: uses},
+			},
+			Action: func() {},
+		}
+		args, _ := cli.Split(arguments)
+		ctx, err := app.Initialize(context.TODO())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ctx.Complete(args, incomplete)).To(expected)
+	},
+		Entry("long enum", "app --long=", "--long=", cli.Enum("ok", "no"), ConsistOf([]cli.CompletionItem{
+			{Value: "--long=ok"},
+			{Value: "--long=no"},
+		})),
+		Entry("short enum", "app -s", "-s", cli.Enum("ok", "no"), ConsistOf([]cli.CompletionItem{
+			{Value: "-sok"},
+			{Value: "-sno"},
+		})),
+	)
+})

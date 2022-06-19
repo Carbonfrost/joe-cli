@@ -7,6 +7,7 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
@@ -25,13 +26,15 @@ var _ = Describe("RawParse", func() {
 		actual, err := cli.RawParse(args, set, cli.RawSkipProgramName)
 		actualFlat := flattenParseResults(actual)
 
-		Expect(err).To(Equal(&cli.ParseError{
-			Code:      cli.ExpectedArgument,
-			Name:      "<arg>",
-			Err:       errors.New("expected 2 arguments for <arg>"),
-			Value:     "",
-			Remaining: nil,
-		}))
+		Expect(err).To(PointTo(MatchFields(IgnoreExtras, Fields{
+			"Code":      Equal(cli.ExpectedArgument),
+			"Name":      Equal("<arg>"),
+			"Err":       MatchError("expected 2 arguments"),
+			"Value":     Equal(""),
+			"Remaining": BeNil(),
+		})))
+		Expect(err).To(MatchError("expected 2 arguments for <arg>"))
+
 		Expect(actualFlat).To(Equal(map[string][]string{
 			"arg": []string{"<arg> first"},
 		}))
@@ -140,24 +143,30 @@ var _ = Describe("RawParse", func() {
 
 		Entry("long flag missing required arg", "app --short",
 			BeEmpty(),
-			Equal(&cli.ParseError{
-				Code:      cli.ExpectedArgument,
-				Name:      "--short",
-				Err:       errors.New("expected argument for --short"),
-				Value:     "",
-				Remaining: []string{"--short"},
-			}),
+			And(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Code":      Equal(cli.ExpectedArgument),
+					"Name":      Equal("--short"),
+					"Err":       MatchError("expected argument"),
+					"Value":     Equal(""),
+					"Remaining": Equal([]string{"--short"}),
+				})),
+				MatchError("expected argument for --short"),
+			),
 		),
 
 		Entry("long flag missing arg by default", "app --long",
 			BeEmpty(),
-			Equal(&cli.ParseError{
-				Code:      cli.ExpectedArgument,
-				Name:      "--long",
-				Err:       errors.New("expected argument for --long"),
-				Value:     "",
-				Remaining: []string{"--long"},
-			}),
+			And(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Code":      Equal(cli.ExpectedArgument),
+					"Name":      Equal("--long"),
+					"Err":       MatchError("expected argument"),
+					"Value":     Equal(""),
+					"Remaining": Equal([]string{"--long"}),
+				})),
+				MatchError("expected argument for --long"),
+			),
 		),
 
 		Entry("unexpected argument", "app arg -s a other args",

@@ -459,7 +459,7 @@ func (c *Context) rawCore(name interface{}, occurs bool) []string {
 // LookupData gets the data matching the key, including recursive traversal
 // up the lineage contexts
 func (c *Context) LookupData(name string) (interface{}, bool) {
-	if c == nil {
+	if c == nil || c.target() == nil {
 		return nil, false
 	}
 	if res, ok := c.target().LookupData(name); ok {
