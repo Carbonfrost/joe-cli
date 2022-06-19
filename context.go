@@ -486,6 +486,9 @@ func (c *Context) nameToString(name interface{}) string {
 
 // SetValue sets the value of the current flag or arg
 func (c *Context) SetValue(arg string) error {
+	if c.implicitTimingActive() {
+		c.target().setInternalFlags(internalFlagSeenImplied)
+	}
 	return c.target().(option).Set(arg)
 }
 
@@ -512,17 +515,23 @@ func (c *Context) After(v interface{}) error {
 }
 
 func (c *Context) act(v interface{}, desired Timing, optional bool) error {
-	if c.timing < desired {
+	// For the purposes of determining whether we can run this action,
+	// remove synthetic timing
+	actual := desired
+	if desired > syntheticTiming {
+		actual = BeforeTiming
+	}
+	if c.timing < actual {
 		c.target().appendAction(desired, ActionOf(v))
 		return nil
 	}
-	if c.timing == desired {
+	if c.timing == actual {
 		return ActionOf(v).Execute(c)
 	}
 	if optional {
 		return nil
 	}
-	if c.timing > desired {
+	if c.timing > actual {
 		return ErrTimingTooLate
 	}
 	return nil
@@ -858,6 +867,15 @@ func (c *Context) displayPrompt(prompt string, fn func(io.Reader) (string, error
 		}
 	}()
 	return fn(c.Stdin)
+}
+
+func (c *Context) setImplicitTimingActive() {
+	c.SetData(implicitTimingEnabledKey, true)
+}
+
+func (c *Context) implicitTimingActive() bool {
+	_, ok := c.LookupData(implicitTimingEnabledKey)
+	return ok
 }
 
 // Last gets the last name in the path
@@ -1248,8 +1266,9 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 
 	// Invoke the Before action on all flags and args, but only the actual
 	// Action when the flag or arg was set
+	parent := ctx.target()
 	for _, f := range opts {
-		if f.Seen() {
+		if f.Seen() || hasSeenImplied(f, parent) {
 			err := ctx.optionContext(f).executeSelf()
 			if err != nil {
 				return err
@@ -1257,6 +1276,13 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 		}
 	}
 	return nil
+}
+
+func hasSeenImplied(f option, parent target) bool {
+	if f.internalFlags().seenImplied() {
+		return f.internalFlags().impliedAction() || parent.internalFlags().impliedAction()
+	}
+	return false
 }
 
 func triggerAfterFlags(ctx *Context) error {
@@ -1334,7 +1360,7 @@ func fixupOptionInternals(c *Context) error {
 }
 
 func setupOptionFromEnv(ctx *Context) error {
-	return ctx.Do(Before(ActionFunc(func(c *Context) error {
+	return ctx.Do(AtTiming(ActionFunc(func(c *Context) error {
 		// It would be better to use ImplicitValue here, but unfortunately,
 		// this depends upon the context, which the implicit value func does not have
 		// available at the time it gets executed
@@ -1345,7 +1371,7 @@ func setupOptionFromEnv(ctx *Context) error {
 			}
 		}
 		return nil
-	})))
+	}), ImplicitValueTiming))
 }
 
 func handleCustomizations(target *Context) error {

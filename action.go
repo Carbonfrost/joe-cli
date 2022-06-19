@@ -135,7 +135,7 @@ type pipelinesSupport struct {
 
 type actionPipelines struct {
 	Initializers Action // Must be strictly initializers (no automatic regrouping)
-	Before       Action
+	Before       beforePipeline
 	Action       Action
 	After        Action
 }
@@ -152,6 +152,9 @@ type cons struct {
 
 type middlewareFunc func(*Context, Action) error
 
+// beforePipeline has sub-timings, defined in actualBeforeIndex map
+type beforePipeline [4]ActionPipeline
+
 // Timing enumerates the timing of an action
 type Timing int
 
@@ -164,11 +167,40 @@ const (
 	ActionTiming
 	// AfterTiming which occurs after the command executes
 	AfterTiming
+
+	syntheticTiming
+
+	// ValidatorTiming represents timing that happens when values are being validated
+	// for an arg or flag.  This timing can be set with the AtTiming function which affects
+	// the sort order of actions so that validation occurs before all other actions in Before
+	// pipeline.  When the action runs, the actual timing will be BeforeTiming.
+	ValidatorTiming
+
+	// ImplicitValueTiming represents timing that happens when an implied value is being
+	// computed for an arg or flag.  This timing can be set with the AtTiming function
+	// which affects the sort order of actions so that implied value timing occurs just before
+	// the action.  When the action runs, the actual timing will be BeforeTiming.
+	ImplicitValueTiming
+
+	// justBeforeTiming is internally used for actions that must happen just before the
+	// Action timing
+	justBeforeTiming
+)
+
+const (
+	implicitTimingEnabledKey = "__ImplicitTimingEnabled"
 )
 
 var (
 	emptyAction Action = ActionFunc(emptyActionImpl)
 	valueType          = reflect.TypeOf((*Value)(nil)).Elem()
+
+	actualBeforeIndex = map[Timing]int{
+		ValidatorTiming:     0,
+		BeforeTiming:        1,
+		ImplicitValueTiming: 2,
+		justBeforeTiming:    3,
+	}
 
 	defaultCommand = actionPipelines{
 		Initializers: Pipeline(
@@ -193,10 +225,14 @@ var (
 		Action: Pipeline(
 			ActionFunc(triggerRobustParsingAndCompletion),
 		),
-		Before: Pipeline(
-			ActionFunc(triggerBeforeFlags),
-			ActionFunc(triggerBeforeArgs),
-		),
+		Before: beforePipeline{
+			nil,
+			Pipeline(
+				ActionFunc(triggerBeforeFlags),
+				ActionFunc(triggerBeforeArgs),
+			),
+			nil,
+		},
 		After: Pipeline(
 			ActionFunc(triggerAfterArgs),
 			ActionFunc(triggerAfterFlags),
@@ -597,6 +633,8 @@ func Accessory[T Value](name string, fn func(T) Prototype) Action {
 
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
 // set up inside a Uses pipeline.
+// When value is nil, the corresponding
+// metadata is deleted
 func Data(name string, value interface{}) Action {
 	return ActionFunc(func(c *Context) error {
 		c.SetData(name, value)
@@ -793,14 +831,14 @@ func optionalSetup(a func(*Context)) ActionFunc {
 // ImplicitValue sets the implicit value which is specified for the arg or flag
 // if it was not specified for the command.  Any errors are suppressed
 func ImplicitValue(fn func(*Context) (string, bool)) Action {
-	return Before(ActionFunc(func(c *Context) error {
+	return AtTiming(ActionFunc(func(c *Context) error {
 		if c.Occurrences("") == 0 {
 			if v, ok := fn(c); ok {
 				c.SetValue(v)
 			}
 		}
 		return nil
-	}))
+	}), ImplicitValueTiming)
 }
 
 // Implies is used to set the implied value of another flag.   For example,
@@ -1002,8 +1040,11 @@ func (p *actionPipelines) add(t Timing, h Action) {
 	switch t {
 	case InitialTiming:
 		p.Initializers = Pipeline(p.Initializers, h)
-	case BeforeTiming:
-		p.Before = Pipeline(p.Before, h)
+
+	case BeforeTiming, ValidatorTiming, ImplicitValueTiming, justBeforeTiming:
+		actualIndex := actualBeforeIndex[t]
+		p.Before[actualIndex] = Pipeline(p.Before[actualIndex], h)
+
 	case ActionTiming:
 		// As a rule, middleware wraps the existing Action pipeline.
 		// This solves for when middleware was added in the Uses or Before
@@ -1022,7 +1063,20 @@ func (p *actionPipelines) add(t Timing, h Action) {
 }
 
 func (w withTimingWrapper) Execute(c *Context) error {
+	switch w.t {
+	case ImplicitValueTiming:
+		return c.act(Pipeline(
+			Data(implicitTimingEnabledKey, true),
+			w.Action,
+			Data(implicitTimingEnabledKey, nil),
+		), BeforeTiming, false)
+	}
+
 	return c.act(w.Action, w.t, false)
+}
+
+func (b beforePipeline) Execute(c *Context) error {
+	return ActionPipeline(append(append(append(b[0], b[1]...), b[2]...), b[3]...)).Execute(c)
 }
 
 func (i *hooksSupport) hookBefore(pat string, a Action) error {
@@ -1032,8 +1086,12 @@ func (i *hooksSupport) hookBefore(pat string, a Action) error {
 
 func (i *hooksSupport) executeBeforeHooks(target *Context) error {
 	for _, b := range i.before {
+
 		if b.pat.Match(target.Path()) {
-			b.action.Execute(target)
+			err := target.Do(b.action)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1047,7 +1105,10 @@ func (i *hooksSupport) hookAfter(pat string, a Action) error {
 func (i *hooksSupport) executeAfterHooks(target *Context) error {
 	for _, b := range i.after {
 		if b.pat.Match(target.Path()) {
-			b.action.Execute(target)
+			err := target.Do(b.action)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1117,6 +1178,7 @@ var (
 	_ Action   = withTimingWrapper{}
 	_ Action   = Setup{}
 	_ Action   = Prototype{}
+	_ Action   = beforePipeline{}
 	_ Action   = (*cons)(nil)
 	_ hookable = (*hooksSupport)(nil)
 )

@@ -247,7 +247,7 @@ var _ = Describe("Arg", func() {
 	Describe("FilePath", func() {
 
 		It("sets up value from option", func() {
-
+			impliedAct := new(joeclifakes.FakeAction)
 			var testFileSystem = func() fs.FS {
 				appFS := afero.NewMemMapFs()
 
@@ -264,6 +264,8 @@ var _ = Describe("Arg", func() {
 						Name:     "f",
 						FilePath: "src/a/b.txt",
 						Value:    &actual,
+						Options:  cli.ImpliedAction,
+						Action:   impliedAct,
 					},
 				},
 			}
@@ -272,6 +274,7 @@ var _ = Describe("Arg", func() {
 			app.RunContext(context.TODO(), args)
 
 			Expect(actual).To(Equal("b contents"))
+			Expect(impliedAct.ExecuteCallCount()).To(Equal(1))
 		})
 	})
 
@@ -280,11 +283,14 @@ var _ = Describe("Arg", func() {
 			actual    string
 			arguments string
 			occurs    int
+			options   cli.Option
+			executed  bool
 		)
 
 		BeforeEach(func() {
 			arguments = "app "
 			actual = ""
+			options = 0
 		})
 
 		JustBeforeEach(func() {
@@ -294,8 +300,10 @@ var _ = Describe("Arg", func() {
 						Name:    "f",
 						EnvVars: []string{"_GOCLI_F"},
 						Value:   &actual,
+						Options: options,
 						Action: func(c *cli.Context) {
 							occurs = c.Occurrences("")
+							executed = true
 						},
 					},
 				},
@@ -304,6 +312,16 @@ var _ = Describe("Arg", func() {
 			os.Setenv("_GOCLI_F", "environment value")
 			args, _ := cli.Split(arguments)
 			app.RunContext(context.TODO(), args)
+		})
+
+		Context("when ImpliedAction is set", func() {
+			BeforeEach(func() {
+				options = cli.ImpliedAction
+			})
+
+			It("executes implied action", func() {
+				Expect(executed).To(BeTrue())
+			})
 		})
 
 		It("sets up value from environment", func() {

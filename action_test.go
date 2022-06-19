@@ -348,6 +348,34 @@ var _ = Describe("timings", func() {
 		})
 	})
 
+	It("ensures that validation runs before other Before funcs", func() {
+		var (
+			events []string
+			stub   = func(evt string) cli.ActionFunc {
+				return func(c *cli.Context) error {
+					events = append(events, evt)
+					return nil
+				}
+			}
+		)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						cli.Before(stub("before")),
+						cli.AtTiming(stub("validator"), cli.ValidatorTiming),
+						cli.AtTiming(stub("implicitValue"), cli.ImplicitValueTiming),
+					),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -f S")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(events).To(Equal([]string{"validator", "before", "implicitValue"}))
+	})
+
 })
 
 var _ = Describe("Uses", func() {
@@ -1847,4 +1875,25 @@ var _ = Describe("Implies", func() {
 			"encryption-key": "AAA",
 		}),
 	)
+
+	It("invokes action when ImpliedAction is set", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "encryption-key",
+					Uses: cli.Implies("mode", "encrypt"),
+				},
+				{
+					Name:    "mode",
+					Options: cli.ImpliedAction,
+					Action:  act,
+				},
+			},
+		}
+		args, _ := cli.Split("app --encryption-key=AAA")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+	})
 })

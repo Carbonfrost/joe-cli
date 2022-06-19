@@ -314,8 +314,13 @@ func (f *flagSynopsis) withLongAndShort(long []string, short []rune) *flagSynops
 	return f
 }
 
-// SetData sets the specified metadata on the flag
+// SetData sets the specified metadata on the flag.  When v is nil, the corresponding
+// metadata is deleted
 func (f *Flag) SetData(name string, v interface{}) {
+	if v == nil {
+		delete(f.ensureData(), name)
+		return
+	}
 	f.ensureData()[name] = v
 }
 

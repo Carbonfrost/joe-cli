@@ -327,8 +327,13 @@ func (a *Arg) value() interface{} {
 	return a.Value
 }
 
-// SetData sets the specified metadata on the argument
+// SetData sets the specified metadata on the arg.  When v is nil, the corresponding
+// metadata is deleted
 func (a *Arg) SetData(name string, v interface{}) {
+	if v == nil {
+		delete(a.ensureData(), name)
+		return
+	}
 	a.ensureData()[name] = v
 }
 

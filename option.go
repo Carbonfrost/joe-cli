@@ -158,6 +158,15 @@ const (
 	// SortedFlags causes sub-commands to be sorted on the help screen generated for the command or app.
 	SortedCommands
 
+	// ImpliedAction causes the Action for a flag or arg to be run if it was implicitly
+	// set.  By default, the Action for a flag or arg is only executed when it is
+	// set explicitly.  When this option is used, if the flag or arg has an implied value
+	// set via an environment variable, loaded file, Implies, or any mechanism that modifies
+	// it with ImplicitValueTiming, the action will also be run.  Note that setting the value in
+	// the initializer or an ordinary Before pipeline won't trigger the action.
+	// The option can be set on the command to apply this behavior to all flags and args.
+	ImpliedAction
+
 	maxOption
 
 	// None represents no options
@@ -181,6 +190,8 @@ const (
 	internalFlagOptional   // true if value is optional
 	internalFlagPersistent // true when the option is a clone of a peristent parent flag
 	internalFlagDestinationImplicitlyCreated
+	internalFlagImpliedAction
+	internalFlagSeenImplied
 )
 
 var (
@@ -204,6 +215,7 @@ var (
 		FileReference:          ActionFunc(fileReferenceOpt),
 		SortedFlags:            Before(ActionFunc(sortedFlagsOpt)),
 		SortedCommands:         Before(ActionFunc(sortedCommandsOpt)),
+		ImpliedAction:          setInternalFlag(internalFlagImpliedAction),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -226,6 +238,7 @@ var (
 		FileReference:          "FILE_REFERENCE",
 		SortedFlags:            "SORTED_FLAGS",
 		SortedCommands:         "SORTED_COMMANDS",
+		ImpliedAction:          "IMPLIED_ACTION",
 	}
 )
 
@@ -353,6 +366,14 @@ func (f internalFlags) persistent() bool {
 
 func (f internalFlags) destinationImplicitlyCreated() bool {
 	return f&internalFlagDestinationImplicitlyCreated == internalFlagDestinationImplicitlyCreated
+}
+
+func (f internalFlags) impliedAction() bool {
+	return f&internalFlagImpliedAction == internalFlagImpliedAction
+}
+
+func (f internalFlags) seenImplied() bool {
+	return f&internalFlagSeenImplied == internalFlagSeenImplied
 }
 
 func (f internalFlags) toRaw() RawParseFlag {
