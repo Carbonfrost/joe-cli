@@ -160,6 +160,11 @@ type middlewareFunc func(*Context, Action) error
 // beforePipeline has sub-timings, defined in actualBeforeIndex map
 type beforePipeline [4]ActionPipeline
 
+type panicData struct {
+	recovered string
+	stack     string
+}
+
 // Timing enumerates the timing of an action
 type Timing int
 
@@ -194,6 +199,7 @@ const (
 
 const (
 	implicitTimingEnabledKey = "__ImplicitTimingEnabled"
+	panicDataKey             = "__PanicData"
 )
 
 var (
@@ -343,8 +349,10 @@ func Recover(a Action) Action {
 	return ActionFunc(func(c *Context) error {
 		defer func() {
 			if rvr := recover(); rvr != nil {
-				c.SetData("_panicRecovered", fmt.Sprint(rvr))
-				c.SetData("_panicStack", formatStack())
+				c.SetData(panicDataKey, &panicData{
+					recovered: fmt.Sprint(rvr),
+					stack:     formatStack(),
+				})
 			}
 		}()
 		return a.Execute(c)
@@ -356,11 +364,10 @@ func formatStack() string {
 }
 
 func failWithContextError(c *Context) error {
-	if rvr, ok := c.LookupData("_panicStack"); ok {
-		fmt.Fprintf(c.Stderr, rvr.(string))
-	}
-	if rvr, ok := c.LookupData("_panicRecovered"); ok {
-		return fmt.Errorf(rvr.(string))
+	if r, ok := c.LookupData(panicDataKey); ok {
+		rvr := r.(*panicData)
+		fmt.Fprintf(c.Stderr, rvr.stack)
+		return fmt.Errorf(rvr.recovered)
 	}
 	return nil
 }
