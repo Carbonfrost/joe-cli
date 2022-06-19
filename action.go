@@ -92,6 +92,10 @@ type Prototype struct {
 	Completion  Completion
 }
 
+// ValidatorFunc defines an Action that applies a validation rule to
+// the explicit raw occurrence values for a flag or argument.
+type ValidatorFunc func(s []string) error
+
 type hookable interface {
 	hookAfter(pattern string, handler Action) error
 	hookBefore(pattern string, handler Action) error
@@ -1140,6 +1144,17 @@ func (m middlewareFunc) Execute(c *Context) error {
 
 func (m middlewareFunc) ExecuteWithNext(c *Context, a Action) error {
 	return m(c, a)
+}
+
+func (v ValidatorFunc) Execute(c *Context) error {
+	return c.Do(AtTiming(ActionFunc(func(c *Context) error {
+		occur := c.RawOccurrences("")
+		if err := v(occur); err != nil {
+			return err
+		}
+
+		return nil
+	}), ValidatorTiming))
 }
 
 func emptyActionImpl(*Context) error {

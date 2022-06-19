@@ -555,6 +555,25 @@ var _ = Describe("ProvideValueInitializer", func() {
 	})
 })
 
+var _ = Describe("ValidatorFunc", func() {
+	It("invokes the function", func() {
+		e := fmt.Errorf("validator err")
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "r",
+					Uses: cli.ValidatorFunc(func(raw []string) error { return e }),
+				},
+			},
+		}
+		args, _ := cli.Split("app 0")
+
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("validator err"))
+	})
+})
+
 var _ = Describe("Before", func() {
 
 	DescribeTable("timing examples",
