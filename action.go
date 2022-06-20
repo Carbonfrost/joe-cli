@@ -623,9 +623,9 @@ func Accessory[T Value](name string, fn func(T) Prototype) Action {
 		if proto.Category == "" {
 			proto.Category = c.option().category()
 		}
-		proto.HelpText = fmt.Sprintf(proto.HelpText, c.Name())
-		proto.ManualText = fmt.Sprintf(proto.ManualText, c.Name())
-		proto.Description = fmt.Sprintf(proto.Description, c.Name())
+		proto.HelpText = conditionalFormat(proto.HelpText, c.Name())
+		proto.ManualText = conditionalFormat(proto.ManualText, c.Name())
+		proto.Description = conditionalFormat(proto.Description, c.Name())
 
 		switch name {
 		case "":
@@ -641,6 +641,13 @@ func Accessory[T Value](name string, fn func(T) Prototype) Action {
 		}
 		return c.Do(AddFlag(f))
 	})
+}
+
+func conditionalFormat(s string, args ...interface{}) string {
+	if strings.Contains(s, "%") {
+		return fmt.Sprintf(s, args...)
+	}
+	return s
 }
 
 // Enum provides validation that a particular flag or arg value matches a given set of
