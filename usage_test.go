@@ -362,7 +362,7 @@ var _ = Describe("DisplayHelpScreen", func() {
 					{Name: "z"},
 				},
 
-				// Must be done in Before so as to be done after built-in templates??
+				// Must be done in Before so as to be done after built-in templates
 				Before: cli.RegisterTemplate("Flag", `my custom synopsis`),
 			},
 			ContainSubstring("my custom synopsis")),
