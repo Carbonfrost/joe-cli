@@ -3,6 +3,7 @@ package cli
 import (
 	"sort"
 	"strings"
+	"text/template"
 )
 
 // Command represents a command with arguments, flags, and expressions
@@ -85,7 +86,7 @@ type Command struct {
 
 type rootCommandData struct {
 	templateFuncs map[string]interface{}
-	templates     map[string]string
+	templates     *template.Template
 }
 
 type robustParseResult struct {
@@ -492,7 +493,7 @@ func (c *Command) internalFlags() internalFlags {
 
 func (c *Command) rootData() *rootCommandData {
 	if c.ifRoot == nil {
-		c.ifRoot = &rootCommandData{}
+		c.ifRoot = newRootCommandData()
 	}
 	return c.ifRoot
 }

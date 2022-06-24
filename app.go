@@ -227,17 +227,21 @@ func (a *App) Initialize(c context.Context) (*Context, error) {
 	return ctx, err
 }
 
-func (a *rootCommandData) ensureTemplates() map[string]string {
-	if a.templates == nil {
-		a.templates = map[string]string{}
+func newRootCommandData() *rootCommandData {
+	root := template.New("_Root")
+	tf := withExecute(template.FuncMap{}, root)
+	return &rootCommandData{
+		templates:     root,
+		templateFuncs: tf,
 	}
-	return a.templates
 }
 
-func (a *rootCommandData) ensureTemplateFuncs() map[string]interface{} {
-	if a.templateFuncs == nil {
-		a.templateFuncs = map[string]interface{}{}
-	}
+func (a *rootCommandData) ensureTemplates() *template.Template {
+	// Internally, funcs are copied, so ensure the latest
+	return a.templates.Funcs(a.templateFuncs)
+}
+
+func (a *rootCommandData) ensureTemplateFuncs() template.FuncMap {
 	return a.templateFuncs
 }
 
@@ -358,11 +362,17 @@ func setupDefaultTemplateFuncs(c *Context) error {
 }
 
 func setupDefaultTemplates(c *Context) error {
-	a := c.root()
-	templates := a.ensureTemplates()
+	scope := c.root().ensureTemplates()
+
+	// Synopsis templates are imported into the global template context
+	for _, n := range synopsisTemplate.Templates() {
+		scope.AddParseTree(n.Name(), n.Tree)
+	}
+
 	for k, v := range defaultTemplates {
-		if _, ok := templates[k]; !ok {
-			templates[k] = v()
+		err := c.RegisterTemplate(k, v())
+		if err != nil {
+			return err
 		}
 	}
 	return nil

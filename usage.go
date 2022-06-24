@@ -205,6 +205,9 @@ func DisplayHelpScreen(command ...string) Action {
 		}
 
 		tpl := c.Template("Help")
+		if tpl == nil {
+			panic("help template not registered")
+		}
 		lineage := ""
 
 		if len(command) > 0 {
@@ -287,8 +290,23 @@ func (c *Context) RenderTemplate(name string, data func(*Context) interface{}) e
 }
 
 // RegisterTemplate will register the specified template by name.
-func (c *Context) RegisterTemplate(name string, template string) {
-	c.root().ensureTemplates()[name] = template
+// The nested templates defined within the template will also be
+// registered, replacing any templates that were previously defined.
+// If the template definition only contains nested template definitions,
+// name should be left blank.
+func (c *Context) RegisterTemplate(name string, tpl string) error {
+	scope := c.root().ensureTemplates()
+	p, err := scope.New(name).Parse(tpl)
+	if err != nil {
+		return err
+	}
+
+	// Copy detected templates into the global context
+	for _, inner := range p.Templates() {
+		scope.AddParseTree(inner.Name(), inner.Tree)
+	}
+
+	return nil
 }
 
 // RegisterTemplateFunc will register the specified function for use in template rendering.

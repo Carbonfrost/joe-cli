@@ -74,17 +74,22 @@ type exprDescriptionData struct {
 
 var (
 	// HelpTemplate provides the default help Go template that is rendered on the help
-	// screen
+	// screen.  The preferred way to customize the help screen is to override its constituent
+	// templates.  The template should otherwise define an entry point named "Help", which
+	// you can use to define a from-scratch template.
 	HelpTemplate = `
 {{- define "Subcommands" -}}
 {{ range .CommandsByCategory }}
 {{ if .Category }}{{.Category}}:{{ end }}
-{{- range .VisibleCommands }}
-{{ "\t" }}{{ .Names | BoldFirst | Join ", " }}{{ "\t" }}{{.HelpText}}{{end}}
+{{- template "SubcommandListing" .VisibleCommands -}}
 {{ else }}
-{{- range .VisibleCommands }}
-{{ "\t" }}{{.Name}}{{ "\t" }}{{.HelpText}}{{end}}
+{{- template "SubcommandListing" .VisibleCommands -}}
 {{ end }}
+{{- end -}}
+
+{{- define "SubcommandListing" -}}
+{{- range . }}
+{{ "\t" }}{{ .Names | BoldFirst | Join ", " }}{{ "\t" }}{{.HelpText}}{{end}}
 {{- end -}}
 
 {{- define "Flag" -}}
@@ -95,13 +100,21 @@ var (
 {{ range .FlagsByCategory }}
 {{ if .Category }}{{.Category}}:{{ end }}
 {{ if .Undocumented -}}
-{{ .VisibleFlags.Names | Join ", " | Wrap 4 }}
+{{- template "InlineFlagListing" .VisibleFlags -}}
 {{- else -}}
-{{ range .VisibleFlags }}{{- template "Flag" . -}}{{ "\n" }}{{end}}
+{{- template "FlagListing" .VisibleFlags -}}
 {{- end -}}
 {{- else -}}
-{{ range .VisibleFlags }}{{- template "Flag" . -}}{{ "\n" }}{{end}}
+{{- template "FlagListing" .VisibleFlags -}}
 {{- end }}
+{{- end -}}
+
+{{- define "FlagListing" -}}
+{{ range . }}{{- template "Flag" . -}}{{ "\n" }}{{end}}
+{{- end -}}
+
+{{- define "InlineFlagListing" -}}
+{{ .Names | Join ", " | Wrap 4 }}
 {{- end -}}
 
 {{- define "ExtendedDescription" -}}

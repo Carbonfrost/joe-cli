@@ -355,6 +355,17 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 			MatchRegexp(`(?s)d,.*z,`)),
+
+		Entry("custom help part",
+			&cli.App{
+				Flags: []*cli.Flag{
+					{Name: "z"},
+				},
+
+				// Must be done in Before so as to be done after built-in templates??
+				Before: cli.RegisterTemplate("Flag", `my custom synopsis`),
+			},
+			ContainSubstring("my custom synopsis")),
 	)
 
 	DescribeTable("sub-command examples",

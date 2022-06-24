@@ -625,23 +625,13 @@ func (c *Context) Do(actions ...Action) error {
 
 // Template retrieves a template by name
 func (c *Context) Template(name string) *Template {
-	str, ok := c.root().ensureTemplates()[name]
-	if !ok {
+	t := c.root().ensureTemplates().Lookup(name)
+	if t == nil {
 		return nil
 	}
-	t := template.New(name)
-	funcMap := withExecute(c.root().ensureTemplateFuncs(), t)
-
-	// Synopsis templates are imported into the template context
-	for _, n := range synopsisTemplate.Templates() {
-		t.AddParseTree(n.Name(), n.Tree)
-	}
-
 	return &Template{
-		Template: template.Must(
-			t.Funcs(funcMap).Parse(str),
-		),
-		Debug: debugTemplates(),
+		Template: t,
+		Debug:    debugTemplates(),
 	}
 }
 
