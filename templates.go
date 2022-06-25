@@ -79,8 +79,8 @@ var (
 	// you can use to define a from-scratch template.
 	HelpTemplate = `
 {{- define "Subcommands" -}}
-{{ range .CommandsByCategory }}
-{{ if .Category }}{{.Category}}:{{ end }}
+{{ range .CommandsByCategory -}}
+{{ if and .VisibleCommands .Category }}{{ "\n" }}{{.Category}}:{{ "\n" }}{{ end -}}
 {{- template "SubcommandListing" .VisibleCommands -}}
 {{ else }}
 {{- template "SubcommandListing" .VisibleCommands -}}
@@ -97,8 +97,8 @@ var (
 {{- end -}}
 
 {{- define "Flags" -}}
-{{ range .FlagsByCategory }}
-{{ if .Category }}{{.Category}}:{{ end }}
+{{ range .FlagsByCategory -}}
+{{ if and .VisibleFlags .Category }}{{ "\n" }}{{.Category}}:{{ "\n" }}{{ end -}}
 {{ if .Undocumented -}}
 {{- template "InlineFlagListing" .VisibleFlags -}}
 {{- else -}}
