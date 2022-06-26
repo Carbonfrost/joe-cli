@@ -84,6 +84,8 @@ func templateFuncs(c *cli.Context) map[string]interface{} {
 		"Reset":         t.reset(),
 		"Style":         t.setStyle,
 
+		"Emoji": emojiByName,
+
 		"BoldFirst": func(s []string) []string {
 			if len(s) == 0 {
 				return s
