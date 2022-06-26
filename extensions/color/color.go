@@ -47,6 +47,7 @@ var (
 			Uses: cli.Pipeline(
 				cli.OptionalValue(Always),
 				SetMode(),
+				tagged,
 			),
 			HelpText: helpText,
 		}),
@@ -64,7 +65,15 @@ var (
 
 		TemplateFuncs: RegisterTemplateFuncs(),
 	}
+
+	tagged = cli.Data(SourceAnnotation())
 )
+
+// SourceAnnotation gets the name and value of the annotation added to the Data
+// of all flags that are initialized from this package
+func SourceAnnotation() (string, string) {
+	return "Source", "joe-cli/color"
+}
 
 // RegisterTemplateFuncs sets up the template funcs which can be used
 // to activate color and styles.  The common use is to pipe to the format
@@ -129,6 +138,7 @@ func bothFlags(c *cli.Context) error {
 		Options:  cli.No,
 		Value:    new(bool),
 		Action:   setFromBoolean,
+		Uses:     tagged,
 		HelpText: helpText,
 	})
 }
@@ -138,6 +148,7 @@ func standaloneNoFlag(c *cli.Context) error {
 		Name:     "no-color",
 		Value:    new(bool),
 		Action:   SetMode(Never),
+		Uses:     tagged,
 		HelpText: "Disable terminal color and styles",
 	})
 }
@@ -147,6 +158,7 @@ func standaloneFlag(c *cli.Context) error {
 		Name:     "color",
 		Value:    new(bool),
 		Action:   setFromBoolean,
+		Uses:     tagged,
 		HelpText: helpText,
 	})
 }
