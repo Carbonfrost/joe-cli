@@ -464,6 +464,40 @@ var _ = Describe("Uses", func() {
 				return cli.AddCommand(&cli.Command{Name: "f", Uses: act})
 			}),
 		)
+
+		Describe("RemoveArg", func() {
+
+			DescribeTable("examples", func(name interface{}, expected []string) {
+				var actual []string
+				app := &cli.App{
+					Args: []*cli.Arg{
+						{Name: "1"},
+						{Name: "2"},
+						{Name: "3"},
+						{Name: "4"},
+					},
+					Action: func(c *cli.Context) {
+						args := c.Command().Args
+						actual = make([]string, len(args))
+						for i, a := range args {
+							actual[i] = a.Name
+						}
+					},
+					Uses:   cli.RemoveArg(name),
+					Stderr: ioutil.Discard,
+				}
+				err := app.RunContext(context.TODO(), []string{"app"})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).To(Equal(expected))
+			},
+				Entry("by name", "3", []string{"1", "2", "4"}),
+				Entry("by decorated name", "<3>", []string{"1", "2", "4"}),
+				Entry("by index", 1, []string{"1", "3", "4"}),
+				Entry("by negative index", -1, []string{"1", "2", "3"}),
+				Entry("by negative index", -2, []string{"1", "2", "4"}),
+				Entry("by negative index", -4, []string{"2", "3", "4"}),
+			)
+		})
 	})
 })
 

@@ -217,8 +217,9 @@ func (c *Command) Flag(name string) (*Flag, bool) {
 }
 
 // Arg tries to obtain a arg by name or alias
-func (c *Command) Arg(name string) (*Arg, bool) {
-	return findArgByName(c.Args, name)
+func (c *Command) Arg(name interface{}) (*Arg, bool) {
+	a, _, ok := findArgByName(c.Args, name)
+	return a, ok
 }
 
 // VisibleArgs filters all arguments in the command by whether they are not hidden

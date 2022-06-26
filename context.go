@@ -311,7 +311,7 @@ func (c *Context) LookupArg(name interface{}) (*Arg, bool) {
 			name = c.Name()
 		}
 		if aa, ok := c.target().(hasArguments); ok {
-			if a, found := findArgByName(aa.actualArgs(), v); found {
+			if a, _, found := findArgByName(aa.actualArgs(), v); found {
 				return a, true
 			}
 		}
@@ -363,13 +363,13 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 }
 
 // Seen returns true if the specified flag or argument has been used at least once
-func (c *Context) Seen(name string) bool {
+func (c *Context) Seen(name interface{}) bool {
 	f, ok := c.lookupOption(name)
 	return ok && f.Seen()
 }
 
 // Occurrences returns the number of times the specified flag or argument has been used
-func (c *Context) Occurrences(name string) int {
+func (c *Context) Occurrences(name interface{}) int {
 	if f, ok := c.lookupOption(name); ok {
 		return f.Occurrences()
 	}
@@ -703,7 +703,9 @@ func (c *Context) lineageFunc(f func(*Context)) {
 }
 
 func (c *Context) logicalArg(index int) *Arg {
-	return c.target().(hasArguments).actualArgs()[index]
+	args := c.target().(hasArguments).actualArgs()
+	_, idx, _ := findArgByName(args, index)
+	return args[idx]
 }
 
 // AddFlag provides a convenience method that adds a flag to the current command or app.  This
@@ -733,6 +735,23 @@ func (c *Context) AddArg(v *Arg) error {
 		return ErrTimingTooLate
 	}
 	c.Command().Args = append(c.Command().Args, v)
+	return nil
+}
+
+// RemoveArg provides a convenience method that removes an Arg from the current command or app.
+// The name specifies the name, index, or actual arg.  This
+// is only valid during the initialization phase.  An error is returned for other timings.
+// If the arg does not exist, if the name or index is out of bounds, the operation
+// will still succeed.
+func (c *Context) RemoveArg(name interface{}) error {
+	if !c.IsInitializing() {
+		return ErrTimingTooLate
+	}
+	args := c.Command().Args
+	_, index, ok := findArgByName(args, name)
+	if ok {
+		c.Command().Args = append(args[0:index], args[index+1:]...)
+	}
 	return nil
 }
 
@@ -1141,7 +1160,7 @@ func (c *Context) executeSelf() error {
 	return c.internal.execute(c)
 }
 
-func (c *Context) lookupOption(name string) (option, bool) {
+func (c *Context) lookupOption(name interface{}) (option, bool) {
 	if name == "" {
 		return c.option(), true
 	}

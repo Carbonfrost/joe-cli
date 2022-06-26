@@ -161,17 +161,28 @@ func (a *App) Command(name string) (*Command, bool) {
 	if name == "" {
 		return a.rootCommand, true
 	}
+	if a.rootCommand != nil {
+		return a.rootCommand.Command(name)
+	}
 	return findCommandByName(a.Commands, name)
 }
 
 // Flag gets the flag by name.
 func (a *App) Flag(name string) (*Flag, bool) {
+	if a.rootCommand != nil {
+		return a.rootCommand.Flag(name)
+	}
 	return findFlagByName(a.Flags, name)
 }
 
-// Arg gets the argument by name
-func (a *App) Arg(name string) (*Arg, bool) {
-	return findArgByName(a.Args, name)
+// Arg gets the argument by name, which can be either string, int, or the actual
+// Arg.
+func (a *App) Arg(name interface{}) (*Arg, bool) {
+	if a.rootCommand != nil {
+		return a.rootCommand.Arg(name)
+	}
+	res, _, ok := findArgByName(a.Args, name)
+	return res, ok
 }
 
 func (a *App) createRoot() *Command {

@@ -818,6 +818,14 @@ func AddArg(a *Arg) Action {
 	})
 }
 
+// RemoveArg provides an action which removes an arg from the command or app.
+// The name specifies the name, index, or arg itself
+func RemoveArg(name interface{}) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.RemoveArg(name)
+	})
+}
+
 // AddFlags provides an action which adds the specified flags to the command
 func AddFlags(flags ...*Flag) Action {
 	return ActionFunc(func(c *Context) error {

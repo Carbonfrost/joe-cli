@@ -386,8 +386,9 @@ func (e *Expr) Synopsis() string {
 }
 
 // Arg gets the expression operator by name
-func (e *Expr) Arg(name string) (*Arg, bool) {
-	return findArgByName(e.Args, name)
+func (e *Expr) Arg(name interface{}) (*Arg, bool) {
+	a, _, ok := findArgByName(e.Args, name)
+	return a, ok
 }
 
 func (e *Expr) newSynopsis() *exprSynopsis {

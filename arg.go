@@ -525,15 +525,34 @@ func (*matchesArgsCounter) Done() error {
 	return nil
 }
 
-func findArgByName(items []*Arg, name string) (*Arg, bool) {
-	name = strings.TrimPrefix(name, "<")
-	name = strings.TrimSuffix(name, ">")
-	for _, sub := range items {
-		if sub.Name == name {
-			return sub, true
+func findArgByName(items []*Arg, v interface{}) (*Arg, int, bool) {
+	switch name := v.(type) {
+	case int:
+		if name < 0 {
+			name = len(items) + name
 		}
+		if name >= 0 && name < len(items) {
+			return items[name], name, true
+		}
+	case string:
+		name = strings.TrimPrefix(name, "<")
+		name = strings.TrimSuffix(name, ">")
+		for i, sub := range items {
+			if sub.Name == name {
+				return sub, i, true
+			}
+		}
+	case *Arg:
+		for i := range items {
+			if items[i] == v {
+				return name, i, true
+			}
+		}
+	default:
+		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
-	return nil, false
+
+	return nil, -1, false
 }
 
 func aboutArgCounter(narg interface{}) (optional, multi bool) {
