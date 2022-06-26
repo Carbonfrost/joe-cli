@@ -257,6 +257,12 @@ func (a *Arg) SetRequired() {
 	a.setInternalFlags(internalFlagRequired)
 }
 
+// Use appends actions to Uses pipeline
+func (a *Arg) Use(actions ...Action) *Arg {
+	a.Uses = Pipeline(a.Uses).Append(actions...)
+	return a
+}
+
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
 	return sprintSynopsis("ArgSynopsis", a.newSynopsis())

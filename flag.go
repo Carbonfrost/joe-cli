@@ -232,6 +232,12 @@ func (f *Flag) applyToSet(s *set) {
 	s.defineFlag(&f.option)
 }
 
+// Use appends actions to Uses pipeline
+func (f *Flag) Use(actions ...Action) *Flag {
+	f.Uses = Pipeline(f.Uses).Append(actions...)
+	return f
+}
+
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
 // is inferred from the HelpText.  Up to one short and one long name will be used.
 func (f *Flag) Synopsis() string {

@@ -315,6 +315,11 @@ func (s Setup) Execute(c *Context) error {
 	return nil
 }
 
+func (s Setup) Use(actions ...Action) Setup {
+	s.Uses = Pipeline(s.Uses).Append(actions...)
+	return s
+}
+
 // Pipeline combines various actions into a single action.  Compared to using
 // ActionPipeline directly, the actions are flattened if any nested pipelines are
 // present.
@@ -948,6 +953,11 @@ func Transform(fn func([]string) (interface{}, error)) Action {
 
 func (p Prototype) Execute(c *Context) error {
 	return c.Do(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), p.Setup)
+}
+
+func (p Prototype) Use(actions ...Action) Prototype {
+	p.Setup = p.Setup.Use(actions...)
+	return p
 }
 
 func (p *Prototype) copyToArg(o *Arg) {

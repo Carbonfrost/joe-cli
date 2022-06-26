@@ -311,6 +311,12 @@ func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
 }
 
+// Use appends actions to Uses pipeline
+func (c *Command) Use(actions ...Action) *Command {
+	c.Uses = Pipeline(c.Uses).Append(actions...)
+	return c
+}
+
 func (c *Command) buildSet(ctx *Context) *set {
 	set := ctx.internal.(*commandContext).flagSet
 	for _, f := range c.actualFlags() {
