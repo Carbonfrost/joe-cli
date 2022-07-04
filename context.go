@@ -878,10 +878,6 @@ func (c *Context) displayPrompt(prompt string, fn func(io.Reader) (string, error
 	return fn(c.Stdin)
 }
 
-func (c *Context) setImplicitTimingActive() {
-	c.SetData(implicitTimingEnabledKey, true)
-}
-
 func (c *Context) implicitTimingActive() bool {
 	_, ok := c.LookupData(implicitTimingEnabledKey)
 	return ok

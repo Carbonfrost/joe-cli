@@ -340,6 +340,10 @@ Parsing:
 
 			if b.IsOptionalValue(flag) {
 				appendOutput(flag, []string{short, ""})
+				err = opt.Done()
+				if err != nil {
+					return
+				}
 				continue
 			}
 
@@ -631,7 +635,11 @@ func (a *argBinding) SetArg(arg string, possibleFlag bool) error {
 }
 
 func instanceTake(arg string, possibleFlag bool, t ArgCounter) error {
-	return t.Take(arg, possibleFlag)
+	err := t.Take(arg, possibleFlag)
+	if err != nil {
+		return err
+	}
+	return t.Done()
 }
 
 func (e argCountError) Error() string {

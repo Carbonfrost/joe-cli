@@ -43,6 +43,21 @@ var _ = Describe("File", func() {
 		Expect(context.File("f").Exists()).To(BeTrue())
 	})
 
+	It("as a flag it will consume flag-like arguments", func() {
+		file := new(cli.File)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "f",
+					Value: file,
+				},
+			},
+		}
+		err := app.RunContext(context.TODO(), []string{"app", "-f", "--other"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(file.Name).To(Equal("--other"))
+	})
+
 	Describe("MustExist", func() {
 
 		var (

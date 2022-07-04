@@ -484,9 +484,6 @@ func (d *discreteCounter) Done() error {
 }
 
 func (d *defaultCounter) Take(arg string, possibleFlag bool) error {
-	if allowFlag(arg, possibleFlag) {
-		return EndOfArguments
-	}
 	if d.seen {
 		return EndOfArguments
 	}
