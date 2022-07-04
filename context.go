@@ -166,7 +166,8 @@ func (c *Context) App() *App {
 
 func (c *Context) app() (*App, bool) {
 	if root, ok := c.internal.(*commandContext); ok {
-		return root.cmd.fromApp, true
+		a := root.cmd.fromApp
+		return a, a != nil
 	}
 	return nil, false
 }
