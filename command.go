@@ -132,25 +132,39 @@ const (
 	hidden
 )
 
-const commandNotFoundKey = "__CommandNotFoundKey"
+const (
+	commandNotFoundKey           = "__CommandNotFound"
+	searchingAlternateCommandKey = "__SearchingAlternateCommand"
+)
 
 // ExecuteSubcommand finds and executes a sub-command.  This action is intended to be used
 // as the action on an argument.  The argument should be a list of strings, which represent
 // the subcommand to locate and execute and the arguments to use.  If no sub-command matches, an error
-// is generated, which you can intercept with custom handling using interceptErr.  It is uncommon
-// to use this action because this action is implicitly bound to a synthetic argument when a
+// is generated, which you can intercept with custom handling using interceptErr.  The interceptErr function
+// should return a command to execute in lieu of returning the error.  If the interceptErr
+// command is nil, it is interpreted as the command not existing and the app will exit with a generic "command
+// not found error" message.  If it returns an error, then executing the sub-command fails with the error.
+// However, if SkipCommand is returned, then no command is executed, and no error is generated.
+// It is uncommon to use this action because this action is implicitly bound to a synthetic argument when a
 // command defines any sub-commands.
 func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Action {
 	return ActionFunc(func(c *Context) error {
 		invoke := c.List("")
-		cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], interceptErr)
-		if err != nil {
-			return err
-		}
-		c.Parent().internal.setDidSubcommandExecute()
-		newCtx := c.Parent().commandContext(cmd, invoke)
-		return newCtx.Execute(invoke)
+		return subcommandCore(c, invoke, interceptErr)
 	})
+}
+
+func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, error) (*Command, error)) error {
+	cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], interceptErr)
+	if err == SkipCommand {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	c.Parent().internal.setDidSubcommandExecute()
+	newCtx := c.Parent().commandContext(cmd, invoke)
+	return newCtx.Execute(invoke)
 }
 
 // HandleCommandNotFound assigns a default function to invoke when a command cannot be found.
@@ -174,6 +188,26 @@ func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) Action {
 		}
 		c.SetData(commandNotFoundKey, fn)
 		return nil
+	})
+}
+
+// ImplicitCommand indicates the command which is implicit when no sub-command matches.
+// The main use case for this is to allow a command to be invoked by default without being
+// named.  For example, you might have a sub-command called "exec" which can be omitted, making
+// the following invocations equivalent:
+//
+//    * cloud exec tail -f /var/output/log
+//    * cloud tail -f /var/output/log
+//
+func ImplicitCommand(name string) Action {
+	return HandleCommandNotFound(func(c *Context, err error) (*Command, error) {
+		invoke := append([]string{name}, c.Args()...)
+		err = subcommandCore(c, invoke, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, SkipCommand
 	})
 }
 
@@ -708,6 +742,12 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 	if res, ok := cmd.Command(sub); ok {
 		return res, nil
 	}
+	if _, ok := c.LookupData(searchingAlternateCommandKey); ok {
+		return nil, commandMissing(sub)
+	}
+
+	c.SetData(searchingAlternateCommandKey, true)
+	defer c.SetData(searchingAlternateCommandKey, nil)
 	if interceptErr == nil {
 		if auto, ok := c.LookupData(commandNotFoundKey); ok {
 			interceptErr = auto.(func(*Context, error) (*Command, error))

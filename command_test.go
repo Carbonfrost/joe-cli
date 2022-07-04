@@ -11,6 +11,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("Command", func() {
@@ -489,6 +490,52 @@ var _ = Describe("HandleCommandNotFound", func() {
 		_ = app.RunContext(context.TODO(), args)
 		Expect(fn1Called).To(BeTrue())
 		Expect(fn2Called).To(BeTrue())
+	})
+
+})
+
+var _ = Describe("ImplicitCommand", func() {
+
+	It("invokes with the correct arguments", func() {
+		act := new(joeclifakes.FakeAction)
+		app := cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "exec",
+					Args: []*cli.Arg{
+						{
+							Name:  "cmd",
+							NArg:  1,
+							Value: new(string),
+						},
+						{
+							Name:  "args",
+							NArg:  cli.TakeUntilNextFlag,
+							Value: new([]string),
+						},
+					},
+					Flags: []*cli.Flag{
+						{
+							Name:  "f",
+							Value: new(bool),
+						},
+					},
+					Action: act,
+				},
+			},
+			Uses: cli.ImplicitCommand("exec"),
+		}
+
+		args, _ := cli.Split("app tail /var/output/logs -f")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+
+		captured := act.ExecuteArgsForCall(0)
+		Expect(captured.Args()).To(Equal([]string{"exec", "tail", "/var/output/logs", "-f"}))
+		Expect(app.Commands[0].Args[0].Value).To(PointTo(Equal("tail")))
+		Expect(app.Commands[0].Args[1].Value).To(PointTo(Equal([]string{"/var/output/logs"})))
+		Expect(app.Commands[0].Flags[0].Value).To(PointTo(BeTrue()))
 	})
 
 })
