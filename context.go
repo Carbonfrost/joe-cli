@@ -1182,8 +1182,6 @@ func (c *Context) actualFS() fs.FS {
 
 func (v *valueTarget) setDescription(arg string) {
 	switch val := v.v.(type) {
-	case targetConventions:
-		val.setDescription(arg)
 	case interface{ SetDescription(string) }:
 		val.SetDescription(arg)
 	}
@@ -1191,8 +1189,6 @@ func (v *valueTarget) setDescription(arg string) {
 
 func (v *valueTarget) setHelpText(arg string) {
 	switch val := v.v.(type) {
-	case targetConventions:
-		val.setHelpText(arg)
 	case interface{ SetHelpText(string) }:
 		val.SetHelpText(arg)
 	}
@@ -1200,8 +1196,6 @@ func (v *valueTarget) setHelpText(arg string) {
 
 func (v *valueTarget) setManualText(arg string) {
 	switch val := v.v.(type) {
-	case targetConventions:
-		val.setManualText(arg)
 	case interface{ SetManualText(string) }:
 		val.SetManualText(arg)
 	}
@@ -1209,8 +1203,6 @@ func (v *valueTarget) setManualText(arg string) {
 
 func (v *valueTarget) setCategory(arg string) {
 	switch val := v.v.(type) {
-	case targetConventions:
-		val.setCategory(arg)
 	case interface{ SetCategory(string) }:
 		val.SetCategory(arg)
 	}

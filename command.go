@@ -780,5 +780,6 @@ func triggerRobustParsingAndCompletion(c *Context) error {
 	return nil
 }
 
-var _ targetConventions = (*Command)(nil)
+var _ target = (*Command)(nil)
+var _ customizable = (*Command)(nil)
 var _ hookable = (*Command)(nil)

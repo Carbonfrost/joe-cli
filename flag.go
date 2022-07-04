@@ -747,4 +747,5 @@ func isFlagType(p interface{}) internalFlags {
 	return 0
 }
 
-var _ targetConventions = (*Flag)(nil)
+var _ target = (*Flag)(nil)
+var _ customizable = (*Flag)(nil)

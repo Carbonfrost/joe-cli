@@ -120,11 +120,6 @@ type target interface {
 	completion() Completion
 }
 
-type targetConventions interface {
-	target
-	customizable
-}
-
 type hooksSupport struct {
 	before []*hook
 	after  []*hook

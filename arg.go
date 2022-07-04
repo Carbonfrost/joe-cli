@@ -568,4 +568,5 @@ func aboutArgCounter(narg interface{}) (optional, multi bool) {
 	return false, false
 }
 
-var _ targetConventions = (*Arg)(nil)
+var _ target = (*Arg)(nil)
+var _ customizable = (*Arg)(nil)
