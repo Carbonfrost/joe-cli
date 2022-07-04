@@ -132,6 +132,8 @@ const (
 	hidden
 )
 
+const commandNotFoundKey = "__CommandNotFoundKey"
+
 // ExecuteSubcommand finds and executes a sub-command.  This action is intended to be used
 // as the action on an argument.  The argument should be a list of strings, which represent
 // the subcommand to locate and execute and the arguments to use.  If no sub-command matches, an error
@@ -148,6 +150,30 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 		c.Parent().internal.setDidSubcommandExecute()
 		newCtx := c.Parent().commandContext(cmd, invoke)
 		return newCtx.Execute(invoke)
+	})
+}
+
+// HandleCommandNotFound assigns a default function to invoke when a command cannot be found.
+// The specified function is invoked if a command cannot be found.  It contains the context of the
+// parent attempting to invoke a command and the error previously encountered.  It returns the
+// command if any that can substitute.  Composition occurs with functions registered to handle
+// commands not found.  They each get called until one returns a command.
+func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) Action {
+	return ActionFunc(func(c *Context) error {
+		cmd := c.Command()
+		if existing, ok := cmd.Data[commandNotFoundKey]; ok {
+			// Compose functions
+			newFn := fn
+			fn = func(c *Context, err1 error) (*Command, error) {
+				cmd, err := newFn(c, err1)
+				if cmd != nil && err == nil {
+					return cmd, nil
+				}
+				return existing.(func(*Context, error) (*Command, error))(c, err)
+			}
+		}
+		c.SetData(commandNotFoundKey, fn)
+		return nil
 	})
 }
 
@@ -682,6 +708,12 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 	if res, ok := cmd.Command(sub); ok {
 		return res, nil
 	}
+	if interceptErr == nil {
+		if auto, ok := c.LookupData(commandNotFoundKey); ok {
+			interceptErr = auto.(func(*Context, error) (*Command, error))
+		}
+	}
+
 	if interceptErr != nil {
 		res, err := interceptErr(c, commandMissing(sub))
 		if res != nil || err != nil {

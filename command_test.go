@@ -3,12 +3,12 @@ package cli_test
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"regexp"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -400,4 +400,95 @@ var _ = Describe("Command", func() {
 		)
 
 	})
+})
+
+var _ = Describe("HandleCommandNotFound", func() {
+
+	Context("when a default handler is specified", func() {
+
+		var (
+			fn        func(*cli.Context, error) (*cli.Command, error)
+			err       error
+			arguments string = "app unknown --flag --option 3"
+
+			existsAct *joeclifakes.FakeAction
+		)
+
+		JustBeforeEach(func() {
+			existsAct = new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name: "app",
+				Uses: cli.HandleCommandNotFound(fn),
+				Commands: []*cli.Command{
+					{
+						Name:   "exists",
+						Action: existsAct,
+						Flags: []*cli.Flag{
+							{
+								Name:  "flag",
+								Value: new(bool),
+							},
+							{
+								Name: "option",
+							},
+						},
+					},
+				},
+				Stderr: ioutil.Discard,
+			}
+
+			args, _ := cli.Split(arguments)
+			err = app.RunContext(context.TODO(), args)
+		})
+
+		Context("when func specifies an existing command", func() {
+
+			BeforeEach(func() {
+				fn = func(c *cli.Context, err error) (*cli.Command, error) {
+					cmd, _ := c.Command().Command("exists")
+					return cmd, nil
+				}
+			})
+
+			It("invokes selected command", func() {
+				Expect(existsAct.ExecuteCallCount()).To(Equal(1))
+
+				captured := existsAct.ExecuteArgsForCall(0)
+				Expect(captured.Args()).To(Equal([]string{"unknown", "--flag", "--option", "3"}))
+			})
+
+			It("uses the default command handler to locate other commands", func() {
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	It("composes function call", func() {
+		var fn1Called, fn2Called bool
+		fn1 := func(*cli.Context, error) (*cli.Command, error) {
+			fn1Called = true
+			return nil, nil
+		}
+		fn2 := func(*cli.Context, error) (*cli.Command, error) {
+			fn2Called = true
+			return nil, nil
+		}
+
+		app := cli.App{
+			Commands: []*cli.Command{
+				{Name: "exists"},
+			},
+			Uses: cli.Pipeline(
+				cli.HandleCommandNotFound(fn1),
+				cli.HandleCommandNotFound(fn2),
+			),
+			Stderr: ioutil.Discard,
+		}
+
+		args, _ := cli.Split("app unknown")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(fn1Called).To(BeTrue())
+		Expect(fn2Called).To(BeTrue())
+	})
+
 })
