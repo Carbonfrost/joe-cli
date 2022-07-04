@@ -365,6 +365,10 @@ func (a *Arg) setHelpText(value string) {
 	a.HelpText = value
 }
 
+func (a *Arg) setCompletion(c Completion) {
+	a.Completion = c
+}
+
 func (a *Arg) ensureData() map[string]interface{} {
 	if a.Data == nil {
 		a.Data = map[string]interface{}{}

@@ -114,6 +114,7 @@ type target interface {
 	setManualText(string)
 	setCategory(name string)
 	SetData(name string, v interface{})
+	setCompletion(Completion)
 	LookupData(name string) (interface{}, bool)
 	setInternalFlags(internalFlags)
 	internalFlags() internalFlags

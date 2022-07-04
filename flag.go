@@ -352,6 +352,10 @@ func (f *Flag) setCategory(name string) {
 	f.Category = name
 }
 
+func (f *Flag) setCompletion(c Completion) {
+	f.Completion = c
+}
+
 func (f *Flag) setOptional() {
 	f.setOptionalValue(f.option.value.smartOptionalDefault())
 }

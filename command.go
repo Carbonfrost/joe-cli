@@ -584,6 +584,10 @@ func (c *Command) setDescription(name string) {
 	c.Description = name
 }
 
+func (c *Command) setCompletion(cv Completion) {
+	c.Completion = cv
+}
+
 func (c *Command) ensureData() map[string]interface{} {
 	if c.Data == nil {
 		c.Data = map[string]interface{}{}

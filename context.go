@@ -1183,6 +1183,8 @@ func (v *valueTarget) setDescription(arg string) {
 	switch val := v.v.(type) {
 	case interface{ SetDescription(string) }:
 		val.SetDescription(arg)
+	case interface{ SetDescription(interface{}) }:
+		val.SetDescription(arg)
 	}
 }
 
@@ -1204,6 +1206,13 @@ func (v *valueTarget) setCategory(arg string) {
 	switch val := v.v.(type) {
 	case interface{ SetCategory(string) }:
 		val.SetCategory(arg)
+	}
+}
+
+func (v *valueTarget) setCompletion(c Completion) {
+	switch val := v.v.(type) {
+	case interface{ SetCompletion(Completion) }:
+		val.SetCompletion(c)
 	}
 }
 

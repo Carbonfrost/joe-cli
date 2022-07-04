@@ -201,7 +201,7 @@ var (
 		Exits:                  ActionFunc(wrapWithExit),
 		MustExist:              Before(ActionFunc(mustExistOption)),
 		SkipFlagParsing:        setInternalFlag(internalFlagSkipFlagParsing),
-		WorkingDirectory:       Before(ActionFunc(workingDirectoryOption)),
+		WorkingDirectory:       Pipeline(DirectoryCompletion, Before(ActionFunc(workingDirectoryOption))),
 		Optional:               ActionFunc(optionalOption),
 		DisallowFlagsAfterArgs: setInternalFlag(internalFlagDisallowFlagsAfterArgs),
 		No:                     ActionFunc(noOption),

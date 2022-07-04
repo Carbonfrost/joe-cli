@@ -53,7 +53,10 @@ const (
 )
 
 const (
+	// FileCompletion generates a list of files in the completion response
 	FileCompletion StandardCompletion = iota
+
+	// DirectoryCompletion generations a list of directories in the completion response
 	DirectoryCompletion
 )
 
@@ -184,6 +187,14 @@ func ApplyShellCompletion() Action {
 	}
 }
 
+// SetCompletion sets completion for the command, flag, or arg.
+func SetCompletion(c Completion) Action {
+	return ActionFunc(func(ctx *Context) error {
+		ctx.target().setCompletion(c)
+		return nil
+	})
+}
+
 func setupCompletion(c *Context) error {
 	return c.Do(AddFlags([]*Flag{
 		{Name: "zsh-completion", Uses: ShellCompleteIntegration("zsh", &zshComplete{})},
@@ -278,6 +289,10 @@ func (f CompletionFunc) Complete(c *CompletionContext) []CompletionItem {
 	return f(c)
 }
 
+func (f CompletionFunc) Execute(c *Context) error {
+	return c.Do(SetCompletion(f))
+}
+
 func (s StandardCompletion) Complete(c *CompletionContext) []CompletionItem {
 	switch s {
 	case FileCompletion:
@@ -290,6 +305,10 @@ func (s StandardCompletion) Complete(c *CompletionContext) []CompletionItem {
 		}
 	}
 	panic(fmt.Sprintf("unexpected value: %v", s))
+}
+
+func (s StandardCompletion) Execute(c *Context) error {
+	return c.Do(SetCompletion(s))
 }
 
 func (*zshComplete) GetCompletionRequest() (args []string, incomplete string) {
@@ -374,5 +393,6 @@ func newSourceTemplate(name string, text string) *Template {
 
 var (
 	_ Completion = (CompletionFunc)(nil)
+	_ Action     = (CompletionFunc)(nil)
 	_ Completion = (StandardCompletion)(0)
 )
