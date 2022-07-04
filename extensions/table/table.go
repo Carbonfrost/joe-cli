@@ -185,6 +185,7 @@ func RegisterTemplateFuncs() cli.Action {
 			"Table":    tc.Table,
 			"EndTable": tc.EndTable,
 			"Headers":  tc.Headers,
+			"Footers":  tc.Footers,
 			"Row":      tc.Row,
 			"Cell":     tc.Cell,
 		}
@@ -215,6 +216,11 @@ func (c *tableContext) Headers(titles ...string) string {
 	return ""
 }
 
+func (c *tableContext) Footers(titles ...string) string {
+	c.footers = append(c.footers, titles...)
+	return ""
+}
+
 func (c *tableContext) Cell(value interface{}) (string, error) {
 	if len(c.cells) == 0 {
 		return "", errCellCalledWrongTime
@@ -237,13 +243,15 @@ func (c *tableContext) Table(f ...interface{}) string {
 	format.apply(c)
 
 	c.headers = nil
+	c.footers = nil
 	c.cells = nil
 	return ""
 }
 
 func (c *tableContext) EndTable() string {
-	if len(c.headers) > 0 || len(c.cells) > 0 {
+	if len(c.headers) > 0 || len(c.cells) > 0 || len(c.footers) > 0 {
 		c.table.SetHeader(c.headers)
+		c.table.SetFooter(c.footers)
 		c.table.AppendBulk(c.cells)
 		c.table.Render()
 	}
