@@ -66,6 +66,11 @@ type stringHelper struct {
 	enabled bool
 }
 
+type templateBinding struct {
+	t    *Template
+	data func() interface{}
+}
+
 type buffer struct {
 	Writer
 	res *bytes.Buffer
@@ -448,6 +453,29 @@ func (t *Template) Execute(wr io.Writer, data interface{}) error {
 		log.Fatal(err)
 	}
 	return err
+}
+
+// Bind the template to its data for later execution.  This generates a Stringer which can
+// be called to get the contents later.  A common use of binding the template is an argument
+// to an arg or flag description.
+func (t *Template) Bind(data interface{}) fmt.Stringer {
+	return &templateBinding{t, func() interface{} { return data }}
+}
+
+// BindFunc will bind the template to its data for later execution.  This generates a Stringer which can
+// be called to get the contents later.  A common use of binding the template is an argument
+// to an arg or flag description.
+func (t *Template) BindFunc(data func() interface{}) fmt.Stringer {
+	return &templateBinding{t, data}
+}
+
+func (t *templateBinding) String() string {
+	var buf bytes.Buffer
+	err := t.t.Execute(&buf, t.data())
+	if err != nil {
+		return err.Error()
+	}
+	return buf.String()
 }
 
 func (u *usage) Placeholders() []string {
