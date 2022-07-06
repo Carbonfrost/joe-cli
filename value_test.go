@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"io/fs"
 	"math/big"
 	"net"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
+	"github.com/spf13/afero"
 )
 
 var _ = Describe("Value", func() {
@@ -191,8 +193,8 @@ var _ = Describe("Value", func() {
 				},
 				"app -o hello=world -o goodbye=earth",
 				Equal([]*cli.NameValue{
-					{"hello", "world"},
-					{"goodbye", "earth"},
+					{Name: "hello", Value: "world"},
+					{Name: "goodbye", Value: "earth"},
 				}),
 			),
 			Entry(
@@ -203,8 +205,8 @@ var _ = Describe("Value", func() {
 				},
 				"app -o hello=world -o goodbye=earth",
 				Equal([]*cli.NameValue{
-					{"hello", "world"},
-					{"goodbye", "earth"},
+					{Name: "hello", Value: "world"},
+					{Name: "goodbye", Value: "earth"},
 				}),
 			),
 			Entry(
@@ -215,9 +217,9 @@ var _ = Describe("Value", func() {
 				},
 				"app -o hello=world,goodbye=earth -o aloha=mars",
 				Equal([]*cli.NameValue{
-					{"hello", "world"},
-					{"goodbye", "earth"},
-					{"aloha", "mars"},
+					{Name: "hello", Value: "world"},
+					{Name: "goodbye", Value: "earth"},
+					{Name: "aloha", Value: "mars"},
 				}),
 			),
 			Entry(
@@ -229,8 +231,8 @@ var _ = Describe("Value", func() {
 				},
 				"app -o aloha=mars",
 				Equal([]*cli.NameValue{
-					{"default", "set"},
-					{"aloha", "mars"},
+					{Name: "default", Value: "set"},
+					{Name: "aloha", Value: "mars"},
 				}),
 			),
 			Entry(
@@ -467,24 +469,55 @@ var _ = Describe("NameValue", func() {
 			Entry(
 				"nominal",
 				[]string{"name=value"},
-				&cli.NameValue{"name", "value"},
+				&cli.NameValue{Name: "name", Value: "value"},
 			),
 			Entry(
 				"escaped equal sign",
 				[]string{"name\\=value=value"},
-				&cli.NameValue{"name=value", "value"},
+				&cli.NameValue{Name: "name=value", Value: "value"},
 			),
 			Entry(
 				"separated by spaces",
 				[]string{"name", "value"},
-				&cli.NameValue{"name", "value"},
+				&cli.NameValue{Name: "name", Value: "value"},
 			),
 			Entry(
 				"key only",
 				[]string{"name="},
-				&cli.NameValue{"name", ""},
+				&cli.NameValue{Name: "name", Value: ""},
 			),
 		)
+	})
+
+	It("loads from file reference", func() {
+
+		var testFileSystem = func() fs.FS {
+			appFS := afero.NewMemMapFs()
+
+			afero.WriteFile(appFS, "world", []byte("file contents"), 0644)
+			return afero.NewIOFS(appFS)
+		}()
+
+		app := &cli.App{
+			FS: testFileSystem,
+			Flags: []*cli.Flag{
+				{
+					Name:  "v",
+					Value: &cli.NameValue{},
+					// Slightly more interesting to do this in the Uses pipeline to ensure
+					// the timing of the Initializer
+					Uses: func(c *cli.Context) error {
+						return c.NameValue("").SetAllowFileReference(true)
+					},
+				},
+			},
+		}
+
+		// Doing this indirectly is more interesting because it examines the timing of
+		// the Initializer.  It's possible that
+		args, _ := cli.Split("app -v hello=@world")
+		app.Run(args)
+		Expect(app.Flags[0].Value.(*cli.NameValue).Value).To(Equal("file contents"))
 	})
 
 })
@@ -505,17 +538,17 @@ var _ = Describe("NameValues", func() {
 			Entry(
 				"nominal",
 				[]string{"name=value"},
-				[]*cli.NameValue{{"name", "value"}},
+				[]*cli.NameValue{{Name: "name", Value: "value"}},
 			),
 			Entry(
 				"two",
 				[]string{"a=b", "c=d"},
-				[]*cli.NameValue{{"a", "b"}, {"c", "d"}},
+				[]*cli.NameValue{{Name: "a", Value: "b"}, {Name: "c", Value: "d"}},
 			),
 			Entry(
 				"inline escapes",
 				[]string{"a=b\\,c=d"},
-				[]*cli.NameValue{{"a", "b,c=d"}},
+				[]*cli.NameValue{{Name: "a", Value: "b,c=d"}},
 			),
 		)
 	})

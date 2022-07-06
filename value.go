@@ -52,6 +52,9 @@ type NameValue struct {
 	Name string
 	// Value in the name-value pair
 	Value string
+	// AllowFileReference indicates whether the @file syntax is allowed for the value, which
+	// is automatically loaded as a value.
+	AllowFileReference bool
 }
 
 // Conventions for values
@@ -605,6 +608,48 @@ func (v *NameValue) String() string {
 
 func (v *NameValue) NewCounter() ArgCounter {
 	return &valuePairCounter{}
+}
+
+// SetAllowFileReference sets whether file references are allowed.  This function is for
+// bindings
+func (n *NameValue) SetAllowFileReference(v bool) error {
+	n.AllowFileReference = v
+	return nil
+}
+
+func (n *NameValue) AllowFileReferencesFlag() Prototype {
+	return Prototype{
+		Name:     "allow-files",
+		HelpText: "Allow a file to be specified with name=@file",
+		Setup: Setup{
+			Uses: Bind(n.SetAllowFileReference),
+		},
+	}
+}
+
+func (*NameValue) Initializer() Action {
+	return AtTiming(ActionFunc(loadFileReference), BeforeTiming)
+}
+
+func loadFileReference(c *Context) error {
+	if current, ok := c.Value("").(*NameValue); ok {
+		s := current.Value
+		if current.AllowFileReference && strings.HasPrefix(s, "@") {
+			f, err := c.FS.Open(s[1:])
+			if err != nil {
+				return err
+			}
+			contents, err := io.ReadAll(f)
+			if err != nil {
+				return err
+			}
+			current.Value = string(contents)
+
+		} else {
+			current.Value = s
+		}
+	}
+	return nil
 }
 
 func (v *valuePairCounter) Done() error {

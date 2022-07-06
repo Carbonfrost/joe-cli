@@ -93,8 +93,8 @@ var _ = Describe("Value", func() {
 				"goodbye": "earth",
 			})),
 			XEntry("NameValues", "VNameValues", "hello,world=good", Equal([]*cli.NameValue{
-				{"hello", "true"},
-				{"world", "good"},
+				{Name: "hello", Value: "true"},
+				{Name: "world", Value: "good"},
 			})),
 			Entry("Regexp", "VRegexp", "[CGAT]{512}", Equal(regexp.MustCompile("[CGAT]{512}"))),
 			Entry("URL", "VURL", "https://localhost.example:1619", Equal(unwrap(url.Parse("https://localhost.example:1619")))),

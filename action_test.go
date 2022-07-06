@@ -1925,7 +1925,7 @@ var _ = Describe("EachOccurrence", func() {
 				Value: new(cli.NameValue),
 			},
 			"app -f a=b -f d=e -f j=k",
-			[]interface{}{&cli.NameValue{"a", "b"}, &cli.NameValue{"d", "e"}, &cli.NameValue{"j", "k"}},
+			[]interface{}{&cli.NameValue{Name: "a", Value: "b"}, &cli.NameValue{Name: "d", Value: "e"}, &cli.NameValue{Name: "j", Value: "k"}},
 		),
 	)
 })
