@@ -34,7 +34,7 @@ var _ = Describe("Complete", func() {
 			},
 			Flags: []*cli.Flag{
 				{Name: "flag", Aliases: []string{"f"}, Value: new(bool)},
-				{Name: "long", Aliases: []string{"l"}, HelpText: "has help text"},
+				{Name: "long", Aliases: []string{"l"}, HelpText: "has help text", Completion: cli.CompletionValues("a")},
 			},
 			Action: func() {},
 		}
@@ -47,14 +47,30 @@ var _ = Describe("Complete", func() {
 		Entry("no matches", "app", "--fr", WithTransform(ignoringDefaults, BeEmpty())),
 		Entry("all options", "app", "-", WithTransform(ignoringDefaults, ConsistOf([]cli.CompletionItem{
 			{Value: "--flag"},
-			{Value: "--long=", HelpText: "has help text"},
+			{Value: "--long", HelpText: "has help text"},
 			{Value: "-l", HelpText: "has help text"},
 			{Value: "-f"},
 		}))),
+
+		// For flags with values, only the name is suggested in the case multiple are available
 		Entry("long options", "app", "--", WithTransform(ignoringDefaults, ConsistOf([]cli.CompletionItem{
 			{Value: "--flag"},
-			{Value: "--long=", HelpText: "has help text"},
+			{Value: "--long", HelpText: "has help text"}, // Only the name is suggested
 		}))),
+
+		// For flags with values, if it is the only remaining match, append the equal sign.
+		Entry("long option with value", "app", "--l", WithTransform(ignoringDefaults, ConsistOf([]cli.CompletionItem{
+			{Value: "--long=", HelpText: "has help text", PreventSpaceAfter: true},
+		}))),
+
+		Entry("long option space after", "app --long", "", WithTransform(ignoringDefaults, ConsistOf([]cli.CompletionItem{
+			{Value: "a"},
+		}))),
+
+		Entry("long option space after", "app --long", "a", WithTransform(ignoringDefaults, ConsistOf([]cli.CompletionItem{
+			{Value: "a"},
+		}))),
+
 		Entry("long option (partial)", "app", "--f", WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
 			{Value: "--flag"},
 		}))),
@@ -76,11 +92,15 @@ var _ = Describe("Complete", func() {
 		}))),
 	)
 
+	var (
+		rosesAndViolets = cli.CompletionValues("roses", "violets")
+	)
+
 	DescribeTable("flag examples", func(arguments string, incomplete string, completion cli.Completion, expected types.GomegaMatcher) {
 		app := &cli.App{
 			Name: "app",
 			Flags: []*cli.Flag{
-				{Name: "flag", Completion: completion, Value: new(string)},
+				{Name: "flag", Aliases: []string{"f"}, Completion: completion, Value: new(string)},
 			},
 			Action: func() {},
 		}
@@ -90,12 +110,24 @@ var _ = Describe("Complete", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ctx.Complete(args, incomplete)).To(expected)
 	},
-		Entry("completion all values", "app", "--flag", cli.CompletionValues("roses", "violets"), WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
+		Entry("completion all values", "app", "--flag", rosesAndViolets, WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
 			{Value: "--flag=roses"},
 			{Value: "--flag=violets"},
 		}))),
-		Entry("completion value prefix", "app", "--flag=r", cli.CompletionValues("roses", "violets"), WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
+		Entry("completion value prefix", "app", "--flag=r", rosesAndViolets, WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
 			{Value: "--flag=roses"},
+		}))),
+		Entry("completion value space", "app --flag", "", rosesAndViolets, WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
+			{Value: "roses"},
+			{Value: "violets"},
+		}))),
+
+		Entry("short all values", "app -f", "", rosesAndViolets, WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
+			{Value: "roses"},
+			{Value: "violets"},
+		}))),
+		Entry("short value prefix", "app -f", "r", rosesAndViolets, WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
+			{Value: "roses"},
 		}))),
 	)
 })

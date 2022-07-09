@@ -722,6 +722,11 @@ func findFlagByName(items []*Flag, name string) (*Flag, bool) {
 		if sub.Name == name {
 			return sub, true
 		}
+		for _, alias := range sub.Aliases {
+			if alias == name {
+				return sub, true
+			}
+		}
 	}
 	return nil, false
 }

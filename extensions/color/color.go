@@ -49,7 +49,8 @@ var (
 				SetMode(),
 				tagged,
 			),
-			HelpText: helpText,
+			Completion: cli.CompletionValues("auto", "always", "never"),
+			HelpText:   helpText,
 		}),
 	)
 

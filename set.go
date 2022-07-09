@@ -261,7 +261,7 @@ Parsing:
 			flag, ok := b.FlagName(arg[2:])
 
 			if !ok {
-				err = unknownOption(arg[2:], append([]string{"--" + arg[2:]}, args...))
+				err = unknownOption(arg[2:], append([]string{optionName(arg[2:])}, args...))
 				return
 			}
 
@@ -277,10 +277,10 @@ Parsing:
 				var outputs []string
 				var oldArgs = append([]string{"--" + arg[2:]}, args...)
 				if outputs, err = args.take(flag, opt); err != nil {
-					err = argTakerError("--"+arg[2:], "", err, oldArgs)
+					err = argTakerError(optionName(arg[2:]), "", err, oldArgs)
 					return
 				}
-				appendOutput(flag, append([]string{"--" + arg[2:]}, outputs...))
+				appendOutput(flag, append([]string{optionName(arg[2:])}, outputs...))
 
 				continue Parsing
 			}
@@ -350,7 +350,7 @@ Parsing:
 			var outputs []string
 			var oldArgs = append([]string{short}, args...)
 			if outputs, err = args.take(flag, opt); err != nil {
-				err = argTakerError(flag, value, err, oldArgs)
+				err = argTakerError(optionName(flag), value, err, oldArgs)
 				return
 			}
 

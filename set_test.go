@@ -169,6 +169,20 @@ var _ = Describe("RawParse", func() {
 			),
 		),
 
+		Entry("short flag missing required arg", "app -s",
+			BeEmpty(),
+			And(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Code":      Equal(cli.ExpectedArgument),
+					"Name":      Equal("--short"),
+					"Err":       MatchError("expected argument"),
+					"Value":     Equal(""),
+					"Remaining": Equal([]string{"-s"}),
+				})),
+				MatchError("expected argument for --short"),
+			),
+		),
+
 		Entry("unexpected argument", "app arg -s a other args",
 			Equal(map[string][]string{
 				"arg":   []string{"<arg> arg"},

@@ -395,21 +395,19 @@ func (c *Command) completion() Completion {
 
 func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
 	cmd := cc.Context.Target().(*Command)
-	items := []CompletionItem{}
-	flagName, _, hasArg := strings.Cut(cc.Incomplete, "=")
+	var items []CompletionItem
 
 	if strings.HasPrefix(cc.Incomplete, "-") {
+		// If a search only finds one match, then complete the flag
+		items = findSolitaryMatch(cc)
+		if items != nil {
+			return items
+		}
+
 		for _, f := range cmd.VisibleFlags() {
 			for _, n := range f.synopsis().Names {
-				if n == cc.Incomplete || (hasArg && strings.HasPrefix(n, flagName)) {
-					return actualCompletion(f.completion()).Complete(cc.optionContext(f))
-				}
 				if strings.HasPrefix(n, cc.Incomplete) {
-					var suffix string
-					if !f.internalFlags().flagOnly() && len(n) > 2 {
-						suffix = "="
-					}
-					items = append(items, CompletionItem{Value: n + suffix, HelpText: f.HelpText})
+					items = append(items, CompletionItem{Value: n, HelpText: f.HelpText})
 				}
 			}
 		}
@@ -417,10 +415,21 @@ func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
 	}
 
 	if cc.Err != nil {
-		arg, ok := cmd.Arg(cc.Err.(*ParseError).Name)
-		if !ok {
-			// TODO This shouldn't happen (implies somewhere ParseError hasn't initialized Name)
+		name := cc.Err.(*ParseError).Name
+
+		if strings.HasPrefix(name, "-") {
+			flag, ok := cmd.Flag(name)
+			if ok {
+				return actualCompletion(flag.completion()).Complete(cc)
+			}
+		}
+
+		arg, ok := cmd.Arg(name)
+		if !ok && len(cmd.Args) > 0 {
 			arg = cmd.Args[0]
+		}
+		if arg == nil {
+			return nil
 		}
 		return actualCompletion(arg.completion()).Complete(cc)
 	}
@@ -438,6 +447,38 @@ func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
 	}
 
 	return items
+}
+
+func findSolitaryMatch(cc *CompletionContext) []CompletionItem {
+	cmd := cc.Context.Target().(*Command)
+	flagName, _, hasArg := strings.Cut(cc.Incomplete, "=")
+	var match *Flag
+	var matchName string
+
+	for _, f := range cmd.VisibleFlags() {
+		for _, n := range f.synopsis().Names {
+			if n == cc.Incomplete || (hasArg && strings.HasPrefix(n, flagName)) {
+				return actualCompletion(f.completion()).Complete(cc.optionContext(f))
+			}
+			if strings.HasPrefix(n, cc.Incomplete) {
+				if match != nil && match != f {
+					return nil
+				}
+				match, matchName = f, n
+			}
+		}
+	}
+	if match == nil {
+		return nil
+	}
+
+	var suffix string
+	if !match.internalFlags().flagOnly() && len(matchName) > 2 {
+		suffix = "="
+	}
+	return []CompletionItem{
+		{Value: matchName + suffix, HelpText: match.HelpText, PreventSpaceAfter: len(suffix) > 0},
+	}
 }
 
 func (c *Command) actualArgs() []*Arg {
@@ -772,8 +813,7 @@ func triggerRobustParsingAndCompletion(c *Context) error {
 		}
 
 		args, incomplete := comp.GetCompletionRequest()
-		re := c.robustParseResult()
-		items := c.complete(args, incomplete, re)
+		items := c.Complete(args, incomplete)
 		c.Stdout.WriteString(comp.FormatCompletions(items))
 		return Exit(0)
 	}

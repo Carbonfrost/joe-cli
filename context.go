@@ -119,22 +119,9 @@ func newContextPathPattern(pat string) contextPathPattern {
 
 // Execute executes the context with the given arguments.
 func (c *Context) Execute(args []string) error {
-	root := c.Command()
-	set := root.buildSet(c)
-	if root.internalFlags().skipFlagParsing() {
-		args = append([]string{args[0], "--"}, args[1:]...)
-	}
-
-	flags := root.internalFlags().toRaw() | RawSkipProgramName
-	err := set.parse(args, flags)
-
-	if c.robustParsingMode() {
-		c.setRobustParseResult(&robustParseResult{bindings: set.bindings, err: err})
-		err = nil
-	}
-
-	if err != nil {
-		return err
+	res := c.parse(args)
+	if res.err != nil {
+		return res.err
 	}
 
 	if err := c.executeBefore(); err != nil {
@@ -146,6 +133,18 @@ func (c *Context) Execute(args []string) error {
 	}
 
 	return c.executeAfter()
+}
+
+func (c *Context) parse(args []string) *robustParseResult {
+	root := c.Command()
+	set := root.buildSet(c)
+	if root.internalFlags().skipFlagParsing() {
+		args = append([]string{args[0], "--"}, args[1:]...)
+	}
+
+	flags := root.internalFlags().toRaw() | RawSkipProgramName
+	err := set.parse(args, flags)
+	return &robustParseResult{bindings: set.bindings, err: err}
 }
 
 // Parent obtains the parent context or nil if the root context

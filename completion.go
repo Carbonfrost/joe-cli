@@ -62,6 +62,9 @@ type CompletionItem struct {
 	Type     CompletionType
 	Value    string
 	HelpText string
+
+	// PreventSpaceAfter disables the addition of a space after the completion token
+	PreventSpaceAfter bool
 }
 
 // ShellComplete provides the implementation of the shell-specific
@@ -90,7 +93,6 @@ type zshComplete struct {
 const (
 	robustParseModeEnabledKey = "__RobustParseModeEnabled"
 	shellCompletesKey         = "__ShellCompletes"
-	robustParseResultKey      = "__RobustParseResult"
 
 	zshSourceScript = `
 
@@ -104,7 +106,10 @@ const (
 
     response=("${(@f)$(env COMP_WORDS="${words[*]}" COMP_CWORD=$((CURRENT-1)) \
 {{ .JoeCompletionVar }}=zsh {{ .App.Name }})}")
-    for type key descr in ${response}; do
+    for type key descr no_space in ${response}; do
+        if [[ -n "$no_space" ]]; then
+            space="-S ''"
+        fi
         if [[ "$type" == "plain" ]]; then
             if [[ "$descr" == "_" ]]; then
                 completions+=("$key")
@@ -118,10 +123,10 @@ const (
         fi
     done
     if [ -n "$completions_with_descriptions" ]; then
-        _describe -V unsorted completions_with_descriptions -U
+        eval _describe -V unsorted completions_with_descriptions -U $space
     fi
     if [ -n "$completions" ]; then
-        compadd -U -V unsorted -a completions
+        compadd -U -V unsorted -a completions $space
     fi
 }
 compdef {{ .CompletionFunc }} {{ .App.Name }};
@@ -201,6 +206,13 @@ func CompletionValues(values ...string) Completion {
 		switch o := c.Context.Target().(type) {
 		case *Flag:
 			res := make([]CompletionItem, 0, len(values))
+
+			if c.Incomplete == "" {
+				for _, v := range values {
+					res = append(res, CompletionItem{Value: v})
+				}
+				return res
+			}
 			for _, n := range o.synopsis().Names {
 				var prefix string
 				if len(n) == 2 { // as in -s short names
@@ -231,11 +243,7 @@ func CompletionValues(values ...string) Completion {
 // Complete considers the given arguments and completion request to determine
 // completion items
 func (c *Context) Complete(args []string, incomplete string) []CompletionItem {
-	setupRobustParsingMode(c)
-
-	_ = c.Execute(args)
-	re := c.robustParseResult()
-	return c.complete(args, incomplete, re)
+	return c.complete(args, incomplete, c.parse(args))
 }
 
 func (c *Context) complete(args []string, incomplete string, re *robustParseResult) []CompletionItem {
@@ -252,18 +260,6 @@ func (c *Context) complete(args []string, incomplete string, re *robustParseResu
 func (c *Context) robustParsingMode() bool {
 	_, ok := c.LookupData(robustParseModeEnabledKey)
 	return ok
-}
-
-func (c *Context) robustParseResult() *robustParseResult {
-	var re *robustParseResult
-	if e, ok := c.LookupData(robustParseResultKey); ok {
-		re, _ = e.(*robustParseResult)
-	}
-	return re
-}
-
-func (c *Context) setRobustParseResult(r *robustParseResult) {
-	c.SetData(robustParseResultKey, r)
 }
 
 func (c *Context) shellCompletes() map[string]ShellComplete {
@@ -300,8 +296,10 @@ func (*zshComplete) GetCompletionRequest() (args []string, incomplete string) {
 	cwords, _ := Split(os.Getenv("COMP_WORDS"))
 	cword, _ := strconv.Atoi(os.Getenv("COMP_CWORD"))
 
+	if cword <= len(cwords) {
+		args = cwords[0:cword]
+	}
 	if cword < len(cwords) {
-		args = cwords[1:cword]
 		incomplete = cwords[cword]
 	}
 	return
@@ -331,8 +329,12 @@ func (z *zshComplete) formatCompletion(item CompletionItem) string {
 	case DirectoryCompletionType:
 		itemType = "dir"
 	}
+	spaceAfter := "1"
+	if item.PreventSpaceAfter {
+		spaceAfter = ""
+	}
 
-	return fmt.Sprint(itemType, "\n", item.Value, "\n", itemDesc, "\n")
+	return fmt.Sprint(itemType, "\n", item.Value, "\n", itemDesc, "\n", spaceAfter, "\n")
 }
 
 func (*zshComplete) GetSourceTemplate() *Template {
