@@ -1,6 +1,11 @@
 # Changelog
 
-## v0.2.0 (July 2022)
+## v0.2.1 (July 9, 2022)
+
+* Completion bug fixes (d04498d)
+* Build fixes on Linux (15ced0b) and CI workflow (bbcc3ab)
+
+## v0.2.0 (July 7, 2022)
 
 New Features
 
@@ -70,6 +75,6 @@ Bug fixes and improvements:
 * Templates refactoring, global context (027e00f)
 * Bug fix: Accessory should use conditional sprintf (e91aae6)
 
-## v0.1.0 (May 2022)
+## v0.1.0 (May 1, 2022)
 
 * Initial version :sunrise:
