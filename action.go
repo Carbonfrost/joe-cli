@@ -708,8 +708,7 @@ func Data(name string, value interface{}) Action {
 // set up inside a Uses pipeline.
 func Category(name string) Action {
 	return ActionFunc(func(c *Context) error {
-		c.target().setCategory(name)
-		return nil
+		return c.SetCategory(name)
 	})
 }
 
@@ -720,8 +719,7 @@ func Category(name string) Action {
 // Template.BindFunc.
 func Description(v interface{}) Action {
 	return ActionFunc(func(c *Context) error {
-		c.target().setDescription(v)
-		return nil
+		return c.SetDescription(v)
 	})
 }
 

@@ -486,6 +486,18 @@ func (c *Context) nameToString(name interface{}) string {
 	}
 }
 
+// SetCategory sets the category on the current target
+func (c *Context) SetCategory(name string) error {
+	c.target().setCategory(name)
+	return nil
+}
+
+// SetDescription sets the description on the current target
+func (c *Context) SetDescription(v interface{}) error {
+	c.target().setDescription(v)
+	return nil
+}
+
 // SetValue sets the value of the current flag or arg
 func (c *Context) SetValue(arg string) error {
 	if c.implicitTimingActive() {
