@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"encoding"
 	"io/fs"
 	"math/big"
 	"net"
@@ -325,6 +326,30 @@ var _ = Describe("Value", func() {
 				"app -o literal",
 				Equal([]byte("literal")),
 			),
+			Entry(
+				"text unmarshaler",
+				&cli.Flag{
+					Name:  "o",
+					Value: new(textMarshaler),
+				},
+				"app -o v",
+				Equal(textMarshaler("v")),
+			),
+			Entry(
+				"Time (via text unmarshaler)",
+				&cli.Flag{
+					Name:  "o",
+					Value: new(time.Time),
+				},
+				"app -o 2021-11-02T00:00:00Z",
+				Equal(time.Date(2021, 11, 02, 0, 0, 0, 0, time.UTC)),
+			),
+			Entry(
+				"IP (via text unmarshaler)",
+				&cli.Flag{Name: "o", Value: new(net.IP)},
+				"app -o 127.0.0.1",
+				Equal(net.ParseIP("127.0.0.1")),
+			),
 		)
 
 		DescribeTable("errors",
@@ -632,3 +657,12 @@ func (*hasDereference) String() string   { return "" }
 func (d *hasDereference) Value() interface{} {
 	return d.v
 }
+
+type textMarshaler string
+
+func (t *textMarshaler) UnmarshalText(text []byte) error {
+	*t = textMarshaler(string(text))
+	return nil
+}
+
+var _ encoding.TextUnmarshaler = (*textMarshaler)(nil)

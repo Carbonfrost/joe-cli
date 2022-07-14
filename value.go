@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding"
 	"encoding/hex"
 	"errors"
 	"flag"
@@ -583,6 +584,8 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 			*p = v
 		}
 		return strconvErr(err)
+	case encoding.TextUnmarshaler:
+		return p.UnmarshalText([]byte(value))
 	}
 	panic(fmt.Sprintf("unsupported flag type: %T", dest))
 }
@@ -846,6 +849,8 @@ func wrapGeneric(v interface{}) *generic {
 	case **big.Float:
 		return &generic{v}
 	case *[]byte:
+		return &generic{v}
+	case encoding.TextUnmarshaler:
 		return &generic{v}
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))
