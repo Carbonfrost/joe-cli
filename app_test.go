@@ -201,6 +201,22 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(version).ToNot(BeNil())
 		})
+
+		It("applies global extension uses", func() {
+			cli.Use(cli.Data("_added_by_global", "1"))
+
+			var actual any
+			app := cli.NewApp(&cli.Command{
+				Name: "app",
+				Action: func(c *cli.Context) {
+					actual, _ = c.LookupData("_added_by_global")
+				},
+			})
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal("1"))
+		})
 	})
 
 	Describe("i/o", func() {

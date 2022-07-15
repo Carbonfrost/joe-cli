@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"text/template"
@@ -428,6 +429,16 @@ func setupDefaultTemplates(c *Context) error {
 		}
 	}
 	return nil
+}
+
+func setupExtensionUsings(c *Context) error {
+	pipe := func() Action {
+		globals.RLock()
+		defer globals.RUnlock()
+
+		return ActionPipeline(slices.Clone(globals.uses))
+	}()
+	return c.Do(pipe)
 }
 
 func optionalCommand(name string, cmd Action) ActionFunc {

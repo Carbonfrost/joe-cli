@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli/internal/support"
@@ -317,6 +318,7 @@ var (
 					ActionFunc(optionalCommand("version", PrintVersion())),
 					ActionFunc(optionalFlag("version", PrintVersion())),
 					actionFunc(setupCompletion),
+					ActionFunc(setupExtensionUsings),
 				),
 			),
 			actionFunc(ensureSubcommands),
@@ -445,6 +447,11 @@ var (
 
 	tagged  = Data(SourceAnnotation())
 	pkgPath = reflect.TypeFor[Action]().PkgPath()
+
+	globals = struct {
+		sync.RWMutex
+		uses []Action
+	}{}
 )
 
 func init() {
@@ -511,6 +518,15 @@ func Do(c context.Context, action Action) error {
 // of all flags and commands that are initialized from this package
 func SourceAnnotation() (string, string) {
 	return "Source", pkgPath
+}
+
+// Use inserts an action into the initialization of new apps.  Generally, this is used
+// within extensions to simplify integration of extensions with apps.
+func Use(a Action) {
+	globals.Lock()
+	defer globals.Unlock()
+
+	globals.uses = append(globals.uses, a)
 }
 
 // SuppressError wraps an action to ignore its error.
