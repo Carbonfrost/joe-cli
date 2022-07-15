@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"runtime"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -225,6 +226,7 @@ var _ = Describe("timings", func() {
 			BeforeEach(func() {
 				original, _ = os.Getwd()
 				arguments = "app --dir=/usr"
+				SkipOnWindows()
 			})
 
 			Context("string flag", func() {
@@ -974,6 +976,7 @@ var _ = Describe("Pipeline", func() {
 var _ = Describe("HandleSignal", Ordered, func() {
 
 	BeforeAll(func() {
+		SkipOnWindows()
 		signal.Reset(os.Interrupt) // remove ginkgo signal handling
 	})
 
@@ -2051,3 +2054,9 @@ var _ = Describe("Enum", func() {
 		})),
 	)
 })
+
+func SkipOnWindows() {
+	if runtime.GOOS == "windows" {
+		Skip("not tested on Windows")
+	}
+}

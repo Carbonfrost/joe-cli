@@ -85,6 +85,7 @@ var _ = Describe("File", func() {
 			var name string
 
 			BeforeEach(func() {
+				SkipOnWindows()
 				name = filepath.Join(os.TempDir(), "nonexistent")
 				arguments = "app " + name
 			})
