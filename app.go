@@ -116,6 +116,11 @@ var (
 	// written to stderr and the exit status is returned via os.Exit
 	ExitHandler func(*Context, string, int)
 
+	// CurrentApp contains the current app.  If the app was run with Run or RunContext, this will contain
+	// the app.  You can also set this variable directly so that tools, extensions, and plug-ins
+	// can discover which app to analyze.
+	CurrentApp *App
+
 	defaultTemplates = map[string]func() string{
 		"Help": func() string {
 			return HelpTemplate
@@ -240,9 +245,17 @@ func (a *App) runContextCore(c context.Context, args []string) (*Context, error)
 
 // Initialize sets up the app with the given context and arguments
 func (a *App) Initialize(c context.Context) (*Context, error) {
+	defer provideCurrentApp(a)
 	ctx := rootContext(c, a)
 	err := ctx.initialize()
 	return ctx, err
+}
+
+func provideCurrentApp(a *App) func() {
+	CurrentApp = a
+	return func() {
+		CurrentApp = nil
+	}
 }
 
 func newRootCommandData() *rootCommandData {

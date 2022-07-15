@@ -119,6 +119,11 @@ func newContextPathPattern(pat string) contextPathPattern {
 
 // Execute executes the context with the given arguments.
 func (c *Context) Execute(args []string) error {
+	if cmd, ok := c.target().(*Command); ok {
+		if cmd.fromApp != nil {
+			defer provideCurrentApp(cmd.fromApp)
+		}
+	}
 	res := c.parse(args)
 	if res.err != nil {
 		return res.err

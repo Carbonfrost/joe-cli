@@ -249,4 +249,17 @@ var _ = Describe("App", func() {
 			Expect(f).To(Equal(cli.DefaultFS()))
 		})
 	})
+
+	Describe("CurrentApp", func() {
+		It("will be set to the app that executes", func() {
+			var what *cli.App
+			app := &cli.App{
+				Action: func(c *cli.Context) {
+					what = cli.CurrentApp
+				},
+			}
+			app.RunContext(context.TODO(), []string{"app"})
+			Expect(what).To(BeIdenticalTo(app))
+		})
+	})
 })
