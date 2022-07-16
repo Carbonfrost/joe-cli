@@ -2055,6 +2055,31 @@ var _ = Describe("Enum", func() {
 	)
 })
 
+var _ = Describe("Mutex", func() {
+	DescribeTable("examples", func(arguments string, expected types.GomegaMatcher) {
+		app := cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "a",
+					Uses:  cli.Mutex("b", "c", "d"),
+					Value: cli.Bool(),
+				},
+				{Name: "b", Value: cli.Bool()},
+				{Name: "c", Value: cli.Bool()},
+				{Name: "d", Value: cli.Bool()},
+			},
+		}
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(expected)
+	},
+		Entry("one other", "app -ab", MatchError("either -a or -b can be used, but not both")),
+		Entry("two others", "app -abc", MatchError("can't use -a together with -b or -c")),
+		Entry("three others", "app -abcd", MatchError("can't use -a together with -b, -c, or -d")),
+	)
+
+})
+
 func SkipOnWindows() {
 	if runtime.GOOS == "windows" {
 		Skip("not tested on Windows")

@@ -683,6 +683,36 @@ func Enum(options ...string) Action {
 	}
 }
 
+// Mutex validates that explicit values are used mutually exclusively.
+// When used on any flag in a mutex group, the other named flags are not allowed to be
+// used.
+func Mutex(names ...string) Action {
+	return AtTiming(ActionFunc(func(c *Context) error {
+		if c.Seen("") {
+			alsoSeen := make([]string, 0, len(names))
+			for _, o := range names {
+				if c.Seen(o) {
+					alsoSeen = append(alsoSeen, optionName(o))
+				}
+			}
+
+			switch len(alsoSeen) {
+			case 0:
+				return nil
+			case 1:
+				return fmt.Errorf("either %s or %s can be used, but not both", c.Name(), alsoSeen[0])
+			case 2:
+				return fmt.Errorf("can't use %s together with %s or %s", c.Name(), alsoSeen[0], alsoSeen[1])
+			default:
+				y := len(alsoSeen) - 1
+				return fmt.Errorf("can't use %s together with %s", c.Name(), strings.Join(alsoSeen[0:y], ", ")+", or "+alsoSeen[y])
+			}
+		}
+
+		return nil
+	}), ValidatorTiming)
+}
+
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
 // set up inside a Uses pipeline.
 // When value is nil, the corresponding
