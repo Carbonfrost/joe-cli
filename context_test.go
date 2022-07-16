@@ -210,7 +210,7 @@ var _ = Describe("Context", func() {
 				"name-value arg counter semantics (long flag)",
 				&cli.Flag{Name: "f", Value: new(cli.NameValue)},
 				`app --f hello space`,
-				[]string{"--f", "hello", "space"},
+				[]string{"-f", "hello", "space"},
 				[]string{"hello", "space"},
 			),
 			Entry(

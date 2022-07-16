@@ -281,9 +281,9 @@ func (f *flagSynopsis) withLongAndShort(long []string, short []rune) *flagSynops
 	var primary string
 
 	if len(long) == 0 {
-		primary = "-" + string(short[0])
+		primary = optionName(string(short[0]))
 	} else {
-		primary = "--" + long[0]
+		primary = optionName(long[0])
 	}
 
 	var (
@@ -297,7 +297,7 @@ func (f *flagSynopsis) withLongAndShort(long []string, short []rune) *flagSynops
 		longs = func() []string {
 			res := make([]string, len(long))
 			for i := range long {
-				res[i] = "--" + long[i]
+				res[i] = optionName(long[i])
 			}
 			return res
 		}()

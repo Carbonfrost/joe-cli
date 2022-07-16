@@ -1675,15 +1675,15 @@ var _ = Describe("Bind", func() {
 		app := &cli.App{
 			Flags: []*cli.Flag{
 				{
-					Name:  "max-memory",
-					Value: new(bool),
-					Uses:  cli.Bind(binder, 1024),
+					Name: "max-memory",
+					Uses: cli.Bind(binder, 1024),
 				},
 			},
 		}
 		args, _ := cli.Split("app --max-memory")
 		_ = app.RunContext(context.TODO(), args)
 		Expect(value).To(Equal(uint64(1024)))
+		Expect(app.Flags[0].Value).To(PointTo(BeTrue()))
 	})
 
 	DescribeTable("generics",

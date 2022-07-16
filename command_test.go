@@ -537,5 +537,4 @@ var _ = Describe("ImplicitCommand", func() {
 		Expect(app.Commands[0].Args[1].Value).To(PointTo(Equal([]string{"/var/output/logs"})))
 		Expect(app.Commands[0].Flags[0].Value).To(PointTo(BeTrue()))
 	})
-
 })

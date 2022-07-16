@@ -295,6 +295,9 @@ func optionName(name interface{}) string {
 		}
 		return "-" + string(n)
 	case string:
+		if len(n) == 1 {
+			return "-" + string(n)
+		}
 		return "--" + n
 	}
 	panic("unreachable!")

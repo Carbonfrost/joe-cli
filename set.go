@@ -214,7 +214,7 @@ Parsing:
 				if err != nil {
 					// Not accepted as an argument, possibly a flag per usual out of
 					// order
-					if arg[0] == '-' && state == flagsOrArgs {
+					if len(arg) > 0 && arg[0] == '-' && state == flagsOrArgs {
 						break
 					}
 					if isHardArgCountErr(err) {
@@ -275,7 +275,7 @@ Parsing:
 			opt, _ := b.Lookup(flag)
 			if e < 0 {
 				var outputs []string
-				var oldArgs = append([]string{"--" + arg[2:]}, args...)
+				var oldArgs = append([]string{optionName(arg[2:])}, args...)
 				if outputs, err = args.take(flag, opt); err != nil {
 					err = argTakerError(optionName(arg[2:]), "", err, oldArgs)
 					return
@@ -563,7 +563,7 @@ func (a *argList) take(name string, opt ArgCounter) (output []string, err error)
 		if err != nil {
 			// Not accepted as an argument, possibly a flag per usual out of
 			// order
-			if arg[0] == '-' && possibleFlag {
+			if len(arg) > 0 && arg[0] == '-' && possibleFlag {
 				break
 			}
 
@@ -733,9 +733,9 @@ func (o *internalOption) startOccurrence(n int) {
 
 func (o *internalOption) Name() string {
 	if len(o.short) > 0 {
-		return "-" + string(o.short[0])
+		return optionName(o.short[0])
 	}
-	return "--" + o.long[0]
+	return optionName(o.long[0])
 }
 
 func (o *internalOption) Value() *generic {

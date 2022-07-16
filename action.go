@@ -508,24 +508,19 @@ func SetValue(v string) Action {
 // the flag or arg.  The bind function is the function to execute, and valopt is optional,
 // and if specified, indicates the value to set; otherwise, the value is read from the flag.
 func Bind[V any](bind func(V) error, valopt ...V) Action {
-	proto := &Prototype{Value: bindSupportedValue(new(V))}
 	switch len(valopt) {
 	case 0:
-		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
-			if !c.Seen("") {
-				return nil
-			}
+		proto := &Prototype{Value: bindSupportedValue(new(V))}
+		return Pipeline(proto, bindTiming(func(c *Context) error {
 			return bind(c.Value("").(V))
-		})))
+		}))
 
 	case 1:
 		val := valopt[0]
-		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
-			if !c.Seen("") {
-				return nil
-			}
+		proto := &Prototype{Value: new(bool)}
+		return Pipeline(proto, bindTiming(func(c *Context) error {
 			return bind(val)
-		})))
+		}))
 	default:
 		panic("expected 0 or 1 args for valopt")
 	}
@@ -567,22 +562,17 @@ func BindIndirect[T, V any](name string, bind func(*T, V) error, valopt ...V) Ac
 }
 
 func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt ...V) Action {
-	proto := &Prototype{Value: bindSupportedValue(new(V))}
 	switch len(valopt) {
 	case 0:
+		proto := &Prototype{Value: bindSupportedValue(new(V))}
 		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
-			if !c.Seen("") {
-				return nil
-			}
 			return bind(thunk(c), c.Value("").(V))
 		})))
 
 	case 1:
+		proto := &Prototype{Value: new(bool)}
 		val := valopt[0]
 		return Pipeline(proto, bindTiming(ActionFunc(func(c *Context) error {
-			if !c.Seen("") {
-				return nil
-			}
 			return bind(thunk(c), val)
 		})))
 	default:
@@ -590,7 +580,7 @@ func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt
 	}
 }
 
-func bindTiming(a Action) Action {
+func bindTiming(a ActionFunc) Action {
 	return AtTiming(a, ActionTiming)
 }
 
