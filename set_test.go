@@ -40,12 +40,12 @@ var _ = Describe("RawParse", func() {
 		}))
 	})
 
-	DescribeTable("examples", func(arguments string, expected, expectedErr types.GomegaMatcher) {
+	DescribeTable("examples", func(arguments string, mode int, expected, expectedErr types.GomegaMatcher) {
 		args, _ := cli.Split(arguments)
 		set := &testFlagSet{
 			args: []string{"arg"},
 			counters: map[string]cli.ArgCounter{
-				"arg":   cli.ArgCount(cli.TakeUntilNextFlag),
+				"arg":   cli.ArgCount(mode),
 				"long":  cli.DefaultFlagCounter(),
 				"short": cli.ArgCount(1),
 				"boolt": cli.NoArgs(),
@@ -66,34 +66,43 @@ var _ = Describe("RawParse", func() {
 		Expect(err).To(expectedErr)
 		Expect(actualFlat).To(expected)
 	},
-		Entry("nominal args bind", "app a b c",
+		Entry("nominal args bind", "app a b c", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
 				"arg": []string{"<arg> a", "<arg> b", "<arg> c"},
 			}),
 			Not(HaveOccurred())),
 
-		Entry("nominal long flag", "app --long space",
+		Entry("nominal long flag", "app --long space", cli.TakeUntilNextFlag,
 			HaveKeyWithValue("long", []string{"--long space"}),
 			Not(HaveOccurred())),
 
-		Entry("nominal short flag", "app -s a",
+		Entry("nominal short flag", "app -s a", cli.TakeUntilNextFlag,
 			HaveKeyWithValue("short", []string{"-s a"}),
 			Not(HaveOccurred())),
 
-		Entry("short flag run-in", "app -space",
+		Entry("short flag run-in", "app -space", cli.TakeUntilNextFlag,
 			HaveKeyWithValue("short", []string{"-s pace"}),
+			Not(HaveOccurred())),
+
+		// This allows args and flags to be interspersed:
+		// git add set.go -u set_test.go  -- is a valid invocation
+		Entry("mix flags and args", "app a --boolt b", cli.TakeExceptForFlags,
+			Equal(map[string][]string{
+				"arg":   []string{"<arg> a", "<arg> b"},
+				"boolt": []string{"--boolt "},
+			}),
 			Not(HaveOccurred())),
 
 		// If an equal sign is present in the short flag syntax, it
 		// is always interpreted as setting the value (including the
 		// leading =)
-		Entry("equal in short flag is its value", "app -s=pace",
+		Entry("equal in short flag is its value", "app -s=pace", cli.TakeUntilNextFlag,
 			HaveKeyWithValue("short", []string{"-s =pace"}),
 			Not(HaveOccurred()),
 		),
 
 		// Equal sign leads to an error because value is unexpected
-		Entry("equal in short flag causes error", "app -vt=always",
+		Entry("equal in short flag causes error", "app -vt=always", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
 				"boolv": []string{"-v "}, // { "-v", ""}
 			}),
@@ -106,7 +115,7 @@ var _ = Describe("RawParse", func() {
 			}),
 		),
 
-		Entry("stop on unknown long flag", "app --unknown rest of args",
+		Entry("stop on unknown long flag", "app --unknown rest of args", cli.TakeUntilNextFlag,
 			BeEmpty(),
 			Equal(&cli.ParseError{
 				Code:      cli.UnknownOption,
@@ -117,7 +126,7 @@ var _ = Describe("RawParse", func() {
 			}),
 		),
 
-		Entry("stop on unknown short flag", "app -u rest of args",
+		Entry("stop on unknown short flag", "app -u rest of args", cli.TakeUntilNextFlag,
 			BeEmpty(),
 			Equal(&cli.ParseError{
 				Code:      cli.UnknownOption,
@@ -128,7 +137,7 @@ var _ = Describe("RawParse", func() {
 			}),
 		),
 
-		Entry("stop on unknown short flag run-in", "app -tuvwx another",
+		Entry("stop on unknown short flag run-in", "app -tuvwx another", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
 				"boolt": []string{"-t "}, // {"-t", ""}
 			}),
@@ -141,7 +150,7 @@ var _ = Describe("RawParse", func() {
 			}),
 		),
 
-		Entry("long flag missing required arg", "app --short",
+		Entry("long flag missing required arg", "app --short", cli.TakeUntilNextFlag,
 			BeEmpty(),
 			And(
 				PointTo(MatchFields(IgnoreExtras, Fields{
@@ -155,7 +164,7 @@ var _ = Describe("RawParse", func() {
 			),
 		),
 
-		Entry("long flag missing arg by default", "app --long",
+		Entry("long flag missing arg by default", "app --long", cli.TakeUntilNextFlag,
 			BeEmpty(),
 			And(
 				PointTo(MatchFields(IgnoreExtras, Fields{
@@ -169,7 +178,7 @@ var _ = Describe("RawParse", func() {
 			),
 		),
 
-		Entry("short flag missing required arg", "app -s",
+		Entry("short flag missing required arg", "app -s", cli.TakeUntilNextFlag,
 			BeEmpty(),
 			And(
 				PointTo(MatchFields(IgnoreExtras, Fields{
@@ -183,7 +192,7 @@ var _ = Describe("RawParse", func() {
 			),
 		),
 
-		Entry("unexpected argument", "app arg -s a other args",
+		Entry("unexpected argument", "app arg -s a other args", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
 				"arg":   []string{"<arg> arg"},
 				"short": []string{"-s a"},

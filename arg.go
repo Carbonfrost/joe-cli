@@ -141,6 +141,7 @@ type defaultCounter struct {
 
 type varArgsCounter struct {
 	stopOnFlags bool
+	intersperse bool
 }
 
 type matchesArgsCounter struct {
@@ -163,6 +164,11 @@ const (
 	// TakeUntilNextFlag is the value to use for Arg.NArg to indicate that an argument takes
 	// tokens from the command line until one looks like a flag.
 	TakeUntilNextFlag = -2
+
+	// TakeExceptForFlags is the value to use for Arg.NArg to indicate that an argument can
+	// be interspersed with values that look like flags.  When the flag syntax is encountered,
+	// a flag will be parsed and parsing the argument will resume.
+	TakeExceptForFlags = -3
 )
 
 // Args provides a simple initializer for positional arguments.  You specify each argument name and value
@@ -206,7 +212,8 @@ func ArgCount(v interface{}) ArgCounter {
 			return &defaultCounter{}
 		}
 		return &varArgsCounter{
-			stopOnFlags: count == -2,
+			stopOnFlags: count == TakeUntilNextFlag || count == TakeExceptForFlags,
+			intersperse: count == TakeExceptForFlags,
 		}
 	case nil:
 		return ArgCount(0)
@@ -511,6 +518,9 @@ func (d *defaultCounter) Done() error {
 
 func (v *varArgsCounter) Take(arg string, possibleFlag bool) error {
 	if v.stopOnFlags && allowFlag(arg, possibleFlag) {
+		if v.intersperse {
+			return argCannotUseFlag
+		}
 		return EndOfArguments
 	}
 	return nil
