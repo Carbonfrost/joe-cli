@@ -941,6 +941,17 @@ func ImplicitValue(fn func(*Context) (string, bool)) Action {
 	}), ImplicitValueTiming)
 }
 
+// Implicitly runs an action when there are zero occurrences (when an implicit value is
+// set)
+func Implicitly(a Action) Action {
+	return ActionFunc(func(c *Context) error {
+		if c.Occurrences("") == 0 {
+			return c.Do(a)
+		}
+		return nil
+	})
+}
+
 // Implies is used to set the implied value of another flag.   For example,
 // an app might have two flags, --mode and --encryption-key, and you might allow --encryption-key
 // to imply --mode=encrypt which saves power users from having to type both.  Because it is an
