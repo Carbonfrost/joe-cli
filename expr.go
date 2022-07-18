@@ -88,7 +88,7 @@ type Expr struct {
 	// hide the expression operator.
 	Options Option
 
-	flags internalFlags
+	flags exprFlags
 }
 
 // Expression provides the parsed result of the expression that can be evaluated
@@ -121,6 +121,8 @@ type exprCategory struct {
 	Category string
 	Exprs    []*Expr
 }
+
+type exprFlags int
 
 //counterfeiter:generate . Yielder
 
@@ -158,6 +160,11 @@ type exprArgs struct {
 	positionalOptions []*internalOption
 	names             map[string]*internalOption
 }
+
+const (
+	exprFlagHidden = exprFlags(1 << iota)
+	exprFlagRightToLeft
+)
 
 // Initializer is an action that binds expression handling to an argument.  This
 // is set up automatically when a command defines any expression operators.  The exprFunc
@@ -448,7 +455,7 @@ func (e *Expr) ensureData() map[string]interface{} {
 	return e.Data
 }
 
-func (e *Expr) internalFlags() internalFlags {
+func (e *Expr) internalFlags() exprFlags {
 	return e.flags
 }
 
@@ -470,6 +477,22 @@ func (e ExprsByName) Less(i, j int) bool {
 
 func (e ExprsByName) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
+}
+
+func (f exprFlags) hidden() bool {
+	return f&exprFlagHidden == exprFlagHidden
+}
+
+func (f exprFlags) rightToLeft() bool {
+	return f&exprFlagRightToLeft == exprFlagRightToLeft
+}
+
+func (f exprFlags) toRaw() RawParseFlag {
+	var flags RawParseFlag
+	if f.rightToLeft() {
+		flags |= RawRTL
+	}
+	return flags
 }
 
 // VisibleExprs filters all operatorss in the expression operators category by whether
