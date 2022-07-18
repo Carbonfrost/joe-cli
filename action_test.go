@@ -1563,6 +1563,13 @@ var _ = Describe("Customize", func() {
 					HaveKeyWithValue("match", "flag"),
 				)
 			}),
+
+		Entry("customizes a command",
+			cli.Customize("sub", cli.Hidden),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				Expect(root.VisibleSubcommands()).To(HaveLen(1 + 2)) // Includes "help" and "version"
+			}),
 	)
 
 	It("flag can customize itself", func() {

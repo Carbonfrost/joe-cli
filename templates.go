@@ -393,7 +393,7 @@ func commandAdapter(val *Command) *commandData {
 		Synopsis:           val.newSynopsis(),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
-		VisibleCommands:    visibleCommands(val.Subcommands),
+		VisibleCommands:    visibleCommands(val.VisibleSubcommands()),
 		CommandsByCategory: visibleCategories(groupedByCategory(val.Subcommands)),
 		FlagsByCategory:    visibleFlagCategories(groupFlagsByCategory(val.Flags)),
 		Persistent: &persistentCommandData{

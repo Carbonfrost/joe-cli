@@ -205,8 +205,8 @@ var (
 		Optional:               ActionFunc(optionalOption),
 		DisallowFlagsAfterArgs: setInternalFlag(internalFlagDisallowFlagsAfterArgs),
 		No:                     ActionFunc(noOption),
-		NonPersistent:          ActionFunc(nonPersistentOption),
-		DisableSplitting:       ActionFunc(disableSplittingOption),
+		NonPersistent:          setInternalFlag(internalFlagNonPersistent),
+		DisableSplitting:       setInternalFlag(internalFlagDisableSplitting),
 		Merge:                  setInternalFlag(internalFlagMerge),
 		RightToLeft:            setInternalFlag(internalFlagRightToLeft),
 		PreventSetup:           ActionOf((*Context).PreventSetup),
@@ -398,28 +398,18 @@ func splitOptionsHO(opts Option, fn func(Option)) {
 }
 
 func hiddenOption(c *Context) error {
-	c.option().SetHidden()
+	c.target().SetHidden(true)
 	return nil
 }
 
 func requiredOption(c *Context) error {
-	c.option().SetRequired()
+	c.option().SetRequired(true)
 	return nil
 }
 
 func wrapWithExit(c *Context) error {
-	c.option().setInternalFlags(internalFlagExits)
+	c.option().setInternalFlags(internalFlagExits, true)
 	return c.Do(AtTiming(ActionOf(doThenExit), ActionTiming))
-}
-
-func nonPersistentOption(c *Context) error {
-	c.option().setInternalFlags(internalFlagNonPersistent)
-	return nil
-}
-
-func disableSplittingOption(c *Context) error {
-	c.option().setInternalFlags(internalFlagDisableSplitting)
-	return nil
 }
 
 func mustExistOption(c *Context) error {
@@ -459,7 +449,7 @@ func optionalOption(c *Context) error {
 
 func setInternalFlag(f internalFlags) ActionFunc {
 	return func(c *Context) error {
-		c.target().setInternalFlags(f)
+		c.target().setInternalFlags(f, true)
 		return nil
 	}
 }

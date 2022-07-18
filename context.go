@@ -506,7 +506,7 @@ func (c *Context) SetDescription(v interface{}) error {
 // SetValue sets the value of the current flag or arg
 func (c *Context) SetValue(arg string) error {
 	if c.implicitTimingActive() {
-		c.target().setInternalFlags(internalFlagSeenImplied)
+		c.target().setInternalFlags(internalFlagSeenImplied, true)
 	}
 	return c.target().(option).Set(arg)
 }
@@ -1233,7 +1233,10 @@ func (v *valueTarget) setCompletion(c Completion) {
 	}
 }
 
-func (*valueTarget) setInternalFlags(internalFlags) {}
+func (*valueTarget) SetHidden(bool) {
+}
+
+func (*valueTarget) setInternalFlags(internalFlags, bool) {}
 
 func (*valueTarget) internalFlags() internalFlags {
 	return 0

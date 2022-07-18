@@ -307,6 +307,18 @@ func (c *Command) VisibleFlags() []*Flag {
 	return res
 }
 
+// VisibleSubcommands filters all sub-commands in the command by whether they are not hidden
+func (c *Command) VisibleSubcommands() []*Command {
+	res := make([]*Command, 0, len(c.Subcommands))
+	for _, o := range c.Subcommands {
+		if o.internalFlags().hidden() {
+			continue
+		}
+		res = append(res, o)
+	}
+	return res
+}
+
 // Names obtains the name of the command and its aliases
 func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
@@ -569,6 +581,10 @@ func (c *Command) LookupData(name string) (interface{}, bool) {
 	return v, ok
 }
 
+func (c *Command) SetHidden(value bool) {
+	c.setInternalFlags(internalFlagHidden, value)
+}
+
 func (c *Command) setCategory(name string) {
 	c.Category = name
 }
@@ -596,8 +612,12 @@ func (c *Command) ensureData() map[string]interface{} {
 	return c.Data
 }
 
-func (c *Command) setInternalFlags(f internalFlags) {
-	c.flags |= f
+func (c *Command) setInternalFlags(f internalFlags, v bool) {
+	if v {
+		c.flags |= f
+	} else {
+		c.flags = c.flags & ^f
+	}
 }
 
 func (c *Command) internalFlags() internalFlags {

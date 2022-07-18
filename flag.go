@@ -160,8 +160,7 @@ type option interface {
 	Occurrences() int
 	Seen() bool
 	Set(string) error
-	SetHidden()
-	SetRequired()
+	SetRequired(bool)
 
 	applyToSet(s *set)
 	ensureInternalOpt()
@@ -575,21 +574,25 @@ func canonicalNames(name string, aliases []string) (long []string, short []rune)
 }
 
 // SetHidden causes the flag to be hidden
-func (f *Flag) SetHidden() {
-	f.setInternalFlags(internalFlagHidden)
+func (f *Flag) SetHidden(v bool) {
+	f.setInternalFlags(internalFlagHidden, true)
 }
 
 // SetRequired causes the flag to be required
-func (f *Flag) SetRequired() {
-	f.setInternalFlags(internalFlagRequired)
+func (f *Flag) SetRequired(v bool) {
+	f.setInternalFlags(internalFlagRequired, v)
 }
 
 func (f *Flag) internalFlags() internalFlags {
 	return f.option.flags
 }
 
-func (f *Flag) setInternalFlags(i internalFlags) {
-	f.option.flags |= i
+func (f *Flag) setInternalFlags(i internalFlags, v bool) {
+	if v {
+		f.option.flags |= i
+	} else {
+		f.option.flags = f.option.flags & ^i
+	}
 }
 
 func (f *Flag) name() string {

@@ -256,13 +256,13 @@ func (a *Arg) Set(arg string) error {
 }
 
 // SetHidden causes the argument to be hidden from the help screen
-func (a *Arg) SetHidden() {
-	a.setInternalFlags(internalFlagHidden)
+func (a *Arg) SetHidden(v bool) {
+	a.setInternalFlags(internalFlagHidden, v)
 }
 
 // SetRequired will indicate that the argument is required.
-func (a *Arg) SetRequired() {
-	a.setInternalFlags(internalFlagRequired)
+func (a *Arg) SetRequired(v bool) {
+	a.setInternalFlags(internalFlagRequired, v)
 }
 
 // Use appends actions to Uses pipeline
@@ -298,8 +298,12 @@ func (a *Arg) internalFlags() internalFlags {
 	return a.option.flags
 }
 
-func (a *Arg) setInternalFlags(i internalFlags) {
-	a.option.flags |= i
+func (a *Arg) setInternalFlags(i internalFlags, v bool) {
+	if v {
+		a.option.flags |= i
+	} else {
+		a.option.flags = a.option.flags & ^i
+	}
 }
 
 func (a *Arg) applyToSet(s *set) {

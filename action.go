@@ -108,15 +108,17 @@ type customizable interface {
 }
 
 type target interface {
+	SetHidden(bool)
+	SetData(name string, v interface{})
+	LookupData(name string) (interface{}, bool)
+
 	appendAction(Timing, Action)
 	setDescription(interface{})
 	setHelpText(string)
 	setManualText(string)
 	setCategory(name string)
-	SetData(name string, v interface{})
 	setCompletion(Completion)
-	LookupData(name string) (interface{}, bool)
-	setInternalFlags(internalFlags)
+	setInternalFlags(internalFlags, bool)
 	internalFlags() internalFlags
 	completion() Completion
 }
