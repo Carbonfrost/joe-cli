@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# Installs a binary executable, escalating privileges if necessary.
+#
+# usage:
+#   eng/install <files>... <target>
+#
+set -e
+
+_yellow="$(tput setaf 3 2>/dev/null || printf '')"
+_no_color="$(tput sgr0 2>/dev/null || printf '')"
+
+test_writeable() {
+  path="${1:-}/test.txt"
+  if touch "${path}" 2>/dev/null; then
+    rm "${path}"
+    return 0
+  else
+    return 1
+  fi
+}
+
+warn() {
+  printf '%s\n' "${_yellow}! $*${_no_color}"
+}
+
+elevate_priv() {
+  if ! has sudo; then
+    error 'Could not find the command "sudo", needed to get permissions for install.'
+    exit 1
+  fi
+  if ! sudo -v; then
+    error "Superuser not granted, aborting installation"
+    exit 1
+  fi
+}
+
+has() {
+  command -v "$1" 1>/dev/null 2>&1
+}
+
+main() {
+  local bin_dir
+  bin_dir="${BASH_ARGV[0]}"
+
+  if test_writeable "${bin_dir}"; then
+    sudo=""
+  else
+    warn "Escalated permissions are required to install to ${bin_dir},"
+    warn "and you may be prompted for a password"
+    elevate_priv
+    sudo="sudo"
+  fi
+  echo ${sudo} install "$@"
+  ${sudo} install "$@"
+}
+
+main "$@"

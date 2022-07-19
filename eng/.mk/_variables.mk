@@ -77,13 +77,14 @@ _ENG_RUNTIMES_DIR = $(_ENG_MAKEFILE_DIR)/runtimes
 _ENG_BASE_DIR = $(_ENG_MAKEFILE_DIR)/base
 
 # Terminal output formatting
-_RESET = \x1b[39m
-_YELLOW = \x1b[33m
-_GREEN = \x1b[32m
-_RED = \x1b[31m
-_MAGENTA = \x1b[35m
-_UNDERLINE = \x1b[4m
-_CYAN = \x1b[36m
+_RESET = $(shell tput sgr0 2>/dev/null || printf '')
+_YELLOW = $(shell tput setaf 3 2>/dev/null || printf '')
+_GREEN = $(shell tput setaf 2 2>/dev/null || printf '')
+_RED = $(shell tput setaf 1 2>/dev/null || printf '')
+_MAGENTA = $(shell tput setaf 5 2>/dev/null || printf '')
+_CYAN = $(shell tput setaf 6 2>/dev/null || printf '')
+_UNDERLINE = $(shell tput smul 2>/dev/null || printf '')
+_BOLD = $(shell tput bold 2>/dev/null || printf '')
 
 _FATAL_ERROR = $(_RED)fatal: $(_RESET)
 _WARNING = $(_YELLOW)warning: $(_RESET)
