@@ -8,8 +8,38 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
+	"time"
 )
+
+//counterfeiter:generate . FS
+
+// FS provides a read-write file system.  In addition to the read-only behavior of io/fs.FS, it
+// provides all the semantics available from the package os.  To obtain an instance for the file
+// system provided by package os, use DirFS.  The io/fs.File value returned from any of the methods of this
+// interface can also provide corresponding methods.  For example, because FS defines
+// Remove(string), the File implementation returned from Open or OpenFile can also implement the
+// method Remove().
+//
+// Though it implements fs.FS, implementers do not abide the restrictions for path name validations
+// required by io/fs.FS.Open().  In particular, starting and trailing slashes in path names are allowed,
+// which allows rooted files to be referenced.  (These are the semantics of os.Open, etc.)
+type FS interface {
+	fs.FS
+	fs.StatFS
+	Chmod(name string, mode fs.FileMode) error
+	Chown(name string, uid, gid int) error
+	Create(name string) (fs.File, error)
+	Mkdir(name string, perm fs.FileMode) error
+	MkdirAll(path string, perm fs.FileMode) error
+	OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error)
+	Remove(name string) error
+	RemoveAll(path string) error
+	Chtimes(name string, atime time.Time, mtime time.Time) error
+	Rename(oldpath, newpath string) error
+}
 
 type fileExtension interface {
 	fs.File
@@ -21,10 +51,8 @@ type fileExtension interface {
 }
 
 type fsExtension interface {
-	fs.FS
-	fs.StatFS
+	FS
 	fsOpenContext
-	OpenFile(string, int, os.FileMode) (*os.File, error)
 }
 
 type fsOpenContext interface {
@@ -69,6 +97,7 @@ type stdFile struct {
 }
 
 type defaultFS struct {
+	fsExtension
 	std *stdFile
 }
 
@@ -81,12 +110,21 @@ type fsExtensionWrapper struct {
 	fs.FS
 }
 
+type dirFS string
+
+func DirFS(dir string) FS {
+	return dirFS(dir)
+}
+
 const (
 	readWriteMask = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
 )
 
-func newDefaultFS(in io.Reader, out io.Writer) *defaultFS {
-	return &defaultFS{&stdFile{in, out}}
+func newDefaultFS(in io.Reader, out io.Writer) fsExtension {
+	return &defaultFS{
+		fsExtension: DirFS(".").(fsExtension),
+		std:         &stdFile{in, out},
+	}
 }
 
 // Set will set the name of the file
@@ -115,13 +153,53 @@ func (f *File) Open() (fs.File, error) {
 }
 
 // OpenFile will open the file using the specified flags and permissions
-func (f *File) OpenFile(flag int, perm os.FileMode) (*os.File, error) {
+func (f *File) OpenFile(flag int, perm os.FileMode) (fs.File, error) {
 	return f.actualFS().OpenFile(f.Name, flag, perm)
 }
 
 // Create the file
-func (f *File) Create() (*os.File, error) {
-	return f.actualFS().OpenFile(f.Name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+func (f *File) Create() (fs.File, error) {
+	return f.actualFS().Create(f.Name)
+}
+
+// Change mode
+func (f *File) Chmod(mode fs.FileMode) error {
+	return f.actualFS().Chmod(f.Name, mode)
+}
+
+// Change owner
+func (f *File) Chown(uid int, gid int) error {
+	return f.actualFS().Chown(f.Name, uid, gid)
+}
+
+// Change times
+func (f *File) Chtimes(atime, mtime time.Time) error {
+	return f.actualFS().Chtimes(f.Name, atime, mtime)
+}
+
+// Rename file
+func (f *File) Rename(newpath string) error {
+	return f.actualFS().Rename(f.Name, newpath)
+}
+
+// Remove file
+func (f *File) Remove() error {
+	return f.actualFS().Remove(f.Name)
+}
+
+// Remove file and all ancestors
+func (f *File) RemoveAll() error {
+	return f.actualFS().RemoveAll(f.Name)
+}
+
+// Mkdir creates a directory
+func (f *File) Mkdir(mode fs.FileMode) error {
+	return f.actualFS().Mkdir(f.Name, mode)
+}
+
+// Mkdir creates a directory and all ancestors
+func (f *File) MkdirAll(mode fs.FileMode) error {
+	return f.actualFS().MkdirAll(f.Name, mode)
 }
 
 // Exists tests whether the file exists
@@ -270,14 +348,21 @@ func (d defaultFS) Open(name string) (fs.File, error) {
 	return d.OpenContext(context.TODO(), name)
 }
 
+// Force consolidation of Create via OpenFile (can't use the embedded value
+// directly)
+
+func (d defaultFS) Create(name string) (fs.File, error) {
+	return d.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+}
+
 func (d defaultFS) Stat(name string) (fs.FileInfo, error) {
 	if name == "-" && d.std != nil {
 		return d.std.Stat()
 	}
-	return os.Stat(name)
+	return d.fsExtension.Stat(name)
 }
 
-func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
 	if name == "-" && d.std != nil {
 		switch flag & readWriteMask {
 		case os.O_RDONLY:
@@ -291,18 +376,119 @@ func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (*os.File, 
 			return d.std.out.(*os.File), nil
 		}
 	}
-	return os.OpenFile(name, flag, perm)
+	return d.fsExtension.OpenFile(name, flag, perm)
 }
 
 func (d defaultFS) OpenContext(c context.Context, name string) (fs.File, error) {
 	if name == "-" && d.std != nil {
 		return d.std, nil
 	}
-	f, err := os.Open(name)
-	if err != nil {
-		return nil, err
+	return d.fsExtension.OpenContext(c, name)
+}
+
+func (f fsExtensionWrapper) Create(name string) (fs.File, error) {
+	if s, ok := f.FS.(interface{ Create(string) (fs.File, error) }); ok {
+		return s.Create(name)
 	}
-	return wrapContextFile(c, f), nil
+	return f.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+}
+
+func (f fsExtensionWrapper) Chmod(name string, mode fs.FileMode) error {
+	if s, ok := f.FS.(interface {
+		Chmod(string, fs.FileMode) error
+	}); ok {
+		return s.Chmod(name, mode)
+	}
+	return &fs.PathError{
+		Op:   "chmod",
+		Path: name,
+		Err:  errors.New("not supported"),
+	}
+}
+
+func (f fsExtensionWrapper) Chown(name string, uid int, gid int) error {
+	if s, ok := f.FS.(interface {
+		Chown(string, int, int) error
+	}); ok {
+		return s.Chown(name, uid, gid)
+	}
+	return &fs.PathError{
+		Op:   "chown",
+		Path: name,
+		Err:  errors.New("not supported"),
+	}
+}
+
+func (f fsExtensionWrapper) Chtimes(name string, atime, mtime time.Time) error {
+	if s, ok := f.FS.(interface {
+		Chtimes(string, time.Time, time.Time) error
+	}); ok {
+		return s.Chtimes(name, atime, mtime)
+	}
+	return &fs.PathError{
+		Op:   "chtimes",
+		Path: name,
+		Err:  errors.New("not supported"),
+	}
+}
+
+func (f fsExtensionWrapper) Rename(oldpath, newpath string) error {
+	if s, ok := f.FS.(interface{ Rename(string, string) error }); ok {
+		return s.Rename(oldpath, newpath)
+	}
+	return &fs.PathError{
+		Op:   "rename",
+		Path: oldpath,
+		Err:  errors.New("not supported"),
+	}
+}
+
+func (f fsExtensionWrapper) Remove(name string) error {
+	if s, ok := f.FS.(interface{ Remove(string) error }); ok {
+		return s.Remove(name)
+	}
+	return &fs.PathError{
+		Op:   "remove",
+		Path: name,
+		Err:  errors.New("not supported"),
+	}
+}
+
+func (f fsExtensionWrapper) RemoveAll(name string) error {
+	if s, ok := f.FS.(interface{ RemoveAll(string) error }); ok {
+		return s.RemoveAll(name)
+	}
+	return &fs.PathError{
+		Op:   "remove",
+		Path: name,
+		Err:  errors.New("not supported"),
+	}
+}
+
+func (f fsExtensionWrapper) Mkdir(name string, mode fs.FileMode) error {
+	if s, ok := f.FS.(interface {
+		Mkdir(string, fs.FileMode) error
+	}); ok {
+		return s.Mkdir(name, mode)
+	}
+	return &fs.PathError{
+		Op:   "mkdir",
+		Path: name,
+		Err:  errors.New("not supported"),
+	}
+}
+
+func (f fsExtensionWrapper) MkdirAll(name string, mode fs.FileMode) error {
+	if s, ok := f.FS.(interface {
+		MkdirAll(string, fs.FileMode) error
+	}); ok {
+		return s.MkdirAll(name, mode)
+	}
+	return &fs.PathError{
+		Op:   "mkdir",
+		Path: name,
+		Err:  errors.New("not supported"),
+	}
 }
 
 func (f fsExtensionWrapper) Stat(name string) (fs.FileInfo, error) {
@@ -323,7 +509,12 @@ func (f fsExtensionWrapper) OpenContext(c context.Context, name string) (fs.File
 	return f.FS.Open(name)
 }
 
-func (f fsExtensionWrapper) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+func (f fsExtensionWrapper) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
+	if s, ok := f.FS.(interface {
+		OpenFile(string, int, fs.FileMode) (fs.File, error)
+	}); ok {
+		return s.OpenFile(name, flag, perm)
+	}
 	return nil, &fs.PathError{
 		Op:   "open",
 		Path: name,
@@ -396,6 +587,137 @@ func (c *contextFile) Write(p []byte) (n int, err error) {
 	return
 }
 
+func (d dirFS) Stat(name string) (fs.FileInfo, error) {
+	full, err := d.path(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Stat(full)
+}
+
+func (d dirFS) Open(name string) (fs.File, error) {
+	full, err := d.path(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(full)
+}
+
+func (d dirFS) Create(name string) (fs.File, error) {
+	full, err := d.path(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Create(full)
+}
+
+func (d dirFS) Chmod(name string, mode fs.FileMode) error {
+	full, err := d.path(name)
+	if err != nil {
+		return err
+	}
+	return os.Chmod(full, mode)
+}
+
+func (d dirFS) Chtimes(name string, atime, mtime time.Time) error {
+	full, err := d.path(name)
+	if err != nil {
+		return err
+	}
+	return os.Chtimes(full, atime, mtime)
+}
+
+func (d dirFS) Chown(name string, uid int, gid int) error {
+	full, err := d.path(name)
+	if err != nil {
+		return err
+	}
+	return os.Chown(full, uid, gid)
+}
+
+func (d dirFS) Rename(oldpath, newpath string) error {
+	old, err := d.path(oldpath)
+	if err != nil {
+		return err
+	}
+	new, err := d.path(newpath)
+	if err != nil {
+		return err
+	}
+	return os.Rename(old, new)
+}
+
+func (d dirFS) Remove(name string) error {
+	full, err := d.path(name)
+	if err != nil {
+		return err
+	}
+	return os.Remove(full)
+}
+
+func (d dirFS) RemoveAll(name string) error {
+	full, err := d.path(name)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(full)
+}
+
+func (d dirFS) Mkdir(name string, mode fs.FileMode) error {
+	full, err := d.path(name)
+	if err != nil {
+		return err
+	}
+	return os.Mkdir(full, mode)
+}
+
+func (d dirFS) MkdirAll(name string, mode fs.FileMode) error {
+	full, err := d.path(name)
+	if err != nil {
+		return err
+	}
+	return os.MkdirAll(full, mode)
+}
+
+func (d dirFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
+	full, err := d.path(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.OpenFile(full, flag, perm)
+}
+
+func (d dirFS) OpenContext(c context.Context, name string) (fs.File, error) {
+	full, err := d.path(name)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(full)
+	if err != nil {
+		return nil, err
+	}
+	return wrapContextFile(c, f), nil
+}
+
+func (d dirFS) Sub(name string) (fs.FS, error) {
+	// Implementation of Sub is to keep read-write semantics
+	if name == "." {
+		return d, nil
+	}
+	p, err := d.path(name)
+	if err != nil {
+		return nil, err
+	}
+	return dirFS(p), nil
+}
+
+func (d dirFS) path(name string) (string, error) {
+	if strings.HasPrefix(name, "/") {
+		return name, nil
+	}
+	return path.Join(string(d), name), nil
+}
+
 func fileNotExists(err error) bool {
 	return errors.Is(err, fs.ErrNotExist)
 }
@@ -434,7 +756,6 @@ func ignoreBlankPathError(err error) error {
 var (
 	_ fileExtension    = &stdFile{}
 	_ fileExtension    = &contextFile{}
-	_ fsExtension      = (*defaultFS)(nil)
 	_ flag.Value       = (*File)(nil)
 	_ flag.Value       = (*FileSet)(nil)
 	_ valueInitializer = (*File)(nil)
@@ -442,4 +763,6 @@ var (
 	_ fileExists       = (*File)(nil)
 	_ fileExists       = (*FileSet)(nil)
 	_ fileStat         = (*File)(nil)
+	_ fsExtension      = dirFS("")
+	_ fs.SubFS         = dirFS("")
 )

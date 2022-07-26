@@ -9,11 +9,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
+	"time"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 	"github.com/spf13/afero"
 )
 
@@ -140,24 +143,112 @@ var _ = Describe("File", func() {
 		Expect(buf.String()).To(Equal("hello"))
 	})
 
-	It("sets FS from app", func() {
-		var actual *cli.File
-		globalFS := emptyFS{}
-		app := &cli.App{
-			Flags: []*cli.Flag{
-				{
-					Name:  "f",
-					Value: &cli.File{},
-				},
-			},
-			Action: func(c *cli.Context) {
-				actual = c.File("f")
-			},
-			FS: globalFS,
-		}
+	Describe("FS", func() {
 
-		_ = app.RunContext(context.TODO(), []string{"app"})
-		Expect(actual.FS).To(BeIdenticalTo(globalFS))
+		var (
+			timeA = time.Now()
+			timeB = time.Now()
+		)
+
+		It("sets FS from app", func() {
+			var actual *cli.File
+			globalFS := emptyFS{}
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: &cli.File{},
+					},
+				},
+				Action: func(c *cli.Context) {
+					actual = c.File("f")
+				},
+				FS: globalFS,
+			}
+
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(actual.FS).To(BeIdenticalTo(globalFS))
+		})
+
+		DescribeTable("delegates examples", func(
+			f func(*cli.File),
+			argsForCall interface{}, // should be one of the ArgsForCall methods
+			expected types.GomegaMatcher) {
+
+			globalFS := new(joeclifakes.FakeFS)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: &cli.File{},
+					},
+				},
+				Action: func(c *cli.Context) {
+					f(c.File("f"))
+				},
+				FS: globalFS,
+			}
+
+			_ = app.RunContext(context.Background(), []string{"app", "-f", "filename"})
+			actual := make([]interface{}, 0)
+			callArgs := []reflect.Value{reflect.ValueOf(globalFS), reflect.ValueOf(0)}
+			for _, a := range reflect.ValueOf(argsForCall).Call(callArgs) {
+				actual = append(actual, a.Interface())
+			}
+			Expect(actual).To(expected)
+		},
+			Entry("Create",
+				func(f *cli.File) { f.Create() },
+				(*joeclifakes.FakeFS).CreateArgsForCall,
+				Equal([]interface{}{"filename"}),
+			),
+			Entry("OpenFile",
+				func(f *cli.File) { f.OpenFile(2, 4) },
+				(*joeclifakes.FakeFS).OpenFileArgsForCall,
+				Equal([]interface{}{"filename", 2, fs.FileMode(4)}),
+			),
+			Entry("Chmod",
+				func(f *cli.File) { f.Chmod(4) },
+				(*joeclifakes.FakeFS).ChmodArgsForCall,
+				Equal([]interface{}{"filename", fs.FileMode(4)}),
+			),
+			Entry("Chown",
+				func(f *cli.File) { f.Chown(1, 1) },
+				(*joeclifakes.FakeFS).ChownArgsForCall,
+				Equal([]interface{}{"filename", 1, 1}),
+			),
+			Entry("Chtimes",
+				func(f *cli.File) { f.Chtimes(timeA, timeB) },
+				(*joeclifakes.FakeFS).ChtimesArgsForCall,
+				Equal([]interface{}{"filename", timeA, timeB}),
+			),
+			Entry("Remove",
+				func(f *cli.File) { f.Remove() },
+				(*joeclifakes.FakeFS).RemoveArgsForCall,
+				Equal([]interface{}{"filename"}),
+			),
+			Entry("RemoveAll",
+				func(f *cli.File) { f.RemoveAll() },
+				(*joeclifakes.FakeFS).RemoveAllArgsForCall,
+				Equal([]interface{}{"filename"}),
+			),
+			Entry("Mkdir",
+				func(f *cli.File) { f.Mkdir(0123) },
+				(*joeclifakes.FakeFS).MkdirArgsForCall,
+				Equal([]interface{}{"filename", fs.FileMode(0123)}),
+			),
+			Entry("MkdirAll",
+				func(f *cli.File) { f.MkdirAll(0123) },
+				(*joeclifakes.FakeFS).MkdirAllArgsForCall,
+				Equal([]interface{}{"filename", fs.FileMode(0123)}),
+			),
+			Entry("Rename",
+				func(f *cli.File) { f.Rename("newone") },
+				(*joeclifakes.FakeFS).RenameArgsForCall,
+				Equal([]interface{}{"filename", "newone"}),
+			),
+		)
+
 	})
 
 	It("reads from the app input when - is used", func() {
@@ -196,7 +287,8 @@ var _ = Describe("File", func() {
 
 		It("uses stdout when creating", func() {
 			f := &cli.File{Name: "-"}
-			actual, _ := f.Create()
+			actual, err := f.Create()
+			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(BeIdenticalTo(os.Stdout))
 		})
 
