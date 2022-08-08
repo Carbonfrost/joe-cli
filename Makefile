@@ -18,7 +18,7 @@ watch:
 	@ find Makefile . -name '*.go' | entr -c cli --version --plus --time generate
 
 generate:
-	$(Q) go generate ./...
+	$(Q) $(OUTPUT_COLLAPSED) go generate ./...
 
 lint:
 	$(Q) go run honnef.co/go/tools/cmd/staticcheck -checks 'all,-ST*' $(shell go list ./...)
