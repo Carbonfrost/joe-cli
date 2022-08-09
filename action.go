@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"os/signal"
 	"reflect"
@@ -995,6 +997,81 @@ func Transform(fn func([]string) (interface{}, error)) Action {
 		c.option().setTransform(fn)
 		return nil
 	})
+}
+
+// ValueTransform sets the transform that applies to the syntax of the value in
+// NameValue, NameValues, or Map.  The first occurrence of an unescaped equal sign is treated
+// as the delimiter between the name and value (as with any of the types just mentioned).
+// The value portion is transformed using the logic of the transform function.
+func ValueTransform(valueFn func([]string) (interface{}, error)) Action {
+	return Transform(func(raw []string) (interface{}, error) {
+		name, value, hasValue := splitValuePair(raw[1])
+		if hasValue {
+			values := append([]string{name, value}, raw[2:]...)
+			f, err := valueFn(values)
+			if err != nil {
+				return nil, err
+			}
+
+			txt, err := transformOutputToString(f)
+			if err != nil {
+				return nil, err
+			}
+			return name + "=" + txt, nil
+		}
+
+		return name, nil
+	})
+}
+
+func transformOutputToString(v interface{}) (string, error) {
+	switch val := v.(type) {
+	case string:
+		return val, nil
+	case io.Reader:
+		bb, err := io.ReadAll(val)
+		if err != nil {
+			return "", err
+		}
+		return string(bb), nil
+	case []byte:
+		return string(val), nil
+	}
+	panic(fmt.Sprintf("unexpected transform output %T", v))
+}
+
+// TransformFileReference obtains the transform for the given file system and whether the
+// prefix @ is required.
+func TransformFileReference(f fs.FS, usingAtSyntax bool) func([]string) (interface{}, error) {
+	if usingAtSyntax {
+		return func(raw []string) (interface{}, error) {
+			readers := make([]io.Reader, len(raw)-1)
+			for i, s := range raw[1:] {
+				if strings.HasPrefix(s, "@") {
+					f, err := f.Open(s[1:])
+					if err != nil {
+						return nil, err
+					}
+					readers[i] = f
+				} else {
+					readers[i] = strings.NewReader(s)
+				}
+			}
+			return io.MultiReader(readers...), nil
+		}
+	}
+
+	return func(raw []string) (interface{}, error) {
+		readers := make([]io.Reader, len(raw)-1)
+		for i, s := range raw[1:] {
+			f, err := f.Open(s)
+			if err != nil {
+				return nil, err
+			}
+			readers[i] = f
+		}
+		return io.MultiReader(readers...), nil
+	}
 }
 
 func (p Prototype) Execute(c *Context) error {

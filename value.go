@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding"
 	"encoding/hex"
 	"errors"
@@ -591,8 +592,14 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 }
 
 func (v *NameValue) Reset() {
+	// Don't reset AllowFileReference because it is configuration
 	v.Name = ""
 	v.Value = ""
+}
+
+func (v *NameValue) Copy() *NameValue {
+	res := *v
+	return &res
 }
 
 func (v *NameValue) Set(arg string) error {
@@ -630,27 +637,11 @@ func (n *NameValue) AllowFileReferencesFlag() Prototype {
 	}
 }
 
-func (*NameValue) Initializer() Action {
-	return AtTiming(ActionFunc(loadFileReference), BeforeTiming)
-}
-
-func loadFileReference(c *Context) error {
-	if current, ok := c.Value("").(*NameValue); ok {
-		s := current.Value
-		if current.AllowFileReference && strings.HasPrefix(s, "@") {
-			f, err := c.FS.Open(s[1:])
-			if err != nil {
-				return err
-			}
-			contents, err := io.ReadAll(f)
-			if err != nil {
-				return err
-			}
-			current.Value = string(contents)
-
-		} else {
-			current.Value = s
-		}
+func (n *NameValue) Initializer() Action {
+	if n.AllowFileReference {
+		return ActionFunc(func(c *Context) error {
+			return c.Do(ValueTransform(TransformFileReference(c.FS, true)))
+		})
 	}
 	return nil
 }
@@ -691,6 +682,52 @@ func (g *generic) Set(value string, opt *internalOption) error {
 	}
 
 	return setCore(g.p, opt.flags.disableSplitting(), value)
+}
+
+func (g *generic) setViaTransformOutput(v interface{}, opt *internalOption) error {
+	if s, ok := g.p.(valueSetData); ok {
+		switch val := v.(type) {
+		case string:
+			return s.SetData(strings.NewReader(val))
+		case io.Reader:
+			return s.SetData(val)
+		case []byte:
+			return s.SetData(bytes.NewReader(val))
+		}
+	}
+
+	if s, ok := g.p.(*[]byte); ok {
+		switch val := v.(type) {
+		case io.Reader:
+			buf := bytes.NewBuffer(*s)
+			if _, err := io.Copy(buf, val); err != nil {
+				return err
+			}
+			*s = buf.Bytes()
+			return nil
+
+		case []byte:
+			buf := bytes.NewBuffer(*s)
+			buf.Write(val)
+			*s = buf.Bytes()
+			return nil
+		}
+	}
+
+	switch val := v.(type) {
+	case string:
+		return g.Set(val, opt)
+	case io.Reader:
+		bb, err := io.ReadAll(val)
+		if err != nil {
+			return err
+		}
+		return g.Set(string(bb), opt)
+	case []byte:
+		return g.Set(string(val), opt)
+	}
+
+	panic(fmt.Sprintf("unexpected transform output %T", v))
 }
 
 func (g *generic) applyValueConventions(flags internalFlags, occurs int) {
@@ -910,9 +947,14 @@ func (g *generic) cloneZero() *generic {
 		case *[]byte:
 			return Bytes()
 		case valueResetOrMerge:
-			return val
+			r := reflect.ValueOf(val).MethodByName("Copy")
+			if r.IsValid() {
+				res := r.Call(nil)[0].Interface()
+				res.(valueResetOrMerge).Reset()
+				return res
+			}
 		}
-		panic(fmt.Sprintf("unsupported flag type: %T", g.p))
+		panic(fmt.Sprintf("unsupported flag type for copying: %T", g.p))
 	}())
 }
 

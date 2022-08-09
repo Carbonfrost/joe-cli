@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
+	"github.com/spf13/afero"
 )
 
 var _ = Describe("timings", func() {
@@ -1863,6 +1865,31 @@ var _ = Describe("EachOccurrence", func() {
 		Expect(values).To(Equal([]uint64{1019, 1044}))
 	})
 
+	It("stops after first error", func() {
+		var values []uint64
+		binder := func(r uint64) error {
+			values = append(values, r)
+			if r == 1 {
+				return fmt.Errorf("error: 1")
+			}
+			return nil
+		}
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Options: cli.EachOccurrence,
+					Uses:    cli.Bind(binder),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f 0 -f 1 -f 1044")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).To(MatchError("error: 1"))
+		Expect(values).To(Equal([]uint64{0, 1}))
+	})
+
 	DescribeTable("examples", func(flag *cli.Flag, arguments string, expected []interface{}) {
 		act := new(joeclifakes.FakeAction)
 		var callIndex int // keep track of which index is called
@@ -2085,6 +2112,57 @@ var _ = Describe("Mutex", func() {
 		Entry("three others", "app -abcd", MatchError("can't use -a together with -b, -c, or -d")),
 	)
 
+})
+
+var _ = Describe("ValueTransform", func() {
+
+	var testFileSystem = func() fs.FS {
+		appFS := afero.NewMemMapFs()
+
+		afero.WriteFile(appFS, "world", []byte("earth"), 0644)
+		afero.WriteFile(appFS, "plan", []byte("b"), 0644)
+		return afero.NewIOFS(appFS)
+	}()
+
+	DescribeTable("examples", func(arguments string, value interface{}, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:  "long",
+					Uses:  cli.ValueTransform(cli.TransformFileReference(testFileSystem, false)),
+					Value: value,
+				},
+			},
+			Action: func() {},
+		}
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value).To(expected)
+	},
+		Entry("NameValues",
+			"app --long file=world --long file2=plan",
+			cli.NameValues(),
+			Equal(&[]*cli.NameValue{
+				{
+					Name:  "file",
+					Value: "earth",
+				},
+				{
+					Name:  "file2",
+					Value: "b",
+				},
+			}),
+		),
+		Entry("Map",
+			"app --long exec=plan",
+			cli.Map(),
+			Equal(&map[string]string{
+				"exec": "b",
+			}),
+		),
+	)
 })
 
 func SkipOnWindows() {

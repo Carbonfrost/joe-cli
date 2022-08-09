@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding"
 	"fmt"
-	"io"
 	"math/bits"
 	"os"
 	"sort"
@@ -140,6 +139,9 @@ const (
 	// use the winning value.  (i.e. for the example, String("") will vary as "first" and "last" in the
 	// two corresponding Action calls; however String("a") will always be "last").  This also applies to
 	// Raw("").
+	//
+	// EachOccurrence can be used with built-in flag value types or any value which defines a method
+	// named Copy with zero arguments, which is called after each occurrence
 	EachOccurrence
 
 	// FileReference indicates that the flag or argument is a reference to a file which is loaded
@@ -511,14 +513,32 @@ func eachOccurrenceOpt(c1 *Context) error {
 		scope := c.copy(mini, true)
 
 		// Obtain either the zero value or Reset() the value
-		start = start.cloneZero()
+		resetOnFirstOccur := !opt.flags.merge()
 		for i := 0; i < mini.numOccurs(); i++ {
+
+			// Create a copy of the value on each occurrence (unless merge semantics
+			// are in place)
+			if i == 0 || resetOnFirstOccur {
+				start = start.cloneZero()
+			}
+
 			mini.index = i
 
 			// Pretend this is the first occurrence
 			start.applyValueConventions(opt.flags, 1)
-			for _, s := range mini.current() {
-				start.Set(s, opt)
+
+			if opt.transform != nil {
+				d, err := opt.transform(mini.lookupBinding("", false))
+				if err != nil {
+					return err
+				}
+				if err := start.setViaTransformOutput(d, opt); err != nil {
+					return err
+				}
+			} else {
+				for _, s := range mini.current() {
+					start.Set(s, opt)
+				}
 			}
 			mini.val = start.p
 
@@ -532,36 +552,12 @@ func eachOccurrenceOpt(c1 *Context) error {
 
 func allowFileReferenceOpt(c *Context) error {
 	f := c.FS
-	return c.Do(Transform(func(raw []string) (interface{}, error) {
-		readers := make([]io.Reader, len(raw)-1)
-		for i, s := range raw[1:] {
-			if strings.HasPrefix(s, "@") {
-				f, err := f.Open(s[1:])
-				if err != nil {
-					return nil, err
-				}
-				readers[i] = f
-			} else {
-				readers[i] = strings.NewReader(s)
-			}
-		}
-		return io.MultiReader(readers...), nil
-	}))
+	return c.Do(Transform(TransformFileReference(f, true)))
 }
 
 func fileReferenceOpt(c *Context) error {
 	f := c.FS
-	return c.Do(Transform(func(raw []string) (interface{}, error) {
-		readers := make([]io.Reader, len(raw)-1)
-		for i, s := range raw[1:] {
-			f, err := f.Open(s)
-			if err != nil {
-				return nil, err
-			}
-			readers[i] = f
-		}
-		return io.MultiReader(readers...), nil
-	}))
+	return c.Do(Transform(TransformFileReference(f, false)))
 }
 
 func sortedFlagsOpt(c *Context) error {

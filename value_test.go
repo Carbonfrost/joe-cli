@@ -539,10 +539,51 @@ var _ = Describe("NameValue", func() {
 		}
 
 		// Doing this indirectly is more interesting because it examines the timing of
-		// the Initializer.  It's possible that
+		// the Initializer.
 		args, _ := cli.Split("app -v hello=@world")
 		app.Run(args)
 		Expect(app.Flags[0].Value.(*cli.NameValue).Value).To(Equal("file contents"))
+	})
+
+	It("loads from FileReferences with EachOccurrence", func() {
+		var testFileSystem = func() fs.FS {
+			appFS := afero.NewMemMapFs()
+
+			afero.WriteFile(appFS, "world", []byte("Earth"), 0644)
+			afero.WriteFile(appFS, "planet", []byte("Mars"), 0644)
+			return afero.NewIOFS(appFS)
+		}()
+		var values []*cli.NameValue
+		binder := func(r *cli.NameValue) error {
+			// Notice that we are able to use *NameValue here without having
+			// to do copying ourselves.  The value is copied because NameValue.Copy()
+			// exists.
+			values = append(values, r)
+			return nil
+		}
+
+		app := &cli.App{
+			FS: testFileSystem,
+			Flags: []*cli.Flag{
+				{
+					Name:    "v",
+					Value:   &cli.NameValue{AllowFileReference: true},
+					Options: cli.EachOccurrence,
+					Uses:    cli.Bind(binder),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -v hello=@world -v hello2=@planet -v hello3=Ceres")
+		app.Run(args)
+
+		Expect(values).To(HaveLen(3))
+		Expect(values[0].Name).To(Equal("hello"))
+		Expect(values[0].Value).To(Equal("Earth"))
+		Expect(values[1].Name).To(Equal("hello2"))
+		Expect(values[1].Value).To(Equal("Mars"))
+		Expect(values[2].Name).To(Equal("hello3"))
+		Expect(values[2].Value).To(Equal("Ceres"))
 	})
 
 })

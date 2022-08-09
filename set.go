@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"strings"
 )
 
@@ -681,49 +679,7 @@ func (o *internalOption) Set(arg string) error {
 }
 
 func (o *internalOption) setViaTransformOutput(v interface{}) error {
-	if s, ok := o.value.p.(valueSetData); ok {
-		switch val := v.(type) {
-		case string:
-			return s.SetData(strings.NewReader(val))
-		case io.Reader:
-			return s.SetData(val)
-		case []byte:
-			return s.SetData(bytes.NewReader(val))
-		}
-	}
-
-	if s, ok := o.value.p.(*[]byte); ok {
-		switch val := v.(type) {
-		case io.Reader:
-			buf := bytes.NewBuffer(*s)
-			if _, err := io.Copy(buf, val); err != nil {
-				return err
-			}
-			*s = buf.Bytes()
-			return nil
-
-		case []byte:
-			buf := bytes.NewBuffer(*s)
-			buf.Write(val)
-			*s = buf.Bytes()
-			return nil
-		}
-	}
-
-	switch val := v.(type) {
-	case string:
-		return o.Set(val)
-	case io.Reader:
-		bb, err := io.ReadAll(val)
-		if err != nil {
-			return err
-		}
-		return o.Set(string(bb))
-	case []byte:
-		return o.Set(string(val))
-	}
-
-	panic(fmt.Sprintf("unexpected transform output %T", v))
+	return o.value.setViaTransformOutput(v, o)
 }
 
 func (o *internalOption) startOccurrence(n int) {
