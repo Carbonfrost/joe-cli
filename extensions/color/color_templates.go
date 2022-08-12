@@ -10,6 +10,8 @@ import (
 type templateContext struct {
 	c     *cli.Context
 	funcs map[string]interface{}
+
+	colorEnabledCache *bool
 }
 
 type sprinter = func(...interface{}) (string, error)
@@ -84,7 +86,7 @@ func templateFuncs(c *cli.Context) map[string]interface{} {
 		"Reset":         t.reset(),
 		"Style":         t.setStyle,
 
-		"Emoji": emojiByName,
+		"Emoji": t.emoji,
 
 		"BoldFirst": func(s []string) []string {
 			if len(s) == 0 {
@@ -195,4 +197,29 @@ func (t *templateContext) format(on, off func(cli.Writer), a []interface{}) (str
 		off(res)
 	}
 	return res.String(), nil
+}
+
+func (t *templateContext) emoji(name string) (string, error) {
+	if len(name) > 0 && t.colorEnabled() {
+		res := string(emojiByName(name))
+		if len(res) == 0 {
+			return "", fmt.Errorf("not valid emoji: %q", name)
+		}
+		return res, nil
+	}
+	return "", nil
+}
+
+func (t *templateContext) colorEnabled() bool {
+	// HACK Detect whether color is enabled
+	if t.colorEnabledCache == nil {
+		res := t.c.NewBuffer()
+		res.SetForeground(cli.Black)
+		res.WriteString("B")
+
+		// If any ANSI codes were written, implies color is enabled
+		enabled := len(res.String()) > 1
+		t.colorEnabledCache = &enabled
+	}
+	return *t.colorEnabledCache
 }

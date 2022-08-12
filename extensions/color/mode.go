@@ -1,8 +1,8 @@
 package color
 
 import (
-	"errors"
 	"flag"
+	"fmt"
 	"strings"
 )
 
@@ -33,7 +33,7 @@ func (m *Mode) Set(arg string) error {
 	case "never", "false", "off":
 		*m = Never
 	default:
-		return errors.New("invalid value")
+		return fmt.Errorf("invalid value: %q", arg)
 	}
 	return nil
 }

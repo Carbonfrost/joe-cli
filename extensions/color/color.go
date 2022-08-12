@@ -18,6 +18,9 @@ type Options struct {
 // Feature provides a name for each feature in the extension
 type Feature int
 
+// Emoji represents emoji
+type Emoji string
+
 const (
 	// FlagFeature enables the flag --color={auto|never|always} for enabling color.
 	// The flag's value is optional, in which case its value is always
@@ -37,6 +40,18 @@ const (
 
 	// AllFeatures enables all of the features.  This is the default
 	AllFeatures = -1
+)
+
+const (
+	Tada           Emoji = "🎉"
+	Fire           Emoji = "🔥"
+	Sparkles       Emoji = "✨"
+	Exclamation    Emoji = "❗"
+	Bulb           Emoji = "💡"
+	X              Emoji = "❌"
+	HeavyCheckMark Emoji = "✔️"
+	Warning        Emoji = "⚠️"
+	Play           Emoji = "▶"
 )
 
 var (
@@ -178,6 +193,30 @@ func (f Feature) Pipeline() cli.Action {
 func setFromBoolean(c *cli.Context) error {
 	c.SetColor(c.Bool(""))
 	return nil
+}
+
+func emojiByName(name string) Emoji {
+	switch name {
+	case "Tada":
+		return Tada
+	case "Fire":
+		return Fire
+	case "Sparkles":
+		return Sparkles
+	case "Exclamation":
+		return Exclamation
+	case "Bulb":
+		return Bulb
+	case "X":
+		return X
+	case "HeavyCheckMark":
+		return HeavyCheckMark
+	case "Warning":
+		return Warning
+	case "Play":
+		return Play
+	}
+	return ""
 }
 
 var _ cli.Action = Options{}
