@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"os"
+	"runtime"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/template"
@@ -121,6 +122,8 @@ type C    struct {  }`,
 		})
 
 		It("ensures directory hierarchy", func() {
+			SkipOnWindows()
+
 			test := testFileSystem()
 			ff := new(joeclifakes.FakeFS)
 			ff.CreateStub = test.Create
@@ -194,6 +197,8 @@ type C    struct {  }`,
 			})
 
 			It("reports nested file", func() {
+				SkipOnWindows()
+
 				app := &cli.App{
 					Name:   "app",
 					FS:     testFileSystem(),
@@ -240,4 +245,10 @@ func renderScreen(app *cli.App, args string) string {
 	app.Stdout = &buffer
 	_ = app.RunContext(context.TODO(), arguments)
 	return buffer.String()
+}
+
+func SkipOnWindows() {
+	if runtime.GOOS == "windows" {
+		Skip("not tested on Windows")
+	}
 }
