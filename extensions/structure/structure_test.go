@@ -26,6 +26,22 @@ var _ = Describe("Value", func() {
 		Expect(lk.Value("a")).To(Equal(s))
 	})
 
+	Describe("String", func() {
+		DescribeTable("examples",
+			func(value interface{}, expected types.GomegaMatcher) {
+				Expect(structure.Of(value).String()).To(expected)
+			},
+			Entry("map", map[string]string{"mass": "ive", "ly": "m"}, Equal("ly=m,mass=ive")),
+			Entry("structure", &struct {
+				Hello string
+				World string
+			}{
+				Hello: "X",
+				World: "Y",
+			}, Equal("Hello=X,World=Y")),
+		)
+	})
+
 	Describe("Set", func() {
 
 		DescribeTable("examples",

@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
+	tt "text/template"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/template"
@@ -34,6 +35,7 @@ var _ = Describe("File", func() {
 				FS:   testFileSystem,
 				Action: template.New(
 					template.Vars{"file": "file_generate_test.txt"},
+					template.Data("Var", "variable"),
 					template.File("{{ .file }}", gen),
 				),
 				Stdout: ioutil.Discard,
@@ -77,6 +79,16 @@ var _ = Describe("File", func() {
 type C    struct {  }`,
 				template.Gofmt(),
 				Equal("package m\n\ntype C struct{}\n"),
+			),
+			Entry("template vars",
+				"",
+				template.Template(tt.Must(tt.New("").Parse("my {{ .Var }}"))),
+				Equal("my variable"),
+			),
+			Entry("template inherits vars",
+				"",
+				template.Template(tt.Must(tt.New("").Parse("my {{ .file }}"))),
+				Equal("my file_generate_test.txt"),
 			),
 		)
 

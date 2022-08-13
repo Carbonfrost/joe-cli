@@ -934,25 +934,23 @@ func optionalSetup(a func(*Context)) ActionFunc {
 // ImplicitValue sets the implicit value which is specified for the arg or flag
 // if it was not specified for the command.  Any errors are suppressed
 func ImplicitValue(fn func(*Context) (string, bool)) Action {
-	return AtTiming(ActionFunc(func(c *Context) error {
-		if c.Occurrences("") == 0 {
-			if v, ok := fn(c); ok {
-				c.SetValue(v)
-			}
+	return Implicitly(ActionFunc(func(c *Context) error {
+		if v, ok := fn(c); ok {
+			c.SetValue(v)
 		}
 		return nil
-	}), ImplicitValueTiming)
+	}))
 }
 
 // Implicitly runs an action when there are zero occurrences (when an implicit value is
 // set)
 func Implicitly(a Action) Action {
-	return ActionFunc(func(c *Context) error {
+	return AtTiming(ActionFunc(func(c *Context) error {
 		if c.Occurrences("") == 0 {
 			return c.Do(a)
 		}
 		return nil
-	})
+	}), ImplicitValueTiming)
 }
 
 // Implies is used to set the implied value of another flag.   For example,

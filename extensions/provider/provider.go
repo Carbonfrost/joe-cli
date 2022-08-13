@@ -187,11 +187,9 @@ func (v *Value) String() string {
 	case map[string]string:
 		buf.WriteString(",")
 		buf.WriteString(formatJoin(val, ","))
-	case fmt.Stringer:
-		buf.WriteString(",")
-		buf.WriteString(val.String())
 	default:
-		panic("not impl")
+		buf.WriteString(",")
+		buf.WriteString(fmt.Sprint(val))
 	}
 	return buf.String()
 }

@@ -10,7 +10,9 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -131,6 +133,15 @@ func parseMap(values []string) map[string]interface{} {
 }
 
 func (v *Value) String() string {
+	switch val := v.V.(type) {
+	case map[string]string:
+		return formatJoin(val)
+	default:
+		output := map[string]string{}
+		_ = mapstructure.Decode(val, &output)
+		return formatJoin(output)
+
+	}
 	return ""
 }
 
@@ -202,6 +213,17 @@ func applyConversions(from, to reflect.Value) (interface{}, error) {
 		}
 	}
 	return from.Interface(), nil
+}
+
+func formatJoin(m map[string]string) string {
+	items := make([]string, len(m))
+	var i int
+	for k, v := range m {
+		items[i] = k + "=" + v
+		i++
+	}
+	sort.Strings(items)
+	return strings.Join(items, ",")
 }
 
 var _ flag.Value = (*Value)(nil)

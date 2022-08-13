@@ -815,6 +815,16 @@ var _ = Describe("ActionOf", func() {
 		Entry("middleware: func(Action) Action", func(cli.Action) cli.Action { act(); return nil }),
 		Entry("middleware: func(*cli.Context, Action) error", func(*cli.Context, cli.Action) error { act(); return nil }),
 	)
+
+	DescribeTable("errors",
+		func(thunk interface{}) {
+			called = false
+
+			Expect(func() { cli.ActionOf(thunk) }).To(Panic())
+			Expect(called).To(BeFalse())
+		},
+		Entry("unknown type", func(int) error { act(); return nil }),
+	)
 })
 
 var _ = Describe("events", func() {
@@ -973,6 +983,29 @@ var _ = Describe("Pipeline", func() {
 
 		Expect(act3.ExecuteCallCount()).To(Equal(1))
 	})
+
+	It("flattens nested pipelines and invokes in order", func() {
+		var called []string
+		var makeAction = func(name string) cli.ActionFunc {
+			return func(*cli.Context) error {
+				called = append(called, name)
+				return nil
+			}
+		}
+
+		var act1 cli.ActionPipeline
+		act2 := makeAction("2")
+		act1a := makeAction("1a")
+		act1b := makeAction("1b")
+
+		act1 = cli.ActionPipeline([]cli.Action{act1a, act1b})
+
+		pipe := cli.Pipeline(cli.ActionPipeline([]cli.Action{act1, act2}))
+		pipe.Execute(nil)
+
+		Expect(called).To(Equal([]string{"1a", "1b", "2"}))
+		Expect(pipe).To(HaveLen(3))
+	})
 })
 
 var _ = Describe("HandleSignal", Ordered, func() {
@@ -1084,6 +1117,50 @@ var _ = Describe("Recover", func() {
 
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("panic in action"))
+	})
+})
+
+var _ = Describe("SuppressError", func() {
+
+	It("will print out the debug stack", func() {
+		var capture bytes.Buffer
+		var called bool
+		app := &cli.App{
+			Name:   "any",
+			Stderr: &capture,
+			Action: cli.SuppressError(cli.ActionFunc(func(c *cli.Context) error {
+				called = true
+				return fmt.Errorf("not me")
+			})),
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(called).To(BeTrue())
+	})
+
+	It("can be used as middleware", func() {
+		var called bool
+		app := &cli.App{
+			Name:   "any",
+			Stderr: ioutil.Discard,
+			Action: cli.Pipeline(
+				cli.SuppressError,
+				func() {
+					// this intervening action is fine
+				},
+				func() error {
+					called = true
+					return fmt.Errorf("not me")
+				},
+			),
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(called).To(BeTrue())
 	})
 })
 
@@ -2086,6 +2163,23 @@ var _ = Describe("Enum", func() {
 			{Value: "-sok"},
 			{Value: "-sno"},
 		})),
+	)
+
+	DescribeTable("synopsis", func(uses cli.Action, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "s", Uses: uses},
+			},
+			Action: func() {},
+		}
+		_, err := app.Initialize(context.TODO())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Flags[0].Synopsis()).To(expected)
+	},
+		Entry("2 items", cli.Enum("ok", "no"), Equal("-s (ok|no)")),
+		Entry("3 items", cli.Enum("ok", "maybe", "no"), Equal("-s (ok|maybe|no)")),
+		Entry("overflow", cli.Enum("ok", "maybe", "no", "duh"), Equal("-s (ok|maybe|no|...)")),
 	)
 })
 

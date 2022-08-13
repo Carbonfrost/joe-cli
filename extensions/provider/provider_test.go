@@ -112,6 +112,9 @@ var _ = Describe("ListProviders", func() {
 						"comma":   "a",
 						"useCRLF": "true",
 					},
+					"json": {
+						"indent": "true",
+					},
 				},
 			},
 			Flags: []*cli.Flag{
@@ -124,7 +127,10 @@ var _ = Describe("ListProviders", func() {
 		}
 
 		_ = app.RunContext(context.TODO(), []string{"app", "--list-providers"})
-		Expect(capture.String()).To(Equal("csv\tcomma=a, useCRLF=true\n"))
+		Expect(capture.String()).To(Equal(
+			"csv\tcomma=a, useCRLF=true\n" +
+				"json\tindent=true\n",
+		))
 	})
 
 	It("implicitly uses provider name and value", func() {
@@ -154,6 +160,32 @@ var _ = Describe("Value", func() {
 	}
 
 	Describe("validation", func() {
+
+		It("allows expected value", func() {
+			app := &cli.App{
+				Name: "app",
+				Uses: &provider.Registry{
+					Name:         "encoding",
+					AllowUnknown: false,
+					Providers: provider.Map{
+						"utf8": {},
+					},
+				},
+				Flags: []*cli.Flag{
+					{
+						Name: "encoding",
+						Value: &provider.Value{
+							Args: &map[string]string{},
+						},
+					},
+				},
+			}
+
+			args, _ := cli.Split("app --encoding utf8")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(app.Flags[0].Value.(*provider.Value).Name).To(Equal("utf8"))
+		})
 
 		DescribeTable("errors", func(arguments string, expected types.GomegaMatcher) {
 			app := &cli.App{
@@ -224,6 +256,9 @@ var _ = Describe("Value", func() {
 			Entry("map",
 				&provider.Value{Name: "orson", Args: map[string]string{"w": "ean", "d": "ells"}},
 				"orson,d=ells,w=ean"),
+			Entry("structure",
+				&provider.Value{Name: "orson", Args: structure.Of(&providerOptions{Comma: "true"})},
+				"orson,Comma=true"),
 		)
 	})
 
