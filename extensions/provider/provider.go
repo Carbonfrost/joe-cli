@@ -4,7 +4,7 @@
 // format and their arguments.  For example, say a tool converts from one Go marshaler to another
 // such as from YAML to JSON.  This would (say) enable the user to specify their desired output format:
 //
-//     conversiontool --format json --format-arg indent=2 --format-arg encoding=utf-16  inputFile.yaml
+//	conversiontool --format json --format-arg indent=2 --format-arg encoding=utf-16  inputFile.yaml
 //
 // Notice that --format names the desired output format (JSON) and --format-arg provides
 // arguments that the JSON formatter presumably uses.
@@ -14,7 +14,6 @@
 // flag to provide the arguments, you use the SetArgument action.
 //
 // Usually, a registry of well-known provider names is used.  To support this, you can use a Registry.
-//
 package provider
 
 import (
@@ -30,10 +29,10 @@ import (
 // Value implements a value which can be used as a flag that names a provider.
 // A short syntax allows specifying parameters to the provider.  For example, given the flag
 //
-//   &cli.Flag{
-//      Name: "p"
-//      Value: new(provider.Provider),
-//   }
+//	&cli.Flag{
+//	   Name: "p"
+//	   Value: new(provider.Provider),
+//	}
 //
 // It becomes possible to specify the syntax -p Name,arg1=v,arg2=v, which provides the name
 // of the provider to use and argument values to set.
@@ -107,19 +106,19 @@ func (v *Value) ArgumentFlag() cli.Prototype {
 // SetArgument provides an action that can be used to set the argument for a provider.
 // This enables you to have a dedicated flag to handle setting provider arguments:
 //
-//   &cli.Flag{
-//      Name: "provider"
-//      Value: new(provider.Provider),
-//   },
-//   &cli.Flag {
-//      Name: "provider-arg",
-//      Uses: provider.SetArgument("provider"),
-//   }
+//	 &cli.Flag{
+//	    Name: "provider"
+//	    Value: new(provider.Provider),
+//	 },
+//	 &cli.Flag {
+//	    Name: "provider-arg",
+//	    Uses: provider.SetArgument("provider"),
+//	 }
 //
-//  Thus, the user could specify a provider using two flags as in:
-//       --provider download --provider-arg downloader=curl
+//	Thus, the user could specify a provider using two flags as in:
+//	     --provider download --provider-arg downloader=curl
 //
-//  If the action is set to initialize a flag that is unnamed, the suffix -arg is implied.
+//	If the action is set to initialize a flag that is unnamed, the suffix -arg is implied.
 func SetArgument(name string) cli.Action {
 	return cli.Prototype{
 		Name:     name + "-arg",

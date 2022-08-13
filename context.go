@@ -92,10 +92,9 @@ type valueTarget struct {
 // ContextPath provides a list of strings that name each one of the parent components
 // in the context.  Each string follows the form:
 //
-//   command  a command matching the name "command"
-//   -flag    a flag matching the flag name
-//   <arg>    an argument matching the arg name
-//
+//	command  a command matching the name "command"
+//	-flag    a flag matching the flag name
+//	<arg>    an argument matching the arg name
 type ContextPath []string
 
 type contextPathPattern struct {
@@ -409,10 +408,10 @@ func (c *Context) Values() []interface{} {
 // is the empty string or nil, this is interpreted as using the name of whatever is the
 // current context flag or argument.  The name can also be one of several other types:
 //
-//  * rune - corresponds to the short name of a flag
-//  * int - obtain the argument by index
-//  * *Arg - get value of the arg
-//  * *Flag - get value of the flag
+//   - rune - corresponds to the short name of a flag
+//   - int - obtain the argument by index
+//   - *Arg - get value of the arg
+//   - *Flag - get value of the flag
 //
 // All other types are delegated to the underlying Context.  This implies that you can only
 // use your own (usually unexported) hashable type when setting up keys in the
@@ -934,15 +933,15 @@ func (c ContextPath) String() string {
 
 // Match determines if the path matches the given pattern.  Pattern elements:
 //
-//   *        any command
-//   command  a command matching the name "command"
-//   -        any flag
-//   -flag    a flag matching the flag name
-//   <>       any argument
-//   <arg>    an argument matching the arg name
-//   <->      any expression
-//   <-expr>  an expression matching the arg name
-//
+// - *        any command
+// - command  a command matching the name "command"
+// - -        any flag
+// - -flag    a flag matching the flag name
+// - <>       any argument
+// - <arg>    an argument matching the arg name
+// - <->      any expression
+// - <-expr>  an expression matching the arg name
+
 func (c ContextPath) Match(pattern string) bool {
 	return newContextPathPattern(pattern).Match(c)
 }

@@ -17,20 +17,19 @@ import (
 // either specify a pointer to a variable or use the built-in constants that identify the type to
 // use:
 //
-//   &Flag{
-//     Name: "age",
-//     Value: &age, // var age int -- defined somewhere in scope
-//   }
+//	&Flag{
+//	  Name: "age",
+//	  Value: &age, // var age int -- defined somewhere in scope
+//	}
 //
-//   &Flag{
-//     Name: "age",
-//     Value: cli.Int(), // also sets int
-//   }
+//	&Flag{
+//	  Name: "age",
+//	  Value: cli.Int(), // also sets int
+//	}
 //
 // The corresponding, typed method to access the value of the flag by name is available from the Context.
 // In this case, you can  obtain value of the --age=21 flag using Context.Int("flag"), which may be
 // necessary when you don't use your own variable.
-//
 type Flag struct {
 	pipelinesSupport
 	customizableSupport

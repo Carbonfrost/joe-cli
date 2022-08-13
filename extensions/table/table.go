@@ -154,12 +154,12 @@ var (
 
 // RegisterTemplateFuncs defines template functions for working with tables:
 //
-//   * Table [ string | *Format ]
-//   * EndTable
-//   * Headers <[]string>
-//   * Footers <[]string>
-//   * Row
-//   * Cell <string>
+//   - Table [ string | *Format ]
+//   - EndTable
+//   - Headers <[]string>
+//   - Footers <[]string>
+//   - Row
+//   - Cell <string>
 //
 // The Table function takes an optional argument which is the name of a format
 // or a value to use for formatting the table. To conclude the table, use EndTable.
@@ -171,13 +171,12 @@ var (
 //
 // A viable table looks like:
 //
-//     {{- Table "Unformatted" -}}
-//     {{- Headers "First" "Last" }}
-//     {{- Row -}}
-//     {{- Cell "George" -}}
-//     {{- Cell "Burdell" -}}
-//     {{- EndTable -}}`
-//
+//	{{- Table "Unformatted" -}}
+//	{{- Headers "First" "Last" }}
+//	{{- Row -}}
+//	{{- Cell "George" -}}
+//	{{- Cell "Burdell" -}}
+//	{{- EndTable -}}`
 func RegisterTemplateFuncs() cli.Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
 		tc := new(tableContext)

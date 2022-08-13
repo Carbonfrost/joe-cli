@@ -193,13 +193,12 @@ func Args(namevalue ...interface{}) []*Arg {
 // as the discrete number of values in the argument if it is 1 or greater, but if it is < 0
 // it implies taking all arguments, or 0 means take it if it exists.
 //
-//  >= 1   take exactly n number of arguments, though if they look like flags treat as an error
-//     0   take argument if it does not look like a flag
-//    -1   take all remaining arguments (even when they look like flags) (TakeRemaining)
-//    -2   take all remaining arguments but stop before taking one that looks like a flag (TakeUntilNextFlag)
+//	>= 1   take exactly n number of arguments, though if they look like flags treat as an error
+//	   0   take argument if it does not look like a flag
+//	  -1   take all remaining arguments (even when they look like flags) (TakeRemaining)
+//	  -2   take all remaining arguments but stop before taking one that looks like a flag (TakeUntilNextFlag)
 //
 // Any other negative value uses the behavior of -1.
-//
 func ArgCount(v interface{}) ArgCounter {
 	switch count := v.(type) {
 	case ArgCounter:

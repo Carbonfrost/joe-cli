@@ -197,9 +197,8 @@ func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) Action {
 // named.  For example, you might have a sub-command called "exec" which can be omitted, making
 // the following invocations equivalent:
 //
-//    * cloud exec tail -f /var/output/log
-//    * cloud tail -f /var/output/log
-//
+//   - cloud exec tail -f /var/output/log
+//   - cloud tail -f /var/output/log
 func ImplicitCommand(name string) Action {
 	return HandleCommandNotFound(func(c *Context, err error) (*Command, error) {
 		invoke := append([]string{name}, c.Args()...)

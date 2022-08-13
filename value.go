@@ -22,16 +22,16 @@ import (
 // same as flag.Value.  Values can implement additional methods by convention which are called
 // on the first occurrence of a value being set
 //
-// * DisableSplitting()        called when the option has set the DisableSplitting option, which
-//                             indicates that commas shouldn't be treated as list separators
+//   - DisableSplitting()        called when the option has set the DisableSplitting option, which
+//     indicates that commas shouldn't be treated as list separators
 //
-// * Reset()                   called on first occurrence of setting a value.  This can be used to reset lists
-//                             to empty when the Merge option has not been set
+//   - Reset()                   called on first occurrence of setting a value.  This can be used to reset lists
+//     to empty when the Merge option has not been set
 //
 // * NewCounter() ArgCounter   if provided, this method is consulted to obtain the arg counter if NArg is unset
 //
-// * Initializer() Action      obtains an initialization action for the value which is called after initialization
-//                             of the flag or arg
+//   - Initializer() Action      obtains an initialization action for the value which is called after initialization
+//     of the flag or arg
 //
 // * Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
 //
@@ -40,7 +40,6 @@ import (
 // * SetData(io.Reader)error   read from a reader to set the value
 //
 // * Completion() Completion   called to obtain the default completion for a value
-//
 type Value = flag.Value
 
 //counterfeiter:generate . Value

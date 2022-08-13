@@ -241,15 +241,14 @@ func NewExprBinding(ev Evaluator, exprlookup ...interface{}) ExprBinding {
 // You can also use bool as a return type as in the same signature used by
 // Predicate.  These are valid signatures:
 //
-//   * func(*Context, interface{}, func(interface{})error) error
-//   * func(*Context, interface{}) error
-//   * func(*Context, interface{}) bool
-//   * func(*Context, interface{})
-//   * func(interface{}, func(interface{})error) error
-//   * func(interface{}) bool
-//   * func(interface{}) error
-//   * func(interface{})
-//
+//   - func(*Context, interface{}, func(interface{})error) error
+//   - func(*Context, interface{}) error
+//   - func(*Context, interface{}) bool
+//   - func(*Context, interface{})
+//   - func(interface{}, func(interface{})error) error
+//   - func(interface{}) bool
+//   - func(interface{}) error
+//   - func(interface{})
 func EvaluatorOf(v interface{}) Evaluator {
 	switch a := v.(type) {
 	case nil:

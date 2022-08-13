@@ -409,18 +409,18 @@ func withTiming(a Action, t Timing) Action {
 
 // ActionOf converts a value to an Action.  Any of the following types can be converted:
 //
-//   * func(*Context) error  (same signature as Action.Execute)
-//   * func(*Context)
-//   * func(context.Context) error
-//   * func(context.Context)
-//   * func() error
-//   * func()
-//   * Action
+//   - func(*Context) error  (same signature as Action.Execute)
+//   - func(*Context)
+//   - func(context.Context) error
+//   - func(context.Context)
+//   - func() error
+//   - func()
+//   - Action
 //
 // As a special case, these signatures are allowed in order to provide middleware:
 //
-//    * func(Action)Action
-//    * func(*Context, Action) error
+//   - func(Action)Action
+//   - func(*Context, Action) error
 //
 // Remember that the next action can be nil, and indeed the implementation of
 // Execute (for implementing plain Action) the approach is to delegate to this function
@@ -546,15 +546,15 @@ func BindContext[T, V any](value func(context.Context) *T, bind func(*T, V) erro
 // controls whether or not the file set is enumerated recursively.  You can use
 // BindIndirect to update the arg indirectly by naming it and the bind function:
 //
-//    &cli.Arg{
-//        Name: "files",
-//        Value: new(cli.FileSet),
-//    }
-//    &cli.Flag{
-//        Name: "recursive",
-//        HelpText: "Whether files is recursively searched",
-//        Action: cli.BindIndirect("files", (*cli.FileSet).SetRecursive),
-//    }
+//	&cli.Arg{
+//	    Name: "files",
+//	    Value: new(cli.FileSet),
+//	}
+//	&cli.Flag{
+//	    Name: "recursive",
+//	    HelpText: "Whether files is recursively searched",
+//	    Action: cli.BindIndirect("files", (*cli.FileSet).SetRecursive),
+//	}
 //
 // The name parameter specifies the name of the flag or arg that is affected.  The
 // bind function is the function to set the value, and valopt is optional, and if specified,
@@ -767,26 +767,25 @@ func HookAfter(pattern string, handler Action) Action {
 // HandleSignal updates the Context to handle the signal by exposing the context Done() channel.
 // Compare this behavior to os/signal.NotifyContext.  Here's an example:
 //
-//       &cli.Command{
-//          Name: "command",
-//          Uses: cli.HandleSignal(os.Interrupt),
-//          Action: func(c *cli.Context) error {
-//              for {
-//                  select {
-//                  case <-c.Done():
-//                      // Ctrl+C was called
-//                      return nil
-//                  default:
-//                      // process another step, use return to exit
-//                  }
-//              }
-//          }
-//       }
+//	&cli.Command{
+//	   Name: "command",
+//	   Uses: cli.HandleSignal(os.Interrupt),
+//	   Action: func(c *cli.Context) error {
+//	       for {
+//	           select {
+//	           case <-c.Done():
+//	               // Ctrl+C was called
+//	               return nil
+//	           default:
+//	               // process another step, use return to exit
+//	           }
+//	       }
+//	   }
+//	}
 //
 // The signal handler is unregistered in the After pipeline.  The recommended approach
 // is therefore to place cleanup into After and consider using a timeout.
 // The process will be terminated when the user presses ^C for the second time:
-//
 func HandleSignal(s os.Signal) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.Before(func(c1 *Context) error {
@@ -805,11 +804,11 @@ func HandleSignal(s os.Signal) Action {
 // OptionalValue makes the flag's value optional, and when its value is not specified, the implied value
 // is set to this value v.  Say that a flag is defined as:
 //
-//   &Flag {
-//     Name: "secure",
-//     Value: cli.String(),
-//     Uses: cli.Optional("TLS1.2"),
-//   }
+//	&Flag {
+//	  Name: "secure",
+//	  Value: cli.String(),
+//	  Uses: cli.Optional("TLS1.2"),
+//	}
 //
 // This example implies that --secure without a value is set to the value TLS1.2 (presumably other versions
 // are allowed).  This example is a fair use case of this feature: making a flag opt-in to some sort of default

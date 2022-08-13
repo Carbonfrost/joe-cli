@@ -95,8 +95,7 @@ func SourceAnnotation() (string, string) {
 // to activate color and styles.  The common use is to pipe to the format
 // function which has the same name as any of the Color and Style constants:
 //
-//   {{ "Text to make bold" | Bold }}
-//
+//	{{ "Text to make bold" | Bold }}
 func RegisterTemplateFuncs() cli.Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
 		for k, v := range templateFuncs(c) {
