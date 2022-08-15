@@ -6,6 +6,8 @@
 	watch \
 	lint \
 	examples \
+	coverage \
+	coveragereport \
 	install \
 	-install-%
 
@@ -32,3 +34,9 @@ install: -install-joe
 
 -install-%: build -check-env-PREFIX -check-env-_GO_OUTPUT_DIR
 	$(Q) eng/install "${_GO_OUTPUT_DIR}/$*" $(PREFIX)/bin
+
+coverage:
+	$(Q) go test -coverprofile=coverage.txt -covermode=atomic ./...
+
+coveragereport: coverage
+	$(Q) go tool cover -html=coverage.txt
