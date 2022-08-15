@@ -389,6 +389,45 @@ var _ = Describe("FileReference", func() {
 		Expect(context.String("b")).To(Equal("facade"))
 		Expect(context.String("c")).To(Equal("d/b.bin"))
 	})
+
+	It("gets the contents of a multiple @files", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:    "b",
+					Value:   cli.List(),
+					Options: cli.AllowFileReference,
+				},
+			},
+			FS:     testFileSystem,
+			Action: act,
+		}
+		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "@d/b.bin"})
+
+		context := act.ExecuteArgsForCall(0)
+		Expect(context.List("b")).To(Equal([]string{"facade", "facade"}))
+	})
+
+	It("gets the contents of a multiple @files", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:    "b",
+					Value:   cli.String(),
+					NArg:    cli.TakeUntilNextFlag,
+					Options: cli.AllowFileReference,
+				},
+			},
+			FS:     testFileSystem,
+			Action: act,
+		}
+		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "@d/b.bin"})
+
+		context := act.ExecuteArgsForCall(0)
+		Expect(context.String("b")).To(Equal("facade facade"))
+	})
 })
 
 var _ = Describe("FileSet", func() {
