@@ -352,6 +352,12 @@ var _ = Describe("Value", func() {
 			),
 		)
 
+		It("panics for invalid flag types", func() {
+			Expect(func() {
+				cli.Set(&struct{}{}, "OK")
+			}).To(PanicWith("unsupported flag type: *struct {}"))
+		})
+
 		DescribeTable("errors",
 			func(f *cli.Flag, arguments string, expected types.GomegaMatcher) {
 				act := new(joeclifakes.FakeAction)
@@ -376,6 +382,42 @@ var _ = Describe("Value", func() {
 				},
 				"app -o itsbad",
 				MatchError("invalid bytes: encoding/hex: invalid byte: U+0069 'i'"),
+			),
+			Entry(
+				"can't parse int",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.Int(),
+				},
+				"app -o itsbad",
+				MatchError("not a valid number: itsbad"),
+			),
+			Entry(
+				"too big int",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.Int8(),
+				},
+				"app -o 512",
+				MatchError("value out of range: 512"),
+			),
+			Entry(
+				"bad IP",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.IP(),
+				},
+				"app -o 512.123.123.122",
+				MatchError("not a valid IP address"),
+			),
+			Entry(
+				"bad URL",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.URL(),
+				},
+				"app -o ://missingscheme",
+				MatchError(ContainSubstring("missing protocol scheme")),
 			),
 		)
 

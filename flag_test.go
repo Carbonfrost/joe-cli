@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"math/big"
 	"net"
+	"net/url"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -339,7 +342,14 @@ var _ = Describe("Flag", func() {
 			Entry("float32", cli.Float32(), "app -s", float32(1.0)),
 			Entry("float64", cli.Float64(), "app -s", float64(1.0)),
 			Entry("int", cli.Int(), "app -s", 1),
+			Entry("int64", cli.Int64(), "app -s", int64(1)),
+			Entry("int32", cli.Int32(), "app -s", int32(1)),
+			Entry("int16", cli.Int16(), "app -s", int16(1)),
+			Entry("int8", cli.Int8(), "app -s", int8(1)),
 			Entry("uint64", cli.UInt64(), "app -s", uint64(1)),
+			Entry("uint32", cli.UInt32(), "app -s", uint32(1)),
+			Entry("uint16", cli.UInt16(), "app -s", uint16(1)),
+			Entry("uint8", cli.UInt8(), "app -s", uint8(1)),
 			Entry("IP", cli.IP(), "app -s", net.ParseIP("127.0.0.1")),
 			Entry("Duration", cli.Duration(), "app -s", time.Second),
 
@@ -350,6 +360,35 @@ var _ = Describe("Flag", func() {
 			Entry("long uint64", cli.UInt64(), "app --show", uint64(1)),
 			Entry("long IP", cli.IP(), "app --show", net.ParseIP("127.0.0.1")),
 			Entry("long Duration", cli.Duration(), "app --show", time.Second),
+		)
+
+		DescribeTable("OptionalValue examples", func(flag interface{}, args string, expected interface{}) {
+			var actual interface{}
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "show",
+						Aliases: []string{"s"},
+						Value:   flag,
+						Uses:    cli.OptionalValue(expected),
+					},
+				},
+				Action: func(c *cli.Context) {
+					actual = c.Value("show")
+				},
+			}
+
+			arguments, _ := cli.Split(args)
+			err := app.RunContext(context.TODO(), arguments)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(expected))
+		},
+			Entry("Regexp", cli.Regexp(), "app -s", regexp.MustCompile("hello")),
+			Entry("BigInt", cli.BigInt(), "app -s", big.NewInt(2)),
+			Entry("BigFloat", cli.BigFloat(), "app -s", big.NewFloat(3)),
+			Entry("URL", cli.URL(), "app -s", unwrap(url.Parse("https://hello.example"))),
+			Entry("List", cli.List(), "app -s", []string{"OK"}),
+			Entry("Map", cli.Map(), "app -s", map[string]string{"A": "B"}),
 		)
 
 		It("following is treated as argument", func() {

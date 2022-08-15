@@ -32,5 +32,7 @@ var _ = Describe("Exit", func() {
 		Entry("already exit coder", cli.Exit("a", 255), Equal("a"), 255),
 		Entry("error", errors.New("a"), Equal("a"), 1),
 		Entry("error code", cli.UnexpectedArgument, Equal("unexpected argument"), 2),
+		Entry("nil", nil, Equal("exited with status 1"), 1),
+		Entry("empty", []interface{}{}, Equal("exited with status 1"), 1),
 	)
 })
