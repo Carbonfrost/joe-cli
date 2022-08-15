@@ -256,7 +256,7 @@ func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
 	switch v := name.(type) {
 	case string:
 		if v == "" {
-			return nil, false
+			return c.Command(), true
 		}
 		if aa, ok := c.target().(*Command); ok {
 			if r, found := findCommandByName(aa.Subcommands, v); found {

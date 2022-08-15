@@ -8,6 +8,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("Context", func() {
@@ -461,6 +462,70 @@ var _ = Describe("Context", func() {
 			Entry("arg", []string{"app", "sub", "<arg>"}, "2"),
 		)
 	})
+
+	Describe("LookupFlag", func() {
+		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
+			var actual *cli.Flag
+			app := &cli.App{
+				Action: func(c context.Context) {
+					actual, _ = c.(*cli.Context).LookupFlag(v)
+				},
+				Flags: []*cli.Flag{
+					{Name: "flag", Aliases: []string{"f"}},
+					{Name: "g"},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(actual).To(expected)
+		},
+			Entry("name", "flag", WithTransform(flagName, Equal("flag"))),
+			Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
+			Entry("rune alias", 'g', WithTransform(flagName, Equal("g"))),
+			Entry("Flag", &cli.Flag{Name: "flag"}, WithTransform(flagName, Equal("flag"))),
+		)
+	})
+
+	Describe("LookupArg", func() {
+		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
+			var actual *cli.Arg
+			app := &cli.App{
+				Action: func(c context.Context) {
+					actual, _ = c.(*cli.Context).LookupArg(v)
+				},
+				Args: []*cli.Arg{
+					{Name: "arg"},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(actual).To(expected)
+		},
+			Entry("name", "arg", WithTransform(argName, Equal("arg"))),
+			Entry("index", 0, WithTransform(argName, Equal("arg"))),
+			Entry("Arg", &cli.Arg{Name: "arg"}, WithTransform(argName, Equal("arg"))),
+		)
+	})
+
+	Describe("LookupCommand", func() {
+		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
+			var actual *cli.Command
+			app := &cli.App{
+				Name: "app",
+				Action: func(c context.Context) {
+					actual, _ = c.(*cli.Context).LookupCommand(v)
+				},
+				Commands: []*cli.Command{
+					{Name: "cmd"},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(actual).To(expected)
+		},
+			Entry("name", "cmd", WithTransform(commandName, Equal("cmd"))),
+			Entry("empty", "", WithTransform(commandName, Equal("app"))),
+			Entry("Command", &cli.Command{Name: "cmd"}, WithTransform(commandName, Equal("cmd"))),
+		)
+	})
+
 })
 
 var _ = Describe("ContextPath", func() {
@@ -497,3 +562,15 @@ var _ = Describe("ContextPath", func() {
 		Entry("flag doesn't match sub-command", "-", "app sub"),
 	)
 })
+
+func flagName(v interface{}) interface{} {
+	return v.(*cli.Flag).Name
+}
+
+func argName(v interface{}) interface{} {
+	return v.(*cli.Arg).Name
+}
+
+func commandName(v interface{}) interface{} {
+	return v.(*cli.Command).Name
+}

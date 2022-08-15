@@ -93,6 +93,13 @@ var _ = Describe("Arg", func() {
 			captured := act.ExecuteArgsForCall(0)
 			Expect(captured.Occurrences("")).To(Equal(1))
 		})
+
+		It("obtains context path", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Path().IsArg()).To(BeTrue())
+			Expect(captured.Path().Last()).To(Equal("<f>"))
+			Expect(captured.Path().String()).To(Equal("app <f>"))
+		})
 	})
 
 	Describe("Value", func() {
@@ -448,6 +455,14 @@ var _ = Describe("Arg", func() {
 		Expect(app.Args[0].Value).To(PointTo(Equal([]string{"1", "2", "3", "4", "5"})))
 		Expect(app.Args[1].Value).To(PointTo(Equal("1 2 3 4 5")))
 	})
+})
+
+var _ = Describe("Args", func() {
+
+	It("sets default name by index", func() {
+		Expect(func() { cli.Args("unevent") }).To(PanicWith(Equal("unexpected number of arguments")))
+	})
+
 })
 
 var _ = Describe("ArgCount", func() {

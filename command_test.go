@@ -73,6 +73,7 @@ var _ = Describe("Command", func() {
 			beforeAct = new(joeclifakes.FakeAction)
 
 			app = &cli.App{
+				Name: "a",
 				Commands: []*cli.Command{
 					{
 						Name:   "c",
@@ -103,6 +104,13 @@ var _ = Describe("Command", func() {
 
 		It("executes before action on executing sub-command", func() {
 			Expect(beforeAct.ExecuteCallCount()).To(Equal(1))
+		})
+
+		It("obtains context path", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Path().IsCommand()).To(BeTrue())
+			Expect(captured.Path().Last()).To(Equal("c"))
+			Expect(captured.Path().String()).To(Equal("a c"))
 		})
 	})
 

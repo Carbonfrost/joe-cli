@@ -68,6 +68,13 @@ var _ = Describe("Flag", func() {
 			Expect(captured.Occurrences("")).To(Equal(1))
 		})
 
+		It("obtains context path", func() {
+			captured := act.ExecuteArgsForCall(0)
+			Expect(captured.Path().IsFlag()).To(BeTrue())
+			Expect(captured.Path().Last()).To(Equal("-f"))
+			Expect(captured.Path().String()).To(Equal("app -f"))
+		})
+
 		Context("when using the alias", func() {
 
 			BeforeEach(func() {
