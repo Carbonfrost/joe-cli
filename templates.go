@@ -193,6 +193,18 @@ Expressions:
 		"Repeat": func(count int, s string) string {
 			return strings.Repeat(s, count)
 		},
+		"SpaceBefore": func(s string) string {
+			if s == "" {
+				return ""
+			}
+			return " " + s
+		},
+		"SpaceAfter": func(s string) string {
+			if s == "" {
+				return ""
+			}
+			return s + " "
+		},
 
 		// These are used in the default synopsis (but you need color extension
 		// to actually activate them)
