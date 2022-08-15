@@ -5,7 +5,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/template"
-	"github.com/Carbonfrost/joe-cli/internal"
+	"github.com/Carbonfrost/joe-cli/internal/build"
 )
 
 func Run() {

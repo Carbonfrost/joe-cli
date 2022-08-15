@@ -1,0 +1,46 @@
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/joe
+    id: joe
+    binary: joe
+    goos:
+      - linux
+      - windows
+      - darwin
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/Carbonfrost/joe-cli/internal/build.Version={{.Version}}
+
+archives:
+  - id: joe
+    replacements:
+      "386": i386
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+
+brews:
+  - name: joe
+    ids:
+    - joe
+    tap:
+      owner: Carbonfrost
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    description: "Make requests to HTTP APIs using their OpenAPI schemas and definitions"
+    homepage: "https://github.com/Carbonfrost/joe-cli"
+
+changelog:
+  skip: true
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-dev"
