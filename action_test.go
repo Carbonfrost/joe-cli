@@ -816,6 +816,26 @@ var _ = Describe("ActionOf", func() {
 		Entry("middleware: func(*cli.Context, Action) error", func(*cli.Context, cli.Action) error { act(); return nil }),
 	)
 
+	It("invokes the context action", func() {
+		ctx := &cli.Context{}
+		var called int
+		handlers := []cli.Action{
+			cli.ActionOf(func(c context.Context) {
+				called++
+				Expect(c).To(BeIdenticalTo(ctx))
+			}), cli.ActionOf(func(c context.Context) error {
+				Expect(c).To(BeIdenticalTo(ctx))
+				called++
+				return nil
+			}),
+		}
+		for _, handler := range handlers {
+			handler.Execute(ctx)
+		}
+
+		Expect(called).To(Equal(2))
+	})
+
 	DescribeTable("errors",
 		func(thunk interface{}) {
 			called = false

@@ -442,11 +442,11 @@ func ActionOf(item interface{}) Action {
 		})
 	case func(context.Context) error:
 		return ActionFunc(func(c *Context) error {
-			return a(c.Context)
+			return a(c)
 		})
 	case func(context.Context):
 		return ActionFunc(func(c *Context) error {
-			a(c.Context)
+			a(c)
 			return nil
 		})
 	case func() error:
