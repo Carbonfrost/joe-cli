@@ -201,7 +201,6 @@ func setupCompletion(c *Context) error {
 	}...),
 		ApplyShellCompletion(),
 	)
-	return nil
 }
 
 func setupRobustParsingMode(c *Context) {

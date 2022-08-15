@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"runtime"
 	tt "text/template"
@@ -38,7 +37,7 @@ var _ = Describe("File", func() {
 					template.Data("Var", "variable"),
 					template.File("{{ .file }}", gen),
 				),
-				Stdout: ioutil.Discard,
+				Stdout: io.Discard,
 			}
 
 			f, _ := testFileSystem.Create("file_generate_test.txt")
@@ -98,7 +97,7 @@ type C    struct {  }`,
 				Name:   "app",
 				FS:     testFileSystem,
 				Action: template.New(template.File("mode.txt", gen)),
-				Stdout: ioutil.Discard,
+				Stdout: io.Discard,
 			}
 
 			_, _ = testFileSystem.Create("mode.txt")
@@ -123,7 +122,7 @@ type C    struct {  }`,
 					template.Vars{"App": map[string]any{"Name": "o"}},
 					template.File("{{ .App.Name }}.txt", template.Contents("OK")),
 				),
-				Stdout: ioutil.Discard,
+				Stdout: io.Discard,
 			}
 
 			err := app.RunContext(context.TODO(), []string{"app"})
@@ -145,7 +144,7 @@ type C    struct {  }`,
 				Name:   "app",
 				FS:     ff,
 				Action: template.New(template.File("a/b/c.txt", template.Contents("OK"))),
-				Stdout: ioutil.Discard,
+				Stdout: io.Discard,
 			}
 
 			err := app.RunContext(context.TODO(), []string{"app"})

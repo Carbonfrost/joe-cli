@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"regexp"
@@ -453,7 +453,7 @@ var _ = Describe("Uses", func() {
 						{Name: "2"},
 					},
 					Uses:   uses(act),
-					Stderr: ioutil.Discard,
+					Stderr: io.Discard,
 				}
 				_ = app.RunContext(context.TODO(), []string{"app"})
 				Expect(act.ExecuteCallCount()).To(Equal(1))
@@ -488,7 +488,7 @@ var _ = Describe("Uses", func() {
 						}
 					},
 					Uses:   cli.RemoveArg(name),
-					Stderr: ioutil.Discard,
+					Stderr: io.Discard,
 				}
 				err := app.RunContext(context.TODO(), []string{"app"})
 				Expect(err).NotTo(HaveOccurred())
@@ -1044,7 +1044,6 @@ var _ = Describe("HandleSignal", Ordered, func() {
 				case <-c.Done():
 					return fmt.Errorf("expected output error")
 				}
-				return nil
 			},
 		}
 
@@ -1068,7 +1067,6 @@ var _ = Describe("Timeout", func() {
 				case <-c.Done():
 					return fmt.Errorf("expected output error")
 				}
-				return nil
 			},
 		}
 
@@ -1101,7 +1099,7 @@ var _ = Describe("Recover", func() {
 	It("can be used as middleware", func() {
 		app := &cli.App{
 			Name:   "any",
-			Stderr: ioutil.Discard,
+			Stderr: io.Discard,
 			Action: cli.Pipeline(
 				cli.Recover,
 				func() {
@@ -1144,7 +1142,7 @@ var _ = Describe("SuppressError", func() {
 		var called bool
 		app := &cli.App{
 			Name:   "any",
-			Stderr: ioutil.Discard,
+			Stderr: io.Discard,
 			Action: cli.Pipeline(
 				cli.SuppressError,
 				func() {
@@ -1465,7 +1463,7 @@ var _ = Describe("CommandSetup", func() {
 		var called bool
 		app := &cli.App{
 			Name:   "any",
-			Stderr: ioutil.Discard,
+			Stderr: io.Discard,
 			Commands: []*cli.Command{
 				{
 					Name: "ok",
@@ -1555,7 +1553,7 @@ var _ = Describe("PreventSetup", func() {
 		}),
 		Entry("command", func(t func()) *cli.App {
 			return &cli.App{
-				Stderr: ioutil.Discard,
+				Stderr: io.Discard,
 				Commands: []*cli.Command{
 					{
 						Options: cli.PreventSetup,
@@ -1578,7 +1576,7 @@ var _ = Describe("PreventSetup", func() {
 		Entry("flag via command recursive", func(t func()) *cli.App {
 			return &cli.App{
 				Options: cli.PreventSetup,
-				Stderr:  ioutil.Discard,
+				Stderr:  io.Discard,
 				Commands: []*cli.Command{
 					{
 						Flags: []*cli.Flag{

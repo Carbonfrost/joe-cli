@@ -2,7 +2,7 @@ package cli_test
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 
 	"github.com/Carbonfrost/joe-cli"
 	. "github.com/onsi/ginkgo/v2"
@@ -72,7 +72,7 @@ var _ = Describe("RunContext", func() {
 						}),
 					},
 				},
-				Stderr: ioutil.Discard,
+				Stderr: io.Discard,
 			}
 			args, _ := cli.Split("app " + arguments)
 			err := app.RunContext(context.TODO(), args)

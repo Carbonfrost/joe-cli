@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -264,7 +263,7 @@ var _ = Describe("File", func() {
 			Stdin: buf,
 			Action: func(c *cli.Context) {
 				f, _ := c.File("f").Open()
-				actual, _ = ioutil.ReadAll(f)
+				actual, _ = io.ReadAll(f)
 			},
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "-"})
@@ -427,7 +426,7 @@ var _ = Describe("FileSet", func() {
 			Action: func(c *cli.Context) {
 				_ = c.FileSet("f").Do(func(f *cli.File, _ error) error {
 					fs, _ := f.Open()
-					actual, _ = ioutil.ReadAll(fs)
+					actual, _ = io.ReadAll(fs)
 					return nil
 				})
 			},
@@ -447,7 +446,7 @@ var _ = Describe("FileSet", func() {
 						return nil
 					}
 					r, _ := d.Open()
-					text, _ := ioutil.ReadAll(r)
+					text, _ := io.ReadAll(r)
 					buf.Write(text)
 					return nil
 				})

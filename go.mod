@@ -7,7 +7,6 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/maxbrunsfeld/counterfeiter/v6 v6.4.1
 	github.com/mitchellh/mapstructure v1.4.3
-	github.com/nishanths/exhaustive v0.7.11
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.17.0

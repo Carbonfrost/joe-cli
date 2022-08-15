@@ -3,7 +3,7 @@ package cli_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"regexp"
 	"strings"
 
@@ -435,7 +435,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 						},
 					},
 				},
-				Stderr: ioutil.Discard,
+				Stderr: io.Discard,
 			}
 
 			args, _ := cli.Split(arguments)
@@ -483,7 +483,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 				cli.HandleCommandNotFound(fn1),
 				cli.HandleCommandNotFound(fn2),
 			),
-			Stderr: ioutil.Discard,
+			Stderr: io.Discard,
 		}
 
 		args, _ := cli.Split("app unknown")

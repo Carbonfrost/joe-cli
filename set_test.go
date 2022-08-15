@@ -36,7 +36,7 @@ var _ = Describe("RawParse", func() {
 		Expect(err).To(MatchError("expected 2 arguments for <arg>"))
 
 		Expect(actualFlat).To(Equal(map[string][]string{
-			"arg": []string{"<arg> first"},
+			"arg": {"<arg> first"},
 		}))
 	})
 
@@ -68,7 +68,7 @@ var _ = Describe("RawParse", func() {
 	},
 		Entry("nominal args bind", "app a b c", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
-				"arg": []string{"<arg> a", "<arg> b", "<arg> c"},
+				"arg": {"<arg> a", "<arg> b", "<arg> c"},
 			}),
 			Not(HaveOccurred())),
 
@@ -88,8 +88,8 @@ var _ = Describe("RawParse", func() {
 		// git add set.go -u set_test.go  -- is a valid invocation
 		Entry("mix flags and args", "app a --boolt b", cli.TakeExceptForFlags,
 			Equal(map[string][]string{
-				"arg":   []string{"<arg> a", "<arg> b"},
-				"boolt": []string{"--boolt "},
+				"arg":   {"<arg> a", "<arg> b"},
+				"boolt": {"--boolt "},
 			}),
 			Not(HaveOccurred())),
 
@@ -104,7 +104,7 @@ var _ = Describe("RawParse", func() {
 		// Equal sign leads to an error because value is unexpected
 		Entry("equal in short flag causes error", "app -vt=always", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
-				"boolv": []string{"-v "}, // { "-v", ""}
+				"boolv": {"-v "}, // { "-v", ""}
 			}),
 			Equal(&cli.ParseError{
 				Code:      cli.InvalidArgument,
@@ -139,7 +139,7 @@ var _ = Describe("RawParse", func() {
 
 		Entry("stop on unknown short flag run-in", "app -tuvwx another", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
-				"boolt": []string{"-t "}, // {"-t", ""}
+				"boolt": {"-t "}, // {"-t", ""}
 			}),
 			Equal(&cli.ParseError{
 				Code:      cli.UnknownOption,
@@ -194,8 +194,8 @@ var _ = Describe("RawParse", func() {
 
 		Entry("unexpected argument", "app arg -s a other args", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
-				"arg":   []string{"<arg> arg"},
-				"short": []string{"-s a"},
+				"arg":   {"<arg> arg"},
+				"short": {"-s a"},
 			}),
 			Equal(&cli.ParseError{
 				Code:  cli.UnexpectedArgument,
