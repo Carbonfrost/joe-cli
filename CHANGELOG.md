@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.2.2 (August 15, 2022)
+
+### New Features
+
+* Introduce `joe`, a command line utility for generating Joe-cli commands (998cdfa, d500da1)
+* Template extension (10c790d)
+* Add Emoji to color extension (a1c84e0)
+* Introduce FS and update File to use it (b9a8232)
+* Support `TextUnmarshaler` as flag automatically (5052364)
+* Introduce `SetDescription`/`SetCategory` API on context (cb6a4ca)
+* Make `Description` into `interface{}` (c4ea46b)
+* Introduce template binding (0839520)
+* Allow `CompletionFunc`, `StandardCompletion` as action (0dba5fd)
+* Add `SpaceBefore`, `SpaceAfter` as template funcs (a4487d9)
+* Support hidden commands (778b880)
+* NameValue file references (cfadcad)
+
+Introduction of a variety of new APIs:
+
+* `CurrentApp` (c9650a9)
+* `Implicitly` (c0c9ebf)
+* `Mutex` (03379ec)
+* `TakeExceptForFlags`  (9208241)
+* `Use` (0196c9f)
+* `SetCompletion` (0dba5fd)
+* `ValueTransform` (89e9991)
+* `TransformFileReference` (89e9991)
+
+### Bug fixes and improvements
+
+* Increase code coverage, fixes (e76166a, e916d04, 3f68a19)
+* Improvements to color extension (edb078a)
+* Improvements to transforms, `EachOccurrence` (89e9991)
+* Additional tests for `FileReference`: multiple files (f0eb9d7)
+* Bug fixes: allow string to be used with `MustExist` (ce324dc)
+* Bug fix: call underlying `Context` indirectly when used as the param in action (41aba83)
+* Factor internal flags out of expression (4b80709)
+* Parsing and bind prototype bug fixes (8a0e2fa)
+* Chores:
+  ** Collapse generated output in Makefile (117edd3)
+  ** Update engineering platform (656582d)
+  ** Fix build and CI on Windows (d3adbce, be4b4f1, d81e09f)
+  ** Linter, go mod tidy (7d1f186)
+  ** Adopt go1.19 formatting and builds (866fc0b, 293b8a8)
+  ** Update dependent versions (6b1bfa0)
+  ** Makefile: Introduce coveragereport, coverage (b75586b)
+
+
 ## v0.2.1 (July 9, 2022)
 
 * Completion bug fixes (d04498d)
@@ -7,7 +55,7 @@
 
 ## v0.2.0 (July 7, 2022)
 
-New Features
+### New Features
 
 * Initial implementation of shell completion, supporting ZSH (c4c5f6d and 9c7aa52)
 * Provides initial implementation of exec (399faff) and table (70aff80, 991e2ad) extensions
@@ -37,7 +85,7 @@ Examples:
 
 * Introduce find, git examples (c3aa52c)
 
-Bug fixes and improvements:
+### Bug fixes and improvements
 
 * Bug fix: allow blank names in `MustExists`, `WorkingDirectory` (52de5f4)
 * Bug fix: detect short equal sign usages (19ae384)
