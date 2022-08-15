@@ -65,6 +65,7 @@ var _ = Describe("File", func() {
 		var (
 			arguments string
 			err       error
+			value     interface{}
 		)
 
 		JustBeforeEach(func() {
@@ -72,7 +73,7 @@ var _ = Describe("File", func() {
 				Args: []*cli.Arg{
 					{
 						Name:    "f",
-						Value:   new(cli.File),
+						Value:   value,
 						Options: cli.MustExist,
 					},
 				},
@@ -90,6 +91,7 @@ var _ = Describe("File", func() {
 				SkipOnWindows()
 				name = filepath.Join(os.TempDir(), "nonexistent")
 				arguments = "app " + name
+				value = new(cli.File)
 			})
 
 			It("returns an error if the file does not exist", func() {
@@ -101,6 +103,7 @@ var _ = Describe("File", func() {
 		Context("when the file is not set", func() {
 			BeforeEach(func() {
 				arguments = "app"
+				value = new(cli.File)
 			})
 
 			It("does nothing", func() {
@@ -111,10 +114,27 @@ var _ = Describe("File", func() {
 		Context("when the file is set to blank", func() {
 			BeforeEach(func() {
 				arguments = "app -f''"
+				value = new(cli.File)
 			})
 
 			It("does nothing", func() {
 				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the file is a string", func() {
+			var name string
+
+			BeforeEach(func() {
+				SkipOnWindows()
+				name = filepath.Join(os.TempDir(), "nonexistent")
+				arguments = "app " + name
+				value = new(string)
+			})
+
+			It("returns an error if the file does not exist", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring(name + ": no such file or directory")))
 			})
 		})
 

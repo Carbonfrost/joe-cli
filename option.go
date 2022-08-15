@@ -419,18 +419,25 @@ func mustExistOption(c *Context) error {
 	if v == nil {
 		return nil
 	}
-	f := v.(fileExists)
-	if f.Exists() {
-		return nil
-	}
-	if s, ok := v.(fileStat); ok {
-		_, err := s.Stat()
+	switch f := v.(type) {
+	case string:
+		if f == "" {
+			return nil
+		}
+		_, err := wrapFS(c.actualFS()).Stat(f)
+		return err
+	case fileExists:
+		if f.Exists() {
+			return nil
+		}
+	case fileStat:
+		_, err := f.Stat()
 
 		// If the file name was blank, we ignore this error because
 		// it implies a blank value was set and the user must handle
 		return ignoreBlankPathError(err)
 	}
-	return fmt.Errorf("file not found: %v", v)
+	return fmt.Errorf("%v: no such file or directory", v)
 }
 
 func workingDirectoryOption(c *Context) error {
