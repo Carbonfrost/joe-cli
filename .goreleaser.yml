@@ -33,7 +33,7 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    description: "Make requests to HTTP APIs using their OpenAPI schemas and definitions"
+    description: "Generate command lines based on Joe-cli"
     homepage: "https://github.com/Carbonfrost/joe-cli"
 
 changelog:
