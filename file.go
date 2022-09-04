@@ -228,6 +228,10 @@ func (f *File) Completion() Completion {
 	return FileCompletion
 }
 
+func (*File) Synopsis() string {
+	return "FILE"
+}
+
 func (f *File) setupOptionRequireFS(c *Context) error {
 	if f.FS == nil {
 		f.FS = c.actualFS()
@@ -335,6 +339,10 @@ func (f *FileSet) RecursiveFlag() Prototype {
 // Completion gets the completion for files
 func (f *FileSet) Completion() Completion {
 	return FileCompletion
+}
+
+func (*FileSet) Synopsis() string {
+	return "FILES"
 }
 
 func (f *FileSet) setupOptionRequireFS(c *Context) error {

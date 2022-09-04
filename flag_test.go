@@ -617,6 +617,14 @@ var _ = Describe("Flag", func() {
 				"-f FILE",
 			),
 			Entry(
+				"file set",
+				&cli.Flag{
+					Name:  "f",
+					Value: &cli.FileSet{},
+				},
+				"-f FILES",
+			),
+			Entry(
 				"URL",
 				&cli.Flag{
 					Name:  "f",

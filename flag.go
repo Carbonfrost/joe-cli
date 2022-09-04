@@ -522,8 +522,6 @@ func placeholder(v interface{}) string {
 		return "DURATION"
 	case *map[string]string:
 		return "NAME=VALUE"
-	case *File:
-		return "FILE"
 	case **url.URL:
 		return "URL"
 	case *net.IP:
