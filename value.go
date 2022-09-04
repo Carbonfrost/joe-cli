@@ -100,10 +100,18 @@ type valuePairCounter struct {
 	count int
 }
 
+// BindingLookup can lookup values or their raw bindings
+type BindingLookup interface {
+	Lookup
+	Raw(name string) []string
+	RawOccurrences(name string) []string
+	Bindings(name string) [][]string
+}
+
 type valueContext struct {
 	v      *valueTarget
 	name   string
-	lookup *set
+	lookup BindingLookup
 }
 
 // Bool creates a bool value.  This is for convenience to obtain the right pointer.
@@ -829,10 +837,13 @@ func (v *valueContext) lookupBinding(name string, occurs bool) []string {
 	if v.lookup == nil {
 		return nil
 	}
-	return v.lookup.bindings.lookup(name, occurs)
+	if occurs {
+		return v.lookup.RawOccurrences(name)
+	}
+	return v.lookup.Raw(name)
 }
 
-func (v *valueContext) set() *set {
+func (v *valueContext) set() BindingLookup {
 	return v.lookup
 }
 
@@ -847,7 +858,7 @@ func (v *valueContext) lookupValue(name string) (interface{}, bool) {
 	if v.lookup == nil {
 		return nil, false
 	}
-	return v.lookup.lookupValue(name)
+	return v.lookup.Interface(name)
 }
 
 func (v *valueContext) Name() string {
@@ -991,3 +1002,5 @@ func splitValuePair(arg string) (k, v string, hasValue bool) {
 	}
 	return a[0], a[1], true
 }
+
+var _ internalCommandContext = (*valueContext)(nil)

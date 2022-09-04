@@ -61,8 +61,8 @@ type internalContext interface {
 }
 
 type internalCommandContext interface {
-	set() *set
-	lookupBinding(name string, occurs bool) []string
+	internalContext
+	set() BindingLookup
 }
 
 type parentLookup struct {
@@ -1045,7 +1045,7 @@ func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
 	}, true)
 }
 
-func (c *Context) exprContext(expr *Expr, args []string, data *set) *Context {
+func (c *Context) exprContext(expr *Expr, args []string, data BindingLookup) *Context {
 	adapter := &valueTarget{
 		v: expr,
 		pipelinesSupport: pipelinesSupport{

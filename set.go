@@ -82,13 +82,15 @@ const (
 )
 
 func newSet() *set {
-	return &set{
+	result := &set{
 		names:             map[string]*internalOption{},
 		shortOptions:      map[rune]*internalOption{},
 		longOptions:       map[string]*internalOption{},
 		bindings:          BindingMap{},
 		positionalOptions: []*internalOption{},
 	}
+	result.lookupSupport = &lookupSupport{result}
+	return result
 }
 
 func newArgBinding(bind Binding) *argBinding {
@@ -368,6 +370,18 @@ func (s *set) parse(args argList, flags RawParseFlag) error {
 	return applyBindings(s.bindings, s.names)
 }
 
+func (s *set) Raw(name string) []string {
+	return s.bindings.Raw(name)
+}
+
+func (s *set) RawOccurrences(name string) []string {
+	return s.bindings.RawOccurrences(name)
+}
+
+func (s *set) Bindings(name string) [][]string {
+	return s.bindings[name]
+}
+
 func applyBindings(bindings BindingMap, names map[string]*internalOption) error {
 	for k, v := range bindings {
 		opt := names[k]
@@ -520,7 +534,7 @@ func (m BindingMap) Raw(name string) []string {
 	return m.lookup(name, false)
 }
 
-func (m BindingMap) RawOcurrences(name string) []string {
+func (m BindingMap) RawOccurrences(name string) []string {
 	return m.lookup(name, true)
 }
 

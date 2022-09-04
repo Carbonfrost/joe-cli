@@ -472,7 +472,7 @@ func (o *optionContext) execute(ctx *Context) error {
 func (o *optionContext) lookupBinding(name string, occurs bool) []string {
 	if _, isArg := o.option.(*Arg); isArg {
 		// Don't specify the argument name when obtaining current binding
-		return o.parentLookup.lookupBinding(o.option.name(), true)
+		return o.parentLookup.set().RawOccurrences(o.option.name())
 	}
 	return o.parentLookup.lookupBinding(o.option.name(), occurs)
 }

@@ -754,7 +754,7 @@ func (c *commandContext) lookupBinding(name string, occurs bool) []string {
 	}
 	return c.flagSet.bindings.lookup(name, occurs)
 }
-func (c *commandContext) set() *set {
+func (c *commandContext) set() BindingLookup {
 	return c.flagSet
 }
 func (c *commandContext) target() target { return c.cmd }
@@ -853,3 +853,4 @@ func triggerRobustParsingAndCompletion(c *Context) error {
 var _ target = (*Command)(nil)
 var _ customizable = (*Command)(nil)
 var _ hookable = (*Command)(nil)
+var _ internalCommandContext = (*commandContext)(nil)

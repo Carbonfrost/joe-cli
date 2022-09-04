@@ -430,8 +430,7 @@ func (f *Flag) completion() Completion {
 }
 
 func (c *wrapOccurrenceContext) rawOccurrences() [][]string {
-	m := c.parentLookup.set().bindings
-	return m[c.option.name()]
+	return c.parentLookup.set().Bindings(c.option.name())
 }
 
 func (c *wrapOccurrenceContext) current() []string {

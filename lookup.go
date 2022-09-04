@@ -70,6 +70,8 @@ type Lookup interface {
 	BigFloat(name interface{}) *big.Float
 	// Bytes obtains the value and converts it to a slice of bytes
 	Bytes(name interface{}) []byte
+	// Interface returns the raw value without deferencing and whether it exists
+	Interface(name interface{}) (interface{}, bool)
 }
 
 // LookupValues provides a Lookup backed by a map
@@ -87,20 +89,24 @@ type lookupCore interface {
 
 // Value obtains the value and converts it to Value
 func (c LookupValues) Value(name interface{}) interface{} {
+	r, _ := c.try(name, true)
+	return r
+}
+
+func (c LookupValues) try(name interface{}, deref bool) (interface{}, bool) {
 	if c == nil {
-		return nil
+		return nil, false
 	}
-	switch v := name.(type) {
-	case rune:
-		return dereference(c[string(v)])
-	case string:
-		return dereference(c[v])
-	case *Arg:
-		return dereference(c[v.Name])
-	case *Flag:
-		return dereference(c[v.Name])
+
+	actual, ok := c[nameToString(name)]
+	if !ok {
+		return nil, false
 	}
-	panic(fmt.Sprintf("unexpected type: %T", name))
+
+	if deref {
+		return dereference(actual), true
+	}
+	return actual, true
 }
 
 // Bool obtains the value and converts it to a bool
@@ -238,6 +244,11 @@ func (c LookupValues) Bytes(name interface{}) []byte {
 	return lookupBytes(c, name)
 }
 
+// Interface obtains the raw value without dereferencing
+func (c LookupValues) Interface(name interface{}) (interface{}, bool) {
+	return c.try(name, false)
+}
+
 func (c *lookupSupport) Bool(name interface{}) bool {
 	return lookupBool(c, name)
 }
@@ -346,28 +357,30 @@ func (c *lookupSupport) Bytes(name interface{}) []byte {
 	return lookupBytes(c, name)
 }
 
-func (c *lookupSupport) Value(name interface{}) interface{} {
-	if c == nil {
-		return nil
-	}
-	switch v := name.(type) {
-	case rune, string, nil, *Arg, *Flag:
-		return c.valueCore(nameToString(v))
-	default:
-		return nil
-	}
+func (c *lookupSupport) Interface(name interface{}) (interface{}, bool) {
+	return c.try(name, false)
 }
 
-func (c *lookupSupport) valueCore(name string) interface{} {
+func (c *lookupSupport) Value(name interface{}) interface{} {
+	r, _ := c.try(name, true)
+	return r
+}
+
+func (c *lookupSupport) try(n interface{}, deref bool) (interface{}, bool) {
 	if c == nil {
-		return nil
+		return nil, false
 	}
+	name := nameToString(n)
+
 	// Strip possible decorators --flag, <arg>
 	name = withoutDecorators(name)
 	if v, ok := c.lookupValue(name); ok {
-		return dereference(v)
+		if deref {
+			return dereference(v), true
+		}
+		return v, true
 	}
-	return nil
+	return nil, false
 }
 
 func (p *parentLookup) lookupValue(name string) (interface{}, bool) {
@@ -391,7 +404,7 @@ func nameToString(name interface{}) string {
 	case *Flag:
 		return v.Name
 	default:
-		return ""
+		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
 }
 
