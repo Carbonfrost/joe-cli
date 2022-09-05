@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // Value implements a value which can be used as a flag that names a provider.
@@ -186,7 +187,7 @@ func (v *Value) String() string {
 	switch val := v.Args.(type) {
 	case map[string]string:
 		buf.WriteString(",")
-		buf.WriteString(formatJoin(val, ","))
+		buf.WriteString(support.FormatMap(val, ","))
 	default:
 		buf.WriteString(",")
 		buf.WriteString(fmt.Sprint(val))
@@ -231,7 +232,7 @@ func (r *Registry) Execute(c *cli.Context) error {
 }
 
 func (d defaultsMap) String() string {
-	return formatJoin(d, ", ")
+	return support.FormatMap(d, ", ")
 }
 
 func toData(r *Registry) []providerData {
@@ -248,17 +249,6 @@ func toData(r *Registry) []providerData {
 		})
 	}
 	return res
-}
-
-func formatJoin(m map[string]string, sep string) string {
-	items := make([]string, len(m))
-	var i int
-	for k, v := range m {
-		items[i] = k + "=" + v
-		i++
-	}
-	sort.Strings(items)
-	return strings.Join(items, sep)
 }
 
 var (

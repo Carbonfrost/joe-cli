@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // Value provides the interface for custom handling of arg and flag values.  This is the
@@ -446,24 +448,13 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		*p = append(*p, bb...)
 		return nil
 	case *map[string]string:
-		var key, value string
 		m := *p
 		if m == nil {
 			m = map[string]string{}
 			*p = m
 		}
-		for _, kvp := range values() {
-			k := SplitList(kvp, "=", 2)
-			switch len(k) {
-			case 2:
-				key = k[0]
-				value = k[1]
-			case 1:
-				// Implies comma was meant to be escaped
-				// -m key=value,s,t  --> interpreted as key=value,s,t rather than s and t keys
-				value = value + "," + k[0]
-			}
-			m[key] = value
+		for k, v := range support.ParseMap(values()) {
+			m[k] = v.(string)
 		}
 
 		return nil

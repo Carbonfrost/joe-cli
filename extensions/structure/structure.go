@@ -10,12 +10,11 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -89,7 +88,7 @@ func (v *Value) Set(arg string) error {
 		args = cli.SplitList(text, ",", -1)
 	}
 
-	src := parseMap(args)
+	src := support.ParseMap(args)
 	decoder, err := v.newDecoder()
 	if err != nil {
 		return err
@@ -111,35 +110,14 @@ func (v *Value) newDecoder() (*mapstructure.Decoder, error) {
 	return mapstructure.NewDecoder(config)
 }
 
-// parseMap is a clone of the logic in generic value
-func parseMap(values []string) map[string]interface{} {
-	res := map[string]interface{}{}
-
-	var key, value string
-	for _, kvp := range values {
-		k := cli.SplitList(kvp, "=", 2)
-		switch len(k) {
-		case 2:
-			key = k[0]
-			value = k[1]
-		case 1:
-			// Implies comma was meant to be escaped
-			// -m key=value,s,t  --> interpreted as key=value,s,t rather than s and t keys
-			value = value + "," + k[0]
-		}
-		res[key] = value
-	}
-	return res
-}
-
 func (v *Value) String() string {
 	switch val := v.V.(type) {
 	case map[string]string:
-		return formatJoin(val)
+		return support.FormatMap(val, ",")
 	default:
 		output := map[string]string{}
 		_ = mapstructure.Decode(val, &output)
-		return formatJoin(output)
+		return support.FormatMap(output, ",")
 
 	}
 	return ""
@@ -191,7 +169,7 @@ func applyConversions(from, to reflect.Value) (interface{}, error) {
 
 	case reflect.Map:
 		if typ == mapType {
-			m := parseMap(cli.SplitList(value, ",", -1))
+			m := support.ParseMap(cli.SplitList(value, ",", -1))
 			if to.IsNil() {
 				to = reflect.MakeMap(mapType)
 			}
@@ -213,17 +191,6 @@ func applyConversions(from, to reflect.Value) (interface{}, error) {
 		}
 	}
 	return from.Interface(), nil
-}
-
-func formatJoin(m map[string]string) string {
-	items := make([]string, len(m))
-	var i int
-	for k, v := range m {
-		items[i] = k + "=" + v
-		i++
-	}
-	sort.Strings(items)
-	return strings.Join(items, ",")
 }
 
 var _ flag.Value = (*Value)(nil)
