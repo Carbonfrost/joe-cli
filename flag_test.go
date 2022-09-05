@@ -16,6 +16,8 @@ import (
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("Flag", func() {
@@ -679,6 +681,39 @@ var _ = Describe("Flag", func() {
 
 	})
 
+	DescribeTable("initializers", func(act cli.Action, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "a",
+			Flags: []*cli.Flag{
+				{
+					Uses: act,
+					Name: "a",
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -a s")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		cmd, _ := app.Command("")
+		Expect(cmd.Flags[0]).To(PointTo(expected))
+	},
+		Entry(
+			"Category",
+			cli.Category("abc"),
+			MatchFields(IgnoreExtras, Fields{"Category": Equal("abc")}),
+		),
+		Entry(
+			"ManualText",
+			cli.ManualText("abc"),
+			MatchFields(IgnoreExtras, Fields{"ManualText": Equal("abc")}),
+		),
+		Entry(
+			"Description",
+			cli.Description("abc"),
+			MatchFields(IgnoreExtras, Fields{"Description": Equal("abc")}),
+		),
+	)
 })
 
 type temperature string

@@ -502,6 +502,12 @@ func (c *Context) SetDescription(v interface{}) error {
 	return nil
 }
 
+// SetManualText sets the manualText on the current target
+func (c *Context) SetManualText(v string) error {
+	c.target().setManualText(v)
+	return nil
+}
+
 // SetValue sets the value of the current flag or arg
 func (c *Context) SetValue(arg string) error {
 	if c.implicitTimingActive() {

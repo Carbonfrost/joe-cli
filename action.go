@@ -747,6 +747,13 @@ func Description(v interface{}) Action {
 	})
 }
 
+// ManualText sets the manual text of a command, flag, arg, or expression.
+func ManualText(v string) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.SetManualText(v)
+	})
+}
+
 // HookBefore registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func HookBefore(pattern string, handler Action) Action {

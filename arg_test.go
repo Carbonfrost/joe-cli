@@ -455,6 +455,40 @@ var _ = Describe("Arg", func() {
 		Expect(app.Args[0].Value).To(PointTo(Equal([]string{"1", "2", "3", "4", "5"})))
 		Expect(app.Args[1].Value).To(PointTo(Equal("1 2 3 4 5")))
 	})
+
+	DescribeTable("initializers", func(act cli.Action, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "a",
+			Args: []*cli.Arg{
+				{
+					Uses: act,
+					Name: "a",
+				},
+			},
+		}
+
+		args, _ := cli.Split("app s")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		cmd, _ := app.Command("")
+		Expect(cmd.Args[0]).To(PointTo(expected))
+	},
+		Entry(
+			"Category",
+			cli.Category("abc"),
+			MatchFields(IgnoreExtras, Fields{"Category": Equal("abc")}),
+		),
+		Entry(
+			"ManualText",
+			cli.ManualText("abc"),
+			MatchFields(IgnoreExtras, Fields{"ManualText": Equal("abc")}),
+		),
+		Entry(
+			"Description",
+			cli.Description("abc"),
+			MatchFields(IgnoreExtras, Fields{"Description": Equal("abc")}),
+		),
+	)
 })
 
 var _ = Describe("Args", func() {

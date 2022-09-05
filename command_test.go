@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("Command", func() {
@@ -113,6 +114,47 @@ var _ = Describe("Command", func() {
 			Expect(captured.Path().String()).To(Equal("a c"))
 		})
 	})
+
+	DescribeTable("initializers", func(act cli.Action, expected types.GomegaMatcher) {
+		app := &cli.App{
+			Name: "a",
+			Commands: []*cli.Command{
+				{
+					Name: "c",
+					Uses: act,
+					Args: []*cli.Arg{
+						{
+							Name: "a",
+							NArg: -1,
+						},
+					},
+				},
+			},
+		}
+
+		args, _ := cli.Split("app c args args")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		cmd, ok := app.Command("c")
+		Expect(ok).To(BeTrue())
+		Expect(cmd).To(PointTo(expected))
+	},
+		Entry(
+			"Category",
+			cli.Category("abc"),
+			MatchFields(IgnoreExtras, Fields{"Category": Equal("abc")}),
+		),
+		Entry(
+			"ManualText",
+			cli.ManualText("abc"),
+			MatchFields(IgnoreExtras, Fields{"ManualText": Equal("abc")}),
+		),
+		Entry(
+			"Description",
+			cli.Description("abc"),
+			MatchFields(IgnoreExtras, Fields{"Description": Equal("abc")}),
+		),
+	)
 
 	Describe("SkipFlagParsing", func() {
 
