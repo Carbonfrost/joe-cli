@@ -18,11 +18,6 @@ type counter struct {
 	seen bool
 }
 
-// Args gets the argument list from the context
-func Args(c *cli.Context, name string) *ArgList {
-	return c.Value(name).(*ArgList)
-}
-
 func (l *ArgList) Set(arg string) error {
 	*l = append(*l, arg)
 	return nil
