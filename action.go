@@ -70,9 +70,11 @@ type Setup struct {
 	Optional bool
 }
 
-// Prototype implements an action which sets up a flag or arg.  The
-// prototype copies its values to the corresponding flag or arg if they have not
-// already been set.  Some values are merged rather than overwritten:
+// Prototype implements an action which sets up a flag, arg, or command.  The
+// prototype copies its values to the corresponding target if they have not
+// already been set.  Irrelevant fields are not set and do not cause errors; for example,
+// setting FilePath, Value, and EnvVars, for a Command prototype has no effect.
+// Some values are merged rather than overwritten:
 // Data, Options, EnvVars, and Aliases.
 // If setup has been prevented with the PreventSetup action,
 // the protoype will do nothing.  The main use of prototype is in extensions to provide
@@ -916,10 +918,21 @@ func ArgSetup(fn func(*Arg)) Action {
 
 // CommandSetup action is used to apply set-up to a Command.  This is typically
 // used within the Uses pipeline for actions that provide some default
-// setup.  The setup function fn will only be called in the initialization
-// timing and only if setup hasn't been blocked by PreventSetup.
+// setup.  It applies to the command in scope, so it can also be used within an
+// arg or flag to affect the containing command.  The setup function fn will only be 
+// called in the initialization timing and only if setup hasn't been blocked by PreventSetup.
 func CommandSetup(fn func(*Command)) Action {
+	return commandSetupCore(false, fn)
+}
+
+func commandSetupCore(direct bool, fn func(*Command)) Action {
 	return optionalSetup(func(c *Context) {
+		if direct{
+			if cmd, ok := c.Target().(*Command); ok {
+				fn(cmd)
+			}
+			return
+		}
 		if cmd := c.Command(); cmd != nil {
 			fn(cmd)
 		}
@@ -1082,12 +1095,39 @@ func TransformFileReference(f fs.FS, usingAtSyntax bool) func([]string) (interfa
 }
 
 func (p Prototype) Execute(c *Context) error {
-	return c.Do(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), p.Setup)
+	return c.Do(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), commandSetupCore(true, p.copyToCommand), p.Setup)
 }
 
 func (p Prototype) Use(actions ...Action) Prototype {
 	p.Setup = p.Setup.Use(actions...)
 	return p
+}
+
+func (p *Prototype) copyToCommand(o *Command) {
+	if o.Name == "" {
+		o.Name = p.Name
+	}
+	if o.Category == "" {
+		o.Category = p.Category
+	}
+	if o.HelpText == "" {
+		o.HelpText = p.HelpText
+	}
+	if o.ManualText == "" {
+		o.ManualText = p.ManualText
+	}
+	if o.UsageText == "" {
+		o.UsageText = p.UsageText
+	}
+	if o.Description == "" || o.Description == nil {
+		o.Description = p.Description
+	}
+	if o.Completion == nil {
+		o.Completion = p.Completion
+	}
+
+	o.Options |= p.Options
+	update(o.Data, p.Data)
 }
 
 func (p *Prototype) copyToArg(o *Arg) {
