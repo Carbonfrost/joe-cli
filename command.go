@@ -140,7 +140,9 @@ const (
 
 // ExecuteSubcommand finds and executes a sub-command.  This action is intended to be used
 // as the action on an argument.  The argument should be a list of strings, which represent
-// the subcommand to locate and execute and the arguments to use.  If no sub-command matches, an error
+// the subcommand to locate and execute and the arguments to use.  If used within the
+// Uses pipeline of an argument, a prototype applies these requirements for you and other
+// good defaults to support completion and synopsis.  If no sub-command matches, an error
 // is generated, which you can intercept with custom handling using interceptErr.  The interceptErr function
 // should return a command to execute in lieu of returning the error.  If the interceptErr
 // command is nil, it is interpreted as the command not existing and the app will exit with a generic "command
@@ -149,10 +151,17 @@ const (
 // It is uncommon to use this action because this action is implicitly bound to a synthetic argument when a
 // command defines any sub-commands.
 func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Action {
-	return ActionFunc(func(c *Context) error {
+	return Pipeline(&Prototype{
+		Name:       "command",
+		UsageText:  "<command> [<args>]",
+		Value:      List(),
+		NArg:       -1,
+		Options:    DisableSplitting,
+		Completion: CompletionFunc(completeSubCommand),
+	}, AtTiming(ActionFunc(func(c *Context) error {
 		invoke := c.List("")
 		return subcommandCore(c, invoke, interceptErr)
-	})
+	}), ActionTiming))
 }
 
 func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, error) (*Command, error)) error {
@@ -357,13 +366,8 @@ func ensureSubcommands(c *Context) error {
 			cmd.Action = DisplayHelpScreen()
 		}
 		return c.Do(AddArg(&Arg{
-			Name:       "command",
-			UsageText:  "<command> [<args>]",
-			Value:      List(),
-			NArg:       -1,
-			Action:     ExecuteSubcommand(nil),
-			Options:    DisableSplitting,
-			Completion: CompletionFunc(completeSubCommand),
+			Name: "command",
+			Uses: ExecuteSubcommand(nil),
 		}))
 	}
 	return nil
