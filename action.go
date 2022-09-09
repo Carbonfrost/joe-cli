@@ -974,6 +974,9 @@ func Implies(name, value string) Action {
 	}
 	return ActionFunc(func(c *Context) error {
 		return c.Parent().HookBefore(name, ImplicitValue(func(_ *Context) (string, bool) {
+			if c.Occurrences("") == 0 {
+				return "", false
+			}
 			return value, true
 		}))
 	})

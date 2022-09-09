@@ -2098,6 +2098,10 @@ var _ = Describe("Implies", func() {
 			"mode":           "decrypt",
 			"encryption-key": "AAA",
 		}),
+		Entry("don't invoke when not set", "app", map[string]string{
+			"mode":           "",
+			"encryption-key": "",
+		}),
 	)
 
 	It("invokes action when ImpliedAction is set", func() {
