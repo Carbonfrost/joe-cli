@@ -1229,35 +1229,35 @@ var _ = Describe("Prototype", func() {
 	)
 
 	DescribeTable("Command examples", func(proto cli.Prototype, expected Fields) {
-        app := &cli.App{
-            Name: "any",
-            Stderr: io.Discard,
-            Commands: []*cli.Command{
-                {
-                    Uses:    proto,
-                    Data:    map[string]interface{}{"A": 1},
-                    Options: cli.RightToLeft,
-                },
-            },
-        }
+		app := &cli.App{
+			Name:   "any",
+			Stderr: io.Discard,
+			Commands: []*cli.Command{
+				{
+					Uses:    proto,
+					Data:    map[string]interface{}{"A": 1},
+					Options: cli.RightToLeft,
+				},
+			},
+		}
 
-        _ = app.RunContext(context.Background(), []string{"app"})
-        Expect(app.Commands[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
-    },
-        Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
-        Entry("Category", cli.Prototype{Category: "f"}, Fields{"Category": Equal("f")}),
-        Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
-        Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
-        Entry("Name", cli.Prototype{Name: "nom"}, Fields{"Name": Equal("nom")}),
-        Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
-        Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Options": Equal(cli.Hidden | cli.RightToLeft)}),
-        Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
-        Entry("Completion", cli.Prototype{
-            Completion: cli.CompletionFunc(func(*cli.CompletionContext) []cli.CompletionItem {
-                return nil
-            }),
-        }, Fields{"Completion": Not(BeNil())}),
-    )
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(app.Commands[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+	},
+		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
+		Entry("Category", cli.Prototype{Category: "f"}, Fields{"Category": Equal("f")}),
+		Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
+		Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
+		Entry("Name", cli.Prototype{Name: "nom"}, Fields{"Name": Equal("nom")}),
+		Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
+		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Options": Equal(cli.Hidden | cli.RightToLeft)}),
+		Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
+		Entry("Completion", cli.Prototype{
+			Completion: cli.CompletionFunc(func(*cli.CompletionContext) []cli.CompletionItem {
+				return nil
+			}),
+		}, Fields{"Completion": Not(BeNil())}),
+	)
 
 	DescribeTable("preserve existing values", func(proto cli.Prototype, expected Fields) {
 		app := &cli.App{
@@ -1317,8 +1317,23 @@ var _ = Describe("Prototype", func() {
 		_ = app.RunContext(context.Background(), []string{"app"})
 		Expect(app.Flags[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
-		Entry("Category", cli.Prototype{Category: "nom"}, Fields{"Category": Equal("nom")}),
 		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
+	)
+
+	DescribeTable("arg-only examples", func(proto cli.Prototype, expected Fields) {
+		app := &cli.App{
+			Name: "any",
+			Args: []*cli.Arg{
+				{
+					Uses: proto,
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(app.Args[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+	},
+		Entry("NArg", cli.Prototype{NArg: -2}, Fields{"NArg": Equal(-2)}),
 	)
 
 	It("ensures value inside nested prototype (addresses bug)", func() {

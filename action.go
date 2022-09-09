@@ -95,6 +95,7 @@ type Prototype struct {
 	Value       interface{}
 	Setup       Setup
 	Completion  Completion
+	NArg        interface{}
 }
 
 // ValidatorFunc defines an Action that applies a validation rule to
@@ -919,7 +920,7 @@ func ArgSetup(fn func(*Arg)) Action {
 // CommandSetup action is used to apply set-up to a Command.  This is typically
 // used within the Uses pipeline for actions that provide some default
 // setup.  It applies to the command in scope, so it can also be used within an
-// arg or flag to affect the containing command.  The setup function fn will only be 
+// arg or flag to affect the containing command.  The setup function fn will only be
 // called in the initialization timing and only if setup hasn't been blocked by PreventSetup.
 func CommandSetup(fn func(*Command)) Action {
 	return commandSetupCore(false, fn)
@@ -927,7 +928,7 @@ func CommandSetup(fn func(*Command)) Action {
 
 func commandSetupCore(direct bool, fn func(*Command)) Action {
 	return optionalSetup(func(c *Context) {
-		if direct{
+		if direct {
 			if cmd, ok := c.Target().(*Command); ok {
 				fn(cmd)
 			}
@@ -1157,6 +1158,9 @@ func (p *Prototype) copyToArg(o *Arg) {
 	}
 	if o.Completion == nil {
 		o.Completion = p.Completion
+	}
+	if o.NArg == nil {
+		o.NArg = p.NArg
 	}
 	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value
