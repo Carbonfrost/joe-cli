@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("ArgList", func() {
@@ -39,6 +40,15 @@ var _ = Describe("ArgList", func() {
 		)
 	})
 
+	Describe("String", func() {
+		DescribeTable("examples",
+			func(a *exec.ArgList, expected string) {
+				Expect(a.String()).To(Equal(expected))
+			},
+			Entry("nominal", &exec.ArgList{"1", "2", ";"}, "1 2 ;"),
+		)
+	})
+
 })
 
 var _ = Describe("ArgListCounter", func() {
@@ -69,21 +79,27 @@ var _ = Describe("ArgListCounter", func() {
 	)
 
 	DescribeTable("errors",
-		func(args []string, expected string) {
+		func(args []string, takeErr []types.GomegaMatcher, doneErr types.GomegaMatcher) {
 			actual := newCounter()
-			for _, a := range args {
+			for i, a := range args {
 				err := actual.Take(a, true)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(takeErr[i])
 			}
 
 			err := actual.Done()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(expected))
+			Expect(err).To(doneErr)
 		},
 		Entry(
 			"missing terminating char",
 			[]string{"name"},
-			"must terminate expression with `;' or `+'",
+			[]types.GomegaMatcher{Not(HaveOccurred())},
+			MatchError("must terminate expression with `;' or `+'"),
+		),
+		Entry(
+			"past done",
+			[]string{"name", ";", "other"},
+			[]types.GomegaMatcher{Not(HaveOccurred()), Not(HaveOccurred()), MatchError("no more arguments to take")},
+			Not(HaveOccurred()),
 		),
 	)
 
