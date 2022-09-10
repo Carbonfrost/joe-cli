@@ -267,6 +267,7 @@ var (
 
 	defaultHelpCommand = &Command{
 		Name:     "help",
+		Aliases:  []string{"h"},
 		HelpText: "Display help for a command",
 		Args: []*Arg{
 			{
