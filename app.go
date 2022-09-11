@@ -106,6 +106,9 @@ type App struct {
 	// is generated that lists each visible flag and arg
 	UsageText string
 
+	// License sets the text of the app license.
+	License string
+
 	rootCommandCreator func() *Command
 	rootCommand        *Command
 }
@@ -127,6 +130,9 @@ var (
 		},
 		"Version": func() string {
 			return VersionTemplate
+		},
+		"License": func() string {
+			return LicenseTemplate
 		},
 		"Expressions": func() string {
 			return expressionTemplate

@@ -186,6 +186,10 @@ Expressions:
 	//   the version flag or command is used.
 	VersionTemplate string = "{{ .App.Name }}, version {{ .App.Version }}\n"
 
+	// LicenseTemplate specifies the Go template for what is printed when
+	//   the license flag or command is used.
+	LicenseTemplate string = "{{ .App.License | Wrap }}\n"
+
 	builtinFuncs = template.FuncMap{
 		"Join": func(v string, args []string) string {
 			return strings.Join(args, v)

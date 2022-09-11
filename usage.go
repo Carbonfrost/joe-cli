@@ -247,6 +247,15 @@ func PrintVersion() Action {
 	return RenderTemplate("Version", nil)
 }
 
+// PrintLicense displays the license.  The LicenseTemplate provides the Go template
+func PrintLicense() Action {
+	return Pipeline(&Prototype{
+		Name:     "license",
+		HelpText: "Display the license and exit",
+		Options:  Exits,
+	}, AtTiming(RenderTemplate("License", nil), ActionTiming))
+}
+
 func defaultData(c *Context) interface{} {
 	return struct {
 		App     *App
