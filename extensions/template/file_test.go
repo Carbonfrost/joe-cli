@@ -89,6 +89,11 @@ type C    struct {  }`,
 				template.Template(tt.Must(tt.New("").Parse("my {{ .file }}"))),
 				Equal("my file_generate_test.txt"),
 			),
+			Entry("touch",
+				"existing",
+				template.Touch(),
+				Equal("existing"),
+			),
 		)
 
 		DescribeTable("mode examples", func(gen template.FileMode, expected types.GomegaMatcher) {

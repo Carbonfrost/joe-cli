@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"time"
 )
 
 type FileGenerator interface {
@@ -77,6 +78,24 @@ func Contents(contents interface{}) FileGenerator {
 		default:
 			return json.MarshalIndent(c, "", "    ")
 		}
+	})
+}
+
+// Touch touches the file.
+func Touch() FileGenerator {
+	return FileGeneratorFunc(func(c *Context, name string) error {
+		f := c.actualFS()
+		fileName := name
+		_, err := f.Stat(fileName)
+
+		if os.IsNotExist(err) {
+			file, err := f.Create(name)
+			defer file.Close()
+			return err
+		}
+
+		currentTime := time.Now().Local()
+		return f.Chtimes(fileName, currentTime, currentTime)
 	})
 }
 

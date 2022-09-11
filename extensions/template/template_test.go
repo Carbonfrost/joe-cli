@@ -20,4 +20,14 @@ var _ = Describe("Sequence", func() {
 		Expect(g1.GenerateCallCount()).To(Equal(1))
 		Expect(g2.GenerateCallCount()).To(Equal(1))
 	})
+
+	It("skips nil generators", func() {
+		g1 := new(templatefakes.FakeGenerator)
+		seq := template.Sequence([]template.Generator{
+			g1, nil,
+		})
+		seq.Generate(nil)
+
+		Expect(g1.GenerateCallCount()).To(Equal(1))
+	})
 })

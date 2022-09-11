@@ -123,6 +123,9 @@ func (r *Root) Generate(c *Context) error {
 
 func (s Sequence) Generate(c *Context) error {
 	for _, u := range s {
+		if u == nil {
+			continue
+		}
 		err := u.Generate(c)
 		if err != nil {
 			return err
