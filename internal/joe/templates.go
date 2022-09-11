@@ -11,10 +11,16 @@ func newAppTemplate(data *generatorData) *Root {
 	if data.Dependencies.Http {
 		deps = append(deps, "github.com/Carbonfrost/joe-cli-http")
 	}
+	var license Generator
+	if data.License {
+		license = File("cmd/{{ .App.Name }}/license.txt", Contents("No license is available with this build."))
+	}
+
 	return New(
 		Data("App", data),
 		GoGet(deps...),
 		File("cmd/{{ .App.Name }}/main.go", Template(appGoTemplate), Gofmt()),
+		license,
 	)
 }
 

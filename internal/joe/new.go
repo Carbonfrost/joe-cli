@@ -16,6 +16,7 @@ type generatorData struct {
 	HelpText   string
 	Comment    string
 	Version    string
+	License    bool
 	Extensions struct {
 		Color bool
 		Table bool
@@ -82,6 +83,11 @@ func newAppCommand() *cli.Command {
 				Aliases:  []string{"n"},
 				HelpText: "Name of the new app",
 				Value:    &g.Name,
+			},
+			{
+				Name:     "license",
+				HelpText: "Activate the license flag",
+				Value:    &g.License,
 			},
 		},
 		Action: glueTemplateOptions(func() *etemplate.Root {

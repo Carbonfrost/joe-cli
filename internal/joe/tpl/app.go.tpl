@@ -12,6 +12,15 @@ import (
 {{ end -}}
 )
 
+{{- if .App.License }}
+import (
+    _ "embed"
+)
+
+    //go:embed license.txt
+    var license string
+{{ end -}}
+
 func main() {
     createApp().Run(os.Args)
 }
@@ -21,6 +30,9 @@ func createApp() *cli.App {
         Name:     {{ .App.Name | Quote }},
         HelpText: {{ .App.HelpText | Quote }},
         Comment: {{ .App.Comment | Quote }},
+{{- if .App.License }}
+        License: license,
+{{ end -}}
         Uses: cli.Pipeline(
 {{- if .App.Extensions.Color }}
             &color.Options{},
@@ -34,5 +46,10 @@ func createApp() *cli.App {
             return nil
         },
         Version: {{ .App.Version | Quote }},
+        Args: []*cli.Arg{
+{{- if .App.License }}
+            {Uses: cli.PrintLicense() },
+{{- end -}}
+        },
     }
 }
