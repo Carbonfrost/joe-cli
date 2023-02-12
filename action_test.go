@@ -1792,6 +1792,25 @@ var _ = Describe("Accessory", func() {
 		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("files-recursive"))
 	})
+
+	It("runs additional actions on the generated flag", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: new(cli.FileSet),
+					Uses:  cli.Accessory("n", (*cli.FileSet).RecursiveFlag, cli.Description("my custom description")),
+				},
+			},
+			Action: act,
+		}
+
+		_ = app.RunContext(context.TODO(), []string{"app"})
+		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flag := flags[len(flags)-1]
+		Expect(flag.Description).To(Equal("my custom description"))
+	})
 })
 
 var _ = Describe("Bind", func() {

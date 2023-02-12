@@ -614,18 +614,19 @@ func bindSupportedValue(v interface{}) interface{} {
 // A common pattern is that a flag has a related sibling flag that can be used to refine the value.
 // For example, you might define a --recursive flag next to a FileSet argument.  When a Value
 // supports an accessory flag prototype, you can use this action to activate it from its Uses pipeline.
-func Accessory[T Value](name string, fn func(T) Prototype) Action {
+//
+// The value of name determines the accessory flag name.  There are two special cases.  If it is blank,
+// then the name from the prototype will be used.  If it is "-", then it will be derived from the other flag.
+// For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
+// named "files", then the accessory flag would be named --files-recursive.
+//
+func Accessory[T Value](name string, fn func(T) Prototype, actions ...Action) Action {
 	return ActionFunc(func(c *Context) error {
 		val := c.Value("").(T)
 		proto := fn(val)
 
 		if proto.Category == "" {
 			proto.Category = c.option().category()
-		}
-		proto.HelpText = conditionalFormat(proto.HelpText, c.Name())
-		proto.ManualText = conditionalFormat(proto.ManualText, c.Name())
-		if s, ok := proto.Description.(string); ok {
-			proto.Description = conditionalFormat(s, c.Name())
 		}
 
 		switch name {
@@ -638,17 +639,10 @@ func Accessory[T Value](name string, fn func(T) Prototype) Action {
 		}
 
 		f := &Flag{
-			Uses: proto,
+			Uses: Pipeline(proto).Append(actions...),
 		}
 		return c.Do(AddFlag(f))
 	})
-}
-
-func conditionalFormat(s string, args ...interface{}) string {
-	if strings.Contains(s, "%") {
-		return fmt.Sprintf(s, args...)
-	}
-	return s
 }
 
 // Enum provides validation that a particular flag or arg value matches a given set of
