@@ -209,9 +209,9 @@ func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) Action {
 //   - cloud exec tail -f /var/output/log
 //   - cloud tail -f /var/output/log
 func ImplicitCommand(name string) Action {
-	return HandleCommandNotFound(func(c *Context, err error) (*Command, error) {
+	return HandleCommandNotFound(func(c *Context, _ error) (*Command, error) {
 		invoke := append([]string{name}, c.Args()...)
-		err = subcommandCore(c, invoke, nil)
+		err := subcommandCore(c, invoke, nil)
 		if err != nil {
 			return nil, err
 		}

@@ -494,6 +494,7 @@ var _ = Describe("Arg", func() {
 var _ = Describe("Args", func() {
 
 	It("sets default name by index", func() {
+		//lint:ignore SA5012 namevalue args are intentionally used incorrectly to test for the panic
 		Expect(func() { cli.Args("unevent") }).To(PanicWith(Equal("unexpected number of arguments")))
 	})
 

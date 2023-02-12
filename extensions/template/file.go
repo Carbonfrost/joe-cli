@@ -90,8 +90,11 @@ func Touch() FileGenerator {
 
 		if os.IsNotExist(err) {
 			file, err := f.Create(name)
+			if err != nil {
+				return err
+			}
 			defer file.Close()
-			return err
+			return nil
 		}
 
 		currentTime := time.Now().Local()
