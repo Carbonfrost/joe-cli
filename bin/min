@@ -1,13 +1,25 @@
 #!/usr/bin/env bash
 
 set -e
+set -o pipefail
 
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+_trace(){
+    # Disable output if performing a completion
+    if [[ -n "$COMP_WORDS" ]]; then
+        return
+    fi
+    printf >&2 "$@"
+}
+
 if [[ -n "${BUILD_FIRST}" ]]; then
+    _trace "Building..."
     make
+    _trace "\r\033[K"
 fi
 
-eval "$(go env)"
+GOOS="$(go env GOOS)"
+GOARCH="$(go env GOARCH)"
 
 "${dir}/${GOOS}_${GOARCH}/min" "$@"
