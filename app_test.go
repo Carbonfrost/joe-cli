@@ -255,11 +255,19 @@ var _ = Describe("App", func() {
 			var what *cli.App
 			app := &cli.App{
 				Action: func(c *cli.Context) {
-					what = cli.CurrentApp
+					what = cli.CurrentApp()
 				},
 			}
 			app.RunContext(context.TODO(), []string{"app"})
 			Expect(what).To(BeIdenticalTo(app))
+		})
+
+		It("will be clear after app executed", func() {
+			app := &cli.App{
+				Action: func() {},
+			}
+			app.RunContext(context.TODO(), []string{"app"})
+			Expect(cli.CurrentApp()).To(BeNil())
 		})
 	})
 })

@@ -120,7 +120,7 @@ func newContextPathPattern(pat string) contextPathPattern {
 func (c *Context) Execute(args []string) error {
 	if cmd, ok := c.target().(*Command); ok {
 		if cmd.fromApp != nil {
-			defer provideCurrentApp(cmd.fromApp)
+			defer provideCurrentApp(cmd.fromApp)()
 		}
 	}
 	res := c.parse(args)

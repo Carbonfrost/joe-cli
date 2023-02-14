@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"text/template"
 	"time"
 )
@@ -119,10 +120,7 @@ var (
 	// written to stderr and the exit status is returned via os.Exit
 	ExitHandler func(*Context, string, int)
 
-	// CurrentApp contains the current app.  If the app was run with Run or RunContext, this will contain
-	// the app.  You can also set this variable directly so that tools, extensions, and plug-ins
-	// can discover which app to analyze.
-	CurrentApp *App
+	currentApp atomic.Value
 
 	defaultTemplates = map[string]func() string{
 		"Help": func() string {
@@ -151,6 +149,19 @@ func NewApp(cmd *Command) *App {
 			return cmd
 		},
 	}
+}
+
+// CurrentApp contains the current app.  If the app was run with Run or RunContext, this will contain
+// the app.
+func CurrentApp() *App {
+	a, _ := currentApp.Load().(*App)
+	return a
+}
+
+// SetCurrentApp sets the current app directly so that tools, extensions, and plug-ins
+// can discover which app to analyze.
+func SetCurrentApp(a *App) {
+	currentApp.Store(a)
 }
 
 // Run the application and exit using the exit handler.  This function exits using the
@@ -251,16 +262,16 @@ func (a *App) runContextCore(c context.Context, args []string) (*Context, error)
 
 // Initialize sets up the app with the given context and arguments
 func (a *App) Initialize(c context.Context) (*Context, error) {
-	defer provideCurrentApp(a)
+	defer provideCurrentApp(a)()
 	ctx := rootContext(c, a)
 	err := ctx.initialize()
 	return ctx, err
 }
 
 func provideCurrentApp(a *App) func() {
-	CurrentApp = a
+	SetCurrentApp(a)
 	return func() {
-		CurrentApp = nil
+		SetCurrentApp(nil)
 	}
 }
 
