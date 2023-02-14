@@ -2,10 +2,8 @@ package cli
 
 import (
 	"fmt"
-	"io/fs"
 	"net"
 	"net/url"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -705,25 +703,6 @@ func ensureDestination(o option, dest interface{}, multi bool) interface{} {
 		return List()
 	}
 	return dest
-}
-
-func loadFlagValueFromEnvironment(c *Context, f option) (string, bool) {
-	envVars := f.envVars()
-	for _, envVar := range envVars {
-		envVar = strings.TrimSpace(envVar)
-		if val, ok := os.LookupEnv(envVar); ok {
-			return val, true
-		}
-	}
-
-	filePath := f.filePath()
-	if len(filePath) > 0 {
-		data, err := fs.ReadFile(c.FS, filePath)
-		if err == nil {
-			return string(data), true
-		}
-	}
-	return "", false
 }
 
 func findFlagByName(items []*Flag, name string) (*Flag, bool) {

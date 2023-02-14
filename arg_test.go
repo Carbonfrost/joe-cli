@@ -251,6 +251,33 @@ var _ = Describe("Arg", func() {
 
 	})
 
+	Describe("EnvVars", Ordered, func() {
+		UseEnvVars(map[string]string{
+			"ANOTHER_ONE": "another_one",
+		})
+
+		It("uses env vars mutated by initializer", func() {
+			// EnvVars could be mutated by the time the implicit value is actually
+			// generated (this is defined behavior)
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "f",
+						Uses: func(c *cli.Context) {
+							c.Arg().EnvVars = append(c.Arg().EnvVars, "ANOTHER_ONE")
+						},
+					},
+				},
+				Action: act,
+			}
+
+			args, _ := cli.Split("app")
+			app.RunContext(context.TODO(), args)
+			Expect(act.ExecuteArgsForCall(0).String("f")).To(Equal("another_one"))
+		})
+	})
+
 	Describe("FilePath", func() {
 
 		It("sets up value from option", func() {

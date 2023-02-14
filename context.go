@@ -1420,19 +1420,11 @@ func fixupOptionInternals(c *Context) error {
 	return nil
 }
 
-func setupOptionFromEnv(ctx *Context) error {
-	return ctx.Do(AtTiming(ActionFunc(func(c *Context) error {
-		// It would be better to use ImplicitValue here, but unfortunately,
-		// this depends upon the context, which the implicit value func does not have
-		// available at the time it gets executed
-		o := c.option()
-		if c.Occurrences("") == 0 {
-			if v, ok := loadFlagValueFromEnvironment(c, o); ok {
-				c.SetValue(v)
-			}
-		}
-		return nil
-	}), ImplicitValueTiming))
+func setupOptionFromEnv(c *Context) error {
+	return c.Do(
+		FromEnv(c.option().envVars()...),
+		FromFilePath(c.option().filePath()),
+	)
 }
 
 func handleCustomizations(target *Context) error {

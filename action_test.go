@@ -2346,8 +2346,92 @@ var _ = Describe("ValueTransform", func() {
 	)
 })
 
+var _ = Describe("FromEnv", Ordered, func() {
+	UseEnvVars(map[string]string{
+		"NOMINAL":           "nominal_value",
+		"FLAG_NAME":         "flag_name",
+		"APP_FLAG_NAME":     "app_flag_name",
+		"APP__FLAG_NAME":    "app_dbl_flag_name",
+		"FLAG_NAME__APP":    "flag_name_dbl_app",
+		"APP_FLAG_NAME_APP": "app_flag_name_app",
+	})
+
+	DescribeTable("examples", func(pattern string, expected string) {
+		var value string
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Uses:    cli.FromEnv(pattern),
+					Value:   &value,
+					Aliases: []string{"flag-name"},
+				},
+			},
+			Action: func() {},
+		}
+		args, _ := cli.Split("app")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value).To(Equal(expected))
+	},
+		Entry("nominal", "NOMINAL", "nominal_value"),
+		Entry("flag name template", "{}", "flag_name"),
+		Entry("flag name template end", "APP{}", "app_flag_name"),
+		Entry("add underscore", "APP_{}", "app_dbl_flag_name"),
+		Entry("flag name template start", "{}_APP", "flag_name_dbl_app"),
+		Entry("flag name template middle", "APP{}APP", "app_flag_name_app"),
+	)
+})
+
+var _ = Describe("FromFilePath", func() {
+
+	It("sets up value from option", func() {
+		act := new(joeclifakes.FakeAction)
+		var testFileSystem = func() fs.FS {
+			appFS := afero.NewMemMapFs()
+
+			appFS.MkdirAll("src/a", 0755)
+			afero.WriteFile(appFS, "src/a/b.txt", []byte("b contents"), 0644)
+			return afero.NewIOFS(appFS)
+		}()
+		var actual string
+
+		app := &cli.App{
+			FS: testFileSystem,
+			Args: []*cli.Arg{
+				{
+					Name:  "f",
+					Uses:  cli.FromFilePath("src/a/b.txt"),
+					Value: &actual,
+				},
+			},
+			Action: act,
+		}
+
+		args, _ := cli.Split("app")
+		app.RunContext(context.TODO(), args)
+
+		Expect(actual).To(Equal("b contents"))
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+	})
+})
+
 func SkipOnWindows() {
 	if runtime.GOOS == "windows" {
 		Skip("not tested on Windows")
 	}
+}
+
+func UseEnvVars(env map[string]string) {
+	BeforeAll(func() {
+		for k, v := range env {
+			os.Setenv(k, v)
+		}
+	})
+	AfterAll(func() {
+		for k := range env {
+			os.Unsetenv(k)
+		}
+	})
 }

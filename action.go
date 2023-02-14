@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -211,6 +213,7 @@ const (
 var (
 	emptyAction Action = ActionFunc(emptyActionImpl)
 	valueType          = reflect.TypeOf((*Value)(nil)).Elem()
+	patFlagName        = regexp.MustCompile(`{}`)
 
 	actualBeforeIndex = map[Timing]int{
 		ValidatorTiming:     0,
@@ -1105,6 +1108,75 @@ func TransformFileReference(f fs.FS, usingAtSyntax bool) func([]string) (interfa
 		}
 		return io.MultiReader(readers...), nil
 	}
+}
+
+// FromEnv loads the flag or arg value from the given environment variable(s).
+// Alternatively, you can set the EnvVars field on Flag or Arg to achieve the same
+// behavior.
+//
+// The special pattern "{}" can be used to represent the long name of the
+// flag transformed into uppercase, replacing internal dashes with underscores, and
+// introducing an additional underscore to separate it from other text
+// (hence, "APP{}" is an acceptable value to get env var APP_FLAG_NAME for the
+// --flag-name flag.)
+func FromEnv(vars ...string) Action {
+	return Implicitly(ActionFunc(func(c *Context) error {
+		// Name should be long name transformed into SCREAMING_SNAKE_CASE.
+		name := c.option().name()
+		if f, ok := c.Target().(*Flag); ok {
+			name = f.longNamePreferred()
+		}
+
+		name = strings.Trim(name, "-")
+		name = strings.ReplaceAll(name, "-", "_")
+		name = strings.ToUpper(name)
+
+		for _, v := range vars {
+			envVar := expandEnvVarName(v, name)
+			if val, ok := os.LookupEnv(envVar); ok {
+				c.SetValue(val)
+				return nil
+			}
+		}
+		return nil
+	}))
+}
+
+// FromFilePath loads the value from the given file path.
+// If the file does not exist or fails to load, the error is
+// silently ignored.
+// Alternatively, you can set the Flag or Arg field FilePath.
+func FromFilePath(filePath string) Action {
+	return Implicitly(ActionFunc(func(c *Context) error {
+		f := c.actualFS()
+		if len(filePath) > 0 {
+			data, err := fs.ReadFile(f, filePath)
+			if err == nil {
+				c.SetValue(string(data))
+				return nil
+			}
+		}
+		return nil
+	}))
+}
+
+func expandEnvVarName(content, name string) string {
+	var buf bytes.Buffer
+	var prev int
+
+	for _, idx := range patFlagName.FindAllStringIndex(content, -1) {
+		buf.WriteString(content[prev:idx[0]])
+		if idx[0] > 0 {
+			buf.WriteString("_")
+		}
+		buf.WriteString(name)
+		if idx[1] < len(content) {
+			buf.WriteString("_")
+		}
+		prev = idx[1]
+	}
+	buf.WriteString(content[prev:])
+	return buf.String()
 }
 
 func (t Timing) Matches(c *Context) bool {
