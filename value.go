@@ -821,6 +821,7 @@ func (v *valueContext) execute(ctx *Context) error {
 	return execute(ctx, v.v.uses().Action)
 }
 
+func (*valueContext) initializeDescendent(ctx *Context) error      { return nil }
 func (v *valueContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (v *valueContext) executeAfterDescendent(ctx *Context) error  { return nil }
 

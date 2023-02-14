@@ -105,13 +105,7 @@ type Prototype struct {
 type ValidatorFunc func(s []string) error
 
 type hookable interface {
-	hookAfter(pattern string, handler Action) error
-	hookBefore(pattern string, handler Action) error
-}
-
-type customizable interface {
-	customize(pattern string, handler Action)
-	customizations() []*hook
+	hook(at Timing, handler Action) error
 }
 
 type target interface {
@@ -131,12 +125,7 @@ type target interface {
 }
 
 type hooksSupport struct {
-	before []*hook
-	after  []*hook
-}
-
-type customizableSupport struct {
-	items []*hook
+	hooks *actionPipelines
 }
 
 type pipelinesSupport struct {
@@ -240,7 +229,6 @@ var (
 			ActionFunc(ensureSubcommands),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
-			ActionFunc(handleCustomizations),
 		),
 		Action: Pipeline(
 			ActionFunc(triggerRobustParsingAndCompletion),
@@ -265,7 +253,6 @@ var (
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
-			ActionFunc(handleCustomizations),
 		),
 	}
 
@@ -757,6 +744,13 @@ func ManualText(v string) Action {
 	})
 }
 
+// Hook registers a hook that runs for any context in the given timing.
+func Hook(timing Timing, handler Action) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.Hook(timing, handler)
+	})
+}
+
 // HookBefore registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func HookBefore(pattern string, handler Action) Action {
@@ -1014,9 +1008,9 @@ func IfMatch(f ContextFilter, a Action) Action {
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
 // is usually used to apply further customizations after an extension has done setup of
 // the defaults.
-func Customize(pattern string, a ...Action) Action {
+func Customize(pattern string, a Action) Action {
 	return ActionFunc(func(c *Context) error {
-		return c.Customize(pattern, a...)
+		return c.Customize(pattern, a)
 	})
 }
 
@@ -1422,47 +1416,33 @@ func (b beforePipeline) Execute(c *Context) error {
 	return ActionPipeline(append(append(append(b[0], b[1]...), b[2]...), b[3]...)).Execute(c)
 }
 
-func (i *hooksSupport) hookBefore(pat string, a Action) error {
-	i.before = append(i.before, &hook{newContextPathPattern(pat), a})
+func (i *hooksSupport) hook(at Timing, a Action) error {
+	if i.hooks == nil {
+		i.hooks = &actionPipelines{}
+	}
+	i.hooks.add(at, a)
 	return nil
 }
 
 func (i *hooksSupport) executeBeforeHooks(target *Context) error {
-	for _, b := range i.before {
-
-		if b.pat.Match(target.Path()) {
-			err := target.Do(b.action)
-			if err != nil {
-				return err
-			}
-		}
+	if i.hooks == nil {
+		return nil
 	}
-	return nil
-}
-
-func (i *hooksSupport) hookAfter(pat string, a Action) error {
-	i.after = append(i.after, &hook{newContextPathPattern(pat), a})
-	return nil
+	return target.Do(i.hooks.Before)
 }
 
 func (i *hooksSupport) executeAfterHooks(target *Context) error {
-	for _, b := range i.after {
-		if b.pat.Match(target.Path()) {
-			err := target.Do(b.action)
-			if err != nil {
-				return err
-			}
-		}
+	if i.hooks == nil {
+		return nil
 	}
-	return nil
+	return target.Do(i.hooks.After)
 }
 
-func (i *customizableSupport) customize(pat string, handler Action) {
-	i.items = append(i.items, &hook{newContextPathPattern(pat), handler})
-}
-
-func (i *customizableSupport) customizations() []*hook {
-	return i.items
+func (i *hooksSupport) executeInitializeHooks(target *Context) error {
+	if i.hooks == nil {
+		return nil
+	}
+	return target.Do(i.hooks.Initializers)
 }
 
 func (s *pipelinesSupport) uses() *actionPipelines {

@@ -1726,9 +1726,35 @@ var _ = Describe("Customize", func() {
 				},
 			},
 		}
-		app.Initialize(context.Background())
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
 		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
 	})
+
+	It("inner customizations win over outer", func() {
+		innerCustomization := cli.Customize("--flag", cli.Data("scope", "inner"))
+		outerCustomization := cli.Customize("--flag", cli.Data("scope", "outer"))
+
+		app := &cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Flags: []*cli.Flag{
+						{
+							Name: "flag",
+						},
+					},
+					Uses: innerCustomization,
+				},
+			},
+			Uses: outerCustomization,
+		}
+		app.Initialize(context.Background())
+		Expect(app.Commands[0].Flags[0].Data).To(
+			HaveKeyWithValue("scope", "inner"),
+		)
+	})
+
 })
 
 var _ = Describe("Accessory", func() {

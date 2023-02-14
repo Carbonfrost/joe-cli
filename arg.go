@@ -8,7 +8,6 @@ import (
 // Arg provides the representation of a positional argument.
 type Arg struct {
 	pipelinesSupport
-	customizableSupport
 
 	// Name provides the name of the argument. This value must be set, and it is used to access
 	// the argument's value via the context
@@ -458,6 +457,7 @@ func (o *optionContext) executeBefore(ctx *Context) error {
 	return execute(ctx, Pipeline(tt.uses().Before, tt.pipeline(BeforeTiming), defaultOption.Before))
 }
 
+func (o *optionContext) initializeDescendent(ctx *Context) error    { return nil }
 func (o *optionContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *optionContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *optionContext) executeAfter(ctx *Context) error {
@@ -593,4 +593,3 @@ func aboutArgCounter(narg interface{}) (optional, multi bool) {
 }
 
 var _ target = (*Arg)(nil)
-var _ customizable = (*Arg)(nil)

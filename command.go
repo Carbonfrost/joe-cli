@@ -10,7 +10,6 @@ import (
 type Command struct {
 	hooksSupport
 	pipelinesSupport
-	customizableSupport
 
 	// Name of the command
 	Name string
@@ -652,6 +651,10 @@ func (c *commandContext) initialize(ctx *Context) error {
 	return execute(ctx, Pipeline(c.cmd.uses().Initializers, defaultCommand.Initializers))
 }
 
+func (c *commandContext) initializeDescendent(ctx *Context) error {
+	return c.cmd.executeInitializeHooks(ctx)
+}
+
 func rootCommandInitializers(act Action) Action {
 	return IfMatch(RootCommand, act)
 }
@@ -849,6 +852,5 @@ func triggerRobustParsingAndCompletion(c *Context) error {
 }
 
 var _ target = (*Command)(nil)
-var _ customizable = (*Command)(nil)
 var _ hookable = (*Command)(nil)
 var _ internalCommandContext = (*commandContext)(nil)

@@ -50,6 +50,7 @@ type internalContext interface {
 	lookupCore
 	lookupBinding(name string, occurs bool) []string
 	initialize(*Context) error
+	initializeDescendent(*Context) error
 	executeBeforeDescendent(*Context) error
 	executeBefore(*Context) error
 	executeAfter(*Context) error
@@ -76,11 +77,6 @@ type hasArguments interface {
 
 type hasFlags interface {
 	actualFlags() []*Flag
-}
-
-type hook struct {
-	pat    contextPathPattern
-	action Action
 }
 
 type valueTarget struct {
@@ -604,34 +600,28 @@ func (c *Context) target() target {
 	return c.internal.target()
 }
 
+// Hook registers a hook that runs for any context in the given timing.
+func (c *Context) Hook(timing Timing, handler Action) error {
+	if h, ok := c.hookable(); ok {
+		return h.hook(timing, handler)
+	}
+	return cantHookError
+}
+
 // HookBefore registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func (c *Context) HookBefore(pattern string, handler Action) error {
-	if h, ok := c.hookable(); ok {
-		return h.hookBefore(pattern, handler)
-	}
-	return cantHookError
+	return c.Hook(BeforeTiming, IfMatch(PatternFilter(pattern), handler))
 }
 
 // HookAfter registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func (c *Context) HookAfter(pattern string, handler Action) error {
-	if h, ok := c.hookable(); ok {
-		return h.hookAfter(pattern, handler)
-	}
-	return cantHookError
+	return c.Hook(AfterTiming, IfMatch(PatternFilter(pattern), handler))
 }
 
 func (c *Context) hookable() (hookable, bool) {
 	h, ok := c.internal.target().(hookable)
-	return h, ok
-}
-
-func (c *Context) customizable() (customizable, bool) {
-	// if c == nil || c.internal == nil{
-	// 	return nil, false
-	// }
-	h, ok := c.target().(customizable)
 	return h, ok
 }
 
@@ -891,10 +881,15 @@ func (c *Context) ProvideValueInitializer(v interface{}, name string, action Act
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
 // is usually used to apply further customizations after an extension has done setup of
 // the defaults.
-func (c *Context) Customize(pattern string, a ...Action) error {
-	if h, ok := c.customizable(); ok {
-		h.customize(pattern, ActionPipeline(a))
-		return nil
+func (c *Context) Customize(pattern string, a Action) error {
+	// Specifying the empty string for the pattern is the same as acting
+	// on itself and therefore does not need a hook
+	if pattern == "" {
+		return c.Use(Pipeline(a))
+	}
+
+	if h, ok := c.hookable(); ok {
+		return h.hook(InitialTiming, IfMatch(PatternFilter(pattern), a))
 	}
 	return cantHookError
 }
@@ -1131,8 +1126,18 @@ func (c *Context) initialize() error {
 	if c == nil {
 		return nil
 	}
-	c.timing = InitialTiming
-	return c.internal.initialize(c)
+	c.setTiming(InitialTiming)
+	return tunnel(
+		c,
+		func(c1 *Context) error { return c1.internal.initialize(c) },
+		func(c1 *Context) error {
+			// Note: this check is only necessary to simplify test setup
+			if c1.internal == nil {
+				return nil
+			}
+			return c1.internal.initializeDescendent(c)
+		},
+	)
 }
 
 func (c *Context) copy(t internalContext, reparent bool) *Context {
@@ -1421,20 +1426,6 @@ func setupOptionFromEnv(c *Context) error {
 		FromEnv(c.option().envVars()...),
 		FromFilePath(c.option().filePath()),
 	)
-}
-
-func handleCustomizations(target *Context) error {
-	path := target.Path()
-	target.lineageFunc(func(c *Context) {
-		if h, ok := c.customizable(); ok {
-			for _, b := range h.customizations() {
-				if b.pat.Match(path) {
-					b.action.Execute(target)
-				}
-			}
-		}
-	})
-	return nil
 }
 
 func guessWidth() int {
