@@ -957,11 +957,11 @@ func (cp contextPathPattern) Match(c ContextPath) bool {
 		return true
 	}
 	for i, j := len(cp.parts)-1, len(c)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
-		if matchField(cp.parts[i], c[j]) {
-			return true
+		if !matchField(cp.parts[i], c[j]) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func matchField(pattern, field string) bool {
@@ -1182,7 +1182,8 @@ func (c *Context) executeSelf() error {
 
 func (c *Context) lookupOption(name interface{}) (option, bool) {
 	if name == "" {
-		return c.option(), true
+		o, ok := c.target().(option)
+		return o, ok
 	}
 	if f, ok := c.LookupFlag(name); ok {
 		return f, true

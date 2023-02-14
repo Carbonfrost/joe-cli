@@ -619,7 +619,6 @@ func bindSupportedValue(v interface{}) interface{} {
 // then the name from the prototype will be used.  If it is "-", then it will be derived from the other flag.
 // For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
 // named "files", then the accessory flag would be named --files-recursive.
-//
 func Accessory[T Value](name string, fn func(T) Prototype, actions ...Action) Action {
 	return ActionFunc(func(c *Context) error {
 		val := c.Value("").(T)

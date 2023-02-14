@@ -548,6 +548,9 @@ var _ = Describe("ContextPath", func() {
 		Entry("any arg", "<>", "app <arg>"),
 		Entry("any expr", "<->", "app <-expr>"),
 		Entry("sub path", "sub cmd", "app sub cmd"),
+		Entry("empty matches cmd", "", "app"),
+		Entry("empty matches flag", "", "-f"),
+		Entry("empty matches expr", "", "<-expr>"),
 	)
 
 	DescribeTable("Match counterexamples",
@@ -558,8 +561,9 @@ var _ = Describe("ContextPath", func() {
 		Entry("* doesn't match flag", "*", "app --flag"),
 		Entry("* doesn't match arg", "*", "app <arg>"),
 		Entry("* doesn't match expr", "*", "app <-expr>"),
-		Entry("<> doesn't match expr", "*", "app <-expr>"),
+		Entry("<> doesn't match expr", "<>", "app <-expr>"),
 		Entry("flag doesn't match sub-command", "-", "app sub"),
+		Entry("different sub-command", "app sub -", "app child -f"),
 	)
 })
 
