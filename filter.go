@@ -30,22 +30,25 @@ const (
 	AnyArg
 	AnyCommand
 	Seen
+	RootCommand
 
 	Anything = AnyFlag | AnyArg | AnyCommand
 )
 
 var (
 	filterModeMatches = map[FilterModes]func(*Context) bool{
-		Anything:   anyImpl,
-		AnyFlag:    (*Context).IsFlag,
-		AnyArg:     (*Context).IsArg,
-		AnyCommand: (*Context).IsCommand,
-		Seen:       seenThis,
+		Anything:    anyImpl,
+		AnyFlag:     (*Context).IsFlag,
+		AnyArg:      (*Context).IsArg,
+		AnyCommand:  (*Context).IsCommand,
+		Seen:        seenThis,
+		RootCommand: isRoot,
 	}
 )
 
 func anyImpl(*Context) bool    { return true }
 func seenThis(c *Context) bool { return c.Seen("") }
+func isRoot(c *Context) bool   { return c.Parent() == nil }
 
 // PatternFilter parses a context pattern string and returns
 // a filter which matches on it.

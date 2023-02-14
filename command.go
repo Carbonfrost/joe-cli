@@ -652,14 +652,8 @@ func (c *commandContext) initialize(ctx *Context) error {
 	return execute(ctx, Pipeline(c.cmd.uses().Initializers, defaultCommand.Initializers))
 }
 
-func rootCommandInitializers(act Action) ActionFunc {
-	return func(c *Context) error {
-		if c.Command().fromApp == nil {
-			return nil
-		}
-
-		return c.Do(act)
-	}
+func rootCommandInitializers(act Action) Action {
+	return IfMatch(RootCommand, act)
 }
 
 func initializeFlagsArgs(ctx *Context) error {
