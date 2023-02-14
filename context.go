@@ -231,9 +231,30 @@ func (c *Context) IsBefore() bool { return c.timing == BeforeTiming }
 // IsAfter returns true if the context represents actions running after executing the command
 func (c *Context) IsAfter() bool { return c.timing == AfterTiming }
 
+// IsAction returns true if the context represents actions running for the actual execution of the command
+func (c *Context) IsAction() bool { return c.timing == ActionTiming }
+
 // Timing retrieves the timing
 func (c *Context) Timing() Timing {
 	return c.timing
+}
+
+// IsCommand tests whether the last segment of the path represents a command
+func (c *Context) IsCommand() bool {
+	_, ok := c.target().(*Command)
+	return ok
+}
+
+// IsFlag tests whether the last segment of the path represents a flag
+func (c *Context) IsFlag() bool {
+	_, ok := c.target().(*Flag)
+	return ok
+}
+
+// IsArg tests whether the last segment of the path represents an argument
+func (c *Context) IsArg() bool {
+	_, ok := c.target().(*Arg)
+	return ok
 }
 
 func (c *Context) isOption() bool {
@@ -368,13 +389,15 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 	return nil, false
 }
 
-// Seen returns true if the specified flag or argument has been used at least once
+// Seen returns true if the specified flag or argument has been used at least once.
+// This is false in the context of commands.
 func (c *Context) Seen(name interface{}) bool {
 	f, ok := c.lookupOption(name)
 	return ok && f.Seen()
 }
 
 // Occurrences returns the number of times the specified flag or argument has been used
+// This is -1 in the context of commands.
 func (c *Context) Occurrences(name interface{}) int {
 	if f, ok := c.lookupOption(name); ok {
 		return f.Occurrences()
@@ -950,6 +973,10 @@ func (c ContextPath) String() string {
 
 func (c ContextPath) Match(pattern string) bool {
 	return newContextPathPattern(pattern).Match(c)
+}
+
+func (cp contextPathPattern) Matches(c *Context) bool {
+	return cp.Match(c.Path())
 }
 
 func (cp contextPathPattern) Match(c ContextPath) bool {

@@ -174,10 +174,13 @@ type Timing int
 const (
 	// InitialTiming which occurs during the Uses pipeline
 	InitialTiming Timing = iota
+
 	// BeforeTiming which occurs before the command executes
 	BeforeTiming
+
 	// ActionTiming which occurs for the primary action
 	ActionTiming
+
 	// AfterTiming which occurs after the command executes
 	AfterTiming
 
@@ -990,6 +993,21 @@ func Implies(name, value string) Action {
 	})
 }
 
+// IfMatch provides an action that only runs on a matching context.
+// If and only if the filter f matches will the corresponding action
+// be run. If f is nil, this is a no-op.
+func IfMatch(f ContextFilter, a Action) Action {
+	if f == nil {
+		return a
+	}
+	return ActionFunc(func(c *Context) error {
+		if f.Matches(c) {
+			return c.Do(a)
+		}
+		return nil
+	})
+}
+
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
 // is usually used to apply further customizations after an extension has done setup of
 // the defaults.
@@ -1087,6 +1105,19 @@ func TransformFileReference(f fs.FS, usingAtSyntax bool) func([]string) (interfa
 		}
 		return io.MultiReader(readers...), nil
 	}
+}
+
+func (t Timing) Matches(c *Context) bool {
+	switch t {
+	case InitialTiming:
+		return c.IsInitializing()
+	case AfterTiming:
+		return c.IsAfter()
+	case ActionTiming:
+		return c.IsAction()
+	case BeforeTiming:
+	}
+	return c.IsBefore()
 }
 
 func (p Prototype) Execute(c *Context) error {
