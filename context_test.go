@@ -305,6 +305,58 @@ var _ = Describe("Context", func() {
 		)
 	})
 
+	Describe("Use", func() {
+
+		It("invokes the action during the initializer", func() {
+			act := new(joeclifakes.FakeAction)
+			act.ExecuteCalls(func(c *cli.Context) error {
+				Expect(c.IsInitializing()).To(BeTrue())
+				return nil
+			})
+			app := &cli.App{
+				Uses: func(c *cli.Context) {
+					c.Use(act)
+
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				},
+			}
+
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
+
+		DescribeTable("error when timing after",
+			func(timing func(*cli.Context)) {
+				act := new(joeclifakes.FakeAction)
+				ctx := &cli.Context{}
+				timing(ctx)
+
+				err := ctx.Use(act)
+				Expect(err).To(HaveOccurred())
+			},
+			Entry("before timing", cli.SetBeforeTiming),
+			Entry("action timing", cli.SetActionTiming),
+			Entry("after timing", cli.SetAfterTiming),
+		)
+
+		DescribeTable("example actions that require Uses timing",
+			func(act cli.Action) {
+				app := &cli.App{
+					Before: act,
+				}
+
+				err := app.RunContext(context.TODO(), []string{"app"})
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(cli.ErrTimingTooLate))
+			},
+			Entry("AddFlag", cli.AddFlag(&cli.Flag{})),
+			Entry("AddCommand", cli.AddCommand(&cli.Command{})),
+			Entry("AddArg", cli.AddArg(&cli.Arg{})),
+			Entry("RemoveArg", cli.RemoveArg("x")),
+			Entry("PreventSetup", cli.PreventSetup),
+		)
+	})
+
 	Describe("Walk", func() {
 
 		var (

@@ -561,6 +561,12 @@ func (c *Context) After(v interface{}) error {
 	return c.Do(AtTiming(ActionOf(v), AfterTiming))
 }
 
+// Use can only be used during initialization timing, in which case the action is just invoked.  In other timings,
+// this is an error
+func (c *Context) Use(v interface{}) error {
+	return c.Do(AtTiming(ActionOf(v), InitialTiming))
+}
+
 func (c *Context) act(v interface{}, desired Timing, optional bool) error {
 	// For the purposes of determining whether we can run this action,
 	// remove synthetic timing
@@ -758,31 +764,25 @@ func (c *Context) logicalArg(index int) *Arg {
 // AddFlag provides a convenience method that adds a flag to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddFlag(f *Flag) error {
-	if !c.IsInitializing() {
-		return ErrTimingTooLate
-	}
-	c.Command().Flags = append(c.Command().Flags, f)
-	return nil
+	return c.Use(func() {
+		c.Command().Flags = append(c.Command().Flags, f)
+	})
 }
 
 // AddCommand provides a convenience method that adds a Command to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddCommand(v *Command) error {
-	if !c.IsInitializing() {
-		return ErrTimingTooLate
-	}
-	c.Command().Subcommands = append(c.Command().Subcommands, v)
-	return nil
+	return c.Use(func() {
+		c.Command().Subcommands = append(c.Command().Subcommands, v)
+	})
 }
 
 // AddArg provides a convenience method that adds an Arg to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddArg(v *Arg) error {
-	if !c.IsInitializing() {
-		return ErrTimingTooLate
-	}
-	c.Command().Args = append(c.Command().Args, v)
-	return nil
+	return c.Use(func() {
+		c.Command().Args = append(c.Command().Args, v)
+	})
 }
 
 // RemoveArg provides a convenience method that removes an Arg from the current command or app.
@@ -791,15 +791,13 @@ func (c *Context) AddArg(v *Arg) error {
 // If the arg does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
 func (c *Context) RemoveArg(name interface{}) error {
-	if !c.IsInitializing() {
-		return ErrTimingTooLate
-	}
-	args := c.Command().Args
-	_, index, ok := findArgByName(args, name)
-	if ok {
-		c.Command().Args = append(args[0:index], args[index+1:]...)
-	}
-	return nil
+	return c.Use(func() {
+		args := c.Command().Args
+		_, index, ok := findArgByName(args, name)
+		if ok {
+			c.Command().Args = append(args[0:index], args[index+1:]...)
+		}
+	})
 }
 
 // AddFlags provides a convenience method for adding flags to the current command or app.
@@ -841,11 +839,9 @@ func (c *Context) SkipImplicitSetup() bool {
 // PreventSetup causes implicit setup options to be skipped.  The function
 // returns an error if the timing is not initial timing.
 func (c *Context) PreventSetup() error {
-	if !c.IsInitializing() {
-		return ErrTimingTooLate
-	}
-	c.SetData("_taintSetup", true)
-	return nil
+	return c.Use(func() {
+		c.SetData("_taintSetup", true)
+	})
 }
 
 // SetColor sets whether terminal color and styles are enabled on stdout.
