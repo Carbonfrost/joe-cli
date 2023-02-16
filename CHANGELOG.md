@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.3.0 (February 15, 2023)
+
+### New Features
+* Make `CurrentApp` function API and use sync atomic value (7828191)
+* Introduce `Context.Use` (e7cb5bc)
+* Introduce `Hook` to allow hooks at other timings (201472d)
+* `FromEnv`, `FromFilePath` to extract logic of obtaining values from env and file path (fa837c4)
+* Context filters to support custom predicates (9ea8f2f, a75cade)
+* License support in joe (7791369)
+* Add `PrintLicense` action, template (a499cf0)
+* Add `NArg` to `Prototype`, supporting args (c846efd)
+* Add support for prototype to `Command` (2da5267)
+* Add `ManualText` action (41ab65f)
+* Templates: `Touch`, allow nil file generators (6fe8207)
+
+### Bug fixes and improvements
+
+* Remove `exec.Args` API (81d53fc)
+* Bug fixes: context paths (7ab1177)
+* Bug fixes: `CurrentApp` not being cleared (7828191)
+* Tests for exit (a6b0f66)
+* Simplify `Accessory` to remove formatting logic (3e976ab)
+* Refactor `ExecuteSubcommand` as prototype (ca73637)
+* Add -h as default alias to help version (ed9a51c)
+* Simplify hooks code by using pipelines (201472d)
+* Bug fix: implies requires an occurrence (44984ab)
+* Consolidate formatting logic into internal support package (01b7621)
+* Fix Goreleaser description of `joe` (9f254c5)
+* Decouple set and make `BindingLookup` API (2113636)
+* Fix: Allow `File` to use `Synopsis` convention (cb03443)
+* Chores:
+    * Address linter errors (b3c1875)
+    * Re-generate rad stubs (bc249b1)
+    * Increase code coverage in exec extension (cde87e9)
+
 ## v0.2.2 (August 15, 2022)
 
 ### New Features
@@ -39,13 +74,13 @@ Introduction of a variety of new APIs:
 * Factor internal flags out of expression (4b80709)
 * Parsing and bind prototype bug fixes (8a0e2fa)
 * Chores:
-  ** Collapse generated output in Makefile (117edd3)
-  ** Update engineering platform (656582d)
-  ** Fix build and CI on Windows (d3adbce, be4b4f1, d81e09f)
-  ** Linter, go mod tidy (7d1f186)
-  ** Adopt go1.19 formatting and builds (866fc0b, 293b8a8)
-  ** Update dependent versions (6b1bfa0)
-  ** Makefile: Introduce coveragereport, coverage (b75586b)
+    * Collapse generated output in Makefile (117edd3)
+    * Update engineering platform (656582d)
+    * Fix build and CI on Windows (d3adbce, be4b4f1, d81e09f)
+    * Linter, go mod tidy (7d1f186)
+    * Adopt go1.19 formatting and builds (866fc0b, 293b8a8)
+    * Update dependent versions (6b1bfa0)
+    * Makefile: Introduce coveragereport, coverage (b75586b)
 
 
 ## v0.2.1 (July 9, 2022)
