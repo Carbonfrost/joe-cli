@@ -122,6 +122,8 @@ var (
 
 	currentApp atomic.Value
 
+	osExit = os.Exit
+
 	defaultTemplates = map[string]func() string{
 		"Help": func() string {
 			return HelpTemplate
@@ -311,13 +313,10 @@ func exit(c *Context, err error) {
 
 func defaultExitHandler(c *Context, message string, status int) {
 	stderr := c.Stderr
-	if stderr == nil {
-		stderr = NewWriter(os.Stderr)
-	}
 	if message != "" && status != 0 {
 		fmt.Fprintln(stderr, message)
 	}
-	os.Exit(status)
+	osExit(status)
 }
 
 func buildDate() time.Time {

@@ -271,3 +271,40 @@ var _ = Describe("App", func() {
 		})
 	})
 })
+
+var _ = Describe("Run", func() {
+
+	It("renders message to Stderr", func() {
+		var buf bytes.Buffer
+		cli.SetOSExit(func(v int) {
+		})
+		app := &cli.App{
+			Name:   "app",
+			Stderr: &buf,
+			Action: func() error {
+				return cli.Exit("my error message")
+			},
+		}
+
+		app.Run([]string{"app"})
+		Expect(buf.String()).To(Equal("my error message\n"))
+	})
+
+	It("exits with corresponding code", func() {
+		var buf bytes.Buffer
+		var exitCode int
+		cli.SetOSExit(func(v int) {
+			exitCode = v
+		})
+		app := &cli.App{
+			Name:   "app",
+			Stderr: &buf,
+			Action: func() error {
+				return cli.Exit(3)
+			},
+		}
+
+		app.Run([]string{"app"})
+		Expect(exitCode).To(Equal(3))
+	})
+})

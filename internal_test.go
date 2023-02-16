@@ -8,6 +8,11 @@ import (
 
 // Expose some members for testing
 
+// Provides the logic of os.Exit for tests
+func SetOSExit(fn func(int)) {
+	osExit = fn
+}
+
 func ParseUsage(text string) *usage {
 	return parseUsage(text)
 }
