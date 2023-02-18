@@ -241,13 +241,13 @@ func (f *Flag) Synopsis() string {
 }
 
 func (f *Flag) cacheSynopsis(syn *flagSynopsis) *flagSynopsis {
-	f.SetData("_Synopsis", syn)
+	f.SetData(synopsisKey, syn)
 	return syn
 }
 
 func (f *Flag) synopsis() *flagSynopsis {
 	if f.Data != nil {
-		if a, ok := f.Data["_Synopsis"]; ok {
+		if a, ok := f.Data[synopsisKey]; ok {
 			return a.(*flagSynopsis)
 		}
 	}
@@ -584,7 +584,7 @@ func (f *Flag) setInternalFlags(i internalFlags, v bool) {
 	if v {
 		f.option.flags |= i
 	} else {
-		f.option.flags = f.option.flags & ^i
+		f.option.flags &= ^i
 	}
 }
 

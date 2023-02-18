@@ -41,6 +41,7 @@ const (
 	// RootCommand filters the context to detect if the current command is the root command
 	RootCommand
 
+	// Anything matches any kind of target
 	Anything = AnyFlag | AnyArg | AnyCommand
 )
 
@@ -104,7 +105,7 @@ func (b *bitSet[T, V]) items(values T) []V {
 		if options&current == current {
 			action := b.m[T(current)]
 			parts = append(parts, action)
-			options = options &^ current
+			options &^= current
 		}
 	}
 

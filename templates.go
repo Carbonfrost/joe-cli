@@ -157,7 +157,7 @@ usage: {{ if .SelectedCommand.Lineage -}}
 {{- template "Usage" $ -}}
 `
 
-	expressionTemplate string = `
+	expressionTemplate = `
 {{- define "Expression" -}}
 {{ "\t" }}{{ template "ExpressionSynopsis" .Synopsis }}{{ "\t" }}{{.HelpText}}
 {{- end -}}
@@ -184,11 +184,11 @@ Expressions:
 
 	// VersionTemplate specifies the Go template for what is printed when
 	//   the version flag or command is used.
-	VersionTemplate string = "{{ .App.Name }}, version {{ .App.Version }}\n"
+	VersionTemplate = "{{ .App.Name }}, version {{ .App.Version }}\n"
 
 	// LicenseTemplate specifies the Go template for what is printed when
 	//   the license flag or command is used.
-	LicenseTemplate string = "{{ .App.License | Wrap }}\n"
+	LicenseTemplate = "{{ .App.License | Wrap }}\n"
 
 	builtinFuncs = template.FuncMap{
 		"Join": func(v string, args []string) string {

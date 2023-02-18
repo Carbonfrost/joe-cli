@@ -59,6 +59,7 @@ type Binding interface {
 	IsOptionalValue(name string) bool
 }
 
+// Raw flags used by the internal parser
 const (
 	RawRTL = RawParseFlag(1 << iota)
 	RawDisallowFlagsAfterArgs

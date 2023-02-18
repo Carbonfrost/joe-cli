@@ -157,7 +157,7 @@ const (
 	// SortedFlags causes flags to be sorted on the help screen generated for the command or app.
 	SortedFlags
 
-	// SortedFlags causes sub-commands to be sorted on the help screen generated for the command or app.
+	// SortedCommands causes sub-commands to be sorted on the help screen generated for the command or app.
 	SortedCommands
 
 	// ImpliedAction causes the Action for a flag or arg to be run if it was implicitly
@@ -307,7 +307,7 @@ func (m FeatureMap[T]) Pipeline(values T) Action {
 		if options&current == current {
 			action := m[T(current)]
 			parts = append(parts, action)
-			options = options &^ current
+			options &^= current
 		}
 	}
 
@@ -391,10 +391,10 @@ func (f internalFlags) toRaw() RawParseFlag {
 
 func splitOptionsHO(opts Option, fn func(Option)) {
 	options := int(opts)
-	for current := 1; options != 0 && current < int(maxOption); current = current << 1 {
+	for current := 1; options != 0 && current < int(maxOption); current <<= 1 {
 		if options&current == current {
 			fn(Option(current))
-			options = options &^ current
+			options &^= current
 		}
 	}
 }

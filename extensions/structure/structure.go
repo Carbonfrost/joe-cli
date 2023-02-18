@@ -146,25 +146,28 @@ func applyConversions(from, to reflect.Value) (interface{}, error) {
 		return strconv.ParseInt(value, 0, 64)
 
 	case reflect.Ptr:
-		if typ == bigIntType {
+		switch typ {
+		case bigIntType:
 			v := new(big.Int)
 			if _, ok := v.SetString(value, 10); ok {
 				return v, nil
 			}
 
-		} else if typ == bigFloatType {
+		case bigFloatType:
 			v, _, err := big.ParseFloat(value, 10, 53, big.ToZero)
 			return v, err
 
-		} else if typ == regexpType {
+		case regexpType:
 			return regexp.Compile(value)
 
-		} else if typ == urlType {
+		case urlType:
 			return url.Parse(value)
 
-		} else if typ.Implements(valueType) {
-			to.Interface().(cli.Value).Set(value)
-			return to.Interface(), nil
+		default:
+			if typ.Implements(valueType) {
+				to.Interface().(cli.Value).Set(value)
+				return to.Interface(), nil
+			}
 		}
 
 	case reflect.Map:

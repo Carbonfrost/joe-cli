@@ -97,6 +97,11 @@ type contextPathPattern struct {
 	parts []string
 }
 
+const (
+	taintSetupKey = "_taintSetup"
+	synopsisKey   = "_Synopsis"
+)
+
 var (
 	// SkipCommand is used as a return value from WalkFunc to indicate that the command in the call is to be skipped.
 	// This is also used to by ExecuteSubcommand (or HandleCommandNotFound) to indicate that no command should
@@ -605,7 +610,7 @@ func (c *Context) Hook(timing Timing, handler Action) error {
 	if h, ok := c.hookable(); ok {
 		return h.hook(timing, handler)
 	}
-	return cantHookError
+	return errCantHook
 }
 
 // HookBefore registers a hook that runs for the matching elements.  See ContextPath for
@@ -785,7 +790,8 @@ func (c *Context) RemoveArg(name interface{}) error {
 		args := c.Command().Args
 		_, index, ok := findArgByName(args, name)
 		if ok {
-			c.Command().Args = append(args[0:index], args[index+1:]...)
+			args = append(args[0:index], args[index+1:]...)
+			c.Command().Args = args
 		}
 	})
 }
@@ -822,7 +828,7 @@ func (c *Context) AddArgs(args ...*Arg) (err error) {
 
 // SkipImplicitSetup gets whether implicit setup steps should be skipped
 func (c *Context) SkipImplicitSetup() bool {
-	_, ok := c.LookupData("_taintSetup")
+	_, ok := c.LookupData(taintSetupKey)
 	return ok
 }
 
@@ -830,7 +836,7 @@ func (c *Context) SkipImplicitSetup() bool {
 // returns an error if the timing is not initial timing.
 func (c *Context) PreventSetup() error {
 	return c.Use(func() {
-		c.SetData("_taintSetup", true)
+		c.SetData(taintSetupKey, true)
 	})
 }
 
@@ -891,7 +897,7 @@ func (c *Context) Customize(pattern string, a Action) error {
 	if h, ok := c.hookable(); ok {
 		return h.hook(InitialTiming, IfMatch(PatternFilter(pattern), a))
 	}
-	return cantHookError
+	return errCantHook
 }
 
 // ReadPasswordString securely gets a password, without the trailing '\n'.
@@ -1235,29 +1241,25 @@ func (v *valueTarget) setDescription(arg interface{}) {
 }
 
 func (v *valueTarget) setHelpText(arg string) {
-	switch val := v.v.(type) {
-	case interface{ SetHelpText(string) }:
+	if val, ok := v.v.(interface{ SetHelpText(string) }); ok {
 		val.SetHelpText(arg)
 	}
 }
 
 func (v *valueTarget) setManualText(arg string) {
-	switch val := v.v.(type) {
-	case interface{ SetManualText(string) }:
+	if val, ok := v.v.(interface{ SetManualText(string) }); ok {
 		val.SetManualText(arg)
 	}
 }
 
 func (v *valueTarget) setCategory(arg string) {
-	switch val := v.v.(type) {
-	case interface{ SetCategory(string) }:
+	if val, ok := v.v.(interface{ SetCategory(string) }); ok {
 		val.SetCategory(arg)
 	}
 }
 
 func (v *valueTarget) setCompletion(c Completion) {
-	switch val := v.v.(type) {
-	case interface{ SetCompletion(Completion) }:
+	if val, ok := v.v.(interface{ SetCompletion(Completion) }); ok {
 		val.SetCompletion(c)
 	}
 }

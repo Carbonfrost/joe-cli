@@ -2,7 +2,6 @@
 // or opening a Web page in the default Web browser.  It also provides a representation of the
 // flag value syntax used by the -exec expression in Unix-like find designed to pass the name of
 // a command and its arguments.
-
 package exec
 
 import (
@@ -10,7 +9,7 @@ import (
 	"time"
 )
 
-// Opens a file or URL, optionally in the given app.
+// Open a file or URL, optionally in the given app.
 func Open(fileapp ...string) error {
 	cmd, err := func() (*eexec.Cmd, error) {
 		switch len(fileapp) {

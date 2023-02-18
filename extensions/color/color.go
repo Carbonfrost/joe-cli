@@ -42,6 +42,7 @@ const (
 	AllFeatures = -1
 )
 
+// Emoji constants
 const (
 	Tada           Emoji = "🎉"
 	Fire           Emoji = "🔥"

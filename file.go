@@ -162,17 +162,17 @@ func (f *File) Create() (fs.File, error) {
 	return f.actualFS().Create(f.Name)
 }
 
-// Change mode
+// Chmod to change mode
 func (f *File) Chmod(mode fs.FileMode) error {
 	return f.actualFS().Chmod(f.Name, mode)
 }
 
-// Change owner
+// Chown to change owner
 func (f *File) Chown(uid int, gid int) error {
 	return f.actualFS().Chown(f.Name, uid, gid)
 }
 
-// Change times
+// Chtimes to change times
 func (f *File) Chtimes(atime, mtime time.Time) error {
 	return f.actualFS().Chtimes(f.Name, atime, mtime)
 }
@@ -187,7 +187,7 @@ func (f *File) Remove() error {
 	return f.actualFS().Remove(f.Name)
 }
 
-// Remove file and all ancestors
+// RemoveAll to remove file and all ancestors
 func (f *File) RemoveAll() error {
 	return f.actualFS().RemoveAll(f.Name)
 }
@@ -197,7 +197,7 @@ func (f *File) Mkdir(mode fs.FileMode) error {
 	return f.actualFS().Mkdir(f.Name, mode)
 }
 
-// Mkdir creates a directory and all ancestors
+// MkdirAll creates a directory and all ancestors
 func (f *File) MkdirAll(mode fs.FileMode) error {
 	return f.actualFS().MkdirAll(f.Name, mode)
 }

@@ -50,8 +50,7 @@ type Format struct {
 }
 
 const (
-	// FlagFeature enables the flag --color={auto|never|always} for enabling color.
-	// The flag's value is optional, in which case its value is always
+	// UseTablesInHelpTemplate causes tables to be used in the help template
 	UseTablesInHelpTemplate = Feature(1 << iota)
 
 	// TemplateFuncs enables the template funcs feature, which provides template funcs
@@ -73,6 +72,7 @@ type tableContext struct {
 	centerSeparator  string
 }
 
+// Align constants
 const (
 	AlignDefault Alignment = tablewriter.ALIGN_DEFAULT
 	AlignCenter            = tablewriter.ALIGN_CENTER
@@ -343,8 +343,7 @@ func getFormat(v interface{}) *Format {
 	case *Format:
 		return f
 	case string:
-		switch f {
-		case "Unformatted":
+		if f == "Unformatted" {
 			return unformatted
 		}
 		return defaultFormat

@@ -84,6 +84,7 @@ type wrapper struct {
 	Indent  string
 }
 
+// ANSI terminal styles
 const (
 	Bold          Style = ansiterm.Bold
 	Faint               = ansiterm.Faint
@@ -95,6 +96,7 @@ const (
 	Conceal             = ansiterm.Conceal
 )
 
+// ANSI terminal colors
 const (
 	Default       = ansiterm.Default
 	Black         = ansiterm.Black
@@ -436,15 +438,16 @@ func printableWidth(s string) int {
 	)
 
 	for _, c := range s {
-		if c == '\x1B' {
+		switch {
+		case c == '\x1B':
 			// start ANSI escape sequence
 			ansi = true
-		} else if ansi {
+		case ansi:
 			if isCSITerminator(c) {
 				ansi = false
 			}
-		} else {
-			n += 1
+		default:
+			n++
 		}
 	}
 

@@ -25,6 +25,7 @@ type fileGenerator struct {
 
 type generateFile func(*Context) ([]byte, error)
 
+// File mode bits
 const (
 	Executable FileMode = 0755
 	ReadOnly   FileMode = 0600

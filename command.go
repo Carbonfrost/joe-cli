@@ -618,7 +618,7 @@ func (c *Command) setInternalFlags(f internalFlags, v bool) {
 	if v {
 		c.flags |= f
 	} else {
-		c.flags = c.flags & ^f
+		c.flags &= ^f
 	}
 }
 

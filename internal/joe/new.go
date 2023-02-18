@@ -22,7 +22,7 @@ type generatorData struct {
 		Table bool
 	}
 	Dependencies struct {
-		Http bool
+		HTTP bool
 	}
 }
 
@@ -53,7 +53,7 @@ func newAppCommand() *cli.Command {
 			},
 			{
 				Name:     "http",
-				Value:    &g.Dependencies.Http,
+				Value:    &g.Dependencies.HTTP,
 				HelpText: "Add a dependency on joe-cli-http",
 			},
 			{

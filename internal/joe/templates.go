@@ -8,7 +8,7 @@ import (
 
 func newAppTemplate(data *generatorData) *Root {
 	var deps []string
-	if data.Dependencies.Http {
+	if data.Dependencies.HTTP {
 		deps = append(deps, "github.com/Carbonfrost/joe-cli-http")
 	}
 	var license Generator

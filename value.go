@@ -435,7 +435,7 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 	case *string:
 		s := *p
 		if len(s) > 0 {
-			s = s + " "
+			s += " "
 		}
 		*p = s + value
 		return nil
@@ -622,23 +622,23 @@ func (v *NameValue) NewCounter() ArgCounter {
 
 // SetAllowFileReference sets whether file references are allowed.  This function is for
 // bindings
-func (n *NameValue) SetAllowFileReference(v bool) error {
-	n.AllowFileReference = v
+func (v *NameValue) SetAllowFileReference(val bool) error {
+	v.AllowFileReference = val
 	return nil
 }
 
-func (n *NameValue) AllowFileReferencesFlag() Prototype {
+func (v *NameValue) AllowFileReferencesFlag() Prototype {
 	return Prototype{
 		Name:     "allow-files",
 		HelpText: "Allow a file to be specified with name=@file",
 		Setup: Setup{
-			Uses: Bind(n.SetAllowFileReference),
+			Uses: Bind(v.SetAllowFileReference),
 		},
 	}
 }
 
-func (n *NameValue) Initializer() Action {
-	if n.AllowFileReference {
+func (v *NameValue) Initializer() Action {
+	if v.AllowFileReference {
 		return ActionFunc(func(c *Context) error {
 			return c.Do(ValueTransform(TransformFileReference(c.FS, true)))
 		})
@@ -647,8 +647,7 @@ func (n *NameValue) Initializer() Action {
 }
 
 func (v *valuePairCounter) Done() error {
-	switch v.count {
-	case 0:
+	if v.count == 0 {
 		return errors.New("missing name and value")
 	}
 	return nil
@@ -660,14 +659,14 @@ func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
 		if _, _, hasValue := splitValuePair(arg); hasValue {
 			v.count += 2
 		} else {
-			v.count += 1
+			v.count++
 		}
 		return nil
 	case 1:
-		v.count += 1
+		v.count++
 		return nil
 	case 2:
-		v.count += 1
+		v.count++
 		return EndOfArguments
 	}
 

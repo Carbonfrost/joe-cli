@@ -300,7 +300,7 @@ func (a *Arg) setInternalFlags(i internalFlags, v bool) {
 	if v {
 		a.option.flags |= i
 	} else {
-		a.option.flags = a.option.flags & ^i
+		a.option.flags &= ^i
 	}
 }
 

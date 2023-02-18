@@ -17,7 +17,7 @@ var (
 // CompletionType enumerates the supported kinds of completions
 type CompletionType int
 
-// Completer is the shell auto-complete function for the flag, arg, or value
+// Completion is the shell auto-complete function for the flag, arg, or value
 type Completion interface {
 	Complete(*CompletionContext) []CompletionItem
 }
@@ -46,6 +46,7 @@ type CompletionContext struct {
 // CompletionFunc provide a function that can be used as a Completer
 type CompletionFunc func(*CompletionContext) []CompletionItem
 
+// Completion types
 const (
 	TokenCompletionType     CompletionType = 0
 	FileCompletionType      CompletionType = 1

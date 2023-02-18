@@ -257,7 +257,7 @@ var (
 		),
 	}
 
-	cantHookError = errors.New("hooks are not supported in this context")
+	errCantHook = errors.New("hooks are not supported in this context")
 
 	defaultHelpCommand = &Command{
 		Name:     "help",
@@ -1256,7 +1256,7 @@ func (p *Prototype) copyToArg(o *Arg) {
 	}
 	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value
-		o.option.flags = o.option.flags & ^internalFlagDestinationImplicitlyCreated
+		o.option.flags &= ^internalFlagDestinationImplicitlyCreated
 	}
 
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
@@ -1294,7 +1294,7 @@ func (p *Prototype) copyToFlag(o *Flag) {
 	}
 	if p.Value != nil && (o.option.flags.destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value
-		o.option.flags = o.option.flags & ^internalFlagDestinationImplicitlyCreated
+		o.option.flags &= ^internalFlagDestinationImplicitlyCreated
 	}
 
 	o.Aliases = append(o.Aliases, p.Aliases...)
@@ -1401,8 +1401,7 @@ func (p *actionPipelines) add(t Timing, h Action) {
 }
 
 func (w withTimingWrapper) Execute(c *Context) error {
-	switch w.t {
-	case ImplicitValueTiming:
+	if w.t == ImplicitValueTiming {
 		return c.act(Pipeline(
 			Data(implicitTimingEnabledKey, true),
 			w.Action,
