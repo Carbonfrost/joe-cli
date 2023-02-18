@@ -891,7 +891,7 @@ func (c *Context) Customize(pattern string, a Action) error {
 	// Specifying the empty string for the pattern is the same as acting
 	// on itself and therefore does not need a hook
 	if pattern == "" {
-		return c.Use(Pipeline(a))
+		return c.Use(a)
 	}
 
 	if h, ok := c.hookable(); ok {
