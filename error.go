@@ -78,6 +78,9 @@ const (
 
 	// FlagUsedAfterArgs occurs when a flag is used after a positional arg, but not allowed
 	FlagUsedAfterArgs
+
+	// ExpectedRequiredOption occurs when a flag or option is required to be specified
+	ExpectedRequiredOption
 )
 
 // Exit formats an error message using the default formats for each of the arguments,
@@ -171,6 +174,8 @@ func (e ErrorCode) String() string {
 		return "arguments must precede expressions"
 	case FlagUsedAfterArgs:
 		return "flag used after arguments"
+	case ExpectedRequiredOption:
+		return "is required and must be specified"
 	}
 	return "unknown error"
 }
@@ -208,6 +213,13 @@ func unexpectedArgument(value string, remaining []string) *ParseError {
 		Err:       fmt.Errorf("unexpected argument %q", value),
 		Remaining: remaining,
 		Value:     value,
+	}
+}
+
+func expectedRequiredOption(name string) *ParseError {
+	return &ParseError{
+		Code: ExpectedRequiredOption,
+		Err:  fmt.Errorf("%s %s", name, ExpectedRequiredOption),
 	}
 }
 

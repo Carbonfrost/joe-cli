@@ -253,6 +253,7 @@ var (
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
+			AtTiming(ActionFunc(checkForRequiredOption), justBeforeTiming),
 		),
 	}
 

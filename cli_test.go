@@ -1,8 +1,10 @@
 package cli_test
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
 	. "github.com/onsi/ginkgo/v2"
@@ -289,3 +291,96 @@ var _ = Describe("RunContext", func() {
 		),
 	)
 })
+
+var _ = Describe("ReadPasswordString", func() {
+
+	// Note: use of term.ReadPassword limits ability to test
+
+	It("generates the expected prompt", func() {
+		var buf bytes.Buffer
+		app := &cli.App{
+			Name:   "any",
+			Stderr: &buf,
+			Stdin:  &fakeFD{strings.NewReader("my pass\n")},
+			Action: func(c *cli.Context) {
+				c.ReadPasswordString("Enter password: ")
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(buf.String()).To(Equal("Enter password: "))
+	})
+
+	It("returns error on non-file descriptor", func() {
+		app := &cli.App{
+			Name:   "any",
+			Stdout: io.Discard,
+			Stdin:  strings.NewReader("pass"),
+			Action: func(c *cli.Context) error {
+				_, err := c.ReadPasswordString("")
+				return err
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("stdin not tty"))
+	})
+})
+
+var _ = Describe("ReadString", func() {
+
+	It("reads from file descriptor", func() {
+		var pass string
+		app := &cli.App{
+			Name:   "any",
+			Stderr: io.Discard,
+			Stdin:  &fakeFD{strings.NewReader("my pass\n")},
+			Action: func(c *cli.Context) {
+				pass, _ = c.ReadString("the prompt")
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(pass).To(Equal("my pass"))
+	})
+
+	It("generates the expected prompt", func() {
+		var buf bytes.Buffer
+		app := &cli.App{
+			Name:   "any",
+			Stderr: &buf,
+			Stdin:  &fakeFD{strings.NewReader("my pass\n")},
+			Action: func(c *cli.Context) {
+				c.ReadString("Some prompt")
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(buf.String()).To(Equal("Some prompt"))
+	})
+
+	It("returns error on non-file descriptor", func() {
+		app := &cli.App{
+			Name:   "any",
+			Stdout: io.Discard,
+			Stdin:  strings.NewReader("my pass\n"),
+			Action: func(c *cli.Context) error {
+				_, err := c.ReadString("")
+				return err
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("stdin not tty"))
+	})
+})
+
+type fakeFD struct {
+	io.Reader
+}
+
+func (*fakeFD) Fd() uintptr {
+	return 0
+}

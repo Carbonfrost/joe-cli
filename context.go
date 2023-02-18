@@ -897,22 +897,17 @@ func (c *Context) Customize(pattern string, a Action) error {
 // ReadPasswordString securely gets a password, without the trailing '\n'.
 // An error will be returned if the reader is not stdin connected to TTY.
 func (c *Context) ReadPasswordString(prompt string) (string, error) {
-	return c.displayPrompt(prompt, ReadPasswordString, true)
+	return c.displayPrompt(prompt, ReadPasswordString)
 }
 
 // ReadString securely gets a password, without the trailing '\n'.
 // An error will be returned if the reader is not stdin connected to TTY.
 func (c *Context) ReadString(prompt string) (string, error) {
-	return c.displayPrompt(prompt, ReadString, false)
+	return c.displayPrompt(prompt, ReadString)
 }
 
-func (c *Context) displayPrompt(prompt string, fn func(io.Reader) (string, error), nlAfter bool) (string, error) {
+func (c *Context) displayPrompt(prompt string, fn func(io.Reader) (string, error)) (string, error) {
 	fmt.Fprint(c.Stderr, prompt)
-	defer func() {
-		if nlAfter && prompt != "" {
-			c.Stderr.WriteString("\n")
-		}
-	}()
 	return fn(c.Stdin)
 }
 
@@ -1426,6 +1421,15 @@ func setupOptionFromEnv(c *Context) error {
 		FromEnv(c.option().envVars()...),
 		FromFilePath(c.option().filePath()),
 	)
+}
+
+func checkForRequiredOption(c *Context) error {
+	if c.option().internalFlags().required() {
+		if !c.Seen("") {
+			return expectedRequiredOption(c.Name())
+		}
+	}
+	return nil
 }
 
 func guessWidth() int {

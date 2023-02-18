@@ -593,6 +593,25 @@ var _ = Describe("ProvideValueInitializer", func() {
 	})
 })
 
+var _ = Describe("Required", func() {
+
+	It("returns an error if unspecified", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Value:   new(string),
+					Options: cli.Required,
+				},
+			},
+			Action: func() {},
+		}
+		err := app.RunContext(context.TODO(), []string{"app"})
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("-f is required and must be specified"))
+	})
+})
+
 var _ = Describe("ValidatorFunc", func() {
 	It("invokes the function", func() {
 		e := fmt.Errorf("validator err")
