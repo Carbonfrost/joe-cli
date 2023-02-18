@@ -473,12 +473,11 @@ func noOption(c *Context) error {
 	)
 	wrapAction := func(v Action) ActionFunc {
 		return func(c *Context) error {
-			return execute(c.copy(
+			return execute(c.copyWithoutReparent(
 				&wrapLookupContext{
 					optionContext: c.internal.(*optionContext),
 					actual:        f,
 				},
-				false,
 			), v)
 		}
 	}
@@ -517,7 +516,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			optionContext: c.internal.(*optionContext),
 		}
 
-		scope := c.copy(mini, true)
+		scope := c.copy(mini)
 
 		// Obtain either the zero value or Reset() the value
 		resetOnFirstOccur := !opt.flags.merge()

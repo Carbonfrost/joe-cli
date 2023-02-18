@@ -1053,21 +1053,21 @@ func (c *Context) commandContext(cmd *Command, args []string) *Context {
 		cmd:     cmd,
 		args:    args,
 		flagSet: newSet(),
-	}, true)
+	})
 }
 
 func (c *Context) optionContext(opt option) *Context {
 	return c.copy(&optionContext{
 		option:       opt,
 		parentLookup: c.internal.(internalCommandContext),
-	}, true)
+	})
 }
 
 func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
 	return c.copy(&valueContext{
 		v:    adapter,
 		name: name,
-	}, true)
+	})
 }
 
 func (c *Context) exprContext(expr *Expr, args []string, data BindingLookup) *Context {
@@ -1081,7 +1081,7 @@ func (c *Context) exprContext(expr *Expr, args []string, data BindingLookup) *Co
 		v:      adapter,
 		name:   expr.Name,
 		lookup: data,
-	}, true)
+	})
 }
 
 func (c *Context) setTiming(t Timing) *Context {
@@ -1141,11 +1141,7 @@ func (c *Context) initialize() error {
 	)
 }
 
-func (c *Context) copy(t internalContext, reparent bool) *Context {
-	p := c.parent
-	if reparent {
-		p = c
-	}
+func (c *Context) copy(t internalContext) *Context {
 	return &Context{
 		Context:       c.Context,
 		Stdin:         c.Stdin,
@@ -1153,9 +1149,17 @@ func (c *Context) copy(t internalContext, reparent bool) *Context {
 		Stderr:        c.Stderr,
 		FS:            c.FS,
 		internal:      t,
-		parent:        p,
-		lookupSupport: newLookupSupport(t, p),
+		parent:        c,
+		lookupSupport: newLookupSupport(t, c),
 	}
+}
+
+func (c *Context) copyWithoutReparent(t internalContext) *Context {
+	res := c.copy(t)
+	// Keep existing parent and lookup
+	res.parent = c.parent
+	res.lookupSupport = newLookupSupport(t, c.parent)
+	return res
 }
 
 func bubble(start *Context, self func(*Context) error, anc func(*Context) error) error {
