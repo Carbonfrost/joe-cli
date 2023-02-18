@@ -41,18 +41,21 @@ const (
 	// RootCommand filters the context to detect if the current command is the root command
 	RootCommand
 
+	subcommandDidNotExecute
+
 	// Anything matches any kind of target
 	Anything = AnyFlag | AnyArg | AnyCommand
 )
 
 var (
 	filterModeMatches = map[FilterModes]func(*Context) bool{
-		Anything:    anyImpl,
-		AnyFlag:     (*Context).IsFlag,
-		AnyArg:      (*Context).IsArg,
-		AnyCommand:  (*Context).IsCommand,
-		Seen:        seenThis,
-		RootCommand: isRoot,
+		Anything:                anyImpl,
+		AnyFlag:                 (*Context).IsFlag,
+		AnyArg:                  (*Context).IsArg,
+		AnyCommand:              (*Context).IsCommand,
+		Seen:                    seenThis,
+		RootCommand:             isRoot,
+		subcommandDidNotExecute: (*Context).subcommandDidNotExecute,
 	}
 )
 

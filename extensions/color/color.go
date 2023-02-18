@@ -56,27 +56,13 @@ const (
 )
 
 var (
-	flagWithMode = cli.Pipeline(
-		cli.AddFlag(&cli.Flag{
-			Name:  "color",
-			Value: new(Mode),
-			Uses: cli.Pipeline(
-				cli.OptionalValue(Always),
-				SetMode(),
-				tagged,
-			),
-			Completion: cli.CompletionValues("auto", "always", "never"),
-			HelpText:   helpText,
-		}),
-	)
-
 	helpText = "Controls whether terminal color and styles are used"
 
 	featureMap = cli.FeatureMap[Feature]{
 		FlagFeature | NoFlagFeature | ModeFeature: cli.Pipeline(flagWithMode, standaloneNoFlag),
-		FlagFeature | ModeFeature:                 flagWithMode,
+		FlagFeature | ModeFeature:                 cli.ActionFunc(flagWithMode),
 		FlagFeature | NoFlagFeature:               cli.ActionFunc(bothFlags),
-		ModeFeature:                               flagWithMode,
+		ModeFeature:                               cli.ActionFunc(flagWithMode),
 		NoFlagFeature:                             cli.ActionFunc(standaloneNoFlag),
 		FlagFeature:                               cli.ActionFunc(standaloneFlag),
 
@@ -146,6 +132,20 @@ func SetMode(modeopt ...Mode) cli.Action {
 	default:
 		panic("expected 0 or 1 argument")
 	}
+}
+
+func flagWithMode(c *cli.Context) error {
+	return c.AddFlag(&cli.Flag{
+		Name:  "color",
+		Value: new(Mode),
+		Uses: cli.Pipeline(
+			cli.OptionalValue(Always),
+			SetMode(),
+			tagged,
+		),
+		Completion: cli.CompletionValues("auto", "always", "never"),
+		HelpText:   helpText,
+	})
 }
 
 func bothFlags(c *cli.Context) error {

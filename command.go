@@ -116,10 +116,9 @@ type commandSynopsis struct {
 type optionGroup int
 
 type commandContext struct {
-	cmd                  *Command
-	flagSet              *set
-	didSubcommandExecute bool
-	args                 []string
+	cmd     *Command
+	flagSet *set
+	args    []string
 }
 
 const (
@@ -171,7 +170,7 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 	if err != nil {
 		return err
 	}
-	c.Parent().internal.setDidSubcommandExecute()
+	c.Parent().target().setInternalFlags(internalFlagDidSubcommandExecute, true)
 	newCtx := c.Parent().commandContext(cmd, invoke)
 	return newCtx.Execute(invoke)
 }
@@ -633,6 +632,25 @@ func (c *Command) rootData() *rootCommandData {
 	return c.ifRoot
 }
 
+func (c *Command) options() *Option {
+	return &c.Options
+}
+
+func (c *Command) pipeline(t Timing) interface{} {
+	switch t {
+	case AfterTiming:
+		return c.After
+	case BeforeTiming:
+		return c.Before
+	case InitialTiming:
+		return c.Uses
+	case ActionTiming:
+		fallthrough
+	default:
+		return c.Action
+	}
+}
+
 func (c CommandsByName) Len() int {
 	return len(c)
 }
@@ -646,17 +664,11 @@ func (c CommandsByName) Swap(i, j int) {
 }
 
 func (c *commandContext) initialize(ctx *Context) error {
-	rest := newPipelines(ActionOf(c.cmd.Uses), &c.cmd.Options)
-	c.cmd.setPipelines(rest)
-	return execute(ctx, Pipeline(c.cmd.uses().Initializers, defaultCommand.Initializers))
+	return execute(ctx, defaultCommand.Initializers)
 }
 
 func (c *commandContext) initializeDescendent(ctx *Context) error {
 	return c.cmd.executeInitializeHooks(ctx)
-}
-
-func rootCommandInitializers(act Action) Action {
-	return IfMatch(RootCommand, act)
 }
 
 func initializeFlagsArgs(ctx *Context) error {
@@ -720,22 +732,11 @@ func (c *commandContext) executeBeforeDescendent(ctx *Context) error {
 }
 
 func (c *commandContext) executeBefore(ctx *Context) error {
-	if err := c.cmd.executeBeforeHooks(ctx); err != nil {
-		return err
-	}
-
-	if err := execute(ctx, c.cmd.uses().Before); err != nil {
-		return err
-	}
-
-	return execute(ctx, Pipeline(c.cmd.Before, defaultCommand.Before))
+	return execute(ctx, Pipeline(c.cmd.executeBeforeHooks, defaultCommand.Before))
 }
 
 func (c *commandContext) executeAfter(ctx *Context) error {
-	if err := c.cmd.executeAfterHooks(ctx); err != nil {
-		return err
-	}
-	return execute(ctx, Pipeline(c.cmd.uses().After, c.cmd.After, defaultCommand.After))
+	return execute(ctx, Pipeline(c.cmd.executeAfterHooks, defaultCommand.After))
 }
 
 func (c *commandContext) executeAfterDescendent(ctx *Context) error {
@@ -743,10 +744,7 @@ func (c *commandContext) executeAfterDescendent(ctx *Context) error {
 }
 
 func (c *commandContext) execute(ctx *Context) error {
-	if !c.didSubcommandExecute {
-		return execute(ctx, Pipeline(c.cmd.uses().Action, defaultCommand.Action, c.cmd.Action))
-	}
-	return nil
+	return execute(ctx, defaultCommand.Action)
 }
 
 func (c *commandContext) lookupBinding(name string, occurs bool) []string {
@@ -761,10 +759,6 @@ func (c *commandContext) set() BindingLookup {
 func (c *commandContext) target() target { return c.cmd }
 func (c *commandContext) lookupValue(name string) (interface{}, bool) {
 	return c.flagSet.lookupValue(name)
-}
-
-func (c *commandContext) setDidSubcommandExecute() {
-	c.didSubcommandExecute = true
 }
 
 func (c *commandContext) Name() string {

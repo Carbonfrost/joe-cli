@@ -395,9 +395,9 @@ func (a *Arg) pipeline(t Timing) interface{} {
 	case InitialTiming:
 		return a.Uses
 	case ActionTiming:
-		fallthrough
-	default:
 		return a.Action
+	default:
+		panic("unreachable")
 	}
 }
 
@@ -445,28 +445,22 @@ func (a *argSynopsis) String() string {
 }
 
 func (o *optionContext) initialize(c *Context) error {
-	o.option.ensureInternalOpt()
-
-	rest := newPipelines(ActionOf(o.option.pipeline(InitialTiming)), o.option.options())
-	o.option.setPipelines(rest)
-	return execute(c, Pipeline(rest.Initializers, defaultOption.Initializers))
+	return execute(c, defaultOption.Initializers)
 }
 
 func (o *optionContext) executeBefore(ctx *Context) error {
-	tt := o.option
-	return execute(ctx, Pipeline(tt.uses().Before, tt.pipeline(BeforeTiming), defaultOption.Before))
+	return execute(ctx, defaultOption.Before)
 }
 
 func (o *optionContext) initializeDescendent(ctx *Context) error    { return nil }
 func (o *optionContext) executeBeforeDescendent(ctx *Context) error { return nil }
 func (o *optionContext) executeAfterDescendent(ctx *Context) error  { return nil }
 func (o *optionContext) executeAfter(ctx *Context) error {
-	tt := o.option
-	return execute(ctx, Pipeline(tt.uses().After, tt.pipeline(AfterTiming), defaultOption.After))
+	return execute(ctx, defaultOption.After)
 }
 
 func (o *optionContext) execute(ctx *Context) error {
-	return execute(ctx, Pipeline(o.option.uses().Action, o.option.pipeline(ActionTiming)))
+	return execute(ctx, defaultOption.Action)
 }
 
 func (o *optionContext) lookupBinding(name string, occurs bool) []string {
@@ -477,8 +471,7 @@ func (o *optionContext) lookupBinding(name string, occurs bool) []string {
 	return o.parentLookup.lookupBinding(o.option.name(), occurs)
 }
 
-func (o *optionContext) target() target           { return o.option }
-func (o *optionContext) setDidSubcommandExecute() {}
+func (o *optionContext) target() target { return o.option }
 func (o *optionContext) lookupValue(name string) (interface{}, bool) {
 	if name == "" {
 		return o.option.value(), true

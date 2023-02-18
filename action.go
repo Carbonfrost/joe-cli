@@ -113,6 +113,9 @@ type target interface {
 	SetData(name string, v interface{})
 	LookupData(name string) (interface{}, bool)
 
+	uses() *actionPipelines
+	options() *Option
+	pipeline(Timing) interface{}
 	appendAction(Timing, Action)
 	setDescription(interface{})
 	setHelpText(string)
@@ -129,7 +132,7 @@ type hooksSupport struct {
 }
 
 type pipelinesSupport struct {
-	p *actionPipelines
+	p actionPipelines
 }
 
 type actionPipelines struct {
@@ -211,10 +214,24 @@ var (
 		justBeforeTiming:    3,
 	}
 
+	// defaultCommand defines the flow for how a command is executed during the
+	// initialization and other pipeline stages.  (See also defaultOption.)
+	//
+	// _Deferred pipelines_ accumulate actions that were registered in previous
+	//    steps in the flow, including possibly from other targets.  Note that
+	//    executeDeferredPipeline occurs BEFORE user pipelines because the user
+	//    cannot re-entrantly queue additional deferrals at the particular timing
+	//    anyway.  (Said another way and by example, calling Before() within a
+	//    Before action just invokes it immediately rather than try queueing it.)
+	//
 	defaultCommand = actionPipelines{
-		Initializers: Pipeline(
-			rootCommandInitializers(
-				Pipeline(
+		Initializers: actions(
+			ActionFunc(preventSetupIfPresent),
+			executeDeferredPipeline(InitialTiming),
+			executeUserPipeline(InitialTiming),
+			ActionFunc(applyUserOptions),
+			IfMatch(RootCommand,
+				actions(
 					ActionFunc(setupDefaultIO),
 					ActionFunc(setupDefaultData),
 					ActionFunc(setupDefaultTemplateFuncs),
@@ -230,18 +247,30 @@ var (
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
 		),
-		Action: Pipeline(
-			ActionFunc(triggerRobustParsingAndCompletion),
+		Action: actions(
+			ActionFunc(triggerFlags),
+			ActionFunc(triggerArgs),
+			IfMatch(subcommandDidNotExecute,
+				actions(
+					executeDeferredPipeline(ActionTiming),
+					ActionFunc(triggerRobustParsingAndCompletion),
+					executeUserPipeline(ActionTiming),
+				),
+			),
 		),
 		Before: beforePipeline{
 			nil,
-			Pipeline(
+			actions(
+				executeDeferredPipeline(BeforeTiming),
+				executeUserPipeline(BeforeTiming),
 				ActionFunc(triggerBeforeFlags),
 				ActionFunc(triggerBeforeArgs),
 			),
 			nil,
 		},
-		After: Pipeline(
+		After: actions(
+			executeDeferredPipeline(AfterTiming),
+			executeUserPipeline(AfterTiming),
 			ActionFunc(triggerAfterArgs),
 			ActionFunc(triggerAfterFlags),
 			ActionFunc(failWithContextError),
@@ -249,51 +278,35 @@ var (
 	}
 
 	defaultOption = actionPipelines{
-		Initializers: Pipeline(
+		Initializers: actions(
+			ActionFunc(setupInternalOption),
+			ActionFunc(preventSetupIfPresent),
+			executeDeferredPipeline(InitialTiming),
+			executeUserPipeline(InitialTiming),
+			ActionFunc(applyUserOptions),
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
 			AtTiming(ActionFunc(checkForRequiredOption), justBeforeTiming),
 		),
+		Before: beforePipeline{
+			nil,
+			actions(
+				executeDeferredPipeline(BeforeTiming),
+				executeUserPipeline(BeforeTiming),
+			),
+			nil,
+		},
+		Action: actions(
+			ActionFunc(executeOptionPipeline),
+		),
+		After: actions(
+			executeDeferredPipeline(AfterTiming),
+			executeUserPipeline(AfterTiming),
+		),
 	}
 
 	errCantHook = errors.New("hooks are not supported in this context")
-
-	defaultHelpCommand = &Command{
-		Name:     "help",
-		Aliases:  []string{"h"},
-		HelpText: "Display help for a command",
-		Args: []*Arg{
-			{
-				Name:  "command",
-				Value: List(),
-				NArg:  -1,
-			},
-		},
-		Action: displayHelp,
-	}
-
-	defaultHelpFlag = &Flag{
-		Name:     "help",
-		HelpText: "Display this help screen then exit",
-		Value:    Bool(),
-		Options:  Exits,
-		Action:   displayHelp,
-	}
-
-	defaultVersionFlag = &Flag{
-		Name:     "version",
-		HelpText: "Print the build version then exit",
-		Value:    Bool(),
-		Options:  Exits,
-		Action:   PrintVersion(),
-	}
-
-	defaultVersionCommand = &Command{
-		Name:     "version",
-		HelpText: "Print the build version then exit",
-		Action:   PrintVersion(),
-	}
 )
 
 // Execute executes the Setup, which assigns the various parts to their
@@ -1396,6 +1409,21 @@ func (p *actionPipelines) add(t Timing, h Action) {
 	}
 }
 
+func (p *actionPipelines) pipeline(t Timing) Action {
+	switch t {
+	case AfterTiming:
+		return p.After
+	case BeforeTiming:
+		return p.Before
+	case InitialTiming:
+		return p.Initializers
+	case ActionTiming:
+		return p.Action
+	default:
+		panic("unreachable!")
+	}
+}
+
 func (w withTimingWrapper) Execute(c *Context) error {
 	if w.t == ImplicitValueTiming {
 		return c.act(Pipeline(
@@ -1430,11 +1458,7 @@ func (i *hooksSupport) executeInitializeHooks(target *Context) error {
 }
 
 func (s *pipelinesSupport) uses() *actionPipelines {
-	return s.p
-}
-
-func (s *pipelinesSupport) setPipelines(p *actionPipelines) {
-	s.p = p
+	return &s.p
 }
 
 func (s *pipelinesSupport) appendAction(t Timing, ah Action) {
@@ -1460,6 +1484,11 @@ func (v ValidatorFunc) Execute(c *Context) error {
 	}), ValidatorTiming))
 }
 
+// actions provides a pipeline without flattening
+func actions(actions ...Action) ActionPipeline {
+	return ActionPipeline(actions)
+}
+
 func emptyActionImpl(*Context) error {
 	return nil
 }
@@ -1481,14 +1510,46 @@ func doThenExit(a Action) Action {
 	})
 }
 
-func newPipelines(uses Action, opts *Option) *actionPipelines {
-	// PreventSetup if specified must be handled first
-	first := *opts & PreventSetup
+func defaultVersionFlag() *Flag {
+	return &Flag{
+		Name:     "version",
+		HelpText: "Print the build version then exit",
+		Value:    Bool(),
+		Options:  Exits,
+		Action:   PrintVersion(),
+	}
+}
 
-	// Use a reference to the options so that if it is updated, the
-	// most recent version will apply when the pipeline actually runs
-	return &actionPipelines{
-		Initializers: Pipeline(first, uses, opts),
+func defaultHelpFlag() *Flag {
+	return &Flag{
+		Name:     "help",
+		HelpText: "Display this help screen then exit",
+		Value:    Bool(),
+		Options:  Exits,
+		Action:   displayHelp,
+	}
+}
+
+func defaultHelpCommand() *Command {
+	return &Command{
+		Name:     "help",
+		Aliases:  []string{"h"},
+		HelpText: "Display help for a command",
+		Args: []*Arg{
+			{
+				Name:  "command",
+				Value: List(),
+				NArg:  -1,
+			},
+		},
+		Action: displayHelp,
+	}
+}
+func defaultVersionCommand() *Command {
+	return &Command{
+		Name:     "version",
+		HelpText: "Print the build version then exit",
+		Action:   PrintVersion(),
 	}
 }
 

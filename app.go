@@ -425,23 +425,23 @@ func setupDefaultTemplates(c *Context) error {
 	return nil
 }
 
-func optionalCommand(name string, cmd *Command) ActionFunc {
+func optionalCommand(name string, cmd func() *Command) ActionFunc {
 	return func(c *Context) error {
 		app := c.Command()
 		if len(app.Subcommands) > 0 {
 			if _, ok := app.Command(name); !ok {
-				app.Subcommands = append(app.Subcommands, cmd)
+				app.Subcommands = append(app.Subcommands, cmd())
 			}
 		}
 		return nil
 	}
 }
 
-func optionalFlag(name string, f *Flag) ActionFunc {
+func optionalFlag(name string, f func() *Flag) ActionFunc {
 	return func(c *Context) error {
 		app := c.Command()
 		if _, ok := app.Flag(name); !ok {
-			app.Flags = append(app.Flags, f)
+			app.Flags = append(app.Flags, f())
 		}
 		return nil
 	}

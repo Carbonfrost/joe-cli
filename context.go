@@ -57,7 +57,6 @@ type internalContext interface {
 	executeAfterDescendent(*Context) error
 	execute(*Context) error
 	target() target // *Command, *Arg, *Flag, or *Expr
-	setDidSubcommandExecute()
 	Name() string
 }
 
@@ -261,6 +260,10 @@ func (c *Context) IsArg() bool {
 func (c *Context) isOption() bool {
 	_, ok := c.target().(option)
 	return ok
+}
+
+func (c *Context) subcommandDidNotExecute() bool {
+	return !c.target().internalFlags().didSubcommandExecute()
 }
 
 // Args retrieves the arguments.  IF the context corresponds to a command, these
@@ -858,7 +861,7 @@ func (c *Context) ProvideValueInitializer(v interface{}, name string, action Act
 	adapter := &valueTarget{
 		v: v,
 		pipelinesSupport: pipelinesSupport{
-			&actionPipelines{
+			actionPipelines{
 				Initializers: action,
 			},
 		},
@@ -1067,10 +1070,8 @@ func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
 
 func (c *Context) exprContext(expr *Expr, args []string, data BindingLookup) *Context {
 	adapter := &valueTarget{
-		v: expr,
-		pipelinesSupport: pipelinesSupport{
-			&actionPipelines{},
-		},
+		v:                expr,
+		pipelinesSupport: pipelinesSupport{},
 	}
 	return c.copy(&valueContext{
 		v:      adapter,
@@ -1292,6 +1293,42 @@ func (*valueTarget) completion() Completion {
 	return nil
 }
 
+func (*valueTarget) options() *Option {
+	return nil
+}
+
+func (*valueTarget) pipeline(t Timing) interface{} {
+	return nil
+}
+
+func setupInternalOption(c *Context) error {
+	c.option().ensureInternalOpt()
+	return nil
+}
+
+func preventSetupIfPresent(c *Context) error {
+	// PreventSetup if specified must be handled before all other options
+	opts := c.target().options()
+	return execute(c, *opts&PreventSetup)
+}
+
+func applyUserOptions(c *Context) error {
+	opts := c.target().options()
+	return execute(c, opts)
+}
+
+func executeDeferredPipeline(at Timing) ActionFunc {
+	return func(c *Context) error {
+		return execute(c, c.target().uses().pipeline(at))
+	}
+}
+
+func executeUserPipeline(at Timing) ActionFunc {
+	return func(c *Context) error {
+		return execute(c, ActionOf(c.target().pipeline(at)))
+	}
+}
+
 func triggerBeforeFlags(ctx *Context) error {
 	return triggerBeforeOptions(ctx, ctx.flags(true))
 }
@@ -1300,14 +1337,20 @@ func triggerBeforeArgs(ctx *Context) error {
 	return triggerBeforeOptions(ctx, ctx.args())
 }
 
+func triggerFlags(ctx *Context) error {
+	return triggerOptions(ctx, ctx.flags(true))
+}
+
+func triggerArgs(ctx *Context) error {
+	return triggerOptions(ctx, ctx.args())
+}
+
 func triggerBeforeOptions(ctx *Context, opts []option) error {
 	for _, f := range opts {
-		if flag, ok := f.(*Flag); ok {
-			if flag.option.flags.persistent() {
-				// This is a persistent flag that was cloned into the flag set of the current
-				// command; don't process it again
-				continue
-			}
+		if f.internalFlags().persistent() {
+			// This is a persistent flag that was cloned into the flag set of the current
+			// command; don't process it again
+			continue
 		}
 
 		err := ctx.optionContext(f).executeBefore()
@@ -1315,7 +1358,10 @@ func triggerBeforeOptions(ctx *Context, opts []option) error {
 			return err
 		}
 	}
+	return nil
+}
 
+func triggerOptions(ctx *Context, opts []option) error {
 	// Invoke the Before action on all flags and args, but only the actual
 	// Action when the flag or arg was set
 	parent := ctx.target()
@@ -1347,12 +1393,10 @@ func triggerAfterArgs(ctx *Context) error {
 
 func triggerAfterOptions(ctx *Context, opts []option) error {
 	for _, f := range opts {
-		if flag, ok := f.(*Flag); ok {
-			if flag.option.flags.persistent() {
-				// This is a persistent flag that was cloned into the flag set of the current
-				// command; don't process it again
-				continue
-			}
+		if f.internalFlags().persistent() {
+			// This is a persistent flag that was cloned into the flag set of the current
+			// command; don't process it again
+			continue
 		}
 
 		err := ctx.optionContext(f).setTiming(AfterTiming).executeAfter()
@@ -1425,6 +1469,10 @@ func checkForRequiredOption(c *Context) error {
 		}
 	}
 	return nil
+}
+
+func executeOptionPipeline(ctx *Context) error{
+	return ctx.Do(Pipeline(ctx.target().uses().pipeline(ActionTiming), ctx.target().pipeline(ActionTiming)))
 }
 
 func guessWidth() int {

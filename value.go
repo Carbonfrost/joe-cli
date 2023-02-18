@@ -840,9 +840,6 @@ func (v *valueContext) set() BindingLookup {
 	return v.lookup
 }
 
-func (v *valueContext) setDidSubcommandExecute() {
-}
-
 func (v *valueContext) target() target {
 	return v.v
 }

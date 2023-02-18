@@ -193,6 +193,7 @@ const (
 	internalFlagDestinationImplicitlyCreated
 	internalFlagImpliedAction
 	internalFlagSeenImplied
+	internalFlagDidSubcommandExecute
 )
 
 var (
@@ -314,6 +315,10 @@ func (f internalFlags) disallowFlagsAfterArgs() bool {
 
 func (f internalFlags) nonPersistent() bool {
 	return f&internalFlagNonPersistent == internalFlagNonPersistent
+}
+
+func (f internalFlags) didSubcommandExecute() bool {
+	return f&internalFlagDidSubcommandExecute == internalFlagDidSubcommandExecute
 }
 
 func (f internalFlags) disableSplitting() bool {

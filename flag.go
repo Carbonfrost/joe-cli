@@ -160,11 +160,7 @@ type option interface {
 
 	applyToSet(s *set)
 	ensureInternalOpt()
-	pipeline(Timing) interface{}
 	contextName() string
-	options() *Option
-	uses() *actionPipelines
-	setPipelines(*actionPipelines)
 	value() interface{}
 	name() string
 	envVars() []string
