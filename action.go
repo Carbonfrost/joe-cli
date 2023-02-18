@@ -79,7 +79,7 @@ type Setup struct {
 // Some values are merged rather than overwritten:
 // Data, Options, EnvVars, and Aliases.
 // If setup has been prevented with the PreventSetup action,
-// the protoype will do nothing.  The main use of prototype is in extensions to provide
+// the prototype will do nothing.  The main use of prototype is in extensions to provide
 // reasonable defaults
 type Prototype struct {
 	Aliases     []string
@@ -295,7 +295,7 @@ var (
 	}
 )
 
-// Execute executes the Setup, which assignes the various parts to their
+// Execute executes the Setup, which assigns the various parts to their
 // pipelines
 func (s Setup) Execute(c *Context) error {
 	if s.Uses != nil {
@@ -1006,7 +1006,7 @@ func IfMatch(f ContextFilter, a Action) Action {
 }
 
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
-// is usually used to apply further customizations after an extension has done setup of
+// is usually used to apply further customization after an extension has done setup of
 // the defaults.
 func Customize(pattern string, a Action) Action {
 	return ActionFunc(func(c *Context) error {

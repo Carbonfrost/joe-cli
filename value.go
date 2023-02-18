@@ -30,18 +30,20 @@ import (
 //   - Reset()                   called on first occurrence of setting a value.  This can be used to reset lists
 //     to empty when the Merge option has not been set
 //
-// * NewCounter() ArgCounter   if provided, this method is consulted to obtain the arg counter if NArg is unset
+//   - Copy()                    when used in addition to Reset(), can be used to copy into a new value
+//
+//   - NewCounter() ArgCounter   if provided, this method is consulted to obtain the arg counter if NArg is unset
 //
 //   - Initializer() Action      obtains an initialization action for the value which is called after initialization
 //     of the flag or arg
 //
-// * Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
+//   - Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
 //
-// * Synopsis() string         obtains the synopsis text
+//   - Synopsis() string         obtains the synopsis text
 //
-// * SetData(io.Reader)error   read from a reader to set the value
+//   - SetData(io.Reader)error   read from a reader to set the value
 //
-// * Completion() Completion   called to obtain the default completion for a value
+//   - Completion() Completion   called to obtain the default completion for a value
 type Value = flag.Value
 
 //counterfeiter:generate . Value

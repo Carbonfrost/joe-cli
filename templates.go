@@ -135,7 +135,7 @@ Global options (specify before any sub-commands): {{ "\n" }}
 {{ end }}
 {{- end -}}
 
-{{/* Usage is the entry point, which calls flags, subcommands */}} 
+{{/* Usage is the entry point, which calls flags, sub-commands */}} 
 {{- define "Usage" -}}
 usage: {{ if .SelectedCommand.Lineage -}}
 	{{- .SelectedCommand.Lineage -}}

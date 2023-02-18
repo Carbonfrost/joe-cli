@@ -44,7 +44,7 @@ var _ = Describe("Join", func() {
 })
 
 var _ = Describe("RunContext", func() {
-	DescribeTable("bind subcommand",
+	DescribeTable("bind sub-command",
 		func(arguments string, expectedGlobal types.GomegaMatcher, expectedSub types.GomegaMatcher) {
 			var (
 				global commanderValues

@@ -18,7 +18,7 @@ type ParseError struct {
 	Err error
 
 	// Name specifies the name of the flag, arg, command, or expression that
-	// caused the rorr
+	// caused the error
 	Name string
 
 	// Value is the value that caused the error

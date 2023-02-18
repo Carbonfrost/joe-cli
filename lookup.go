@@ -46,15 +46,15 @@ type Lookup interface {
 	NameValues(name interface{}) []*NameValue
 	// String obtains the value and converts it to a string
 	String(name interface{}) string
-	// UInt obtains the value and converts it to a uInt
+	// UInt obtains the value and converts it to a UInt
 	UInt(name interface{}) uint
-	// UInt16 obtains the value and converts it to a uInt16
+	// UInt16 obtains the value and converts it to a UInt16
 	UInt16(name interface{}) uint16
-	// UInt32 obtains the value and converts it to a uInt32
+	// UInt32 obtains the value and converts it to a UInt32
 	UInt32(name interface{}) uint32
-	// UInt64 obtains the value and converts it to a uInt64
+	// UInt64 obtains the value and converts it to a UInt64
 	UInt64(name interface{}) uint64
-	// UInt8 obtains the value and converts it to a uInt8
+	// UInt8 obtains the value and converts it to a UInt8
 	UInt8(name interface{}) uint8
 	// Value obtains the value and converts it to Value
 	Value(name interface{}) interface{}
@@ -70,7 +70,7 @@ type Lookup interface {
 	BigFloat(name interface{}) *big.Float
 	// Bytes obtains the value and converts it to a slice of bytes
 	Bytes(name interface{}) []byte
-	// Interface returns the raw value without deferencing and whether it exists
+	// Interface returns the raw value without dereferencing and whether it exists
 	Interface(name interface{}) (interface{}, bool)
 }
 

@@ -920,7 +920,7 @@ var _ = Describe("events", func() {
 			Expect(result).To(expected)
 		},
 		Entry(
-			"persistent flags always run before subcommand flags",
+			"persistent flags always run before sub-command flags",
 			"app sub --local --global", // despite being used after, before --global is run first
 			ContainElements("before --global", "before --local"),
 		),
@@ -1731,7 +1731,7 @@ var _ = Describe("Customize", func() {
 		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
 	})
 
-	It("inner customizations win over outer", func() {
+	It("inner customization win over outer", func() {
 		innerCustomization := cli.Customize("--flag", cli.Data("scope", "inner"))
 		outerCustomization := cli.Customize("--flag", cli.Data("scope", "outer"))
 

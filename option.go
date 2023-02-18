@@ -190,7 +190,7 @@ const (
 	internalFlagRightToLeft
 	internalFlagFlagOnly   // true for Flag without an argument
 	internalFlagOptional   // true if value is optional
-	internalFlagPersistent // true when the option is a clone of a peristent parent flag
+	internalFlagPersistent // true when the option is a clone of a persistent parent flag
 	internalFlagDestinationImplicitlyCreated
 	internalFlagImpliedAction
 	internalFlagSeenImplied

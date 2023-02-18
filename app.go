@@ -55,7 +55,7 @@ type App struct {
 	// In corresponds to standard error
 	Stderr io.Writer
 
-	// Comands provides the list of commands in the app
+	// Commands provides the list of commands in the app
 	Commands []*Command
 
 	// Flags supplies global flags for use with the app
@@ -103,7 +103,7 @@ type App struct {
 	// ManualText provides the text shown in the manual.  The default templates don't use this value
 	ManualText string
 
-	// UsageText provides the usage for the app.  If left blank, a succint synopsis
+	// UsageText provides the usage for the app.  If left blank, a succinct synopsis
 	// is generated that lists each visible flag and arg
 	UsageText string
 

@@ -27,7 +27,7 @@ type Context struct {
 	// Stdin is the input reader
 	Stdin io.Reader
 
-	// FS is the filesystem used by the context.
+	// FS is the file system used by the context.
 	// If the FS implements func OpenContext(context.Context, string)(fs.File, error), note that
 	// this will be called instead of Open in places where the Context is available.
 	// For os.File this means that if the context has a Deadline, SetReadDeadline
@@ -544,7 +544,7 @@ func (c *Context) Action(v interface{}) error {
 
 // Before either stores or executes the action.  When called from the initialization pipeline, this appends
 // the action to the Before pipeline for the current flag, arg, expression, or command/app.  If called
-// from the Before pipeline, this causes the action to be invoked immeidately.  If called
+// from the Before pipeline, this causes the action to be invoked immediately.  If called
 // at any other time, this causes the action to be ignored and an error to be returned.
 func (c *Context) Before(v interface{}) error {
 	return c.Do(AtTiming(ActionOf(v), BeforeTiming))
@@ -680,7 +680,7 @@ func (c *Context) Template(name string) *Template {
 
 func withExecute(funcMap template.FuncMap, self *template.Template) template.FuncMap {
 	// Execute function needs a closure containing the template itself, so is
-	// added afterwars
+	// added afterwards
 	funcMap["Execute"] = func(name string, data interface{}) (string, error) {
 		buf := bytes.NewBuffer(nil)
 		if err := self.ExecuteTemplate(buf, name, data); err != nil {
@@ -705,7 +705,7 @@ func (c *Context) Name() string {
 	return c.internal.Name()
 }
 
-// Path retrieves all of the names on the context and its ancetors to the root
+// Path retrieves all of the names on the context and its ancestors to the root
 func (c *Context) Path() ContextPath {
 	if len(c.pathCache) == 0 {
 		c.pathCache = c.pathSlow()
@@ -879,7 +879,7 @@ func (c *Context) ProvideValueInitializer(v interface{}, name string, action Act
 }
 
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
-// is usually used to apply further customizations after an extension has done setup of
+// is usually used to apply further customization after an extension has done setup of
 // the defaults.
 func (c *Context) Customize(pattern string, a Action) error {
 	// Specifying the empty string for the pattern is the same as acting

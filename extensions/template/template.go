@@ -67,7 +67,7 @@ func (r *Root) SetDryRun(v bool) error {
 	return nil
 }
 
-// OverwriteFlag obtains a conventions-based flag for overwritting
+// OverwriteFlag obtains a conventions-based flag for overwriting
 func (r *Root) OverwriteFlag() cli.Prototype {
 	return cli.Prototype{
 		Name:     "overwrite",
@@ -78,7 +78,7 @@ func (r *Root) OverwriteFlag() cli.Prototype {
 	}
 }
 
-// DryRunFlag obtains a conventions-based flag for overwritting
+// DryRunFlag obtains a conventions-based flag for overwriting
 func (r *Root) DryRunFlag() cli.Prototype {
 	return cli.Prototype{
 		Name:     "dry-run",

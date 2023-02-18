@@ -23,7 +23,7 @@ type Arg struct {
 	// HelpText contains text which briefly describes the usage of the argument.
 	// For style, generally the usage text should be limited to about 40 characters.
 	// Sentence case is recommended for the usage text.    Uppercase is recommended for the
-	// text of placeholders.  The placeholder is used in the synoposis for the argument as well
+	// text of placeholders.  The placeholder is used in the synopsis for the argument as well
 	// as error messages.
 	HelpText string
 
@@ -38,7 +38,7 @@ type Arg struct {
 	// Category specifies the arg category.  Categories are not used by the help screen.
 	Category string
 
-	// UsageText provides the usage for the argument.  If left blank, a succint synopsis
+	// UsageText provides the usage for the argument.  If left blank, a succinct synopsis
 	// is generated from the type of the argument's value
 	UsageText string
 
@@ -72,7 +72,7 @@ type Arg struct {
 	// ArgCount function.  For more information about Values, see the Value type
 	Value interface{}
 
-	// DefaultText provides a description of the detault value for the argument.  This is displayed
+	// DefaultText provides a description of the default value for the argument.  This is displayed
 	// on help screens but is otherwise unused
 	DefaultText string
 
@@ -116,7 +116,7 @@ type Arg struct {
 type ArgCounter interface {
 	// Take considers the argument and and returns whether it can be used.
 	// If the error EndOfArguments is returned, then the arg counter is done with
-	// taking argumens.  All other errors are treated as fatal.
+	// taking arguments.  All other errors are treated as fatal.
 	Take(arg string, possibleFlag bool) error
 
 	// Done is invoked to signal the end of arguments

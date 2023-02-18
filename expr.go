@@ -8,7 +8,7 @@ import (
 
 //counterfeiter:generate . Evaluator
 
-// Evaluator provides the evluation function for an expression operator.
+// Evaluator provides the evaluation function for an expression operator.
 type Evaluator interface {
 	// Evaluate performs the evaluation.  The v argument is the value of the prior
 	// expression operator.  The yield argument is used to pass one or more additional
@@ -43,14 +43,14 @@ type Expr struct {
 	// HelpText contains text which briefly describes the usage of the expression operator.
 	// For style, generally the usage text should be limited to about 40 characters.
 	// Sentence case is recommended for the usage text.    Uppercase is recommended for the
-	// text of placeholders.  The placeholder is used in the synoposis for the expression operator as well
+	// text of placeholders.  The placeholder is used in the synopsis for the expression operator as well
 	// as error messages.
 	HelpText string
 
 	// ManualText provides the text shown in the manual.  The default templates don't use this value
 	ManualText string
 
-	// UsageText provides the usage for the expression operator.  If left blank, a succint synopsis
+	// UsageText provides the usage for the expression operator.  If left blank, a succinct synopsis
 	// is generated from the type of the expression operator's arguments
 	UsageText string
 
@@ -494,7 +494,7 @@ func (f exprFlags) toRaw() RawParseFlag {
 	return flags
 }
 
-// VisibleExprs filters all operatorss in the expression operators category by whether
+// VisibleExprs filters all operators in the expression operators category by whether
 // they are not hidden
 func (e *exprCategory) VisibleExprs() []*Expr {
 	res := make([]*Expr, 0, len(e.Exprs))

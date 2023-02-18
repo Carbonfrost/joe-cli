@@ -148,7 +148,7 @@ var _ = Describe("Flag", func() {
 				}
 			})
 
-			Context("set within the subcommand", func() {
+			Context("set within the sub-command", func() {
 				BeforeEach(func() {
 					arguments = "app sub -f value"
 				})

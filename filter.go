@@ -26,10 +26,19 @@ type bitSet[T ~int, V any] struct {
 }
 
 const (
+	// AnyFlag filters the context for any flag
 	AnyFlag FilterModes = 1 << iota
+
+	// AnyArg filters the context for any arg
 	AnyArg
+
+	// AnyCommand filters the context for any command
 	AnyCommand
+
+	// Seen filters the context to detect if the current flag or arg has been seen
 	Seen
+
+	// RootCommand filters the context to detect if the current command is the root command
 	RootCommand
 
 	Anything = AnyFlag | AnyArg | AnyCommand

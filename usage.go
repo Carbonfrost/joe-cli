@@ -45,7 +45,7 @@ type Writer interface {
 	Reset()
 	// SetColorCapable changes whether or not the writer should use color and style control codes
 	SetColorCapable(bool)
-	// ResetColorCapable uses autodetect to apply the default
+	// ResetColorCapable uses auto detect to apply the default
 	ResetColorCapable()
 	// SetBackground updates the background color
 	SetBackground(Color)

@@ -49,14 +49,14 @@ type Flag struct {
 	// inferred start to end.
 	// For style, generally the usage text should be limited to about 40 characters.
 	// Sentence case is recommended for the usage text.    Uppercase is recommended for the
-	// text of placeholders.  The placeholder is used in the synoposis for the flag as well
+	// text of placeholders.  The placeholder is used in the synopsis for the flag as well
 	// as error messages.
 	HelpText string
 
 	// ManualText provides the text shown in the manual.  The default templates don't use this value
 	ManualText string
 
-	// UsageText provides the usage for the flag.  If left blank, a succint synopsis
+	// UsageText provides the usage for the flag.  If left blank, a succinct synopsis
 	// is generated from the type of the flag's value
 	UsageText string
 
@@ -96,7 +96,7 @@ type Flag struct {
 	// For more information about Values, see the Value type
 	Value interface{}
 
-	// DefaultText provides a description of the detault value for the flag.  This is displayed
+	// DefaultText provides a description of the default value for the flag.  This is displayed
 	// on help screens but is otherwise unused
 	DefaultText string
 

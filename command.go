@@ -70,7 +70,7 @@ type Command struct {
 	// ManualText provides the text shown in the manual.  The default templates don't use this value
 	ManualText string
 
-	// UsageText provides the usage for the command.  If left blank, a succint synopsis
+	// UsageText provides the usage for the command.  If left blank, a succinct synopsis
 	// is generated that lists each visible flag and arg
 	UsageText string
 
@@ -139,7 +139,7 @@ const (
 
 // ExecuteSubcommand finds and executes a sub-command.  This action is intended to be used
 // as the action on an argument.  The argument should be a list of strings, which represent
-// the subcommand to locate and execute and the arguments to use.  If used within the
+// the sub-command to locate and execute and the arguments to use.  If used within the
 // Uses pipeline of an argument, a prototype applies these requirements for you and other
 // good defaults to support completion and synopsis.  If no sub-command matches, an error
 // is generated, which you can intercept with custom handling using interceptErr.  The interceptErr function
@@ -268,7 +268,7 @@ func (c commandsByCategory) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
 }
 
-// Synopsis returns the UsageTexzt for the command or produces a succint representation
+// Synopsis returns the UsageText for the command or produces a succinct representation
 // that names each flag and arg
 func (c *Command) Synopsis() string {
 	return sprintSynopsis("CommandSynopsis", c.newSynopsis())
