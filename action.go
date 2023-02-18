@@ -125,7 +125,7 @@ type target interface {
 }
 
 type hooksSupport struct {
-	hooks *actionPipelines
+	hooks actionPipelines
 }
 
 type pipelinesSupport struct {
@@ -1417,31 +1417,19 @@ func (b beforePipeline) Execute(c *Context) error {
 }
 
 func (i *hooksSupport) hook(at Timing, a Action) error {
-	if i.hooks == nil {
-		i.hooks = &actionPipelines{}
-	}
 	i.hooks.add(at, a)
 	return nil
 }
 
 func (i *hooksSupport) executeBeforeHooks(target *Context) error {
-	if i.hooks == nil {
-		return nil
-	}
 	return target.Do(i.hooks.Before)
 }
 
 func (i *hooksSupport) executeAfterHooks(target *Context) error {
-	if i.hooks == nil {
-		return nil
-	}
 	return target.Do(i.hooks.After)
 }
 
 func (i *hooksSupport) executeInitializeHooks(target *Context) error {
-	if i.hooks == nil {
-		return nil
-	}
 	return target.Do(i.hooks.Initializers)
 }
 
