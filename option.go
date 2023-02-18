@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding"
 	"fmt"
-	"math/bits"
 	"os"
 	"sort"
 	"strings"
@@ -286,35 +285,10 @@ func (o Option) Execute(c *Context) (err error) {
 }
 
 func (m FeatureMap[T]) Pipeline(values T) Action {
-	var (
-		i     int
-		parts []Action
-	)
-
-	// Sort options in order of hamming weight so that any composite flag
-	// is invoked before single flags.
-	keys := make([]uint, len(m))
-	for k := range m {
-		keys[i] = uint(k)
-		i++
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return bits.OnesCount(keys[i]) > bits.OnesCount(keys[j])
-	})
-	options := uint(values)
-
-	for _, current := range keys {
-		if options&current == current {
-			action := m[T(current)]
-			parts = append(parts, action)
-			options &^= current
-		}
-	}
-
+	parts := decompose(m).items(values)
 	if len(parts) == 0 {
 		return ActionOf(nil)
 	}
-
 	return ActionPipeline(parts)
 }
 
