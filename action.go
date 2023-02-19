@@ -485,18 +485,16 @@ func SetContext(ctx context.Context) Action {
 
 // Timeout provides an action which adds a timeout to the context.
 func Timeout(timeout time.Duration) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.Before(func(c1 *Context) error {
-			ctx, cancel := context.WithTimeout(c1.Context, timeout)
-			return c1.Do(
-				SetContext(ctx),
-				After(ActionFunc(func(*Context) error {
-					cancel()
-					return nil
-				})),
-			)
-		})
-	})
+	return Before(ActionFunc(func(c1 *Context) error {
+		ctx, cancel := context.WithTimeout(c1.Context, timeout)
+		return c1.Do(
+			SetContext(ctx),
+			After(ActionFunc(func(*Context) error {
+				cancel()
+				return nil
+			})),
+		)
+	}))
 }
 
 // SetValue provides an action which sets the value of the flag or argument.
@@ -792,18 +790,16 @@ func HookAfter(pattern string, handler Action) Action {
 // is therefore to place cleanup into After and consider using a timeout.
 // The process will be terminated when the user presses ^C for the second time:
 func HandleSignal(s os.Signal) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.Before(func(c1 *Context) error {
-			ctx, stop := signal.NotifyContext(c1.Context, s)
-			return c1.Do(
-				SetContext(ctx),
-				After(ActionFunc(func(*Context) error {
-					stop()
-					return nil
-				})),
-			)
-		})
-	})
+	return Before(ActionFunc(func(c1 *Context) error {
+		ctx, stop := signal.NotifyContext(c1.Context, s)
+		return c1.Do(
+			SetContext(ctx),
+			After(ActionFunc(func(*Context) error {
+				stop()
+				return nil
+			})),
+		)
+	}))
 }
 
 // OptionalValue makes the flag's value optional, and when its value is not specified, the implied value

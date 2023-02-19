@@ -1125,10 +1125,8 @@ func (c *Context) initialize() error {
 	c.setTiming(InitialTiming)
 	return tunnel(
 		c,
-		func(c1 *Context) error { return c1.internal.initialize(c) },
-		func(c1 *Context) error {
-			return c1.internal.initializeDescendent(c)
-		},
+		(internalContext).initialize,
+		(internalContext).initializeDescendent,
 	)
 }
 
@@ -1153,11 +1151,11 @@ func (c *Context) copyWithoutReparent(t internalContext) *Context {
 	return res
 }
 
-func bubble(start *Context, self func(*Context) error, anc func(*Context) error) error {
+func bubble(start *Context, self, anc func(internalContext, *Context) error) error {
 	current := start
 	fn := self
 	for current != nil {
-		if err := fn(current); err != nil {
+		if err := fn(current.internal, start); err != nil {
 			return err
 		}
 		fn = anc
@@ -1166,7 +1164,7 @@ func bubble(start *Context, self func(*Context) error, anc func(*Context) error)
 	return nil
 }
 
-func tunnel(start *Context, self func(*Context) error, anc func(*Context) error) error {
+func tunnel(start *Context, self, anc func(internalContext, *Context) error) error {
 	lineage := start.Lineage()
 	fn := anc
 	for i := len(lineage) - 1; i >= 0; i-- {
@@ -1174,7 +1172,7 @@ func tunnel(start *Context, self func(*Context) error, anc func(*Context) error)
 		if i == 0 {
 			fn = self
 		}
-		if err := fn(current); err != nil {
+		if err := fn(current.internal, start); err != nil {
 			return err
 		}
 	}
@@ -1185,8 +1183,8 @@ func (c *Context) executeBefore() error {
 	c.setTiming(BeforeTiming)
 	return bubble(
 		c,
-		func(c1 *Context) error { return c1.internal.executeBefore(c) },
-		func(c1 *Context) error { return c1.internal.executeBeforeDescendent(c) },
+		(internalContext).executeBefore,
+		(internalContext).executeBeforeDescendent,
 	)
 }
 
@@ -1194,8 +1192,8 @@ func (c *Context) executeAfter() error {
 	c.setTiming(AfterTiming)
 	return tunnel(
 		c,
-		func(c1 *Context) error { return c1.internal.executeAfter(c) },
-		func(c1 *Context) error { return c1.internal.executeAfterDescendent(c) },
+		(internalContext).executeAfter,
+		(internalContext).executeAfterDescendent,
 	)
 }
 
