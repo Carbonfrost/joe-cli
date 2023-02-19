@@ -156,10 +156,10 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 		NArg:       -1,
 		Options:    DisableSplitting,
 		Completion: CompletionFunc(completeSubCommand),
-	}, AtTiming(ActionFunc(func(c *Context) error {
+	}, At(ActionTiming, ActionFunc(func(c *Context) error {
 		invoke := c.List("")
 		return subcommandCore(c, invoke, interceptErr)
-	}), ActionTiming))
+	})))
 }
 
 func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, error) (*Command, error)) error {

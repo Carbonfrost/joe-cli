@@ -255,7 +255,7 @@ func PrintLicense() Action {
 		Name:     "license",
 		HelpText: "Display the license and exit",
 		Options:  Exits,
-	}, AtTiming(RenderTemplate("License", nil), ActionTiming))
+	}, At(ActionTiming, RenderTemplate("License", nil)))
 }
 
 func defaultData(c *Context) interface{} {

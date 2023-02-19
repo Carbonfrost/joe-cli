@@ -390,7 +390,7 @@ func requiredOption(c *Context) error {
 
 func wrapWithExit(c *Context) error {
 	c.option().setInternalFlags(internalFlagExits, true)
-	return c.Do(AtTiming(ActionOf(doThenExit), ActionTiming))
+	return c.At(ActionTiming, ActionOf(doThenExit))
 }
 
 func mustExistOption(c *Context) error {
@@ -480,7 +480,7 @@ func noOption(c *Context) error {
 }
 
 func eachOccurrenceOpt(c1 *Context) error {
-	return c1.Do(AtTiming(middlewareFunc(func(c *Context, next Action) error {
+	return c1.At(ActionTiming, middlewareFunc(func(c *Context, next Action) error {
 		opt := func() *internalOption {
 			switch o := c.option().(type) {
 			case *Flag:
@@ -532,7 +532,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			}
 		}
 		return nil
-	}), ActionTiming))
+	}))
 }
 
 func allowFileReferenceOpt(c *Context) error {

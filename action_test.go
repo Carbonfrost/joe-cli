@@ -368,8 +368,8 @@ var _ = Describe("timings", func() {
 					Name: "f",
 					Uses: cli.Pipeline(
 						cli.Before(stub("before")),
-						cli.AtTiming(stub("validator"), cli.ValidatorTiming),
-						cli.AtTiming(stub("implicitValue"), cli.ImplicitValueTiming),
+						cli.At(cli.ValidatorTiming, stub("validator")),
+						cli.At(cli.ImplicitValueTiming, stub("implicitValue")),
 					),
 				},
 			},

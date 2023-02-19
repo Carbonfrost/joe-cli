@@ -181,13 +181,13 @@ const (
 	syntheticTiming
 
 	// ValidatorTiming represents timing that happens when values are being validated
-	// for an arg or flag.  This timing can be set with the AtTiming function which affects
+	// for an arg or flag.  This timing can be set with the At function which affects
 	// the sort order of actions so that validation occurs before all other actions in Before
 	// pipeline.  When the action runs, the actual timing will be BeforeTiming.
 	ValidatorTiming
 
 	// ImplicitValueTiming represents timing that happens when an implied value is being
-	// computed for an arg or flag.  This timing can be set with the AtTiming function
+	// computed for an arg or flag.  This timing can be set with the At function
 	// which affects the sort order of actions so that implied value timing occurs just before
 	// the action.  When the action runs, the actual timing will be BeforeTiming.
 	ImplicitValueTiming
@@ -287,7 +287,7 @@ var (
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
-			AtTiming(ActionFunc(checkForRequiredOption), justBeforeTiming),
+			At(justBeforeTiming, ActionFunc(checkForRequiredOption)),
 		),
 		Before: beforePipeline{
 			nil,
@@ -392,29 +392,30 @@ func failWithContextError(c *Context) error {
 // This function is used to wrap actions in the initialization pipeline that will be
 // deferred until later.
 func Before(a Action) Action {
-	return AtTiming(a, BeforeTiming)
+	return At(BeforeTiming, a)
 }
 
 // After revises the timing of the action so that it runs in the After pipeline.
 // This function is used to wrap actions in the initialization pipeline that will be
 // deferred until later.
 func After(a Action) Action {
-	return AtTiming(a, AfterTiming)
+	return At(AfterTiming, a)
 }
 
 // Initializer marks an action handler as being for the initialization phase.  When such a handler
 // is added to the Uses pipeline, it will automatically be associated correctly with the initialization
 // of the value.  Otherwise, this handler is not special
 func Initializer(a Action) Action {
-	return AtTiming(a, InitialTiming)
+	return At(InitialTiming, a)
 }
 
 // AtTiming wraps an action and causes it to execute at the given timing.
 func AtTiming(a Action, t Timing) Action {
-	return withTiming(a, t)
+	return At(t, a)
 }
 
-func withTiming(a Action, t Timing) Action {
+// At wraps an action and causes it to execute at the given timing.
+func At(t Timing, a Action) Action {
 	return withTimingWrapper{a, t}
 }
 
@@ -594,7 +595,7 @@ func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt
 }
 
 func bindTiming(a ActionFunc) Action {
-	return AtTiming(a, ActionTiming)
+	return At(ActionTiming, a)
 }
 
 func bindSupportedValue(v interface{}) interface{} {
@@ -693,7 +694,7 @@ func Enum(options ...string) Action {
 // When used on any flag in a mutex group, the other named flags are not allowed to be
 // used.
 func Mutex(names ...string) Action {
-	return AtTiming(ActionFunc(func(c *Context) error {
+	return At(ValidatorTiming, ActionFunc(func(c *Context) error {
 		if c.Seen("") {
 			alsoSeen := make([]string, 0, len(names))
 			for _, o := range names {
@@ -716,7 +717,7 @@ func Mutex(names ...string) Action {
 		}
 
 		return nil
-	}), ValidatorTiming)
+	}))
 }
 
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
@@ -970,12 +971,12 @@ func ImplicitValue(fn func(*Context) (string, bool)) Action {
 // Implicitly runs an action when there are zero occurrences (when an implicit value is
 // set)
 func Implicitly(a Action) Action {
-	return AtTiming(ActionFunc(func(c *Context) error {
+	return At(ImplicitValueTiming, ActionFunc(func(c *Context) error {
 		if c.Occurrences("") == 0 {
 			return c.Do(a)
 		}
 		return nil
-	}), ImplicitValueTiming)
+	}))
 }
 
 // Implies is used to set the implied value of another flag.   For example,
@@ -1475,14 +1476,14 @@ func (m middlewareFunc) ExecuteWithNext(c *Context, a Action) error {
 }
 
 func (v ValidatorFunc) Execute(c *Context) error {
-	return c.Do(AtTiming(ActionFunc(func(c *Context) error {
+	return c.At(ValidatorTiming, ActionFunc(func(c *Context) error {
 		occur := c.RawOccurrences("")
 		if err := v(occur); err != nil {
 			return argTakerError(c.Name(), "", err, nil)
 		}
 
 		return nil
-	}), ValidatorTiming))
+	}))
 }
 
 // actions provides a pipeline without flattening

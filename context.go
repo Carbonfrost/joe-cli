@@ -543,11 +543,16 @@ func (c *Context) SetValue(arg string) error {
 	return c.target().(option).Set(arg)
 }
 
+// At either stores or executes the action at the given timing.
+func (c *Context) At(t Timing, v Action) error {
+	return c.Do(At(t, v))
+}
+
 // Action either stores or executes the action. When called from the initialization or before pipelines, this
 // appends the action to the pipeline for the current flag, arg, or command/app.
 // When called from the action pipeline, this simply causes the action to be invoked immediately.
 func (c *Context) Action(v interface{}) error {
-	return c.Do(AtTiming(ActionOf(v), ActionTiming))
+	return c.At(ActionTiming, ActionOf(v))
 }
 
 // Before either stores or executes the action.  When called from the initialization pipeline, this appends
@@ -555,20 +560,20 @@ func (c *Context) Action(v interface{}) error {
 // from the Before pipeline, this causes the action to be invoked immediately.  If called
 // at any other time, this causes the action to be ignored and an error to be returned.
 func (c *Context) Before(v interface{}) error {
-	return c.Do(AtTiming(ActionOf(v), BeforeTiming))
+	return c.At(BeforeTiming, ActionOf(v))
 }
 
 // After either stores or executes the action.  When called from the initialization, before, or action pipelines,
 // this appends the action to the After pipeline for the current flag, arg, expression, or command/app.  If called
 // from the After pipeline itself, the action is invoked immediately
 func (c *Context) After(v interface{}) error {
-	return c.Do(AtTiming(ActionOf(v), AfterTiming))
+	return c.At(AfterTiming, ActionOf(v))
 }
 
 // Use can only be used during initialization timing, in which case the action is just invoked.  In other timings,
 // this is an error
 func (c *Context) Use(v interface{}) error {
-	return c.Do(AtTiming(ActionOf(v), InitialTiming))
+	return c.At(InitialTiming, ActionOf(v))
 }
 
 func (c *Context) act(v interface{}, desired Timing, optional bool) error {
@@ -1475,7 +1480,7 @@ func checkForRequiredOption(c *Context) error {
 	return nil
 }
 
-func executeOptionPipeline(ctx *Context) error{
+func executeOptionPipeline(ctx *Context) error {
 	return ctx.Do(Pipeline(ctx.target().uses().pipeline(ActionTiming), ctx.target().pipeline(ActionTiming)))
 }
 
