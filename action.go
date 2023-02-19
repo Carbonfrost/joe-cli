@@ -1230,6 +1230,7 @@ func (p *Prototype) copyToCommand(o *Command) {
 
 	o.Options |= p.Options
 	update(o.Data, p.Data)
+	o.Aliases = append(o.Aliases, p.Aliases...)
 }
 
 func (p *Prototype) copyToArg(o *Arg) {

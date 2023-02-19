@@ -1355,6 +1355,24 @@ var _ = Describe("Prototype", func() {
 		Entry("NArg", cli.Prototype{NArg: -2}, Fields{"NArg": Equal(-2)}),
 	)
 
+	DescribeTable("command-only examples", func(proto cli.Prototype, expected Fields) {
+		app := &cli.App{
+			Name: "any",
+			Commands: []*cli.Command{
+				{
+					Uses:    proto,
+					Aliases: []string{"r"},
+				},
+			},
+			Stderr: io.Discard,
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(app.Commands[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
+	},
+		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
+	)
+
 	It("ensures value inside nested prototype (addresses bug)", func() {
 		act := new(joeclifakes.FakeAction)
 		app := &cli.App{
