@@ -10,11 +10,8 @@ type BindingMap map[string][][]string
 
 type set struct {
 	*lookupSupport
-	shortOptions      map[rune]*internalOption
-	longOptions       map[string]*internalOption
-	positionalOptions []*internalOption
-	names             map[string]*internalOption
-	bindings          BindingMap
+	*bindingImpl
+	bindings BindingMap
 }
 
 type bindingImpl struct {
@@ -84,11 +81,14 @@ const (
 
 func newSet() *set {
 	result := &set{
-		names:             map[string]*internalOption{},
-		shortOptions:      map[rune]*internalOption{},
-		longOptions:       map[string]*internalOption{},
-		bindings:          BindingMap{},
-		positionalOptions: []*internalOption{},
+		bindingImpl: &bindingImpl{
+			names:        map[string]*internalOption{},
+			shortOptions: map[string]*internalOption{},
+			longOptions:  map[string]*internalOption{},
+
+			positionalOptions: []*internalOption{},
+		},
+		bindings: BindingMap{},
 	}
 	result.lookupSupport = &lookupSupport{result}
 	return result
@@ -416,12 +416,7 @@ func applyBindings(bindings BindingMap, names map[string]*internalOption) error 
 }
 
 func (s *set) parseBindings(args argList, flags RawParseFlag) error {
-	bindings, err := RawParse(args, &bindingImpl{
-		shortOptions:      setShortOptions(s.shortOptions),
-		longOptions:       s.longOptions,
-		positionalOptions: s.positionalOptions,
-		names:             s.names,
-	}, flags)
+	bindings, err := RawParse(args, s.bindingImpl, flags)
 	s.bindings = bindings
 	return err
 }
@@ -479,7 +474,7 @@ func (s *set) defineFlag(res *internalOption) {
 	}
 
 	for _, short := range res.short {
-		s.shortOptions[short] = res
+		s.shortOptions[string(short)] = res
 	}
 	for _, long := range res.long {
 		s.longOptions[long] = res
