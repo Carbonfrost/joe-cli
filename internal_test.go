@@ -51,25 +51,33 @@ func NewFlagSynopsis(long string) *flagSynopsis {
 }
 
 func InitializeFlag(f *Flag) *Context {
-	c := &Context{
-		Context: context.TODO(),
+	var captured *Context
+	app := &App{
+		Flags: []*Flag{
+			f,
+		},
 	}
-	c = c.copy(&optionContext{
-		option: f,
-	})
-	c.initialize()
-	return c
+	f.Use(ActionFunc(func(c *Context) error {
+		captured = c
+		return nil
+	}))
+	app.Initialize(context.Background())
+	return captured
 }
 
 func InitializeCommand(f *Command) *Context {
-	c := &Context{
-		Context: context.TODO(),
+	var captured *Context
+	app := &App{
+		Commands: []*Command{
+			f,
+		},
 	}
-	c = c.copy(&commandContext{
-		cmd: f,
-	})
-	c.initialize()
-	return c
+	f.Use(ActionFunc(func(c *Context) error {
+		captured = c
+		return nil
+	}))
+	app.Initialize(context.Background())
+	return captured
 }
 
 // DefaultFS is the FS that is expected to be created when no

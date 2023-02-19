@@ -598,8 +598,7 @@ func (c *Context) Target() interface{} {
 }
 
 func (c *Context) target() target {
-	// This is to avoid complexity in test setup; internal should never actually be nil
-	if c == nil || c.internal == nil {
+	if c == nil {
 		return nil
 	}
 	return c.internal.target()
@@ -703,10 +702,6 @@ func debugTemplates() bool {
 // Name gets the name of the context, which is the name of the command, arg, flag, or expression
 // operator in use
 func (c *Context) Name() string {
-	// This is to avoid complexity in test setup; internal should never actually be nil
-	if c.internal == nil {
-		return ""
-	}
 	return c.internal.Name()
 }
 
@@ -1132,10 +1127,6 @@ func (c *Context) initialize() error {
 		c,
 		func(c1 *Context) error { return c1.internal.initialize(c) },
 		func(c1 *Context) error {
-			// Note: this check is only necessary to simplify test setup
-			if c1.internal == nil {
-				return nil
-			}
 			return c1.internal.initializeDescendent(c)
 		},
 	)
