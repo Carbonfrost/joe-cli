@@ -27,6 +27,7 @@ var _ = Describe("timings", func() {
 		var (
 			captured  *cli.Context
 			before    cli.Action
+			uses      cli.Action
 			flags     []*cli.Flag
 			commands  []*cli.Command
 			arguments []string
@@ -40,6 +41,7 @@ var _ = Describe("timings", func() {
 				Action:   act,
 				Flags:    flags,
 				Commands: commands,
+				Uses:     uses,
 			}
 			err := app.RunContext(context.TODO(), arguments)
 			Expect(err).NotTo(HaveOccurred())
@@ -52,6 +54,7 @@ var _ = Describe("timings", func() {
 			type privateKey string
 
 			BeforeEach(func() {
+				uses = nil
 				arguments = []string{"app"}
 				before = cli.ContextValue(privateKey("mykey"), "context value")
 			})
@@ -64,21 +67,83 @@ var _ = Describe("timings", func() {
 				Expect(captured.Value(privateKey("mykey"))).To(BeIdenticalTo("context value"))
 			})
 
+			Context("when defined on the app", func() {
+
+				var (
+					beforeFlag, afterFlag, flagAct, commandUses *joeclifakes.FakeAction
+				)
+
+				BeforeEach(func() {
+					uses = cli.ContextValue(privateKey("app"), "has value")
+					beforeFlag = new(joeclifakes.FakeAction)
+					afterFlag = new(joeclifakes.FakeAction)
+					flagAct = new(joeclifakes.FakeAction)
+					commandUses = new(joeclifakes.FakeAction)
+
+					arguments = []string{"app", "--flag=0"}
+					flags = []*cli.Flag{
+						{
+							Name:   "flag",
+							Before: beforeFlag,
+							After:  afterFlag,
+							Action: flagAct,
+						},
+					}
+					commands = []*cli.Command{
+						{
+							Name: "non",
+							Uses: commandUses,
+						},
+					}
+				})
+
+				It("makes value available to before flag action", func() {
+					captured := beforeFlag.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("app"))).To(BeIdenticalTo("has value"))
+				})
+
+				It("makes value available to after flag action", func() {
+					captured := afterFlag.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("app"))).To(BeIdenticalTo("has value"))
+				})
+
+				It("makes value available to flag action", func() {
+					captured := flagAct.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("app"))).To(BeIdenticalTo("has value"))
+				})
+
+				It("makes value available to command uses action", func() {
+					captured := commandUses.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("app"))).To(BeIdenticalTo("has value"))
+				})
+			})
+
 			Context("when defined on a command", func() {
 
 				var (
-					beforeFlag, afterFlag, flagAct *joeclifakes.FakeAction
+					beforeFlag, afterFlag, flagAct, afterUses, beforeCommand, afterCommand, commandAct *joeclifakes.FakeAction
 				)
 
 				BeforeEach(func() {
 					beforeFlag = new(joeclifakes.FakeAction)
 					afterFlag = new(joeclifakes.FakeAction)
 					flagAct = new(joeclifakes.FakeAction)
+					afterUses = new(joeclifakes.FakeAction)
+					beforeCommand = new(joeclifakes.FakeAction)
+					afterCommand = new(joeclifakes.FakeAction)
+					commandAct = new(joeclifakes.FakeAction)
 					arguments = []string{"app", "sub", "--flag=0"}
+					flags = nil
 					commands = []*cli.Command{
 						{
 							Name: "sub",
-							Uses: cli.ContextValue(privateKey("command"), "context value"),
+							Uses: cli.Pipeline(
+								cli.ContextValue(privateKey("command"), "context value"),
+								afterUses,
+							),
+							Before: beforeCommand,
+							After:  afterCommand,
+							Action: commandAct,
 							Flags: []*cli.Flag{
 								{
 									Name:   "flag",
@@ -91,12 +156,32 @@ var _ = Describe("timings", func() {
 					}
 				})
 
-				It("makes value available to flag action", func() {
+				It("makes value available to subsequent uses", func() {
+					captured := afterUses.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to before", func() {
+					captured := beforeCommand.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to after", func() {
+					captured := afterCommand.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to command action", func() {
+					captured := commandAct.ExecuteArgsForCall(0)
+					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to before flag action", func() {
 					captured := beforeFlag.ExecuteArgsForCall(0)
 					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
 				})
 
-				It("makes value available to flag action", func() {
+				It("makes value available to after flag action", func() {
 					captured := afterFlag.ExecuteArgsForCall(0)
 					Expect(captured.Value(privateKey("command"))).To(BeIdenticalTo("context value"))
 				})
@@ -112,6 +197,7 @@ var _ = Describe("timings", func() {
 		Context("SetValue", func() {
 			BeforeEach(func() {
 				arguments = []string{"app"}
+				uses = nil
 				flags = []*cli.Flag{
 					{
 						Name:   "int",
@@ -133,6 +219,7 @@ var _ = Describe("timings", func() {
 
 			BeforeEach(func() {
 				initial := true
+				uses = nil
 				flagAct = new(joeclifakes.FakeAction)
 				flags = []*cli.Flag{
 					{

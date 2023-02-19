@@ -720,6 +720,14 @@ func initializeSubcommands(ctx *Context) error {
 	return nil
 }
 
+func copyContextToParent(ctx *Context) error {
+	p := ctx.Parent()
+	if p != nil {
+		p.Context = ctx.Context
+	}
+	return nil
+}
+
 func (c *commandContext) executeBeforeDescendent(ctx *Context) error {
 	return c.cmd.executeBeforeHooks(ctx)
 }
