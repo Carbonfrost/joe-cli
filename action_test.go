@@ -1676,6 +1676,37 @@ var _ = Describe("PreventSetup", func() {
 	)
 })
 
+var _ = Describe("HookBefore", func() {
+
+	DescribeTable("errors",
+		func(a *cli.App) {
+			err := a.RunContext(context.Background(), []string{"app", "-f", "_"})
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(cli.ErrTimingTooLate))
+		},
+		Entry(
+			"HookBefore in action",
+			&cli.App{
+				Action: cli.HookBefore("*", nil),
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+					},
+				},
+			}),
+		Entry(
+			"HookBefore delegated to parent in action",
+			&cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:   "f",
+						Action: cli.Implies("other", ""), // works by using a hook on parent command
+					},
+				},
+			}),
+	)
+})
+
 var _ = Describe("Customize", func() {
 	DescribeTable("examples",
 		func(uses cli.Action, expected func(app *cli.App)) {

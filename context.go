@@ -610,7 +610,11 @@ func (c *Context) target() target {
 // Hook registers a hook that runs for any context in the given timing.
 func (c *Context) Hook(timing Timing, handler Action) error {
 	if h, ok := c.hookable(); ok {
-		return h.hook(timing, handler)
+		if c.Timing() <= timing {
+			return h.hook(timing, handler)
+		}
+
+		return fmt.Errorf("%s: %w", errCantHook, ErrTimingTooLate)
 	}
 	return errCantHook
 }
