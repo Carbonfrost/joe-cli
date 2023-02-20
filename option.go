@@ -536,13 +536,11 @@ func eachOccurrenceOpt(c1 *Context) error {
 }
 
 func allowFileReferenceOpt(c *Context) error {
-	f := c.FS
-	return c.Do(Transform(TransformFileReference(f, true)))
+	return c.Do(Transform(TransformFileReference(c.actualFS(), true)))
 }
 
 func fileReferenceOpt(c *Context) error {
-	f := c.FS
-	return c.Do(Transform(TransformFileReference(f, false)))
+	return c.Do(Transform(TransformFileReference(c.actualFS(), false)))
 }
 
 func sortedFlagsOpt(c *Context) error {

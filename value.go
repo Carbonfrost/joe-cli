@@ -640,7 +640,7 @@ func (v *NameValue) AllowFileReferencesFlag() Prototype {
 func (v *NameValue) Initializer() Action {
 	if v.AllowFileReference {
 		return ActionFunc(func(c *Context) error {
-			return c.Do(ValueTransform(TransformFileReference(c.FS, true)))
+			return c.Do(ValueTransform(TransformFileReference(c.actualFS(), true)))
 		})
 	}
 	return nil
