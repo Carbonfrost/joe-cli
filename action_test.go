@@ -2496,7 +2496,7 @@ var _ = Describe("FromFilePath", func() {
 			Args: []*cli.Arg{
 				{
 					Name:  "f",
-					Uses:  cli.FromFilePath("src/a/b.txt"),
+					Uses:  cli.FromFilePath(nil, "src/a/b.txt"),
 					Value: &actual,
 				},
 			},

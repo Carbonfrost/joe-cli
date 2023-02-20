@@ -1467,7 +1467,7 @@ func fixupOptionInternals(c *Context) error {
 func setupOptionFromEnv(c *Context) error {
 	return c.Do(
 		FromEnv(c.option().envVars()...),
-		FromFilePath(c.option().filePath()),
+		FromFilePath(nil, c.option().filePath()),
 	)
 }
 

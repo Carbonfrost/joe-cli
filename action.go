@@ -1155,9 +1155,11 @@ func FromEnv(vars ...string) Action {
 // If the file does not exist or fails to load, the error is
 // silently ignored.
 // Alternatively, you can set the Flag or Arg field FilePath.
-func FromFilePath(filePath string) Action {
+func FromFilePath(f fs.FS, filePath string) Action {
 	return Implicitly(ActionFunc(func(c *Context) error {
-		f := c.actualFS()
+		if f == nil {
+			f = c.actualFS()
+		}
 		if len(filePath) > 0 {
 			data, err := fs.ReadFile(f, filePath)
 			if err == nil {
