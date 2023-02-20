@@ -1131,24 +1131,31 @@ func TransformFileReference(f fs.FS, usingAtSyntax bool) TransformFunc {
 func FromEnv(vars ...string) Action {
 	return Implicitly(ActionFunc(func(c *Context) error {
 		// Name should be long name transformed into SCREAMING_SNAKE_CASE.
-		name := c.option().name()
-		if f, ok := c.Target().(*Flag); ok {
-			name = f.longNamePreferred()
-		}
-
-		name = strings.Trim(name, "-")
-		name = strings.ReplaceAll(name, "-", "_")
-		name = strings.ToUpper(name)
-
+		name := flagScreamingSnakeCase(c.option())
 		for _, v := range vars {
 			envVar := expandEnvVarName(v, name)
-			if val, ok := os.LookupEnv(envVar); ok {
+
+			// Env vars have to be present and set explicitly to non-empty string.
+			// This addresses the case where Boolean flags are typically interpreted
+			// as true even when empty (i.e. --bool is the same as -bool=true and perhaps
+			// surprisingly --bool= ).  But ENV_VAR= is not treated as true if present.
+			if val := os.Getenv(envVar); val != "" {
 				c.SetValue(val)
 				return nil
 			}
 		}
 		return nil
 	}))
+}
+
+func flagScreamingSnakeCase(o option) string {
+	name := o.name()
+	if f, ok := o.(*Flag); ok {
+		name = f.longNamePreferred()
+	}
+	name = strings.Trim(name, "-")
+	name = strings.ReplaceAll(name, "-", "_")
+	return strings.ToUpper(name)
 }
 
 // FromFilePath loads the value from the given file path.

@@ -2448,6 +2448,7 @@ var _ = Describe("FromEnv", Ordered, func() {
 		"APP__FLAG_NAME":    "app_dbl_flag_name",
 		"FLAG_NAME__APP":    "flag_name_dbl_app",
 		"APP_FLAG_NAME_APP": "app_flag_name_app",
+		"EMPTY_VAR":         "",
 	})
 
 	DescribeTable("examples", func(pattern string, expected string) {
@@ -2476,6 +2477,25 @@ var _ = Describe("FromEnv", Ordered, func() {
 		Entry("flag name template start", "{}_APP", "flag_name_dbl_app"),
 		Entry("flag name template middle", "APP{}APP", "app_flag_name_app"),
 	)
+
+	It("empty env var is not treated as true (addresses a bug)", func() {
+		var value bool
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:  "f",
+					Uses:  cli.FromEnv("EMPTY_VAR"),
+					Value: &value,
+				},
+			},
+			Action: func() {},
+		}
+		args, _ := cli.Split("app")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value).To(BeFalse())
+	})
 })
 
 var _ = Describe("FromFilePath", func() {
