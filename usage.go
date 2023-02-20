@@ -246,7 +246,12 @@ func DisplayHelpScreen(command ...string) Action {
 
 // PrintVersion displays the version string.  The VersionTemplate provides the Go template
 func PrintVersion() Action {
-	return RenderTemplate("Version", nil)
+	return Pipeline(&Prototype{
+		Name:     "version",
+		HelpText: "Print the build version then exit",
+		Value:    Bool(),
+		Options:  Exits,
+	}, At(ActionTiming, RenderTemplate("Version", nil)))
 }
 
 // PrintLicense displays the license.  The LicenseTemplate provides the Go template

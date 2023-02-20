@@ -1514,17 +1514,14 @@ func doThenExit(a Action) Action {
 
 func defaultVersionFlag() *Flag {
 	return &Flag{
-		Name:     "version",
-		HelpText: "Print the build version then exit",
-		Value:    Bool(),
-		Options:  Exits,
-		Action:   PrintVersion(),
+		Uses: PrintVersion(),
 	}
 }
 
 func defaultHelpFlag() *Flag {
 	return &Flag{
 		Name:     "help",
+		Aliases:  []string{"h"},
 		HelpText: "Display this help screen then exit",
 		Value:    Bool(),
 		Options:  Exits,
@@ -1549,9 +1546,7 @@ func defaultHelpCommand() *Command {
 }
 func defaultVersionCommand() *Command {
 	return &Command{
-		Name:     "version",
-		HelpText: "Print the build version then exit",
-		Action:   PrintVersion(),
+		Uses: PrintVersion(),
 	}
 }
 

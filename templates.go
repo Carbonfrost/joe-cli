@@ -250,7 +250,7 @@ Expressions:
 			{{- " {" -}}
 				{{- range $i, $f := . -}}
 					{{- if $i }} | {{ end -}}
-					{{ template "FlagSynopsis" $f }}
+					{{ template "FlagSynopsisPrimary" $f }}
 				{{- end -}}
 			{{ "}" -}}
 		{{ end -}}

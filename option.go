@@ -389,7 +389,7 @@ func requiredOption(c *Context) error {
 }
 
 func wrapWithExit(c *Context) error {
-	c.option().setInternalFlags(internalFlagExits, true)
+	c.target().setInternalFlags(internalFlagExits, true)
 	return c.At(ActionTiming, ActionOf(doThenExit))
 }
 

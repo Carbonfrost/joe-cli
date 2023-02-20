@@ -137,7 +137,7 @@ func ignoringDefaults(v interface{}) interface{} {
 	c := v.([]cli.CompletionItem)
 	res := make([]cli.CompletionItem, 0, len(c))
 	for _, item := range c {
-		if item.Value == "--help" || item.Value == "--version" {
+		if item.Value == "--help" || item.Value == "-h" || item.Value == "--version" {
 			continue
 		}
 		res = append(res, item)
