@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.3.1 (February 20, 2023)
+
+### New Features
+
+* Allow FS as argument to `FromFilePath` (e5dc8b3)
+* Introduce `TransformFunc` as API (218c806)
+* Allow `PrintVersion` to be used as an initializer; add -h alias (`4291c94`)
+* Introduce `At` (to eventually replace `AtTiming`) (5218990)
+
+### Bug fixes and improvements
+
+* Updates to documentation (c30d8fc)
+* Improve semantics of `SetData` to make it consistent on all targets (64127e5)
+* Bug fix: Avoid possible panics if context FS is unset in some places (2da44ec)
+* Bug fix: Treat explicitly set empty value as false when a flag is initialized via an environment variable  (755b4e0)
+* Bug fix: Use primary flag synopsis in action group on the help screen (4291c94)
+* Bug fix: copy `Aliases` to command in prototype (7756b81)
+* Bug fix: check `HookBefore` used at correct timing (2de5a86)
+* Bug fix: Ensure context value available in the proper context (2da4d23)
+* Optimizations:
+    * Refactor to move context pipeline behavior into global definitions (f1bd86b)
+    * Set - use binding impl (3ea1e1f)
+    * Remove closure from bubble, tunnel; from actions (ec9f71b)
+    * Remove non-necessary code that simplifies test setup (cc80928)
+    * Use decompose in `FeatureMap` to reduce code clones (147508d)
+    * Remove unecessary deferred initialization in `hooksSupport` (748b3e3)
+    * Remove redundant invocation of `Pipeline` (1d3fb24)
+    * Change `copy(_, false)` to `copyWithoutReparent` (f7c7931)
+    * Increase test coverage (ed0d25f)
+* Address various issues of style (f9b1234)
+
 ## v0.3.0 (February 15, 2023)
 
 ### New Features
