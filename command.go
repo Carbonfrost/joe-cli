@@ -573,12 +573,12 @@ func (c *Command) newSynopsis() *commandSynopsis {
 
 // SetData sets the specified metadata on the command
 func (c *Command) SetData(name string, v interface{}) {
-	c.ensureData()[name] = v
+	c.Data = setData(c.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
 func (c *Command) LookupData(name string) (interface{}, bool) {
-	v, ok := c.ensureData()[name]
+	v, ok := c.Data[name]
 	return v, ok
 }
 
@@ -604,13 +604,6 @@ func (c *Command) setDescription(name interface{}) {
 
 func (c *Command) setCompletion(cv Completion) {
 	c.Completion = cv
-}
-
-func (c *Command) ensureData() map[string]interface{} {
-	if c.Data == nil {
-		c.Data = map[string]interface{}{}
-	}
-	return c.Data
 }
 
 func (c *Command) setInternalFlags(f internalFlags, v bool) {

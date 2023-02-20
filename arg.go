@@ -346,16 +346,12 @@ func (a *Arg) value() interface{} {
 // SetData sets the specified metadata on the arg.  When v is nil, the corresponding
 // metadata is deleted
 func (a *Arg) SetData(name string, v interface{}) {
-	if v == nil {
-		delete(a.ensureData(), name)
-		return
-	}
-	a.ensureData()[name] = v
+	a.Data = setData(a.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
 func (a *Arg) LookupData(name string) (interface{}, bool) {
-	v, ok := a.ensureData()[name]
+	v, ok := a.Data[name]
 	return v, ok
 }
 
@@ -377,13 +373,6 @@ func (a *Arg) setHelpText(value string) {
 
 func (a *Arg) setCompletion(c Completion) {
 	a.Completion = c
-}
-
-func (a *Arg) ensureData() map[string]interface{} {
-	if a.Data == nil {
-		a.Data = map[string]interface{}{}
-	}
-	return a.Data
 }
 
 func (a *Arg) pipeline(t Timing) interface{} {

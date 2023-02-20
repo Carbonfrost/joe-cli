@@ -1789,7 +1789,7 @@ var _ = Describe("Customize", func() {
 				{
 					Name: "flag",
 					Uses: cli.Customize("", cli.FlagSetup(func(f *cli.Flag) {
-						f.Data["ok"] = "2"
+						f.SetData("ok", "2")
 					})),
 				},
 			},

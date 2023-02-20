@@ -313,16 +313,12 @@ func (f *flagSynopsis) withLongAndShort(long []string, short []rune) *flagSynops
 // SetData sets the specified metadata on the flag.  When v is nil, the corresponding
 // metadata is deleted
 func (f *Flag) SetData(name string, v interface{}) {
-	if v == nil {
-		delete(f.ensureData(), name)
-		return
-	}
-	f.ensureData()[name] = v
+	f.Data = setData(f.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
 func (f *Flag) LookupData(name string) (interface{}, bool) {
-	v, ok := f.ensureData()[name]
+	v, ok := f.Data[name]
 	return v, ok
 }
 
@@ -353,13 +349,6 @@ func (f *Flag) setOptional() {
 func (f *Flag) setOptionalValue(v interface{}) {
 	f.option.flags |= internalFlagOptional
 	f.option.optionalValue = v
-}
-
-func (f *Flag) ensureData() map[string]interface{} {
-	if f.Data == nil {
-		f.Data = map[string]interface{}{}
-	}
-	return f.Data
 }
 
 func (f *Flag) ensureInternalOpt() {

@@ -1503,6 +1503,20 @@ func (t TransformFunc) Execute(c *Context) error {
 	return c.Do(Transform(t))
 }
 
+func setData(data map[string]interface{}, name string, v interface{}) map[string]interface{} {
+	if v == nil {
+		delete(data, name)
+		return data
+	}
+	if data == nil {
+		return map[string]interface{}{
+			name: v,
+		}
+	}
+	data[name] = v
+	return data
+}
+
 // actions provides a pipeline without flattening
 func actions(actions ...Action) ActionPipeline {
 	return ActionPipeline(actions)

@@ -24,7 +24,6 @@ type EvaluatorFunc func(*Context, interface{}, func(interface{}) error) error
 // A well-known implementation of an expression is in the Unix `find` command where
 // each file is processed through a series of operands to filter a list of files.
 type Expr struct {
-
 	// Name provides the name of the expression operator. This value must be set, and it is used to access
 	// the expression operator's value via the context
 	Name string
@@ -422,12 +421,12 @@ func (e *Expr) actualArgs() []*Arg {
 
 // SetData sets the specified metadata on the expression operator
 func (e *Expr) SetData(name string, v interface{}) {
-	e.ensureData()[name] = v
+	e.Data = setData(e.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
 func (e *Expr) LookupData(name string) (interface{}, bool) {
-	v, ok := e.ensureData()[name]
+	v, ok := e.Data[name]
 	return v, ok
 }
 
@@ -445,13 +444,6 @@ func (e *Expr) SetManualText(name string) {
 
 func (e *Expr) SetDescription(value string) {
 	e.Description = value
-}
-
-func (e *Expr) ensureData() map[string]interface{} {
-	if e.Data == nil {
-		e.Data = map[string]interface{}{}
-	}
-	return e.Data
 }
 
 func (e *Expr) internalFlags() exprFlags {

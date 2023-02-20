@@ -244,14 +244,7 @@ func (a *App) createRoot() *Command {
 
 // SetData sets the specified metadata on the app
 func (a *App) SetData(name string, v interface{}) {
-	a.ensureData()[name] = v
-}
-
-func (a *App) ensureData() map[string]interface{} {
-	if a.Data == nil {
-		a.Data = map[string]interface{}{}
-	}
-	return a.Data
+	a.Data = setData(a.Data, name, v)
 }
 
 func (a *App) runContextCore(c context.Context, args []string) (*Context, error) {
