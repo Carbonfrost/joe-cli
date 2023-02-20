@@ -38,7 +38,7 @@ type internalOption struct {
 	narg          interface{}
 	optionalValue interface{} // set when blank and optional
 	flags         internalFlags
-	transform     transformFunc
+	transform     TransformFunc
 }
 
 type argCountError int

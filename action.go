@@ -104,6 +104,10 @@ type Prototype struct {
 // the explicit raw occurrence values for a flag or argument.
 type ValidatorFunc func(s []string) error
 
+// TransformFunc implements a transformation from raw occurrences, which customizes
+// the behavior of parsing. The function can return string, []byte, or io.Reader.
+type TransformFunc func(rawOccurrences []string) (interface{}, error)
+
 type hookable interface {
 	hook(at Timing, handler Action) error
 }
@@ -1033,7 +1037,7 @@ func Customize(pattern string, a Action) Action {
 // If it doesn't, then bytes or readers are read in and treated as a string and the
 // usual Set method is used.  See also: FileReference and AllowFileReference, which provide
 // common transforms.
-func Transform(fn func([]string) (interface{}, error)) Action {
+func Transform(fn TransformFunc) Action {
 	return ActionFunc(func(c *Context) error {
 		c.option().setTransform(fn)
 		return nil
@@ -1044,7 +1048,7 @@ func Transform(fn func([]string) (interface{}, error)) Action {
 // NameValue, NameValues, or Map.  The first occurrence of an unescaped equal sign is treated
 // as the delimiter between the name and value (as with any of the types just mentioned).
 // The value portion is transformed using the logic of the transform function.
-func ValueTransform(valueFn func([]string) (interface{}, error)) Action {
+func ValueTransform(valueFn TransformFunc) Action {
 	return Transform(func(raw []string) (interface{}, error) {
 		name, value, hasValue := splitValuePair(raw[1])
 		if hasValue {
@@ -1083,7 +1087,7 @@ func transformOutputToString(v interface{}) (string, error) {
 
 // TransformFileReference obtains the transform for the given file system and whether the
 // prefix @ is required.
-func TransformFileReference(f fs.FS, usingAtSyntax bool) func([]string) (interface{}, error) {
+func TransformFileReference(f fs.FS, usingAtSyntax bool) TransformFunc {
 	if usingAtSyntax {
 		return func(raw []string) (interface{}, error) {
 			readers := make([]io.Reader, len(raw)-1)
@@ -1484,6 +1488,10 @@ func (v ValidatorFunc) Execute(c *Context) error {
 
 		return nil
 	}))
+}
+
+func (t TransformFunc) Execute(c *Context) error {
+	return c.Do(Transform(t))
 }
 
 // actions provides a pipeline without flattening

@@ -422,7 +422,7 @@ func (a *Arg) ensureInternalOpt() {
 	}
 }
 
-func (a *Arg) setTransform(fn transformFunc) {
+func (a *Arg) setTransform(fn TransformFunc) {
 	a.option.transform = fn
 }
 
