@@ -14,7 +14,10 @@ import (
 	"golang.org/x/term"
 )
 
-// Context provides the context in which the app, command, or flag is executing or initializing
+// Context provides the context in which the app, command, or flag is executing or initializing.
+// Context is used to faciliate interactions with the Joe-cli application context
+// that is currently being initialized or executed.  It wraps context.Context and
+// can be obtained from FromContext
 type Context struct {
 	context.Context
 
@@ -96,6 +99,9 @@ type contextPathPattern struct {
 	parts []string
 }
 
+// contextKeyType is the type of the key referencing *Context
+type contextKeyType struct{}
+
 const (
 	taintSetupKey = "_taintSetup"
 	synopsisKey   = "_Synopsis"
@@ -111,6 +117,17 @@ var (
 	// when the pipeline is later than requested by the action.
 	ErrTimingTooLate = errors.New("too late for requested action timing")
 )
+
+// FromContext obtains the Context, which faciliates interactions with the application
+// that is initializing or running. If the argument is nil, the return value will be.
+// Otherwise, if it can't be found, it panics
+func FromContext(ctx context.Context) *Context {
+	if ctx == nil {
+		return nil
+	}
+	var key contextKeyType
+	return ctx.Value(key).(*Context)
+}
 
 func newContextPathPattern(pat string) contextPathPattern {
 	return contextPathPattern{strings.Fields(pat)}
@@ -452,6 +469,8 @@ func (c *Context) Value(name interface{}) interface{} {
 	switch v := name.(type) {
 	case rune, string, nil, *Arg, *Flag, int:
 		return c.lookupSupport.Value(c.nameToString(v))
+	case contextKeyType:
+		return c
 	default:
 		return c.Context.Value(name)
 	}

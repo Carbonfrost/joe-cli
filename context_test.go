@@ -580,6 +580,54 @@ var _ = Describe("Context", func() {
 
 })
 
+var _ = Describe("FromContext", func() {
+	var pass func()
+	DescribeTable("examples", func(action any) {
+		var called bool
+		pass = func() {
+			called = true
+		}
+		app := &cli.App{
+			Action: action,
+		}
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(called).To(BeTrue(), "pass() must be called")
+	},
+		Entry(
+			"trivial conversion",
+			func(c *cli.Context) error {
+				Expect(cli.FromContext(c)).To(BeIdenticalTo(c))
+				pass()
+				return nil
+			},
+		),
+		Entry(
+			"indirect conversion",
+			func(c context.Context) error {
+				Expect(cli.FromContext(c)).NotTo(BeNil())
+				pass()
+				return nil
+			},
+		),
+		Entry(
+			"wrapped with value",
+			func(c context.Context) error {
+				Expect(cli.FromContext(context.WithValue(c, "someKey", ""))).NotTo(BeNil())
+				pass()
+				return nil
+			},
+		),
+		Entry(
+			"panic if missing",
+			func() error {
+				Expect(func() { cli.FromContext(context.TODO()) }).To(Panic())
+				pass()
+				return nil
+			},
+		),
+	)
+})
+
 var _ = Describe("ContextPath", func() {
 
 	DescribeTable("Match",
