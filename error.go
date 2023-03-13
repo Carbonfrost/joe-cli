@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 // ErrorCode provides common error codes in the CLI framework.
@@ -297,6 +298,22 @@ func argsMustPrecedeExprs(arg string) error {
 		Value: arg,
 		Err:   fmt.Errorf("arguments must precede expressions: %q", arg),
 	}
+}
+
+func formatStrconvError(err error, value string) error {
+	if e, ok := err.(*strconv.NumError); ok {
+		switch e.Err {
+		case strconv.ErrRange:
+			err = fmt.Errorf("value out of range: %s", value)
+		case strconv.ErrSyntax:
+			if value == "" {
+				err = fmt.Errorf("empty string is not a valid number")
+			} else {
+				err = fmt.Errorf("not a valid number: %s", value)
+			}
+		}
+	}
+	return err
 }
 
 func optionName(name interface{}) string {

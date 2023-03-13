@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"net"
 	"net/url"
@@ -61,6 +62,15 @@ type NameValue struct {
 	// is automatically loaded as a value.
 	AllowFileReference bool
 }
+
+// Hex represents an integer that parses from the hex syntax
+type Hex int
+
+// Octal represents an integer that parses from the octal syntax
+type Octal int
+
+// ByteLength represents number of bytes
+type ByteLength int
 
 // Conventions for values
 
@@ -250,6 +260,48 @@ func NameValues(namevalue ...string) *[]*NameValue {
 	return &res
 }
 
+var (
+	byteLengthPat = regexp.MustCompile(`([0-9.]+)\s*([kKMGTPEZYRQ]i?)?B`)
+	magnitude     = map[string]int{
+		"":  0,
+		"k": 1,
+		"K": 1,
+		"M": 2,
+		"G": 3,
+		"T": 4,
+		"P": 5,
+		"E": 6,
+		"Z": 7,
+		"Y": 8,
+		"R": 9,
+		"Q": 10,
+	}
+)
+
+// ParseByteLength from a string
+func ParseByteLength(s string) (int, error) {
+	s = strings.TrimSpace(s)
+	if !strings.HasSuffix(s, "B") {
+		return strconv.Atoi(s)
+	}
+
+	sub := byteLengthPat.FindSubmatch([]byte(s))
+	if len(sub) == 0 {
+		return -1, fmt.Errorf("invalid byte length")
+	}
+	if len(sub[2]) == 0 {
+		return strconv.Atoi(string(sub[1]))
+	}
+
+	num, _ := strconv.ParseFloat(string(sub[1]), 64)
+	var base float64 = 1000
+	if strings.HasSuffix(string(sub[2]), "i") {
+		base = 1024
+	}
+	magnitude := magnitude[string(sub[2][0])]
+	return int(num * math.Pow(base, float64(magnitude))), nil
+}
+
 // Set will set the destination value if supported.  If the destination value is not supported,
 // this panics.  See the overview for Value for which destination types are supported.
 // No additional splitting is performed on arguments.
@@ -406,15 +458,7 @@ func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool))
 // setCore sets the variable; no additional splitting is applied
 func setCore(dest interface{}, disableSplitting bool, value string) error {
 	strconvErr := func(err error) error {
-		if e, ok := err.(*strconv.NumError); ok {
-			switch e.Err {
-			case strconv.ErrRange:
-				err = fmt.Errorf("value out of range: %s", value)
-			case strconv.ErrSyntax:
-				err = fmt.Errorf("not a valid number: %s", value)
-			}
-		}
-		return err
+		return formatStrconvError(err, value)
 	}
 	values := func() []string {
 		if disableSplitting {
@@ -589,6 +633,35 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		return p.UnmarshalText([]byte(value))
 	}
 	panic(fmt.Sprintf("unsupported flag type: %T", dest))
+}
+
+func (b *ByteLength) UnmarshalText(data []byte) error {
+	val, err := ParseByteLength(string(data))
+	if err != nil {
+		return err
+	}
+	*b = ByteLength(val)
+	return nil
+}
+
+func (h *Octal) UnmarshalText(d []byte) error {
+	s, err := strconv.ParseInt(strings.TrimPrefix(string(d), "0o"), 8, 64)
+	*h = Octal(s)
+	return formatStrconvError(err, string(d))
+}
+
+func (h Octal) String() string {
+	return fmt.Sprintf("0o%o", int(h))
+}
+
+func (h *Hex) UnmarshalText(d []byte) error {
+	s, err := strconv.ParseInt(strings.TrimPrefix(string(d), "0x"), 16, 64)
+	*h = Hex(s)
+	return formatStrconvError(err, string(d))
+}
+
+func (h Hex) String() string {
+	return fmt.Sprintf("0x%X", int(h))
 }
 
 func (v *NameValue) Reset() {
@@ -993,4 +1066,8 @@ func splitValuePair(arg string) (k, v string, hasValue bool) {
 	return a[0], a[1], true
 }
 
-var _ internalCommandContext = (*valueContext)(nil)
+var (
+	_ internalCommandContext   = (*valueContext)(nil)
+	_ encoding.TextUnmarshaler = (*Octal)(nil)
+	_ encoding.TextUnmarshaler = (*Hex)(nil)
+)
