@@ -13,7 +13,7 @@ else
 _ENG_ACTUALLY_USING_PYTHON = $(ENG_AUTODETECT_USING_PYTHON)
 endif
 
-ENG_AVAILABLE_RUNTIMES += python
+ENG_AVAILABLE_STACKS += python
 
 _VENV = . $(VIRTUAL_ENV_NAME)/bin/activate $(OUTPUT_HIDDEN)
 _ENG_ACTUAL_PYTHON_VERSION=$(shell $(PYTHON) -V | awk '{ print $$2 }')
@@ -38,7 +38,7 @@ fetch: python/install
 # Enable the tasks if we are using python
 ifeq (1, $(ENG_USING_PYTHON))
 
-ENG_ENABLED_RUNTIMES += python
+ENG_ENABLED_STACKS += python
 
 ## Install python and project dependencies
 python/init: -python/init
@@ -83,7 +83,7 @@ endif
 		$(_VENV) && $(OUTPUT_HIDDEN) $(PYTHON) -m pip install; \
 	fi
 
--python/install-pipenv:
+-python/install-pipenv: -python/init-venv
 	$(Q) if [ -f Pipfile ]; then \
 		$(_VENV) && command -v pipenv > /dev/null && $(OUTPUT_HIDDEN) pipenv install; \
 	fi

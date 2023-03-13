@@ -2,7 +2,7 @@
 
 # Automatically detect whether Go is in use
 ENG_AUTODETECT_USING_GO = $(shell [ ! -f go.mod ] ; echo $$?)
-ENG_AVAILABLE_RUNTIMES += go
+ENG_AVAILABLE_STACKS += go
 
 # User can define ENG_USING_GO themselves to avoid autodeteciton
 ifdef ENG_USING_GO
@@ -30,7 +30,7 @@ use/go: | -go/init -use/go-mod
 
 # Enable the tasks if we are using Go
 ifeq (1,$(ENG_USING_GO))
-ENG_ENABLED_RUNTIMES += go
+ENG_ENABLED_STACKS += go
 
 GO_LDFLAGS ?= "-X f=unused"
 

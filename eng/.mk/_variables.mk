@@ -10,17 +10,17 @@ ENG_REDIST_DIR = redist
 # Build output directory
 ENG_BUILD_DIR = bin
 
-# Provides a list of the enabled runtimes, derived from the ENG_USING_X variables
-ENG_ENABLED_RUNTIMES +=
+# Provides a list of the enabled stacks, derived from the ENG_USING_X variables
+ENG_ENABLED_STACKS +=
 
-# Provides a list of the disabled runtimes, derived from the ENG_USING_X variables
-ENG_DISABLED_RUNTIMES = $(filter-out $(ENG_ENABLED_RUNTIMES),$(ENG_AVAILABLE_RUNTIMES))
+# Provides a list of the disabled stacks, derived from the ENG_USING_X variables
+ENG_DISABLED_STACKS = $(filter-out $(ENG_ENABLED_STACKS),$(ENG_AVAILABLE_STACKS))
 
 # Some variables that are globally interesting to examine in `make env`
 ENG_GLOBAL_VARIABLES := \
-	ENG_AVAILABLE_RUNTIMES \
-	ENG_DISABLED_RUNTIMES \
-	ENG_ENABLED_RUNTIMES \
+	ENG_AVAILABLE_STACKS \
+	ENG_DISABLED_STACKS \
+	ENG_ENABLED_STACKS \
 	PATH \
 	PREFIX \
 	VERBOSE \
@@ -73,7 +73,7 @@ _COMMA := ,
 _PIPE := |
 
 # Directories
-_ENG_RUNTIMES_DIR = $(_ENG_MAKEFILE_DIR)/runtimes
+_ENG_STACKS_DIR = $(_ENG_MAKEFILE_DIR)/stacks
 _ENG_BASE_DIR = $(_ENG_MAKEFILE_DIR)/base
 
 # Terminal output formatting

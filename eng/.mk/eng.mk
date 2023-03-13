@@ -7,14 +7,19 @@
 # Because these are used for installing eng itself, we can't depend on any of the utility targets
 # or variables, so they are redefined here
 
-_RED = \x1b[31m
-_RESET = \x1b[39m
+_RESET = $(shell tput sgr0 2>/dev/null || printf '')
+_RED = $(shell tput setaf 1 2>/dev/null || printf '')
+_CYAN = $(shell tput setaf 6 2>/dev/null || printf '')
 
 ifneq (, $(VERBOSE))
 Q =
 else
 Q = @
 endif
+
+# This variable will be unset during the initial bootstrap.  So choose the
+# default location based on working directory
+_ENG_MAKEFILE_DIR := $(or $(_ENG_MAKEFILE_DIR),$(shell pwd)/eng)
 
 _ENG_UPDATE_FILE := $(shell mktemp)
 _ENG_VERSION_FILE := $(_ENG_MAKEFILE_DIR)/VERSION
@@ -36,13 +41,14 @@ ENG_GITHUB_REPO = https://github.com/Carbonfrost/eng-commons-dotnet
 	eng/start \
 	eng/update \
 	release/requirements \
+	-eng/advice \
 
 ## Get started with eng, meant to be used in a new repo
-eng/start: eng/update -eng/start-Makefile
+eng/start: eng/update -eng/start-Makefile -eng/advice
 
 ## Display the names of active frameworks
 eng/enabled:
-	@ echo $(ENG_ENABLED_RUNTIMES)
+	@ echo $(ENG_ENABLED_STACKS)
 
 ## Evaluate release requirements
 release/requirements:
@@ -60,7 +66,7 @@ eng/update: -eng-update-start -download-eng-archive -clean-eng-directory
 	$(Q) git ls-remote $(_ENG_LS_REMOTE) refs/heads/$(ENG_UPDATE_BRANCH) | cut -f1 >> $(_ENG_VERSION_FILE)
 	@ echo "Done! 🍺"
 
-## Install integrations depending upon active runtimes
+## Install integrations depending upon active stacks
 eng/install: -eng/install
 
 ifeq ($(ENG_DEV_UPDATE), 1)
@@ -100,4 +106,13 @@ endif
 	fi
 
 -eng/start-Makefile:
-	$(Q) printf -- "-include eng/Makefile\nstart:\n\t@ echo 'The Future awaits !'" > Makefile
+	$(Q) printf -- "-include eng/Makefile\nhelp: -eng/advice\nstart:\n\t@ echo 'The Future awaits !'" > Makefile
+
+-eng/advice:
+	@ printf "Welcome to Carbonfrost!  "
+	@ printf "To use a framework:\n\t$(_CYAN)make use/python$(_RESET)\n"
+	@ printf "To install framework dependencies:\n\t$(_CYAN)make install/python$(_RESET)\n"
+	@ printf "Try using the top-level target:\n\t$(_CYAN)make start$(_RESET)\n"
+	@ printf "When ready, change the top-level target by adding this to Makefile:\n"
+	@ printf "\t$(_CYAN).DEFAULT_GOAL = start$(_RESET)\n\n"
+	@ printf "This causes the bare make command to run the top-level target.\n"

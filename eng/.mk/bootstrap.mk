@@ -44,7 +44,7 @@ fmt:
 init:
 	@ echo "Installing prerequisites and setting up the environment ..."
 	@ $(MAKE) VERBOSE=$(VERBOSE) _HIDDEN_IF_BOOTSTRAPPING=">/dev/null" \
-		-- -homebrew-install -direnv-install -init-frameworks
+		-- -homebrew-install -init-frameworks .envrc .editorconfig -direnv-install
 	@ echo "Done! 🍺"
 
 # At a minimum, we need to install Homebrew to manage dependencies.  We
@@ -60,6 +60,7 @@ init:
 -direnv-install: -check-command-brew
 	$(Q) $(OUTPUT_COLLAPSED) eng/brew_bundle_inject direnv
 	$(Q) $(OUTPUT_COLLAPSED) brew bundle
+	$(Q) $(OUTPUT_COLLAPSED) touch .envrc  # A fallback measure in case it wasn't generated
 	$(Q) $(OUTPUT_COLLAPSED) direnv allow
 
 -init-frameworks:

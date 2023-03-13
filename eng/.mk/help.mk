@@ -3,8 +3,8 @@
 ifdef ALL
 	_HELP_MAKEFILE_LIST = $(MAKEFILE_LIST)
 else
-	_DISABLED_RUNTIMES = $(subst $(_SPACE),$(_PIPE),$(strip $(ENG_DISABLED_RUNTIMES)))
-	_HELP_MAKEFILE_LIST = $(shell echo "$(MAKEFILE_LIST)" | sed -E "s/[^ ]+($(_DISABLED_RUNTIMES)).mk//g")
+	_DISABLED_STACKS = $(subst $(_SPACE),$(_PIPE),$(strip $(ENG_DISABLED_STACKS)))
+	_HELP_MAKEFILE_LIST = $(shell echo "$(MAKEFILE_LIST)" | sed -E "s/[^ ]+($(_DISABLED_STACKS)).mk//g")
 endif
 
 .PHONY: help \

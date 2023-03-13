@@ -2,7 +2,7 @@
 
 # Automatically detect whether Rust is in use
 ENG_AUTODETECT_USING_RUST = $(shell [ ! -f Cargo.toml ] ; echo $$?)
-ENG_AVAILABLE_RUNTIMES += rust
+ENG_AVAILABLE_STACKS += rust
 
 RUST_SOURCE_FILES = $(shell find . -name '*.rs')
 
@@ -29,7 +29,7 @@ use/rust: -rust/init
 
 # Enable the tasks if we are using Rust
 ifeq (1,$(ENG_USING_RUST))
-ENG_ENABLED_RUNTIMES += rust
+ENG_ENABLED_STACKS += rust
 
 ## Install Rust and project dependencies
 rust/init: -rust/init

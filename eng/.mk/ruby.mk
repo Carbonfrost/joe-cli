@@ -10,7 +10,7 @@ else
 _ENG_ACTUALLY_USING_RUBY = $(ENG_AUTODETECT_USING_RUBY)
 endif
 
-ENG_AVAILABLE_RUNTIMES += ruby
+ENG_AVAILABLE_STACKS += ruby
 
 .PHONY: \
 	-hint-unsupported-ruby \
@@ -26,7 +26,7 @@ use/ruby: | -use/ruby-version -ruby/init -use/ruby-Gemfile
 
 # Enable the tasks if we are using ruby
 ifeq (1,$(ENG_USING_RUBY))
-ENG_ENABLED_RUNTIMES += ruby
+ENG_ENABLED_STACKS += ruby
 
 ## Install Ruby and project dependencies
 ruby/init: -ruby/init
@@ -45,8 +45,8 @@ endif
 	$(Q) $(OUTPUT_COLLAPSED) gem install bundler
 	$(Q) [ -f Gemfile ] && $(OUTPUT_HIDDEN) bundle install
 
--ruby/fmt: -check-command-rufo
-	$(Q) rufo .
+-ruby/fmt: -check-command-bundle -check-ruby-bundled-rufo -check-bundle-current
+	$(Q) bundle exec rufo .
 
 -use/ruby-Gemfile: -check-command-Gemfile
 	$(Q) [ -f Gemfile ] || bundle init
@@ -60,3 +60,7 @@ endif
 		"because $(_MAGENTA)Ruby$(_RESET) is not enabled (Investigate $(_CYAN)\`make use/ruby\`$(_RESET))"
 
 -init-frameworks: ruby/init
+
+# Check whether a particular gem is bundled
+-check-ruby-bundle-%: -check-command-bundle
+	@ bundle list --name-only | grep -E "^$*\\$$"

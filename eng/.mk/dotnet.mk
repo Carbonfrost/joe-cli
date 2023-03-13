@@ -24,7 +24,7 @@
 #            └── (source files)
 #
 
-ENG_AVAILABLE_RUNTIMES += dotnet
+ENG_AVAILABLE_STACKS += dotnet
 
 # Need to import or possibly re-import variables so that we have
 # immediate evaluation context access to ENG_DOTNET_DIR, which controls
@@ -63,7 +63,7 @@ endif
 # Enable the tasks if we are using dotnet
 ifeq (1,$(_ENG_ACTUALLY_USING_DOTNET))
 
-ENG_ENABLED_RUNTIMES += dotnet
+ENG_ENABLED_STACKS += dotnet
 _ENG_ACTUAL_DOTNET_VERSION = $(dotnet --version)
 
 ## Install .NET  and project dependencies
