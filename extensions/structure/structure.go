@@ -30,10 +30,12 @@ type Value struct {
 	// If nil, some default options are specified that supports viable weakly typed
 	// parsing.  To stop this, the options must be explicitly set to non-nil slice
 	// (or some other custom decoder config)
-	Options []func(*mapstructure.DecoderConfig)
+	Options []DecoderOption
 
 	disableSplitting bool
 }
+
+type DecoderOption func(*mapstructure.DecoderConfig)
 
 var (
 	valueType    = reflect.TypeOf((*cli.Value)(nil)).Elem()
@@ -57,11 +59,27 @@ func Of(v interface{}) *Value {
 	}
 }
 
-// WithOptions applies additional options.
-func (v *Value) WithOptions(options ...func(*mapstructure.DecoderConfig)) *Value {
-	if v.Options == nil {
-		v.Options = make([]func(*mapstructure.DecoderConfig), 0)
+// Decode will apply values to the given output
+func Decode(input, output any, opts ...DecoderOption) error {
+	config := &mapstructure.DecoderConfig{
+		Result: output,
 	}
+	if opts == nil {
+		opts = viableOptions()
+	}
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(input)
+}
+
+// WithOptions applies additional options.
+func (v *Value) WithOptions(options ...DecoderOption) *Value {
 	v.Options = append(v.Options, options...)
 	return v
 }
@@ -89,25 +107,7 @@ func (v *Value) Set(arg string) error {
 	}
 
 	src := support.ParseMap(args)
-	decoder, err := v.newDecoder()
-	if err != nil {
-		return err
-	}
-	return decoder.Decode(src)
-}
-
-func (v *Value) newDecoder() (*mapstructure.Decoder, error) {
-	config := &mapstructure.DecoderConfig{
-		Result: v.V,
-	}
-	opts := v.Options
-	if opts == nil {
-		opts = viableOptions()
-	}
-	for _, opt := range opts {
-		opt(config)
-	}
-	return mapstructure.NewDecoder(config)
+	return Decode(src, v.V, v.Options...)
 }
 
 func (v *Value) String() string {
@@ -123,8 +123,8 @@ func (v *Value) String() string {
 	return ""
 }
 
-func viableOptions() []func(*mapstructure.DecoderConfig) {
-	return []func(*mapstructure.DecoderConfig){
+func viableOptions() []DecoderOption {
+	return []DecoderOption{
 		func(m *mapstructure.DecoderConfig) {
 			m.WeaklyTypedInput = true
 			m.DecodeHook = mapstructure.DecodeHookFuncValue(applyConversions)
