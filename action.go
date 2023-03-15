@@ -292,6 +292,7 @@ var (
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
+			ActionFunc(setInternalFlag(internalFlagInitialized)),
 			At(justBeforeTiming, ActionFunc(checkForRequiredOption)),
 		),
 		Before: beforePipeline{
@@ -887,6 +888,22 @@ func AddArg(a *Arg) Action {
 func RemoveArg(name interface{}) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.RemoveArg(name)
+	})
+}
+
+// RemoveFlag provides an action which removes a flag from the command or app.
+// The name specifies the name, index, or Flag itself
+func RemoveFlag(name interface{}) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.RemoveFlag(name)
+	})
+}
+
+// RemoveCommand provides an action which removes a Command from the command or app.
+// The name specifies the name, index, or Command itself
+func RemoveCommand(name interface{}) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.RemoveCommand(name)
 	})
 }
 

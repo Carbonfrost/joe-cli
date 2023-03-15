@@ -539,6 +539,9 @@ var _ = Describe("Uses", func() {
 						{Name: "1"},
 						{Name: "2"},
 					},
+					Args: []*cli.Arg{
+						{Name: "A"},
+					},
 					Uses:   uses(act),
 					Stderr: io.Discard,
 				}
@@ -553,6 +556,18 @@ var _ = Describe("Uses", func() {
 			}),
 			Entry("add Command to end", func(act cli.Action) cli.Action {
 				return cli.AddCommand(&cli.Command{Name: "f", Uses: act})
+			}),
+			Entry("add Flag at beginning", func(act cli.Action) cli.Action {
+				return cli.ActionFunc(func(c *cli.Context) error {
+					c.Command().Flags = append([]*cli.Flag{{Name: "f", Uses: act}}, c.Command().Flags...)
+					return nil
+				})
+			}),
+			Entry("add Arg at beginning", func(act cli.Action) cli.Action {
+				return cli.ActionFunc(func(c *cli.Context) error {
+					c.Command().Args = append([]*cli.Arg{{Name: "f", Uses: act}}, c.Command().Args...)
+					return nil
+				})
 			}),
 		)
 
@@ -587,6 +602,39 @@ var _ = Describe("Uses", func() {
 				Entry("by negative index", -1, []string{"1", "2", "3"}),
 				Entry("by negative index", -2, []string{"1", "2", "4"}),
 				Entry("by negative index", -4, []string{"2", "3", "4"}),
+			)
+		})
+
+		Describe("RemoveFlag", func() {
+
+			DescribeTable("examples", func(name interface{}, expected []string) {
+				var actual []string
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "1"},
+						{Name: "2"},
+						{Name: "3"},
+						{Name: "4"},
+					},
+					Action: func(c *cli.Context) {
+						flags := c.Command().Flags
+						actual = make([]string, 0, len(flags))
+						for _, f := range flags {
+							if f.Name == "help" || f.Name == "version" || f.Name == "zsh-completion" {
+								continue
+							}
+							actual = append(actual, f.Name)
+						}
+					},
+					Uses:   cli.RemoveFlag(name),
+					Stderr: io.Discard,
+				}
+				err := app.RunContext(context.TODO(), []string{"app"})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).To(Equal(expected))
+			},
+				Entry("by name", "3", []string{"1", "2", "4"}),
+				Entry("by decorated name", "-3", []string{"1", "2", "4"}),
 			)
 		})
 	})

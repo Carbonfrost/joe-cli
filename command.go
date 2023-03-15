@@ -275,12 +275,14 @@ func (c *Command) Synopsis() string {
 
 // Command tries to obtain a sub-command by name or alias
 func (c *Command) Command(name string) (*Command, bool) {
-	return findCommandByName(c.Subcommands, name)
+	r, _, ok := findCommandByName(c.Subcommands, name)
+	return r, ok
 }
 
 // Flag tries to obtain a flag by name or alias
 func (c *Command) Flag(name string) (*Flag, bool) {
-	return findFlagByName(c.Flags, name)
+	r, _, ok := findFlagByName(c.Flags, name)
+	return r, ok
 }
 
 // Arg tries to obtain a arg by name or alias
@@ -680,6 +682,9 @@ func initializeFlagsArgs(ctx *Context) error {
 			flagStart = len(cmd.actualFlags())
 
 			for _, sub := range flags {
+				if sub.internalFlags().initialized() {
+					continue
+				}
 				err := ctx.optionContext(sub).initialize()
 				if err != nil {
 					return err
@@ -695,6 +700,9 @@ func initializeFlagsArgs(ctx *Context) error {
 			argStart = len(cmd.actualArgs())
 
 			for _, sub := range args {
+				if sub.internalFlags().initialized() {
+					continue
+				}
 				err := ctx.optionContext(sub).initialize()
 				if err != nil {
 					return err
@@ -791,18 +799,28 @@ func sortedByName(flags []*flagSynopsis) {
 	})
 }
 
-func findCommandByName(cmds []*Command, name string) (*Command, bool) {
-	for _, sub := range cmds {
+func findCommandByName(cmds []*Command, v any) (*Command, int, bool) {
+	if cmd, ok := v.(*Command); ok {
+		for index, sub := range cmds {
+			if cmd == sub {
+				return cmd, index, true
+			}
+		}
+		return nil, -1, false
+	}
+
+	name := v.(string)
+	for index, sub := range cmds {
 		if sub.Name == name {
-			return sub, true
+			return sub, index, true
 		}
 		for _, alias := range sub.Aliases {
 			if alias == name {
-				return sub, true
+				return sub, index, true
 			}
 		}
 	}
-	return nil, false
+	return nil, -1, false
 }
 
 func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptErr func(*Context, error) (*Command, error)) (*Command, error) {

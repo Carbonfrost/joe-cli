@@ -299,7 +299,7 @@ func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
 			return c.Command(), true
 		}
 		if aa, ok := c.target().(*Command); ok {
-			if r, found := findCommandByName(aa.Subcommands, v); found {
+			if r, _, found := findCommandByName(aa.Subcommands, v); found {
 				return r, true
 			}
 		}
@@ -328,7 +328,7 @@ func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
 			name = c.Name()
 		}
 		if aa, ok := c.target().(hasFlags); ok {
-			if f, found := findFlagByName(aa.actualFlags(), v); found {
+			if f, _, found := findFlagByName(aa.actualFlags(), v); found {
 				return f, true
 			}
 		}
@@ -816,6 +816,38 @@ func (c *Context) RemoveArg(name interface{}) error {
 		if ok {
 			args = append(args[0:index], args[index+1:]...)
 			c.Command().Args = args
+		}
+	})
+}
+
+// RemoveCommand provides a convenience method that removes a command from the current command or app.
+// The name specifies the name or actual command.  This
+// is only valid during the initialization phase.  An error is returned for other timings.
+// If the Command does not exist, if the name or index is out of bounds, the operation
+// will still succeed.
+func (c *Context) RemoveCommand(name interface{}) error {
+	return c.Use(func() {
+		cmds := c.Command().Subcommands
+		_, index, ok := findCommandByName(cmds, name)
+		if ok {
+			cmds = append(cmds[0:index], cmds[index+1:]...)
+			c.Command().Subcommands = cmds
+		}
+	})
+}
+
+// RemoveFlag provides a convenience method that removes a Flag from the current command or app.
+// The name specifies the name, index, or actual flag.  This
+// is only valid during the initialization phase.  An error is returned for other timings.
+// If the flag does not exist, if the name or index is out of bounds, the operation
+// will still succeed.
+func (c *Context) RemoveFlag(name interface{}) error {
+	return c.Use(func() {
+		flags := c.Command().Flags
+		_, index, ok := findFlagByName(flags, name)
+		if ok {
+			flags = append(flags[0:index], flags[index+1:]...)
+			c.Command().Flags = flags
 		}
 	})
 }

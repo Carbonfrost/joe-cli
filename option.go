@@ -194,6 +194,7 @@ const (
 	internalFlagImpliedAction
 	internalFlagSeenImplied
 	internalFlagDidSubcommandExecute
+	internalFlagInitialized
 )
 
 var (
@@ -355,6 +356,10 @@ func (f internalFlags) impliedAction() bool {
 
 func (f internalFlags) seenImplied() bool {
 	return f&internalFlagSeenImplied == internalFlagSeenImplied
+}
+
+func (f internalFlags) initialized() bool {
+	return f&internalFlagInitialized == internalFlagInitialized
 }
 
 func (f internalFlags) toRaw() RawParseFlag {

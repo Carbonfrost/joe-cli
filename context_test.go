@@ -354,6 +354,8 @@ var _ = Describe("Context", func() {
 			Entry("AddArg", cli.AddArg(&cli.Arg{})),
 			Entry("RemoveArg", cli.RemoveArg("x")),
 			Entry("PreventSetup", cli.PreventSetup),
+			Entry("RemoveFlag", cli.RemoveFlag(nil)),
+			Entry("RemoveCommand", cli.RemoveCommand(nil)),
 		)
 	})
 

@@ -197,7 +197,8 @@ func (a *App) Command(name string) (*Command, bool) {
 	if a.rootCommand != nil {
 		return a.rootCommand.Command(name)
 	}
-	return findCommandByName(a.Commands, name)
+	c, _, ok := findCommandByName(a.Commands, name)
+	return c, ok
 }
 
 // Flag gets the flag by name.
@@ -205,7 +206,8 @@ func (a *App) Flag(name string) (*Flag, bool) {
 	if a.rootCommand != nil {
 		return a.rootCommand.Flag(name)
 	}
-	return findFlagByName(a.Flags, name)
+	f, _, ok := findFlagByName(a.Flags, name)
+	return f, ok
 }
 
 // Arg gets the argument by name, which can be either string, int, or the actual

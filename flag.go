@@ -687,19 +687,27 @@ func ensureDestination(o option, dest interface{}, multi bool) interface{} {
 	return dest
 }
 
-func findFlagByName(items []*Flag, name string) (*Flag, bool) {
-	name = strings.TrimLeft(name, "-")
-	for _, sub := range items {
+func findFlagByName(items []*Flag, v any) (*Flag, int, bool) {
+	if f, ok := v.(*Flag); ok {
+		for index, match := range items {
+			if f == match {
+				return f, index, true
+			}
+		}
+		return nil, -1, false
+	}
+	name := strings.TrimLeft(v.(string), "-")
+	for index, sub := range items {
 		if sub.Name == name {
-			return sub, true
+			return sub, index, true
 		}
 		for _, alias := range sub.Aliases {
 			if alias == name {
-				return sub, true
+				return sub, index, true
 			}
 		}
 	}
-	return nil, false
+	return nil, -1, false
 }
 
 func longName(s []string) string {
