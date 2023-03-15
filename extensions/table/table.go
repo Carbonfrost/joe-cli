@@ -1,3 +1,35 @@
+// Package table implements utilities for rendering tables and managing table data.
+//
+// The template funcs registered by this package are:
+//
+//   - Table [ string | *Format ]
+//   - EndTable
+//   - Headers <[]string>
+//   - Footers <[]string>
+//   - Row
+//   - Cell <string>
+//
+// The Table function takes an optional argument which is the name of a format
+// or a value to use for formatting the table. To conclude the table, use EndTable.
+// Headers/Footers appears optionally to denote
+// the names of the headers.  Row must be used to group together cells.
+// The content of each cell is passed to the Cell function.
+//
+// "Default" and "Unformatted" are the built-in Formats
+//
+// A viable table looks like:
+//
+//	{{- Table "Unformatted" -}}
+//	{{- Headers "First" "Last" }}
+//	{{- Row -}}
+//	{{- Cell "George" -}}
+//	{{- Cell "Burdell" -}}
+//	{{- EndTable -}}`
+//
+// Additional formats can be registered using the RegisterTableFormat action.
+//
+// When you want to display tabular data in the CLI, you can use the RegisterTable
+// function to give the table a name and specifiy
 package table
 
 import (
@@ -49,6 +81,15 @@ type Format struct {
 	BottomRightSeparator  string
 }
 
+// renderContext defines the operations of rendering the table
+type renderContext interface {
+	Row() string
+	Headers(titles ...string) string
+	Footers(titles ...string) string
+	Cell(value any) (string, error)
+	EndTable() string
+}
+
 const (
 	// UseTablesInHelpTemplate causes tables to be used in the help template
 	UseTablesInHelpTemplate = Feature(1 << iota)
@@ -59,6 +100,14 @@ const (
 
 	// AllFeatures enables all of the features.  This is the default
 	AllFeatures = -1
+)
+
+const (
+	// Unformatted is the table format associated with a table with no boxes or alignments
+	Unformatted = "Unformatted"
+
+	// Porcelain is a table that only uses tabs to separate columns
+	Porcelain = "Porcelain"
 )
 
 type tableContext struct {
@@ -152,34 +201,51 @@ var (
 	}
 )
 
-// RegisterTemplateFuncs defines template functions for working with tables:
-//
-//   - Table [ string | *Format ]
+func newTableContext(f ...*Format) *tableContext {
+	c := &tableContext{}
+	c.buf = new(bytes.Buffer)
+	c.table = tablewriter.NewWriter(c.buf)
+
+	format := defaultFormat
+	if len(f) > 0 {
+		format = getFormat(f[0])
+	}
+	if len(f) > 1 {
+		panic("expected zero or one arg")
+	}
+	if format.ColWidth <= 0 {
+		format.ColWidth = guessWidth()
+	}
+	format.apply(c)
+
+	c.headers = nil
+	c.footers = nil
+	c.cells = nil
+	return c
+}
+
+type porcelainContext struct {
+	cells []string
+}
+
+// wrapperRenderContext delegates to the appropriate internal
+// render context depending upon which format is used.  This is the
+// render context exposed to the template function context
+type wrapperRenderContext struct {
+	inner renderContext
+}
+
+// RegisterTemplateFuncs provides the template functions described in the package
+// overview:
+//   - Table
 //   - EndTable
-//   - Headers <[]string>
-//   - Footers <[]string>
-//   - Row
-//   - Cell <string>
-//
-// The Table function takes an optional argument which is the name of a format
-// or a value to use for formatting the table. To conclude the table, use EndTable.
-// Headers/Footers appears optionally to denote
-// the names of the headers.  Row must be used to group together cells.
-// The content of each cell is passed to the Cell function.
-//
-// "Default" and "Unformatted" are the built-in Formats
-//
-// A viable table looks like:
-//
-//	{{- Table "Unformatted" -}}
-//	{{- Headers "First" "Last" }}
-//	{{- Row -}}
-//	{{- Cell "George" -}}
-//	{{- Cell "Burdell" -}}
-//	{{- EndTable -}}`
+//   - Headers
+//   - Footers
+//   - Row, and
+//   - Cell
 func RegisterTemplateFuncs() cli.Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
-		tc := new(tableContext)
+		tc := new(wrapperRenderContext)
 		templateFuncs := map[string]interface{}{
 			"Table":    tc.Table,
 			"EndTable": tc.EndTable,
@@ -226,25 +292,6 @@ func (c *tableContext) Cell(value interface{}) (string, error) {
 	}
 	c.cells[len(c.cells)-1] = append(c.cells[len(c.cells)-1], fmt.Sprintf("%v", value))
 	return "", nil
-}
-
-func (c *tableContext) Table(f ...interface{}) string {
-	c.buf = new(bytes.Buffer)
-	c.table = tablewriter.NewWriter(c.buf)
-
-	format := defaultFormat
-	if len(f) > 0 {
-		format = getFormat(f[0])
-	}
-	if format.ColWidth <= 0 {
-		format.ColWidth = guessWidth()
-	}
-	format.apply(c)
-
-	c.headers = nil
-	c.footers = nil
-	c.cells = nil
-	return ""
 }
 
 func (c *tableContext) EndTable() string {
@@ -327,6 +374,68 @@ func (o Options) Execute(c *cli.Context) error {
 	return c.Do(o.Features.Pipeline())
 }
 
+func (p *porcelainContext) Row() string {
+	var res string
+	if p.cells != nil {
+		res = strings.Join(p.cells, "\t") + "\n"
+	}
+	p.cells = []string{}
+	return res
+}
+
+func (porcelainContext) Headers(titles ...string) string {
+	return strings.Join(titles, "\t") + "\n"
+}
+
+func (porcelainContext) Footers(titles ...string) string {
+	return strings.Join(titles, "\t") + "\n"
+}
+
+func (p *porcelainContext) Cell(value any) (string, error) {
+	p.cells = append(p.cells, fmt.Sprint(value))
+	return "", nil
+}
+
+func (p *porcelainContext) EndTable() string {
+	return p.Row()
+}
+
+func (c *wrapperRenderContext) Table(f ...interface{}) (string, error) {
+	switch len(f) {
+	case 0:
+		c.inner = newTableContext(defaultFormat)
+	case 1:
+		if f[0] == Porcelain {
+			c.inner = &porcelainContext{}
+		} else {
+			c.inner = newTableContext(getFormat(f[0]))
+		}
+	default:
+		return "", fmt.Errorf("func Table expects 0 or 1 arguments")
+	}
+	return "", nil
+}
+
+func (c *wrapperRenderContext) Row() string {
+	return c.inner.Row()
+}
+
+func (c *wrapperRenderContext) Headers(titles ...string) string {
+	return c.inner.Headers(titles...)
+}
+
+func (c *wrapperRenderContext) Footers(titles ...string) string {
+	return c.inner.Footers(titles...)
+}
+
+func (c *wrapperRenderContext) Cell(value any) (string, error) {
+	return c.inner.Cell(value)
+}
+
+func (c *wrapperRenderContext) EndTable() string {
+	return c.inner.EndTable()
+}
+
 func guessWidth() int {
 	fd := int(os.Stdout.Fd())
 	if term.IsTerminal(fd) {
@@ -343,7 +452,7 @@ func getFormat(v interface{}) *Format {
 	case *Format:
 		return f
 	case string:
-		if f == "Unformatted" {
+		if f == Unformatted {
 			return unformatted
 		}
 		return defaultFormat
@@ -352,4 +461,7 @@ func getFormat(v interface{}) *Format {
 	}
 }
 
-var _ cli.Action = (*Options)(nil)
+var (
+	_ cli.Action    = (*Options)(nil)
+	_ renderContext = (*tableContext)(nil)
+)
