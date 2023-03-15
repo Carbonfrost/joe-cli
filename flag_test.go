@@ -704,6 +704,11 @@ var _ = Describe("Flag", func() {
 			MatchFields(IgnoreExtras, Fields{"Category": Equal("abc")}),
 		),
 		Entry(
+			"Alias",
+			cli.Alias("abc"),
+			MatchFields(IgnoreExtras, Fields{"Aliases": Equal([]string{"abc"})}),
+		),
+		Entry(
 			"ManualText",
 			cli.ManualText("abc"),
 			MatchFields(IgnoreExtras, Fields{"ManualText": Equal("abc")}),

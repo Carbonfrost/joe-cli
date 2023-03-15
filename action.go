@@ -739,6 +739,19 @@ func Category(name string) Action {
 	})
 }
 
+// Alias sets the given alias on the flag or command.  For args, the action is ignored
+func Alias(a ...string) Action {
+	return ActionFunc(func(c *Context) error {
+		switch t := c.Target().(type) {
+		case *Command:
+			t.Aliases = append(t.Aliases, a...)
+		case *Flag:
+			t.Aliases = append(t.Aliases, a...)
+		}
+		return nil
+	})
+}
+
 // Description sets the description of a command, flag, or expression.  This handler is generally
 // set up inside a Uses pipeline.  The type should be string or fmt.Stringer
 // Consider implementing a custom Stringer value that defers calculation of the description if the
