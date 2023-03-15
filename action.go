@@ -414,11 +414,6 @@ func Initializer(a Action) Action {
 	return At(InitialTiming, a)
 }
 
-// AtTiming wraps an action and causes it to execute at the given timing.
-func AtTiming(a Action, t Timing) Action {
-	return At(t, a)
-}
-
 // At wraps an action and causes it to execute at the given timing.
 func At(t Timing, a Action) Action {
 	return withTimingWrapper{a, t}
