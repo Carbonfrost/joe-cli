@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -414,8 +415,10 @@ func withoutDecorators(name string) string {
 
 func lookupBool(c Lookup, name interface{}) (res bool) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(bool)
+	if i, ok := val.(bool); ok {
+		res = i
+	} else {
+		res = reflect.ValueOf(val).Bool()
 	}
 	return
 }
@@ -438,96 +441,120 @@ func lookupList(c Lookup, name interface{}) (res []string) {
 
 func lookupInt(c Lookup, name interface{}) (res int) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(int)
+	if i, ok := val.(int); ok {
+		res = i
+	} else {
+		res = int(reflect.ValueOf(val).Int())
 	}
 	return
 }
 
 func lookupInt8(c Lookup, name interface{}) (res int8) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(int8)
+	if i, ok := val.(int8); ok {
+		res = i
+	} else {
+		res = int8(reflect.ValueOf(val).Int())
 	}
 	return
 }
 
 func lookupInt16(c Lookup, name interface{}) (res int16) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(int16)
+	if i, ok := val.(int16); ok {
+		res = i
+	} else {
+		res = int16(reflect.ValueOf(val).Int())
 	}
 	return
 }
 
 func lookupInt32(c Lookup, name interface{}) (res int32) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(int32)
+	if i, ok := val.(int32); ok {
+		res = i
+	} else {
+		res = int32(reflect.ValueOf(val).Int())
 	}
 	return
 }
 
 func lookupInt64(c Lookup, name interface{}) (res int64) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(int64)
+	if i, ok := val.(int64); ok {
+		res = i
+	} else {
+		res = int64(reflect.ValueOf(val).Int())
 	}
 	return
 }
 
 func lookupUInt(c Lookup, name interface{}) (res uint) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(uint)
+	if i, ok := val.(uint); ok {
+		res = i
+	} else {
+		res = uint(reflect.ValueOf(val).Uint())
 	}
 	return
 }
 
 func lookupUInt8(c Lookup, name interface{}) (res uint8) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(uint8)
+	if i, ok := val.(uint8); ok {
+		res = i
+	} else {
+		res = uint8(reflect.ValueOf(val).Uint())
 	}
 	return
 }
 
 func lookupUInt16(c Lookup, name interface{}) (res uint16) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(uint16)
+	if i, ok := val.(uint16); ok {
+		res = i
+	} else {
+		res = uint16(reflect.ValueOf(val).Uint())
 	}
 	return
 }
 
 func lookupUInt32(c Lookup, name interface{}) (res uint32) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(uint32)
+	if i, ok := val.(uint32); ok {
+		res = i
+	} else {
+		res = uint32(reflect.ValueOf(val).Uint())
 	}
 	return
 }
 
 func lookupUInt64(c Lookup, name interface{}) (res uint64) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(uint64)
+	if i, ok := val.(uint64); ok {
+		res = i
+	} else {
+		res = uint64(reflect.ValueOf(val).Uint())
 	}
 	return
 }
 
 func lookupFloat32(c Lookup, name interface{}) (res float32) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(float32)
+	if i, ok := val.(float32); ok {
+		res = i
+	} else {
+		res = float32(reflect.ValueOf(val).Float())
 	}
 	return
 }
 
 func lookupFloat64(c Lookup, name interface{}) (res float64) {
 	val := c.Value(name)
-	if val != nil {
-		res = val.(float64)
+	if i, ok := val.(float64); ok {
+		res = i
+	} else {
+		res = float64(reflect.ValueOf(val).Float())
 	}
 	return
 }
