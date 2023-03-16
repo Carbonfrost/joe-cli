@@ -500,7 +500,7 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 			*p = m
 		}
 		for k, v := range support.ParseMap(values()) {
-			m[k] = v.(string)
+			m[k] = v
 		}
 
 		return nil

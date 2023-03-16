@@ -26,3 +26,13 @@ var _ = Describe("ParseMap", func() {
 		Entry("escaped equal trailing", []string{"L\\==B"}, HaveKeyWithValue("L=", "B")),
 	)
 })
+
+var _ = Describe("SplitList", func() {
+
+	DescribeTable("examples", func(text string, expected types.GomegaMatcher) {
+		Expect(support.SplitList(text, ",", -1)).To(expected)
+	},
+		Entry("empty string", "", BeEmpty()),
+		Entry("only whitespace string", "  ", BeEmpty()),
+	)
+})

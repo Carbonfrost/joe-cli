@@ -45,6 +45,27 @@ var _ = Describe("Join", func() {
 	)
 })
 
+var _ = Describe("SplitMap", func() {
+
+	DescribeTable("examples", func(text string, expected types.GomegaMatcher) {
+		Expect(cli.SplitMap(text)).To(expected)
+	},
+		Entry("escaped comma", "L=A\\,B", HaveKeyWithValue("L", "A,B")),
+		Entry("escaped comma multiple", "L=A\\,B,M=Y\\,Z,N=W\\,X",
+			And(
+				HaveKeyWithValue("L", "A,B"),
+				HaveKeyWithValue("M", "Y,Z"),
+				HaveKeyWithValue("N", "W,X"),
+			)),
+		Entry("escaped comma trailing", "L=A\\,", HaveKeyWithValue("L", "A,")),
+		// Comma is implied as escaped because there is no other KVP after it
+		Entry("implied escaped comma", "L=A,B,C", HaveKeyWithValue("L", "A,B,C")),
+		Entry("escaped equal", "L\\=A=B", HaveKeyWithValue("L=A", "B")),
+		Entry("escaped equal trailing", "L\\==B", HaveKeyWithValue("L=", "B")),
+		Entry("empty", "", BeEmpty()),
+	)
+})
+
 var _ = Describe("RunContext", func() {
 	DescribeTable("bind sub-command",
 		func(arguments string, expectedGlobal types.GomegaMatcher, expectedSub types.GomegaMatcher) {

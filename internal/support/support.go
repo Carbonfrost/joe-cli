@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-func ParseMap(values []string) map[string]interface{} {
-	res := map[string]interface{}{}
+func ParseMap(values []string) map[string]string {
+	res := map[string]string{}
 
 	var key, value string
 	for _, kvp := range values {
@@ -38,6 +38,10 @@ func FormatMap(m map[string]string, delim string) string {
 }
 
 func SplitList(s, sep string, n int) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
 	if strings.Contains(s, "\\") {
 		regex := regexp.MustCompile(`(^|[^\\])` + regexp.QuoteMeta(sep))
 		matches := regex.FindAllStringSubmatchIndex(s, n)
