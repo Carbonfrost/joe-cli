@@ -1,9 +1,13 @@
 package support
 
 import (
+	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 func ParseMap(values []string) map[string]string {
@@ -64,4 +68,23 @@ func SplitList(s, sep string, n int) []string {
 		return res
 	}
 	return strings.SplitN(s, sep, n)
+}
+
+func GuessWidth() int {
+	cols := os.Getenv("COLUMNS")
+	if cols != "" {
+		width, err := strconv.Atoi(cols)
+		if err == nil && width > 12 && width < 80 {
+			return width
+		}
+	}
+
+	fd := int(os.Stdout.Fd())
+	if term.IsTerminal(fd) {
+		width, _, err := term.GetSize(fd)
+		if err == nil && width > 12 && width < 80 {
+			return width
+		}
+	}
+	return 80
 }

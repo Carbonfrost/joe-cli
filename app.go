@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"text/template"
 	"time"
+
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // App provides the definition of an app, which is composed of commands, flags, and arguments.
@@ -365,7 +367,7 @@ func adaptWriter(w io.Writer) Writer {
 }
 
 func setupDefaultTemplateFuncs(c *Context) error {
-	width := guessWidth()
+	width := support.GuessWidth()
 	wrap := func(indent int, s string) string {
 		buf := bytes.NewBuffer(nil)
 		indentText := strings.Repeat(" ", indent)

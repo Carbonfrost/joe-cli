@@ -35,12 +35,11 @@ package table
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/olekukonko/tablewriter"
-	"golang.org/x/term"
 )
 
 // Options is the configuration for the table extension and provides the initializer for the
@@ -214,7 +213,7 @@ func newTableContext(f ...*Format) *tableContext {
 		panic("expected zero or one arg")
 	}
 	if format.ColWidth <= 0 {
-		format.ColWidth = guessWidth()
+		format.ColWidth = support.GuessWidth()
 	}
 	format.apply(c)
 
@@ -434,17 +433,6 @@ func (c *wrapperRenderContext) Cell(value any) (string, error) {
 
 func (c *wrapperRenderContext) EndTable() string {
 	return c.inner.EndTable()
-}
-
-func guessWidth() int {
-	fd := int(os.Stdout.Fd())
-	if term.IsTerminal(fd) {
-		width, _, err := term.GetSize(fd)
-		if err == nil && width > 12 && width < 80 {
-			return width - 1
-		}
-	}
-	return 80
 }
 
 func getFormat(v interface{}) *Format {

@@ -10,8 +10,6 @@ import (
 	"os"
 	"strings"
 	"text/template"
-
-	"golang.org/x/term"
 )
 
 // Context provides the context in which the app, command, or flag is executing or initializing.
@@ -1501,17 +1499,6 @@ func checkForRequiredOption(c *Context) error {
 
 func executeOptionPipeline(ctx *Context) error {
 	return ctx.Do(Pipeline(ctx.target().uses().pipeline(ActionTiming), ctx.target().pipeline(ActionTiming)))
-}
-
-func guessWidth() int {
-	fd := int(os.Stdout.Fd())
-	if term.IsTerminal(fd) {
-		width, _, err := term.GetSize(fd)
-		if err == nil && width > 12 && width < 80 {
-			return width
-		}
-	}
-	return 80
 }
 
 var (
