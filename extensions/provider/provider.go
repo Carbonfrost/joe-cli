@@ -49,6 +49,34 @@ type Value struct {
 	rawArgs map[string]string
 }
 
+// FactoryFunc describes the factory function for a provider
+type FactoryFunc func(opts map[string]string) (any, error)
+
+// Lookup defines how to obtain the provider or information about it from its name
+type Lookup interface {
+	ProviderNames() []string
+	LookupDefaults(name string) (map[string]string, bool)
+	LookupFactory(name string) (FactoryFunc, bool)
+}
+
+// Details provides a lookup that porivudes information about a provider and a factory
+// for instancing it.
+type Details map[string]struct {
+	// Defaults specifies the default values for the provider
+	Defaults map[string]string
+
+	// Factory is responsible for creating the provider given the options.
+	// The value is a function, and must be one of the functions available to
+	// FactoryFunc
+	Factory FactoryFunc
+
+	// Value is a discrete value to use for the provider.  Factory and Value
+	// are designed to be mutually exclusive; however, when both as specified,
+	// Factory is used.  The use of Value also implies that the provider has
+	// no defaults.
+	Value any
+}
+
 // Map provides a map that names the providers and their the default values.
 type Map map[string]map[string]string
 
@@ -71,7 +99,7 @@ type Registry struct {
 	//          },
 	//      },
 	//  }
-	Providers map[string]map[string]string
+	Providers Lookup
 
 	// AllowUnknown determines whether unknown provider names are allowed.
 	// The default is false, which causes an error when trying to set an unknown
@@ -211,7 +239,7 @@ func validateProviderExists(c *cli.Context) error {
 	if registry.AllowUnknown {
 		return nil
 	}
-	p, exists := registry.Providers[v.Name]
+	p, exists := registry.LookupDefaults(v.Name)
 	if !exists {
 		return fmt.Errorf("unknown %q %s", v.Name, provider)
 	}
@@ -224,11 +252,75 @@ func validateProviderExists(c *cli.Context) error {
 	return nil
 }
 
+func (r *Registry) ProviderNames() []string {
+	return r.Providers.ProviderNames()
+}
+
+func (r *Registry) LookupFactory(name string) (f FactoryFunc, ok bool) {
+	return r.Providers.LookupFactory(name)
+}
+
+func (r *Registry) LookupDefaults(name string) (defaults map[string]string, ok bool) {
+	return r.Providers.LookupDefaults(name)
+}
+
+func (r *Registry) New(name string, opts map[string]string) (any, error) {
+	defaults, _ := r.LookupDefaults(name)
+	mergedOpts := map[string]string{}
+	update(mergedOpts, defaults)
+	update(mergedOpts, opts)
+
+	fac, ok := r.LookupFactory(name)
+	if !ok {
+		return nil, fmt.Errorf("provider not found: %q", name)
+	}
+	return fac(mergedOpts)
+}
+
 func (r *Registry) Execute(c *cli.Context) error {
 	return c.Before(cli.ActionFunc(func(c1 *cli.Context) error {
 		Services(c1).registries[r.Name] = r
 		return nil
 	}))
+}
+
+func (m Map) ProviderNames() []string {
+	keys := make([]string, len(m))
+	var i int
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	return keys
+}
+
+func (m Map) LookupDefaults(name string) (map[string]string, bool) {
+	r, ok := m[name]
+	return r, ok
+}
+
+func (m Map) LookupFactory(name string) (FactoryFunc, bool) {
+	return nil, false
+}
+
+func (d Details) ProviderNames() []string {
+	keys := make([]string, len(d))
+	var i int
+	for k := range d {
+		keys[i] = k
+		i++
+	}
+	return keys
+}
+
+func (d Details) LookupDefaults(name string) (map[string]string, bool) {
+	r, ok := d[name]
+	return r.Defaults, ok
+}
+
+func (d Details) LookupFactory(name string) (FactoryFunc, bool) {
+	r, ok := d[name]
+	return r.Factory, ok
 }
 
 func (d defaultsMap) String() string {
@@ -238,10 +330,11 @@ func (d defaultsMap) String() string {
 func toData(r *Registry) []providerData {
 	res := make([]providerData, 0)
 	if r != nil {
-		for n, d := range r.Providers {
+		for _, n := range r.ProviderNames() {
+			defaults, _ := r.LookupDefaults(n)
 			res = append(res, providerData{
 				Name:     n,
-				Defaults: d,
+				Defaults: defaults,
 			})
 		}
 		sort.Slice(res, func(i, j int) bool {
@@ -251,7 +344,16 @@ func toData(r *Registry) []providerData {
 	return res
 }
 
+func update(dst, src map[string]string) {
+	for k, v := range src {
+		dst[k] = v
+	}
+}
+
 var (
 	_ flag.Value = (*Value)(nil)
 	_ cli.Action = (*Registry)(nil)
+	_ Lookup     = (Map)(nil)
+	_ Lookup     = (Details)(nil)
+	_ Lookup     = (*Registry)(nil)
 )

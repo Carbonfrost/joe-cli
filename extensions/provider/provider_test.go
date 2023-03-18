@@ -3,6 +3,7 @@ package provider_test
 import (
 	"bytes"
 	"context"
+	"strconv"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
@@ -41,6 +42,98 @@ var _ = Describe("Registry", func() {
 
 			services := provider.Services(c)
 			Expect(services.Registry("providers")).To(Equal(registry))
+		})
+	})
+
+	Describe("New", func() {
+		type Options struct {
+			Comma   string `mapstructure:"comma"`
+			UseCRLF bool   `mapstructure:"useCRLF"`
+		}
+
+		type csvProvider struct {
+			Comma   string
+			UseCRLF bool
+		}
+
+		It("creates provider given the factory and its defaults", func() {
+			action := new(joeclifakes.FakeAction)
+			registry := &provider.Registry{
+				Name: "providers",
+				Providers: provider.Details{
+					"csv": {
+						Defaults: map[string]string{
+							"comma":   "a",
+							"useCRLF": "true",
+						},
+						Factory: func(opts map[string]string) (any, error) {
+							b, _ := strconv.ParseBool(opts["useCRLF"])
+							return &csvProvider{
+								Comma:   opts["comma"],
+								UseCRLF: b,
+							}, nil
+						},
+					},
+				},
+			}
+
+			app := &cli.App{
+				Uses:   registry,
+				Action: action,
+			}
+
+			err := app.RunContext(context.TODO(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+
+			c := action.ExecuteArgsForCall(0)
+
+			actual, _ := provider.Services(c).Registry("providers").New("csv", nil)
+			Expect(actual).To(Equal(&csvProvider{"a", true}))
+		})
+
+		It("returns an error on non-existent provider", func() {
+			action := new(joeclifakes.FakeAction)
+			registry := &provider.Registry{
+				Name:      "providers",
+				Providers: provider.Details{},
+			}
+
+			app := &cli.App{
+				Uses:   registry,
+				Action: action,
+			}
+
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			c := action.ExecuteArgsForCall(0)
+
+			_, err := provider.Services(c).Registry("providers").New("csv", nil)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+	Describe("ProviderNames", func() {
+		It("creates obtains the provider names", func() {
+			action := new(joeclifakes.FakeAction)
+			registry := &provider.Registry{
+				Name: "providers",
+				Providers: provider.Details{
+					"csv":  {},
+					"json": {},
+					"yaml": {},
+				},
+			}
+
+			app := &cli.App{
+				Uses:   registry,
+				Action: action,
+			}
+
+			err := app.RunContext(context.TODO(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+
+			c := action.ExecuteArgsForCall(0)
+
+			actual := provider.Services(c).Registry("providers").ProviderNames()
+			Expect(actual).To(ConsistOf([]string{"csv", "json", "yaml"}))
 		})
 	})
 })
