@@ -1,6 +1,7 @@
 package structure_test
 
 import (
+	"encoding"
 	"math/big"
 	"net"
 	"net/url"
@@ -66,15 +67,17 @@ var _ = Describe("Value", func() {
 					VbigFloat *big.Float
 					VbigInt   *big.Int
 
-					VIP     net.IP
-					VList   []string
-					Vmap    map[string]string
-					VRegexp *regexp.Regexp
+					VIP          net.IP
+					VList        []string
+					Vmap         map[string]string
+					VRegexp      *regexp.Regexp
+					VTextMarshal *textMarshaler
 
 					VURL   *url.URL
 					VValue cli.Value
 				}{
-					VValue: new(joeclifakes.FakeValue),
+					VValue:       new(joeclifakes.FakeValue),
+					VTextMarshal: new(textMarshaler),
 				}
 
 				err := cli.Set(structure.Of(s), name+"="+value)
@@ -104,6 +107,7 @@ var _ = Describe("Value", func() {
 			Entry("big.Int", "VbigInt", "22", Equal(big.NewInt(22))),
 			Entry("IP", "VIP", "127.0.0.1", Equal(net.ParseIP("127.0.0.1"))),
 			Entry("List", "VList", "a,b,c", Equal([]string{"a", "b", "c"})),
+			Entry("text marshal", "VTextMarshal", "OK", Equal(&textMarshaler{"OK"})),
 			XEntry("map", "Vmap", "hello=world,goodbye=earth", Equal(map[string]string{
 				"hello":   "world",
 				"goodbye": "earth",
@@ -132,3 +136,12 @@ func fakeValueArg(v interface{}) interface{} {
 	f := v.(*joeclifakes.FakeValue).SetArgsForCall(0)
 	return f
 }
+
+type textMarshaler struct{ t string }
+
+func (t *textMarshaler) UnmarshalText(text []byte) error {
+	*t = textMarshaler{string(text)}
+	return nil
+}
+
+var _ encoding.TextUnmarshaler = (*textMarshaler)(nil)

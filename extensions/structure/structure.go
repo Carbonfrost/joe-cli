@@ -4,13 +4,13 @@
 package structure
 
 import (
+	"encoding"
 	"flag"
+	"fmt"
 	"math/big"
-	"net"
 	"net/url"
 	"reflect"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -38,15 +38,15 @@ type Value struct {
 type DecoderOption func(*mapstructure.DecoderConfig)
 
 var (
-	valueType    = reflect.TypeOf((*cli.Value)(nil)).Elem()
-	durationType = reflect.TypeOf(time.Duration(0))
-	bigIntType   = reflect.TypeOf(big.NewInt(0))
-	bigFloatType = reflect.TypeOf(big.NewFloat(0))
-	ipType       = reflect.TypeOf(net.IP{})
-	listType     = reflect.TypeOf([]string{})
-	mapType      = reflect.TypeOf(map[string]string{})
-	regexpType   = reflect.TypeOf(&regexp.Regexp{})
-	urlType      = reflect.TypeOf(&url.URL{})
+	valueType       = reflect.TypeOf((*cli.Value)(nil)).Elem()
+	unmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	durationType    = reflect.TypeOf(time.Duration(0))
+	bigIntType      = reflect.TypeOf(big.NewInt(0))
+	bigFloatType    = reflect.TypeOf(big.NewFloat(0))
+	listType        = reflect.TypeOf([]string{})
+	mapType         = reflect.TypeOf(map[string]string{})
+	regexpType      = reflect.TypeOf(&regexp.Regexp{})
+	urlType         = reflect.TypeOf(&url.URL{})
 )
 
 // Of creates a Value which can be initialized using name-value pairs.  The argument v
@@ -118,82 +118,97 @@ func (v *Value) String() string {
 		output := map[string]string{}
 		_ = mapstructure.Decode(val, &output)
 		return support.FormatMap(output, ",")
-
 	}
-	return ""
 }
 
 func viableOptions() []DecoderOption {
 	return []DecoderOption{
 		func(m *mapstructure.DecoderConfig) {
 			m.WeaklyTypedInput = true
-			m.DecodeHook = mapstructure.DecodeHookFuncValue(applyConversions)
+			m.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+				mapstructure.StringToIPHookFunc(),
+				mapstructure.StringToIPNetHookFunc(),
+				mapstructure.StringToSliceHookFunc(","),
+				mapstructure.StringToTimeDurationHookFunc(),
+				mapstructure.DecodeHookFunc(bigIntHook),
+				mapstructure.DecodeHookFunc(bigFloatHook),
+				mapstructure.DecodeHookFunc(urlHook),
+				mapstructure.DecodeHookFunc(regexpHook),
+				mapstructure.DecodeHookFunc(valueHook),
+				mapstructure.DecodeHookFunc(unmarshalerHook),
+				mapstructure.RecursiveStructToMapHookFunc(),
+			)
 		},
 	}
 }
 
-func applyConversions(from, to reflect.Value) (interface{}, error) {
-	typ := to.Type()
-	value := from.String()
-
-	// In the case of failure, let conversions fallthrough to the default
-	// in the decoder
-	switch typ.Kind() {
-	case reflect.Int64:
-		if typ == durationType {
-			return time.ParseDuration(value)
-		}
-		return strconv.ParseInt(value, 0, 64)
-
-	case reflect.Ptr:
-		switch typ {
-		case bigIntType:
-			v := new(big.Int)
-			if _, ok := v.SetString(value, 10); ok {
-				return v, nil
-			}
-
-		case bigFloatType:
-			v, _, err := big.ParseFloat(value, 10, 53, big.ToZero)
-			return v, err
-
-		case regexpType:
-			return regexp.Compile(value)
-
-		case urlType:
-			return url.Parse(value)
-
-		default:
-			if typ.Implements(valueType) {
-				to.Interface().(cli.Value).Set(value)
-				return to.Interface(), nil
-			}
-		}
-
-	case reflect.Map:
-		if typ == mapType {
-			m := support.ParseMap(cli.SplitList(value, ",", -1))
-			if to.IsNil() {
-				to = reflect.MakeMap(mapType)
-			}
-			for k, v := range m {
-				to.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
-			}
-			return to.Interface(), nil
-		}
-
-	case reflect.Slice:
-		if typ == listType {
-			return cli.SplitList(value, ",", -1), nil
-
-		} else if typ == ipType {
-			v := net.ParseIP(value)
-			if v != nil {
-				return v, nil
-			}
-		}
+func bigIntHook(from, to reflect.Type, data any) (any, error) {
+	if from.Kind() != reflect.String {
+		return data, nil
 	}
-	return from.Interface(), nil
+	if to != bigIntType {
+		return data, nil
+	}
+
+	v := new(big.Int)
+	if _, ok := v.SetString(data.(string), 10); !ok {
+		return nil, fmt.Errorf("failed to parse big.Int")
+	}
+	return v, nil
+}
+
+func bigFloatHook(from, to reflect.Type, data any) (any, error) {
+	if from.Kind() != reflect.String || to != bigFloatType {
+		return data, nil
+	}
+	v, _, err := big.ParseFloat(data.(string), 10, 53, big.ToZero)
+	return v, err
+}
+
+func urlHook(from, to reflect.Type, data any) (any, error) {
+	if from.Kind() != reflect.String || to != urlType {
+		return data, nil
+	}
+	return url.Parse(data.(string))
+}
+
+func regexpHook(from, to reflect.Type, data any) (any, error) {
+	if from.Kind() != reflect.String || to != regexpType {
+		return data, nil
+	}
+	return regexp.Compile(data.(string))
+}
+
+func valueHook(from, to reflect.Value) (any, error) {
+	if from.Kind() != reflect.String {
+		return from.Interface(), nil
+	}
+
+	if !to.Type().Implements(valueType) {
+		return from.Interface(), nil
+	}
+
+	result := to.Interface()
+	err := result.(cli.Value).Set(from.String())
+	return result, err
+}
+
+func unmarshalerHook(from, to reflect.Value) (any, error) {
+	if from.Kind() != reflect.String || to.Kind() != reflect.Struct {
+		return from.Interface(), nil
+	}
+
+	// Generate a pointer to the value and check whether it is an unmarshaler
+	indirect := reflect.New(to.Type())
+	indirect.Elem().Set(to)
+
+	if !indirect.Type().Implements(unmarshalerType) {
+		return from.Interface(), nil
+	}
+
+	result := indirect.Interface()
+	err := result.(encoding.TextUnmarshaler).UnmarshalText([]byte(from.String()))
+	return result, err
 }
 
 var _ flag.Value = (*Value)(nil)
