@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.4.0 (March 19, 2023)
+
+### New Features
+
+* Introduce `RemoveFlag`, `RemoveCommand` and initialization internal state (d9796c4)
+* Provider `Factory` reflection helper (5f347fe)
+* Generalize provider `Lookup`; `Registry`.`New` (37d5c63)
+* Structure: extract `Decode` function as API (afb0e11)
+* Porcelain table format (bbabac9)
+* Export `SplitMap` as API (812291b)
+* `ByteLength`, `Hex`, `Octal` (30a8595)
+* `FromContext` (63a17e6)
+* `Alias` action (786c966)
+* Breaking changes:
+    * Drop `AtTiming` (2c789f7)
+
+### Bug fixes and improvements
+
+* Allow implicit conversion to primitives in lookup (8a62a20)
+* Improvements to decoding maps (01c129c)
+* Detect `COLUMNS` var; Relocate `guessWidth` to support (4e1affe)
+* Chores:
+    * Remove documentation from joe-cli repo (39db584)
+    * Update engineering platform (c5fa6f8)
+    * Update CI to go1.19 and go1.20 (874af1b)
+    * Update dependent versions (1791d42)
+
 ## v0.3.1 (February 20, 2023)
 
 ### New Features
