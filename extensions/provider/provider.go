@@ -20,10 +20,12 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/structure"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
@@ -119,6 +121,56 @@ var (
 {{ .Name }}{{ "\t" }}{{ .Defaults }}
 {{ end }}`
 )
+
+// Factory uses reflection to create a provider factory function.  In particular,
+// the function argument must have a signature that takes one argument for
+// options and return the provider and optionally an error.  The actual types can be
+// more specific than interface{}.  When they are, type conversion is provided using
+// the Decode method
+func Factory(fn any) FactoryFunc {
+	if fn == nil {
+		panic("cannot specify nil argument")
+	}
+	if !validFactory(fn) {
+		panic("unexpected function signature")
+	}
+
+	v := reflect.ValueOf(fn)
+	optType := reflect.TypeOf(fn).In(0)
+	return FactoryFunc(func(opts map[string]string) (any, error) {
+		if opts == nil {
+			opts = map[string]string{}
+		}
+
+		value := reflect.New(optType).Interface()
+		err := structure.Decode(opts, value)
+		if err != nil {
+			return nil, err
+		}
+		o := reflect.ValueOf(value).Elem().Interface()
+
+		out := v.Call([]reflect.Value{reflect.ValueOf(o)})
+		if len(out) > 1 {
+			err, _ = out[1].Interface().(error)
+		}
+		return out[0].Interface(), err
+	})
+}
+
+func validFactory(fn any) bool {
+	typ := reflect.TypeOf(fn)
+	if typ.NumIn() != 1 {
+		return false
+	}
+	if typ.NumOut() < 1 || typ.NumOut() > 2 {
+		return false
+	}
+	var errorType = reflect.TypeOf(new(error)).Elem()
+	if typ.NumOut() == 2 && typ.Out(1) != errorType {
+		return false
+	}
+	return true
+}
 
 // ArgumentFlag obtains a conventions-based flag for setting an argument
 func (v *Value) ArgumentFlag() cli.Prototype {

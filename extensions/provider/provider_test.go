@@ -138,6 +138,40 @@ var _ = Describe("Registry", func() {
 	})
 })
 
+var _ = Describe("Factory", func() {
+	It("decodes options from map", func() {
+		var called bool
+		provider.Factory(func(o Options) any {
+			Expect(o.A).To(Equal("A"))
+			Expect(o.B).To(Equal("B"))
+			called = true
+			return nil
+		})(map[string]string{
+			"A": "A",
+			"B": "B",
+		})
+		Expect(called).To(BeTrue())
+	})
+
+	DescribeTable("examples", func(f any) {
+		Expect(func() { provider.Factory(f) }).NotTo(Panic())
+		actual, _ := provider.Factory(f)(nil)
+		Expect(actual).To(Equal("provider"))
+	},
+		Entry("no-op", func(any) (any, error) { return "provider", nil }),
+		Entry("no error", func(Options) any { return "provider" }),
+		Entry("nominal", func(Options) (any, error) { return "provider", nil }),
+	)
+
+	DescribeTable("error", func(f any) {
+		Expect(func() { provider.Factory(f) }).To(Panic())
+	},
+		Entry("need args", func() (any, error) { return "provider", nil }),
+		Entry("need return value", func(Options) {}),
+		Entry("too many to return", func(Options) (any, any, error) { return "", "", nil }),
+	)
+})
+
 var _ = Describe("SetArgument", func() {
 
 	It("sets up the argument by value", func() {
@@ -405,3 +439,7 @@ var _ = Describe("Value", func() {
 		),
 	)
 })
+
+type Options struct {
+	A, B string
+}
