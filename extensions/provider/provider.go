@@ -18,6 +18,7 @@ package provider
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"reflect"
@@ -329,8 +330,8 @@ func (r *Registry) New(name string, opts map[string]string) (any, error) {
 	return fac(mergedOpts)
 }
 
-func (r *Registry) Execute(c *cli.Context) error {
-	return c.Before(cli.ActionFunc(func(c1 *cli.Context) error {
+func (r *Registry) Execute(c context.Context) error {
+	return cli.FromContext(c).Before(cli.ActionFunc(func(c1 *cli.Context) error {
 		Services(c1).registries[r.Name] = r
 		return nil
 	}))

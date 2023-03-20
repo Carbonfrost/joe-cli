@@ -2,16 +2,17 @@
 package joeclifakes
 
 import (
+	"context"
 	"sync"
 
 	cli "github.com/Carbonfrost/joe-cli"
 )
 
 type FakeMiddleware struct {
-	ExecuteStub        func(*cli.Context) error
+	ExecuteStub        func(context.Context) error
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
-		arg1 *cli.Context
+		arg1 context.Context
 	}
 	executeReturns struct {
 		result1 error
@@ -19,10 +20,10 @@ type FakeMiddleware struct {
 	executeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ExecuteWithNextStub        func(*cli.Context, cli.Action) error
+	ExecuteWithNextStub        func(context.Context, cli.Action) error
 	executeWithNextMutex       sync.RWMutex
 	executeWithNextArgsForCall []struct {
-		arg1 *cli.Context
+		arg1 context.Context
 		arg2 cli.Action
 	}
 	executeWithNextReturns struct {
@@ -35,11 +36,11 @@ type FakeMiddleware struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeMiddleware) Execute(arg1 *cli.Context) error {
+func (fake *FakeMiddleware) Execute(arg1 context.Context) error {
 	fake.executeMutex.Lock()
 	ret, specificReturn := fake.executeReturnsOnCall[len(fake.executeArgsForCall)]
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
-		arg1 *cli.Context
+		arg1 context.Context
 	}{arg1})
 	stub := fake.ExecuteStub
 	fakeReturns := fake.executeReturns
@@ -60,13 +61,13 @@ func (fake *FakeMiddleware) ExecuteCallCount() int {
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *FakeMiddleware) ExecuteCalls(stub func(*cli.Context) error) {
+func (fake *FakeMiddleware) ExecuteCalls(stub func(context.Context) error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = stub
 }
 
-func (fake *FakeMiddleware) ExecuteArgsForCall(i int) *cli.Context {
+func (fake *FakeMiddleware) ExecuteArgsForCall(i int) context.Context {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	argsForCall := fake.executeArgsForCall[i]
@@ -96,11 +97,11 @@ func (fake *FakeMiddleware) ExecuteReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeMiddleware) ExecuteWithNext(arg1 *cli.Context, arg2 cli.Action) error {
+func (fake *FakeMiddleware) ExecuteWithNext(arg1 context.Context, arg2 cli.Action) error {
 	fake.executeWithNextMutex.Lock()
 	ret, specificReturn := fake.executeWithNextReturnsOnCall[len(fake.executeWithNextArgsForCall)]
 	fake.executeWithNextArgsForCall = append(fake.executeWithNextArgsForCall, struct {
-		arg1 *cli.Context
+		arg1 context.Context
 		arg2 cli.Action
 	}{arg1, arg2})
 	stub := fake.ExecuteWithNextStub
@@ -122,13 +123,13 @@ func (fake *FakeMiddleware) ExecuteWithNextCallCount() int {
 	return len(fake.executeWithNextArgsForCall)
 }
 
-func (fake *FakeMiddleware) ExecuteWithNextCalls(stub func(*cli.Context, cli.Action) error) {
+func (fake *FakeMiddleware) ExecuteWithNextCalls(stub func(context.Context, cli.Action) error) {
 	fake.executeWithNextMutex.Lock()
 	defer fake.executeWithNextMutex.Unlock()
 	fake.ExecuteWithNextStub = stub
 }
 
-func (fake *FakeMiddleware) ExecuteWithNextArgsForCall(i int) (*cli.Context, cli.Action) {
+func (fake *FakeMiddleware) ExecuteWithNextArgsForCall(i int) (context.Context, cli.Action) {
 	fake.executeWithNextMutex.RLock()
 	defer fake.executeWithNextMutex.RUnlock()
 	argsForCall := fake.executeWithNextArgsForCall[i]

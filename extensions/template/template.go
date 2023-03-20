@@ -1,6 +1,7 @@
 package template
 
 import (
+	"context"
 	"io"
 	tt "text/template"
 
@@ -89,7 +90,8 @@ func (r *Root) DryRunFlag() cli.Prototype {
 	}
 }
 
-func (r *Root) Execute(c *cli.Context) error {
+func (r *Root) Execute(ctx context.Context) error {
+	c := cli.FromContext(ctx)
 	return c.Do(r.pipeline())
 }
 

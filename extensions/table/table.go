@@ -34,6 +34,7 @@ package table
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
@@ -369,8 +370,8 @@ func (f Feature) Pipeline() cli.Action {
 	return featureMap.Pipeline(f)
 }
 
-func (o Options) Execute(c *cli.Context) error {
-	return c.Do(o.Features.Pipeline())
+func (o Options) Execute(c context.Context) error {
+	return cli.FromContext(c).Do(o.Features.Pipeline())
 }
 
 func (p *porcelainContext) Row() string {

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding"
 	"fmt"
 	"os"
@@ -283,7 +284,7 @@ func unmarshalText(token string) Option {
 }
 
 // Execute treats the options as if an action
-func (o Option) Execute(c *Context) (err error) {
+func (o Option) Execute(c context.Context) (err error) {
 	return builtinOptions.Pipeline(o).Execute(c)
 }
 

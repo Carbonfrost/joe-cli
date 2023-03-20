@@ -39,7 +39,7 @@ var _ = Describe("File", func() {
 		tmpFileLocation, _ := os.CreateTemp("", "example.*.txt")
 		_ = app.RunContext(context.TODO(), []string{"app", tmpFileLocation.Name()})
 
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.File("f")).NotTo(BeNil())
 		Expect(context.File("f").String()).To(Equal(tmpFileLocation.Name()))
 		Expect(context.File("f").Exists()).To(BeTrue())
@@ -154,7 +154,7 @@ var _ = Describe("File", func() {
 			Action: act,
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "-"})
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 
 		f, err := context.File("f").Open()
 		Expect(err).NotTo(HaveOccurred())
@@ -359,7 +359,7 @@ var _ = Describe("FileReference", func() {
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "d/b.bin"})
 
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.Bytes("b")).NotTo(BeNil())
 		Expect(context.Bytes("b")).To(Equal([]byte("facade")))
 		Expect(context.Raw("b")).To(Equal([]string{"<b>", "d/b.bin"}))
@@ -385,7 +385,7 @@ var _ = Describe("FileReference", func() {
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "d/b.bin"})
 
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.String("b")).To(Equal("facade"))
 		Expect(context.String("c")).To(Equal("d/b.bin"))
 	})
@@ -405,7 +405,7 @@ var _ = Describe("FileReference", func() {
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "@d/b.bin"})
 
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.List("b")).To(Equal([]string{"facade", "facade"}))
 	})
 
@@ -425,7 +425,7 @@ var _ = Describe("FileReference", func() {
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "@d/b.bin"})
 
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.String("b")).To(Equal("facade facade"))
 	})
 })
@@ -445,7 +445,7 @@ var _ = Describe("FileSet", func() {
 		}
 		_ = app.RunContext(context.TODO(), []string{"app", "fiche"})
 
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.FileSet("f")).NotTo(BeNil())
 		Expect(context.FileSet("f").String()).To(Equal("fiche"))
 	})

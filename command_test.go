@@ -99,7 +99,7 @@ var _ = Describe("Command", func() {
 		})
 
 		It("contains args in captured context", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Args()).To(Equal([]string{"c", "args", "args"}))
 		})
 
@@ -108,7 +108,7 @@ var _ = Describe("Command", func() {
 		})
 
 		It("obtains context path", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Path().IsCommand()).To(BeTrue())
 			Expect(captured.Path().Last()).To(Equal("c"))
 			Expect(captured.Path().String()).To(Equal("a c"))
@@ -179,7 +179,7 @@ var _ = Describe("Command", func() {
 
 			err := app.RunContext(context.TODO(), []string{"app", "-a", "-b"})
 			Expect(err).NotTo(HaveOccurred())
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 
 			Expect(captured.List("args")).To(Equal([]string{"-a", "-b"}))
 		})
@@ -252,7 +252,7 @@ var _ = Describe("Command", func() {
 			args, _ := cli.Split("app " + arguments)
 			err := app.RunContext(context.TODO(), args)
 			Expect(err).NotTo(HaveOccurred())
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 
 			actual := func() []string {
 				res := []string{}
@@ -509,7 +509,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 			It("invokes selected command", func() {
 				Expect(existsAct.ExecuteCallCount()).To(Equal(1))
 
-				captured := existsAct.ExecuteArgsForCall(0)
+				captured := cli.FromContext(existsAct.ExecuteArgsForCall(0))
 				Expect(captured.Args()).To(Equal([]string{"unknown", "--flag", "--option", "3"}))
 			})
 
@@ -586,7 +586,7 @@ var _ = Describe("ImplicitCommand", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
-		captured := act.ExecuteArgsForCall(0)
+		captured := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(captured.Args()).To(Equal([]string{"exec", "tail", "/var/output/logs", "-f"}))
 		Expect(app.Commands[0].Args[0].Value).To(PointTo(Equal("tail")))
 		Expect(app.Commands[0].Args[1].Value).To(PointTo(Equal([]string{"/var/output/logs"})))

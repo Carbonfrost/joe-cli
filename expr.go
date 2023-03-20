@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,7 +14,7 @@ type Evaluator interface {
 	// Evaluate performs the evaluation.  The v argument is the value of the prior
 	// expression operator.  The yield argument is used to pass one or more additional
 	// values to the next expression operator.
-	Evaluate(c *Context, v interface{}, yield func(interface{}) error) error
+	Evaluate(c context.Context, v interface{}, yield func(interface{}) error) error
 }
 
 // EvaluatorFunc provides the basic function for an Evaluator
@@ -238,6 +239,10 @@ func NewExprBinding(ev Evaluator, exprlookup ...interface{}) ExprBinding {
 //   - func(*Context, interface{}) error
 //   - func(*Context, interface{}) bool
 //   - func(*Context, interface{})
+//   - func(context.Context, interface{}, func(interface{})error) error
+//   - func(context.Context, interface{}) error
+//   - func(context.Context, interface{}) bool
+//   - func(context.Context, interface{})
 //   - func(interface{}, func(interface{})error) error
 //   - func(interface{}) bool
 //   - func(interface{}) error
@@ -266,6 +271,30 @@ func EvaluatorOf(v interface{}) Evaluator {
 			return nil
 		})
 	case func(*Context, interface{}):
+		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+			a(c, v)
+			return y(v)
+		})
+	case func(context.Context, interface{}, func(interface{}) error) error:
+		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+			return a(c, v, y)
+		})
+	case func(context.Context, interface{}) error:
+		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+			err := a(c, v)
+			if err == nil {
+				return y(v)
+			}
+			return err
+		})
+	case func(context.Context, interface{}) bool:
+		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+			if a(c, v) {
+				return y(v)
+			}
+			return nil
+		})
+	case func(context.Context, interface{}):
 		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
 			a(c, v)
 			return y(v)
@@ -442,11 +471,11 @@ func (e *Expr) internalFlags() exprFlags {
 }
 
 // Evaluate provides the evaluation of the function and implements the Evaluator interface
-func (e EvaluatorFunc) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
+func (e EvaluatorFunc) Evaluate(c context.Context, v interface{}, yield func(interface{}) error) error {
 	if e == nil {
 		return nil
 	}
-	return e(c, v, yield)
+	return e(FromContext(c), v, yield)
 }
 
 func (e ExprsByName) Len() int {
@@ -521,8 +550,8 @@ func (b *boundExpr) LocalArgs() []*Arg {
 	return b.expr.Args
 }
 
-func (b *boundExpr) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
-	ctx := c.valueContext(newValueTarget(b, nil), b.expr.Name).setTiming(ActionTiming)
+func (b *boundExpr) Evaluate(c context.Context, v interface{}, yield func(interface{}) error) error {
+	ctx := FromContext(c).valueContext(newValueTarget(b, nil), b.expr.Name).setTiming(ActionTiming)
 	return EvaluatorOf(b.expr.Evaluate).Evaluate(ctx, v, yield)
 }
 

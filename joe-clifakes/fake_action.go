@@ -2,16 +2,17 @@
 package joeclifakes
 
 import (
+	"context"
 	"sync"
 
 	cli "github.com/Carbonfrost/joe-cli"
 )
 
 type FakeAction struct {
-	ExecuteStub        func(*cli.Context) error
+	ExecuteStub        func(context.Context) error
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
-		arg1 *cli.Context
+		arg1 context.Context
 	}
 	executeReturns struct {
 		result1 error
@@ -23,11 +24,11 @@ type FakeAction struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeAction) Execute(arg1 *cli.Context) error {
+func (fake *FakeAction) Execute(arg1 context.Context) error {
 	fake.executeMutex.Lock()
 	ret, specificReturn := fake.executeReturnsOnCall[len(fake.executeArgsForCall)]
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
-		arg1 *cli.Context
+		arg1 context.Context
 	}{arg1})
 	stub := fake.ExecuteStub
 	fakeReturns := fake.executeReturns
@@ -48,13 +49,13 @@ func (fake *FakeAction) ExecuteCallCount() int {
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *FakeAction) ExecuteCalls(stub func(*cli.Context) error) {
+func (fake *FakeAction) ExecuteCalls(stub func(context.Context) error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = stub
 }
 
-func (fake *FakeAction) ExecuteArgsForCall(i int) *cli.Context {
+func (fake *FakeAction) ExecuteArgsForCall(i int) context.Context {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	argsForCall := fake.executeArgsForCall[i]

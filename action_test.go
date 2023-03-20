@@ -46,7 +46,7 @@ var _ = Describe("timings", func() {
 			err := app.RunContext(context.TODO(), arguments)
 			Expect(err).NotTo(HaveOccurred())
 			if act.ExecuteCallCount() > 0 {
-				captured = act.ExecuteArgsForCall(0)
+				captured = cli.FromContext(act.ExecuteArgsForCall(0))
 			}
 		})
 
@@ -257,7 +257,7 @@ var _ = Describe("timings", func() {
 				})
 
 				It("action has expected name", func() {
-					context := flagAct.ExecuteArgsForCall(0)
+					context := cli.FromContext(flagAct.ExecuteArgsForCall(0))
 					Expect(context.Name()).To(Equal("flag"))
 				})
 
@@ -410,7 +410,7 @@ var _ = Describe("timings", func() {
 			}
 			app.RunContext(context.TODO(), []string{"app", "sub"})
 			Expect(act.ExecuteCallCount()).To(Equal(1))
-			captured = act.ExecuteArgsForCall(0)
+			captured = cli.FromContext(act.ExecuteArgsForCall(0))
 		})
 
 		Context("Data", func() {
@@ -719,7 +719,7 @@ var _ = Describe("ProvideValueInitializer", func() {
 		Expect(setup.After.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 		Expect(setup.Action.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 
-		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteArgsForCall(0).Name()).To(Equal("<-myname>"))
+		Expect(cli.FromContext(setup.Uses.(*joeclifakes.FakeAction).ExecuteArgsForCall(0)).Name()).To(Equal("<-myname>"))
 	})
 })
 
@@ -1130,7 +1130,7 @@ var _ = Describe("Pipeline", func() {
 		act1 := new(joeclifakes.FakeMiddleware)
 		act2 := new(joeclifakes.FakeAction)
 
-		act1.ExecuteWithNextStub = func(_ *cli.Context, a cli.Action) error {
+		act1.ExecuteWithNextStub = func(_ context.Context, a cli.Action) error {
 			return a.Execute(nil)
 		}
 
@@ -1145,10 +1145,10 @@ var _ = Describe("Pipeline", func() {
 		act2 := new(joeclifakes.FakeAction)
 		act3 := new(joeclifakes.FakeAction)
 
-		act1.ExecuteWithNextStub = func(_ *cli.Context, a cli.Action) error {
+		act1.ExecuteWithNextStub = func(_ context.Context, a cli.Action) error {
 			return a.Execute(nil)
 		}
-		act2.ExecuteStub = func(_ *cli.Context) error {
+		act2.ExecuteStub = func(_ context.Context) error {
 			return nil
 		}
 
@@ -1160,11 +1160,14 @@ var _ = Describe("Pipeline", func() {
 
 	It("flattens nested pipelines and invokes in order", func() {
 		var called []string
-		var makeAction = func(name string) cli.ActionFunc {
-			return func(*cli.Context) error {
+		// We don't set up a full action-pipelineThis function is dependent upon
+		var makeAction = func(name string) cli.Action {
+			fa := new(joeclifakes.FakeAction)
+			fa.ExecuteStub = func(context.Context) error {
 				called = append(called, name)
 				return nil
 			}
+			return fa
 		}
 
 		var act1 cli.ActionPipeline
@@ -1976,7 +1979,7 @@ var _ = Describe("Accessory", func() {
 			Action: act,
 		}
 		_ = app.RunContext(context.TODO(), []string{"app"})
-		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 
 		Expect(flag.Name).To(Equal("custom"))
@@ -1998,7 +2001,7 @@ var _ = Describe("Accessory", func() {
 		}
 
 		_ = app.RunContext(context.TODO(), []string{"app"})
-		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("recursive"))
 	})
@@ -2017,7 +2020,7 @@ var _ = Describe("Accessory", func() {
 		}
 
 		_ = app.RunContext(context.TODO(), []string{"app"})
-		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("files-recursive"))
 	})
@@ -2036,7 +2039,7 @@ var _ = Describe("Accessory", func() {
 		}
 
 		_ = app.RunContext(context.TODO(), []string{"app"})
-		flags := act.ExecuteArgsForCall(0).Command().Flags
+		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Description).To(Equal("my custom description"))
 	})
@@ -2200,7 +2203,8 @@ var _ = Describe("EachOccurrence", func() {
 		act := new(joeclifakes.FakeAction)
 		raw := [][]string{}
 		rawOccurrences := [][]string{}
-		act.ExecuteCalls(func(c *cli.Context) error {
+		act.ExecuteCalls(func(ctx context.Context) error {
+			c := cli.FromContext(ctx)
 			raw = append(raw, c.Raw(""))
 			rawOccurrences = append(rawOccurrences, c.RawOccurrences(""))
 			return nil
@@ -2305,7 +2309,8 @@ var _ = Describe("EachOccurrence", func() {
 	DescribeTable("examples", func(flag *cli.Flag, arguments string, expected []interface{}) {
 		act := new(joeclifakes.FakeAction)
 		var callIndex int // keep track of which index is called
-		act.ExecuteCalls(func(c *cli.Context) error {
+		act.ExecuteCalls(func(ctx context.Context) error {
+			c := cli.FromContext(ctx)
 			actual := c.Value("")
 			Expect(actual).To(Equal(expected[callIndex]))
 			callIndex++
@@ -2399,7 +2404,7 @@ var _ = Describe("Implies", func() {
 		err := app.RunContext(context.TODO(), args)
 		Expect(err).NotTo(HaveOccurred())
 
-		c := act.ExecuteArgsForCall(0)
+		c := cli.FromContext(act.ExecuteArgsForCall(0))
 		actual := map[string]string{
 			"encryption-key": c.String("encryption-key"),
 			"mode":           c.String("mode"),

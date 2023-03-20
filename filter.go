@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"math/bits"
 	"sort"
 )
@@ -13,7 +14,7 @@ type ContextFilterFunc func(*Context) bool
 // contexts.  The main use case is conditional actions using the IfMatch
 // decorator.
 type ContextFilter interface {
-	Matches(c *Context) bool
+	Matches(c context.Context) bool
 }
 
 // FilterModes enumerates common context filters.  These are bitwise-combinable
@@ -69,9 +70,10 @@ func PatternFilter(pat string) ContextFilter {
 	return newContextPathPattern(pat)
 }
 
-func (f FilterModes) Matches(c *Context) bool {
+func (f FilterModes) Matches(ctx context.Context) bool {
 	// Note that Anything has the highest hamming weight so it gets
 	// tested first using the optimal implementation
+	c := FromContext(ctx)
 	for _, match := range decompose(filterModeMatches).items(f) {
 		if !match(c) {
 			return false
@@ -80,11 +82,11 @@ func (f FilterModes) Matches(c *Context) bool {
 	return true
 }
 
-func (f ContextFilterFunc) Matches(c *Context) bool {
+func (f ContextFilterFunc) Matches(c context.Context) bool {
 	if f == nil {
 		return true
 	}
-	return f(c)
+	return f(FromContext(c))
 }
 
 func decompose[T ~int, V any](m map[T]V) *bitSet[T, V] {

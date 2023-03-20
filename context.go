@@ -1102,8 +1102,8 @@ func (c ContextPath) Match(pattern string) bool {
 	return newContextPathPattern(pattern).Match(c)
 }
 
-func (cp contextPathPattern) Matches(c *Context) bool {
-	return cp.Match(c.Path())
+func (cp contextPathPattern) Matches(c context.Context) bool {
+	return cp.Match(FromContext(c).Path())
 }
 
 func (cp contextPathPattern) Match(c ContextPath) bool {

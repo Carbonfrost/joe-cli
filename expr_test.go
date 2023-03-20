@@ -40,7 +40,7 @@ var _ = Describe("Expr", func() {
 		err := app.RunContext(context.TODO(), args)
 		Expect(err).NotTo(HaveOccurred())
 
-		captured := act.ExecuteArgsForCall(0)
+		captured := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(captured.Expression("e"))
 	})
 
@@ -125,22 +125,22 @@ var _ = Describe("Expr", func() {
 
 		It("contains args in captured context", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
-			Expect(captured.Args()).To(Equal([]string{"true", "1", "2", "a", "b", "c"}))
+			Expect(cli.FromContext(captured).Args()).To(Equal([]string{"true", "1", "2", "a", "b", "c"}))
 		})
 
 		It("contains values in captured context", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
-			Expect(captured.Values()).To(Equal([]interface{}{true, 2, []string{"a", "b", "c"}}))
+			Expect(cli.FromContext(captured).Values()).To(Equal([]interface{}{true, 2, []string{"a", "b", "c"}}))
 		})
 
 		It("provides context Name", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
-			Expect(captured.Name()).To(Equal("<-expr>"))
+			Expect(cli.FromContext(captured).Name()).To(Equal("<-expr>"))
 		})
 
 		It("provides context Path", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
-			Expect(captured.Path().String()).To(Equal("app <-expr>"))
+			Expect(cli.FromContext(captured).Path().String()).To(Equal("app <-expr>"))
 		})
 	})
 
@@ -194,12 +194,12 @@ var _ = Describe("Expr", func() {
 		})
 
 		It("provides context Name", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Name()).To(Equal("<-expr>"))
 		})
 
 		It("provides context Path", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Path().String()).To(Equal("app <expression> <-expr>"))
 		})
 	})
@@ -254,12 +254,12 @@ var _ = Describe("Expr", func() {
 		})
 
 		It("provides context Name", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Name()).To(Equal("<-expr>"))
 		})
 
 		It("provides context Path", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Path().String()).To(Equal("app <expression> <-expr>"))
 		})
 	})

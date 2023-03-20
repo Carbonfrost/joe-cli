@@ -2,16 +2,17 @@
 package joeclifakes
 
 import (
+	"context"
 	"sync"
 
 	cli "github.com/Carbonfrost/joe-cli"
 )
 
 type FakeEvaluator struct {
-	EvaluateStub        func(*cli.Context, interface{}, func(interface{}) error) error
+	EvaluateStub        func(context.Context, interface{}, func(interface{}) error) error
 	evaluateMutex       sync.RWMutex
 	evaluateArgsForCall []struct {
-		arg1 *cli.Context
+		arg1 context.Context
 		arg2 interface{}
 		arg3 func(interface{}) error
 	}
@@ -25,11 +26,11 @@ type FakeEvaluator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeEvaluator) Evaluate(arg1 *cli.Context, arg2 interface{}, arg3 func(interface{}) error) error {
+func (fake *FakeEvaluator) Evaluate(arg1 context.Context, arg2 interface{}, arg3 func(interface{}) error) error {
 	fake.evaluateMutex.Lock()
 	ret, specificReturn := fake.evaluateReturnsOnCall[len(fake.evaluateArgsForCall)]
 	fake.evaluateArgsForCall = append(fake.evaluateArgsForCall, struct {
-		arg1 *cli.Context
+		arg1 context.Context
 		arg2 interface{}
 		arg3 func(interface{}) error
 	}{arg1, arg2, arg3})
@@ -52,13 +53,13 @@ func (fake *FakeEvaluator) EvaluateCallCount() int {
 	return len(fake.evaluateArgsForCall)
 }
 
-func (fake *FakeEvaluator) EvaluateCalls(stub func(*cli.Context, interface{}, func(interface{}) error) error) {
+func (fake *FakeEvaluator) EvaluateCalls(stub func(context.Context, interface{}, func(interface{}) error) error) {
 	fake.evaluateMutex.Lock()
 	defer fake.evaluateMutex.Unlock()
 	fake.EvaluateStub = stub
 }
 
-func (fake *FakeEvaluator) EvaluateArgsForCall(i int) (*cli.Context, interface{}, func(interface{}) error) {
+func (fake *FakeEvaluator) EvaluateArgsForCall(i int) (context.Context, interface{}, func(interface{}) error) {
 	fake.evaluateMutex.RLock()
 	defer fake.evaluateMutex.RUnlock()
 	argsForCall := fake.evaluateArgsForCall[i]

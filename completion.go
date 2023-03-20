@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -289,7 +290,8 @@ func (f CompletionFunc) Complete(c *CompletionContext) []CompletionItem {
 	return f(c)
 }
 
-func (f CompletionFunc) Execute(c *Context) error {
+func (f CompletionFunc) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
 	return c.Do(SetCompletion(f))
 }
 
@@ -307,7 +309,8 @@ func (s StandardCompletion) Complete(c *CompletionContext) []CompletionItem {
 	panic(fmt.Sprintf("unexpected value: %v", s))
 }
 
-func (s StandardCompletion) Execute(c *Context) error {
+func (s StandardCompletion) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
 	return c.Do(SetCompletion(s))
 }
 

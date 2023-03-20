@@ -39,7 +39,7 @@ var _ = Describe("Value", func() {
 				args, _ := cli.Split(arguments)
 				err := app.RunContext(context.TODO(), args)
 				Expect(err).NotTo(HaveOccurred())
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(cli.FromContext(act.ExecuteArgsForCall(0)))
 				Expect(captured.Value("o")).To(expected)
 			},
 			Entry(
@@ -456,7 +456,7 @@ var _ = Describe("Value", func() {
 
 			args, _ := cli.Split(arguments)
 			app.RunContext(context.TODO(), args)
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.List("s")).To(expected)
 		},
 			Entry("escaped comma", "app -s 'A\\,B,C'", ContainElements("A,B", "C")),
@@ -477,7 +477,7 @@ var _ = Describe("Value", func() {
 
 			args, _ := cli.Split(arguments)
 			app.RunContext(context.TODO(), args)
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Map("s")).To(expected)
 		},
 			Entry("escaped comma", "app -s 'L=A\\,B'", HaveKeyWithValue("L", "A,B")),

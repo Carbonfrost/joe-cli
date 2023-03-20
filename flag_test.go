@@ -53,28 +53,28 @@ var _ = Describe("Flag", func() {
 		})
 
 		It("contains args in captured context", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Args()).To(Equal([]string{"-f", "value"}))
 		})
 
 		It("provides properly initialized context", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Name()).To(Equal("-f"))
 			Expect(captured.Path().String()).To(Equal("app -f"))
 		})
 
 		It("contains the value in the context", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Value("")).To(Equal("value"))
 		})
 
 		It("contains the correct Occurrences count", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Occurrences("")).To(Equal(1))
 		})
 
 		It("obtains context path", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Path().IsFlag()).To(BeTrue())
 			Expect(captured.Path().Last()).To(Equal("-f"))
 			Expect(captured.Path().String()).To(Equal("app -f"))
@@ -92,18 +92,18 @@ var _ = Describe("Flag", func() {
 
 			It("provides properly initialized context", func() {
 				// The name is still -f despite using the alias
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(captured.Name()).To(Equal("-f"))
 				Expect(captured.Path().String()).To(Equal("app -f"))
 			})
 
 			It("contains the value in the context", func() {
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(captured.Value("")).To(Equal("value"))
 			})
 
 			It("contains the correct Occurrences count", func() {
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(captured.Occurrences("")).To(Equal(1))
 			})
 		})
@@ -119,12 +119,12 @@ var _ = Describe("Flag", func() {
 			})
 
 			It("contains the value in the context", func() {
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(captured.Value("")).To(Equal("baz")) // winner due to being last
 			})
 
 			It("contains the correct Occurrences count", func() {
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(captured.Occurrences("")).To(Equal(3))
 			})
 		})
@@ -158,13 +158,13 @@ var _ = Describe("Flag", func() {
 				})
 
 				It("provides properly initialized context", func() {
-					captured := act.ExecuteArgsForCall(0)
+					captured := cli.FromContext(act.ExecuteArgsForCall(0))
 					Expect(captured.Name()).To(Equal("-f"))
 					Expect(captured.Path().String()).To(Equal("app sub -f"))
 				})
 
 				It("contains the value in the context", func() {
-					captured := act.ExecuteArgsForCall(0)
+					captured := cli.FromContext(act.ExecuteArgsForCall(0))
 					Expect(captured.Value("")).To(Equal("value"))
 				})
 			})
@@ -269,7 +269,8 @@ var _ = Describe("Flag", func() {
 		Context("when accessed in the Before pipeline", func() {
 			BeforeEach(func() {
 				arguments = "app"
-				beforeFlag.ExecuteStub = func(c *cli.Context) error {
+				beforeFlag.ExecuteStub = func(ctx context.Context) error {
+					c := cli.FromContext(ctx)
 					Expect(c.Value("f")).To(Equal("environment value"))
 					return nil
 				}

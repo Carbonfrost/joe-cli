@@ -5,6 +5,8 @@
 package color
 
 import (
+	"context"
+
 	"github.com/Carbonfrost/joe-cli"
 )
 
@@ -179,8 +181,8 @@ func standaloneFlag(c *cli.Context) error {
 	})
 }
 
-func (o Options) Execute(c *cli.Context) error {
-	return c.Do(o.Features.Pipeline())
+func (o Options) Execute(c context.Context) error {
+	return cli.FromContext(c).Do(o.Features.Pipeline())
 }
 
 func (f Feature) Pipeline() cli.Action {

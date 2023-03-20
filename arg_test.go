@@ -74,28 +74,28 @@ var _ = Describe("Arg", func() {
 		})
 
 		It("contains args in captured context", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Args()).To(Equal([]string{"f"}))
 		})
 
 		It("provides properly initialized context", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Name()).To(Equal("<f>"))
 			Expect(captured.Path().String()).To(Equal("app <f>"))
 		})
 
 		It("contains the value in the context", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Value("")).To(Equal("f"))
 		})
 
 		It("contains the correct Occurrences count", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Occurrences("")).To(Equal(1))
 		})
 
 		It("obtains context path", func() {
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Path().IsArg()).To(BeTrue())
 			Expect(captured.Path().Last()).To(Equal("<f>"))
 			Expect(captured.Path().String()).To(Equal("app <f>"))
@@ -126,7 +126,7 @@ var _ = Describe("Arg", func() {
 				err := app.RunContext(context.TODO(), args)
 				Expect(err).NotTo(HaveOccurred())
 
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(cli.FromContext(act.ExecuteArgsForCall(0)))
 				arg, _ := captured.LookupArg("f")
 				Expect(arg.Value).To(BeAssignableToTypeOf(expected))
 			},
@@ -158,7 +158,7 @@ var _ = Describe("Arg", func() {
 				err := app.RunContext(context.TODO(), args)
 				Expect(err).NotTo(HaveOccurred())
 
-				captured := act.ExecuteArgsForCall(0)
+				captured := cli.FromContext(act.ExecuteArgsForCall(0))
 				arg, _ := captured.LookupArg("f")
 				Expect(arg.ActualArgCounter()).To(expected)
 			},
@@ -274,7 +274,7 @@ var _ = Describe("Arg", func() {
 
 			args, _ := cli.Split("app")
 			app.RunContext(context.TODO(), args)
-			Expect(act.ExecuteArgsForCall(0).String("f")).To(Equal("another_one"))
+			Expect(cli.FromContext(act.ExecuteArgsForCall(0)).String("f")).To(Equal("another_one"))
 		})
 	})
 
@@ -570,7 +570,7 @@ var _ = Describe("OptionalArg", func() {
 		err := app.RunContext(context.TODO(), args)
 		Expect(err).NotTo(HaveOccurred())
 
-		context := act.ExecuteArgsForCall(0)
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.String("a")).To(expectedA)
 		Expect(context.List("b")).To(expectedB)
 	},

@@ -29,7 +29,7 @@ var _ = Describe("Context", func() {
 			args, _ := cli.Split("app -f")
 			_ = app.RunContext(context.TODO(), args)
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal(true))
 		})
 
@@ -54,7 +54,7 @@ var _ = Describe("Context", func() {
 			err := app.RunContext(context.TODO(), args)
 			Expect(err).NotTo(HaveOccurred())
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal("dom"))
 		})
 
@@ -74,7 +74,7 @@ var _ = Describe("Context", func() {
 			args, _ := cli.Split("app --alias")
 			_ = app.RunContext(context.TODO(), args)
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal(true))
 		})
 
@@ -94,7 +94,7 @@ var _ = Describe("Context", func() {
 			args, _ := cli.Split("app s r o")
 			_ = app.RunContext(context.TODO(), args)
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal([]string{"s", "r", "o"}))
 		})
 	})
@@ -115,7 +115,7 @@ var _ = Describe("Context", func() {
 			args, _ := cli.Split("app -f")
 			_ = app.RunContext(context.TODO(), args)
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"-f", ""}))
 		})
 
@@ -139,7 +139,7 @@ var _ = Describe("Context", func() {
 			args, _ := cli.Split("app -f dom sub")
 			_ = app.RunContext(context.TODO(), args)
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"-f", "dom"}))
 		})
 
@@ -158,7 +158,7 @@ var _ = Describe("Context", func() {
 			args, _ := cli.Split("app -f sub")
 			_ = app.RunContext(context.TODO(), args)
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("")).To(Equal([]string{"-f", "sub"}))
 		})
 
@@ -175,7 +175,7 @@ var _ = Describe("Context", func() {
 				args, _ := cli.Split(arguments)
 				_ = app.RunContext(context.TODO(), args)
 
-				capturedContext := act.ExecuteArgsForCall(0)
+				capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(capturedContext.Raw("f")).To(Equal(raw))
 				Expect(capturedContext.RawOccurrences("f")).To(Equal(rawOccurrences))
 			},
@@ -254,7 +254,7 @@ var _ = Describe("Context", func() {
 			args, _ := cli.Split("app s r o")
 			_ = app.RunContext(context.TODO(), args)
 
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"<f>", "s", "<f>", "r", "<f>", "o"}))
 			Expect(capturedContext.RawOccurrences("f")).To(Equal([]string{"s", "r", "o"}))
 		})
@@ -264,7 +264,8 @@ var _ = Describe("Context", func() {
 
 		It("defers when set from initializer", func() {
 			act := new(joeclifakes.FakeAction)
-			act.ExecuteCalls(func(c *cli.Context) error {
+			act.ExecuteCalls(func(ctx context.Context) error {
+				c := cli.FromContext(ctx)
 				Expect(c.IsBefore()).To(BeTrue())
 				return nil
 			})
@@ -287,7 +288,7 @@ var _ = Describe("Context", func() {
 
 			_ = ctx.Before(act)
 			Expect(act.ExecuteCallCount()).To(Equal(1))
-			capturedContext := act.ExecuteArgsForCall(0)
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.IsBefore()).To(BeTrue())
 		})
 
@@ -309,7 +310,8 @@ var _ = Describe("Context", func() {
 
 		It("invokes the action during the initializer", func() {
 			act := new(joeclifakes.FakeAction)
-			act.ExecuteCalls(func(c *cli.Context) error {
+			act.ExecuteCalls(func(ctx context.Context) error {
+				c := cli.FromContext(ctx)
 				Expect(c.IsInitializing()).To(BeTrue())
 				return nil
 			})
@@ -610,7 +612,7 @@ var _ = Describe("Context", func() {
 			app := factory(act)
 			app.Initialize(context.Background())
 
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(names(captured.Flags())).To(Equal(flags))
 			Expect(names(captured.PersistentFlags())).To(Equal(persistentFlags))
 			Expect(names(captured.LocalFlags())).To(Equal(localFlags))
@@ -670,7 +672,7 @@ var _ = Describe("Context", func() {
 			app := factory(act)
 			app.Initialize(context.Background())
 
-			captured := act.ExecuteArgsForCall(0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(names(captured.LocalArgs())).To(Equal(localArgs))
 		},
 			Entry("app", func(act cli.Action) *cli.App {

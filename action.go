@@ -28,7 +28,7 @@ type Action interface {
 	// Execute will execute the action.  If the action returns an error, this
 	// may cause subsequent actions in the pipeline not to be run and cause
 	// the app to exit with an error exit status.
-	Execute(*Context) error
+	Execute(context.Context) error
 }
 
 //counterfeiter:generate . Middleware
@@ -40,7 +40,7 @@ type Middleware interface {
 
 	// ExecuteWithNext will execute the action and invoke Execute on the next
 	// action
-	ExecuteWithNext(*Context, Action) error
+	ExecuteWithNext(context.Context, Action) error
 }
 
 // ActionPipeline represents an action composed of several steps.  To create
@@ -317,7 +317,8 @@ var (
 
 // Execute executes the Setup, which assigns the various parts to their
 // pipelines
-func (s Setup) Execute(c *Context) error {
+func (s Setup) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
 	if s.Uses != nil {
 		if err := c.act(s.Uses, InitialTiming, s.Optional); err != nil {
 			return err
@@ -1221,7 +1222,8 @@ func expandEnvVarName(content, name string) string {
 	return buf.String()
 }
 
-func (t Timing) Matches(c *Context) bool {
+func (t Timing) Matches(ctx context.Context) bool {
+	c := FromContext(ctx)
 	switch t {
 	case InitialTiming:
 		return c.IsInitializing()
@@ -1234,7 +1236,8 @@ func (t Timing) Matches(c *Context) bool {
 	return c.IsBefore()
 }
 
-func (p Prototype) Execute(c *Context) error {
+func (p Prototype) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
 	return c.Do(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), commandSetupCore(true, p.copyToCommand), p.Setup)
 }
 
@@ -1352,7 +1355,8 @@ func (p *Prototype) copyToFlag(o *Flag) {
 }
 
 // Execute the action by calling the function
-func (af ActionFunc) Execute(c *Context) error {
+func (af ActionFunc) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
 	if af == nil {
 		return nil
 	}
@@ -1365,7 +1369,7 @@ func (p ActionPipeline) Append(x ...Action) ActionPipeline {
 }
 
 // Execute the pipeline by calling each action successively
-func (p ActionPipeline) Execute(c *Context) (err error) {
+func (p ActionPipeline) Execute(c context.Context) (err error) {
 	if p == nil {
 		return nil
 	}
@@ -1408,7 +1412,7 @@ func (p ActionPipeline) toCons() *cons {
 	return head
 }
 
-func (o *cons) Execute(c *Context) error {
+func (o *cons) Execute(c context.Context) error {
 	if o == nil {
 		return nil
 	}
@@ -1463,7 +1467,8 @@ func (p *actionPipelines) pipeline(t Timing) Action {
 	}
 }
 
-func (w withTimingWrapper) Execute(c *Context) error {
+func (w withTimingWrapper) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
 	if w.t == ImplicitValueTiming {
 		return c.act(Pipeline(
 			Data(implicitTimingEnabledKey, true),
@@ -1475,7 +1480,7 @@ func (w withTimingWrapper) Execute(c *Context) error {
 	return c.act(w.Action, w.t, false)
 }
 
-func (b beforePipeline) Execute(c *Context) error {
+func (b beforePipeline) Execute(c context.Context) error {
 	return ActionPipeline(append(append(append(b[0], b[1]...), b[2]...), b[3]...)).Execute(c)
 }
 
@@ -1504,16 +1509,17 @@ func (s *pipelinesSupport) appendAction(t Timing, ah Action) {
 	s.p.add(t, ah)
 }
 
-func (m middlewareFunc) Execute(c *Context) error {
+func (m middlewareFunc) Execute(c context.Context) error {
 	return m.ExecuteWithNext(c, nil)
 }
 
-func (m middlewareFunc) ExecuteWithNext(c *Context, a Action) error {
+func (m middlewareFunc) ExecuteWithNext(ctx context.Context, a Action) error {
+	c := FromContext(ctx)
 	return m(c, a)
 }
 
-func (v ValidatorFunc) Execute(c *Context) error {
-	return c.At(ValidatorTiming, ActionFunc(func(c *Context) error {
+func (v ValidatorFunc) Execute(ctx context.Context) error {
+	return FromContext(ctx).At(ValidatorTiming, ActionFunc(func(c *Context) error {
 		occur := c.RawOccurrences("")
 		if err := v(occur); err != nil {
 			return argTakerError(c.Name(), "", err, nil)
@@ -1523,7 +1529,8 @@ func (v ValidatorFunc) Execute(c *Context) error {
 	}))
 }
 
-func (t TransformFunc) Execute(c *Context) error {
+func (t TransformFunc) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
 	return c.Do(Transform(t))
 }
 
@@ -1550,7 +1557,7 @@ func emptyActionImpl(*Context) error {
 	return nil
 }
 
-func execute(c *Context, af Action) error {
+func execute(c context.Context, af Action) error {
 	if af == nil {
 		return nil
 	}

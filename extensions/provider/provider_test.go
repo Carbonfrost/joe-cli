@@ -38,7 +38,7 @@ var _ = Describe("Registry", func() {
 			err := app.RunContext(context.TODO(), []string{"app"})
 			Expect(err).NotTo(HaveOccurred())
 
-			c := action.ExecuteArgsForCall(0)
+			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
 			services := provider.Services(c)
 			Expect(services.Registry("providers")).To(Equal(registry))
@@ -80,7 +80,7 @@ var _ = Describe("Registry", func() {
 			err := app.RunContext(context.TODO(), []string{"app"})
 			Expect(err).NotTo(HaveOccurred())
 
-			c := action.ExecuteArgsForCall(0)
+			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
 			actual, _ := provider.Services(c).Registry("providers").New("csv", nil)
 			Expect(actual).To(Equal(&csvProvider{"a", true}))
@@ -99,7 +99,7 @@ var _ = Describe("Registry", func() {
 			}
 
 			_ = app.RunContext(context.TODO(), []string{"app"})
-			c := action.ExecuteArgsForCall(0)
+			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
 			_, err := provider.Services(c).Registry("providers").New("csv", nil)
 			Expect(err).To(HaveOccurred())
@@ -125,7 +125,7 @@ var _ = Describe("Registry", func() {
 			err := app.RunContext(context.TODO(), []string{"app"})
 			Expect(err).NotTo(HaveOccurred())
 
-			c := action.ExecuteArgsForCall(0)
+			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
 			actual := provider.Services(c).Registry("providers").ProviderNames()
 			Expect(actual).To(ConsistOf([]string{"csv", "json", "yaml"}))
