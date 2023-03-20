@@ -8,7 +8,6 @@ import (
 
 // ContextServices provides an adapter around the context to
 type ContextServices struct {
-	*cli.Context
 	registries map[string]*Registry
 }
 
@@ -16,19 +15,25 @@ type contextKey string
 
 var servicesKey contextKey = "provider.services"
 
+// WithServices obtains the context services from the specified context.
+// If they do not exist, they are added and the context result is returned.
+func WithServices(c context.Context) (context.Context, *ContextServices) {
+	o := c.Value(servicesKey)
+	if o == nil {
+		res := &ContextServices{
+			registries: map[string]*Registry{},
+		}
+		return context.WithValue(c, servicesKey, res), res
+	}
+	return c, o.(*ContextServices)
+}
+
 // Services obtains the contextual services used by the package.  If not
 // already present, it will be added to the context.
 func Services(c *cli.Context) *ContextServices {
-	o := c.Context.Value(servicesKey)
-	if o == nil {
-		res := &ContextServices{
-			Context:    c,
-			registries: map[string]*Registry{},
-		}
-		c.Context = context.WithValue(c.Context, servicesKey, res)
-		return res
-	}
-	return o.(*ContextServices)
+	var res *ContextServices
+	c.Context, res = WithServices(c.Context)
+	return res
 }
 
 // Registry gets the registry by name, if any
