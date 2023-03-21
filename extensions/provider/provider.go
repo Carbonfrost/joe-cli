@@ -127,7 +127,7 @@ var (
 // options and return the provider and optionally an error.  The actual types can be
 // more specific than interface{}.  When they are, type conversion is provided using
 // the Decode method
-func Factory(fn any) FactoryFunc {
+func Factory(fn any, options ...structure.DecoderOption) FactoryFunc {
 	if fn == nil {
 		panic("cannot specify nil argument")
 	}
@@ -143,7 +143,7 @@ func Factory(fn any) FactoryFunc {
 		}
 
 		value := reflect.New(optType).Interface()
-		err := structure.Decode(opts, value)
+		err := structure.Decode(opts, value, options...)
 		if err != nil {
 			return nil, err
 		}

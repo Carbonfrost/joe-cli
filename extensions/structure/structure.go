@@ -35,6 +35,7 @@ type Value struct {
 	disableSplitting bool
 }
 
+// DecoderOption provides an option to the decoder
 type DecoderOption func(*mapstructure.DecoderConfig)
 
 var (
@@ -48,6 +49,12 @@ var (
 	regexpType      = reflect.TypeOf(&regexp.Regexp{})
 	urlType         = reflect.TypeOf(&url.URL{})
 )
+
+// ErrorUnused is an option which makes it an error to have input specify fields that
+// are unused by the decoder
+func ErrorUnused(cfg *mapstructure.DecoderConfig) {
+	cfg.ErrorUnused = true
+}
 
 // Of creates a Value which can be initialized using name-value pairs.  The argument v
 // must be a pointer to a struct.   By default, a set of

@@ -153,6 +153,19 @@ var _ = Describe("Factory", func() {
 		Expect(called).To(BeTrue())
 	})
 
+	It("can accept configuration options to return error", func() {
+		var called bool
+		_, err := provider.Factory(func(o Options) any {
+			called = true
+			return nil
+		}, structure.ErrorUnused)(map[string]string{
+			"Extra": "this field is not on the struct",
+		})
+		Expect(called).To(BeFalse())
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(ContainSubstring("has invalid keys: Extra")))
+	})
+
 	DescribeTable("examples", func(f any) {
 		Expect(func() { provider.Factory(f) }).NotTo(Panic())
 		actual, _ := provider.Factory(f)(nil)
