@@ -156,7 +156,7 @@ type exprBinding struct {
 }
 
 type exprArgs struct {
-	positionalOptions []*internalOption
+	positionalOptions []string
 	names             map[string]*internalOption
 }
 
@@ -352,7 +352,7 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 		fac := &boundExpr{
 			expr:          e,
 			BindingLookup: set,
-			args:          newExprArgs(set.positionalOptions),
+			args:          newExprArgs(e.Args),
 		}
 		res.exprs[e.Name] = fac
 		for _, alias := range e.Aliases {
@@ -606,13 +606,15 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func newExprArgs(o []*internalOption) *exprArgs {
+func newExprArgs(o []*Arg) *exprArgs {
 	names := map[string]*internalOption{}
-	for _, v := range o {
-		names[v.uname] = v
+	opts := make([]string, len(o))
+	for i, v := range o {
+		names[v.Name] = &v.option
+		opts[i] = v.Name
 	}
 	return &exprArgs{
-		positionalOptions: o,
+		positionalOptions: opts,
 		names:             names,
 	}
 }
@@ -640,11 +642,7 @@ func (b *exprArgs) IsOptionalValue(name string) bool {
 }
 
 func (b *exprArgs) Args() []string {
-	args := make([]string, len(b.positionalOptions))
-	for i, o := range b.positionalOptions {
-		args[i] = o.uname
-	}
-	return args
+	return b.positionalOptions
 }
 
 func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, error) {

@@ -219,7 +219,7 @@ func groupFlagsByCategory(flags []*Flag) flagsByCategory {
 }
 
 func (f *Flag) applyToSet(s *set) {
-	s.defineFlag(&f.option)
+	s.defineFlag(&f.option, f.Name, f.Aliases)
 }
 
 // Use appends actions to Uses pipeline
@@ -358,12 +358,8 @@ func (f *Flag) ensureInternalOpt() {
 	}
 
 	p := f.value()
-	long, short := canonicalNames(f.Name, f.Aliases)
 	f.option = internalOption{
-		short: short,
-		long:  long,
 		value: wrapGeneric(p),
-		uname: f.Name,
 		flags: flags | isFlagType(p),
 	}
 }

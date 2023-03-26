@@ -15,9 +15,9 @@ type set struct {
 }
 
 type bindingImpl struct {
-	shortOptions      map[string]*internalOption
-	longOptions       map[string]*internalOption
-	positionalOptions []*internalOption
+	shortOptions      map[string]string
+	longOptions       map[string]string
+	positionalOptions []string
 	names             map[string]*internalOption
 }
 
@@ -30,11 +30,8 @@ type argBinding struct {
 type argList []string
 
 type internalOption struct {
-	short         []rune
-	long          []string
 	value         *generic
 	count         int
-	uname         string
 	narg          interface{}
 	optionalValue interface{} // set when blank and optional
 	flags         internalFlags
@@ -83,10 +80,10 @@ func newSet() *set {
 	result := &set{
 		bindingImpl: &bindingImpl{
 			names:        map[string]*internalOption{},
-			shortOptions: map[string]*internalOption{},
-			longOptions:  map[string]*internalOption{},
+			shortOptions: map[string]string{},
+			longOptions:  map[string]string{},
 
-			positionalOptions: []*internalOption{},
+			positionalOptions: []string{},
 		},
 		bindings: BindingMap{},
 	}
@@ -435,12 +432,12 @@ func (b *bindingImpl) FlagName(name string) (string, bool) {
 	}
 	if len(name) == 1 {
 		if r, ok := b.shortOptions[name]; ok {
-			return r.uname, ok
+			return r, ok
 		}
 		return "", false
 	}
 	if r, ok := b.longOptions[name]; ok {
-		return r.uname, ok
+		return r, ok
 	}
 	return "", false
 }
@@ -453,35 +450,33 @@ func (b *bindingImpl) IsOptionalValue(name string) bool {
 }
 
 func (b *bindingImpl) Args() []string {
-	args := make([]string, len(b.positionalOptions))
-	for i, o := range b.positionalOptions {
-		args[i] = o.uname
-	}
-	return args
+	return b.positionalOptions
 }
 
-func (s *set) defineFlag(res *internalOption) {
-	if len(res.short) == 0 && len(res.long) == 0 {
-		panic("invalid flag definition, missing name or alias")
+func (s *set) defineFlag(res *internalOption, name string, aliases []string) {
+	if len(name) == 0 {
+		return
+	}
+	longs, shorts := canonicalNames(name, aliases)
+
+	for _, short := range shorts {
+		s.shortOptions[string(short)] = name
+	}
+	for _, long := range longs {
+		s.longOptions[long] = name
 	}
 
-	for _, short := range res.short {
-		s.shortOptions[string(short)] = res
-	}
-	for _, long := range res.long {
-		s.longOptions[long] = res
-	}
-
-	s.names[res.uname] = res
+	s.names[name] = res
 }
 
-func (s *set) defineArg(res *internalOption) {
-	if res.uname == "" {
-		res.uname = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
+func (s *set) defineArg(res *internalOption, uname string) string {
+	if uname == "" {
+		uname = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
 	}
 
-	s.names[res.uname] = res
-	s.positionalOptions = append(s.positionalOptions, res)
+	s.names[uname] = res
+	s.positionalOptions = append(s.positionalOptions, uname)
+	return uname
 }
 
 func (s *set) withArgs(args []*Arg) *set {
@@ -687,13 +682,6 @@ func (o *internalOption) setViaTransformOutput(v interface{}) error {
 func (o *internalOption) startOccurrence(n int) {
 	o.count = n
 	o.value.applyValueConventions(o.flags, n)
-}
-
-func (o *internalOption) Name() string {
-	if len(o.short) > 0 {
-		return optionName(o.short[0])
-	}
-	return optionName(o.long[0])
 }
 
 func (o *internalOption) Value() *generic {

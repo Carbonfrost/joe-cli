@@ -305,8 +305,7 @@ func (a *Arg) setInternalFlags(i internalFlags, v bool) {
 }
 
 func (a *Arg) applyToSet(s *set) {
-	s.defineArg(&a.option)
-	a.Name = a.option.uname
+	a.Name = s.defineArg(&a.option, a.Name)
 }
 
 func (a *Arg) name() string {
@@ -406,7 +405,6 @@ func (a *Arg) ensureInternalOpt() {
 	a.option = internalOption{
 		value: wrapGeneric(a.value()),
 		narg:  a.NArg,
-		uname: a.Name,
 		flags: flags,
 	}
 }
