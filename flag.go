@@ -352,9 +352,9 @@ func (f *Flag) setOptionalValue(v interface{}) {
 }
 
 func (f *Flag) ensureInternalOpt() {
-	var flags internalFlags
+	flags := internalFlagIsFlag
 	if f.Value == nil {
-		flags = internalFlagDestinationImplicitlyCreated
+		flags |= internalFlagDestinationImplicitlyCreated
 	}
 
 	p := f.value()

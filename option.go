@@ -187,6 +187,7 @@ const (
 	internalFlagDisableSplitting
 	internalFlagMerge
 	internalFlagRightToLeft
+	internalFlagIsFlag     // true when a flag (rather than an argument)
 	internalFlagFlagOnly   // true for Flag without an argument
 	internalFlagOptional   // true if value is optional
 	internalFlagPersistent // true when the option is a clone of a persistent parent flag
@@ -336,6 +337,10 @@ func (f internalFlags) rightToLeft() bool {
 
 func (f internalFlags) flagOnly() bool {
 	return f&internalFlagFlagOnly == internalFlagFlagOnly
+}
+
+func (f internalFlags) isFlag() bool {
+	return f&internalFlagIsFlag == internalFlagIsFlag
 }
 
 func (f internalFlags) optional() bool {
@@ -503,7 +508,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 		scope := c.copy(mini)
 
 		// Obtain either the zero value or Reset() the value
-		resetOnFirstOccur := !opt.flags.merge()
+		resetOnFirstOccur := !c.option().internalFlags().merge()
 		for i := 0; i < mini.numOccurs(); i++ {
 
 			// Create a copy of the value on each occurrence (unless merge semantics
@@ -515,7 +520,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			mini.index = i
 
 			// Pretend this is the first occurrence
-			start.applyValueConventions(opt.flags, 1)
+			start.applyValueConventions(c.option().internalFlags(), 1)
 
 			if opt.transform != nil {
 				d, err := opt.transform(mini.lookupBinding("", false))

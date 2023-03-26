@@ -349,7 +349,7 @@ func (c *Command) buildSet(ctx *Context) *set {
 				continue
 			}
 			f.applyToSet(set)
-			f.(*Flag).option.flags |= internalFlagPersistent
+			f.setInternalFlags(internalFlagPersistent, true)
 		}
 	}
 	for _, a := range c.actualArgs() {

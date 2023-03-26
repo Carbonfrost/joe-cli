@@ -727,15 +727,10 @@ func (o *internalOption) actualArgCounter() ArgCounter {
 		}
 
 		return &defaultCounter{
-			requireSeen: o.isFlag() && !o.flags.optional(),
+			requireSeen: o.flags.isFlag() && !o.flags.optional(),
 		}
 	}
 	return ArgCount(o.narg)
-}
-
-func (o *internalOption) isFlag() bool {
-	// HACK Detecting whether a flag
-	return len(o.short)+len(o.long) > 0
 }
 
 var _ lookupCore = (*set)(nil)
