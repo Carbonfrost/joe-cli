@@ -46,11 +46,6 @@ var _ = Describe("Registry", func() {
 	})
 
 	Describe("New", func() {
-		type Options struct {
-			Comma   string `mapstructure:"comma"`
-			UseCRLF bool   `mapstructure:"useCRLF"`
-		}
-
 		type csvProvider struct {
 			Comma   string
 			UseCRLF bool

@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
-	"time"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
@@ -41,11 +40,8 @@ type DecoderOption func(*mapstructure.DecoderConfig)
 var (
 	valueType       = reflect.TypeOf((*cli.Value)(nil)).Elem()
 	unmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-	durationType    = reflect.TypeOf(time.Duration(0))
 	bigIntType      = reflect.TypeOf(big.NewInt(0))
 	bigFloatType    = reflect.TypeOf(big.NewFloat(0))
-	listType        = reflect.TypeOf([]string{})
-	mapType         = reflect.TypeOf(map[string]string{})
 	regexpType      = reflect.TypeOf(&regexp.Regexp{})
 	urlType         = reflect.TypeOf(&url.URL{})
 )

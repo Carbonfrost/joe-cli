@@ -421,14 +421,6 @@ func (s *set) parseBindings(args argList, flags RawParseFlag) error {
 	return err
 }
 
-func setShortOptions(m map[rune]*internalOption) map[string]*internalOption {
-	res := map[string]*internalOption{}
-	for k, v := range m {
-		res[string(k)] = v
-	}
-	return res
-}
-
 func (b *bindingImpl) Lookup(name string) (ArgCounter, bool) {
 	a, ok := b.names[name]
 	if ok {
