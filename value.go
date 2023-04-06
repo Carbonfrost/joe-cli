@@ -315,6 +315,58 @@ func Set(dest interface{}, args ...string) error {
 	return nil
 }
 
+// SetData sets the value of a flag Value using the semantics
+// of SetData(io.Reader), which is a convention that can be implemented
+// by a value (see the summary on Value for information about conventions).
+// In particular, in argument can be string, []byte, or io.Reader.
+// If the method convention is not implemented, then ordinary Set(string)
+// method on Value is called on the input.
+func SetData(dest any, arg any) error {
+	if s, ok := dest.(valueSetData); ok {
+		switch val := arg.(type) {
+		case string:
+			return s.SetData(strings.NewReader(val))
+		case io.Reader:
+			return s.SetData(val)
+		case []byte:
+			return s.SetData(bytes.NewReader(val))
+		}
+	}
+
+	if s, ok := dest.(*[]byte); ok {
+		switch val := arg.(type) {
+		case io.Reader:
+			buf := bytes.NewBuffer(*s)
+			if _, err := io.Copy(buf, val); err != nil {
+				return err
+			}
+			*s = buf.Bytes()
+			return nil
+
+		case []byte:
+			buf := bytes.NewBuffer(*s)
+			buf.Write(val)
+			*s = buf.Bytes()
+			return nil
+		}
+	}
+
+	switch val := arg.(type) {
+	case string:
+		return Set(dest, val)
+	case io.Reader:
+		bb, err := io.ReadAll(val)
+		if err != nil {
+			return err
+		}
+		return Set(dest, string(bb))
+	case []byte:
+		return Set(dest, string(val))
+	}
+
+	panic(fmt.Sprintf("unexpected argument type %T", arg))
+}
+
 func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool)) bool {
 	switch p := dest.(type) {
 	case *bool:
@@ -756,50 +808,8 @@ func (g *generic) Set(value string, opt *internalOption) error {
 	return setCore(g.p, opt.flags.disableSplitting(), value)
 }
 
-func (g *generic) setViaTransformOutput(v interface{}, opt *internalOption) error {
-	if s, ok := g.p.(valueSetData); ok {
-		switch val := v.(type) {
-		case string:
-			return s.SetData(strings.NewReader(val))
-		case io.Reader:
-			return s.SetData(val)
-		case []byte:
-			return s.SetData(bytes.NewReader(val))
-		}
-	}
-
-	if s, ok := g.p.(*[]byte); ok {
-		switch val := v.(type) {
-		case io.Reader:
-			buf := bytes.NewBuffer(*s)
-			if _, err := io.Copy(buf, val); err != nil {
-				return err
-			}
-			*s = buf.Bytes()
-			return nil
-
-		case []byte:
-			buf := bytes.NewBuffer(*s)
-			buf.Write(val)
-			*s = buf.Bytes()
-			return nil
-		}
-	}
-
-	switch val := v.(type) {
-	case string:
-		return g.Set(val, opt)
-	case io.Reader:
-		bb, err := io.ReadAll(val)
-		if err != nil {
-			return err
-		}
-		return g.Set(string(bb), opt)
-	case []byte:
-		return g.Set(string(val), opt)
-	}
-
-	panic(fmt.Sprintf("unexpected transform output %T", v))
+func (g *generic) setViaTransformOutput(v any) error {
+	return SetData(g.p, v)
 }
 
 func (g *generic) applyValueConventions(flags internalFlags, occurs int) {

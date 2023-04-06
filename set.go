@@ -676,7 +676,7 @@ func (o *internalOption) Set(arg string) error {
 }
 
 func (o *internalOption) setViaTransformOutput(v interface{}) error {
-	return o.value.setViaTransformOutput(v, o)
+	return o.value.setViaTransformOutput(v)
 }
 
 func (o *internalOption) startOccurrence(n int) {

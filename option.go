@@ -527,7 +527,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 				if err != nil {
 					return err
 				}
-				if err := start.setViaTransformOutput(d, opt); err != nil {
+				if err := start.setViaTransformOutput(d); err != nil {
 					return err
 				}
 			} else {
