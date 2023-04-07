@@ -798,23 +798,9 @@ func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
 	return errors.New("too many arguments to filter")
 }
 
-func (g *generic) Set(value string, opt *internalOption) error {
-	if trySetOptional(g.p, func() (interface{}, bool) {
-		return opt.optionalValue, (value == "" && opt.flags.optional())
-	}) {
-		return nil
-	}
-
-	return setCore(g.p, opt.flags.disableSplitting(), value)
-}
-
-func (g *generic) setViaTransformOutput(v any) error {
-	return SetData(g.p, v)
-}
-
-func (g *generic) applyValueConventions(flags internalFlags, occurs int) {
+func (g *generic) applyValueConventions(flags internalFlags, firstOccur bool) {
 	resetOnFirstOccur := !flags.merge()
-	if occurs > 1 {
+	if !firstOccur {
 		// string will reset on every occurrence unless Merge is turned on
 		if resetOnFirstOccur {
 			switch p := g.p.(type) {

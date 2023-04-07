@@ -500,7 +500,6 @@ func eachOccurrenceOpt(c1 *Context) error {
 			}
 			return nil
 		}()
-		start := opt.value
 		mini := &wrapOccurrenceContext{
 			optionContext: c.internal.(*optionContext),
 		}
@@ -514,28 +513,28 @@ func eachOccurrenceOpt(c1 *Context) error {
 			// Create a copy of the value on each occurrence (unless merge semantics
 			// are in place)
 			if i == 0 || resetOnFirstOccur {
-				start = start.cloneZero()
+				opt.value = opt.value.cloneZero()
 			}
 
 			mini.index = i
 
 			// Pretend this is the first occurrence
-			start.applyValueConventions(c.option().internalFlags(), 1)
+			opt.value.applyValueConventions(c.option().internalFlags(), true)
 
 			if opt.transform != nil {
 				d, err := opt.transform(mini.lookupBinding("", false))
 				if err != nil {
 					return err
 				}
-				if err := start.setViaTransformOutput(d); err != nil {
+				if err := opt.SetOccurrenceData(d); err != nil {
 					return err
 				}
 			} else {
-				for _, s := range mini.current() {
-					start.Set(s, opt)
+				if err := opt.SetOccurrence(mini.current()...); err != nil {
+					return err
 				}
 			}
-			mini.val = start.p
+			mini.val = opt.value.p
 
 			if err := next.Execute(scope); err != nil {
 				return err

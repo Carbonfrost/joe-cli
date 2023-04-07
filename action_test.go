@@ -2279,6 +2279,29 @@ var _ = Describe("EachOccurrence", func() {
 		Expect(values).To(Equal([]uint64{0, 1}))
 	})
 
+	It("sets the value of the Flag to the last value", func() {
+		binder := func(r uint64) error {
+			return nil
+		}
+
+		ptr := new(uint64)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Value:   ptr,
+					Options: cli.EachOccurrence,
+					Uses:    cli.Bind(binder),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f 0 -f 1 -f 1044")
+		err := app.RunContext(context.TODO(), args)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(*ptr).To(Equal(uint64(1044)))
+	})
+
 	DescribeTable("examples", func(flag *cli.Flag, arguments string, expected []interface{}) {
 		act := new(joeclifakes.FakeAction)
 		var callIndex int // keep track of which index is called

@@ -253,6 +253,16 @@ func (a *Arg) Set(arg string) error {
 	return a.option.Set(arg)
 }
 
+// SetOccurrence will update the value of the arg
+func (a *Arg) SetOccurrence(values ...string) error {
+	return a.option.SetOccurrence(values...)
+}
+
+// SetOccurrenceData will update the value of the arg
+func (a *Arg) SetOccurrenceData(v any) error {
+	return a.option.SetOccurrenceData(v)
+}
+
 // SetHidden causes the argument to be hidden from the help screen
 func (a *Arg) SetHidden(v bool) {
 	a.setInternalFlags(internalFlagHidden, v)
@@ -302,10 +312,6 @@ func (a *Arg) setInternalFlags(i internalFlags, v bool) {
 	} else {
 		a.option.flags &= ^i
 	}
-}
-
-func (a *Arg) applyToSet(s *set) {
-	a.Name = s.defineArg(&a.option, a.Name)
 }
 
 func (a *Arg) name() string {

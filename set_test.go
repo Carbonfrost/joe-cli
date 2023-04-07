@@ -215,26 +215,34 @@ type testFlagSet struct {
 	aliases  map[string]string
 }
 
-func (t *testFlagSet) Args() []string {
+func (t *testFlagSet) PositionalArgNames() []string {
 	return t.args
 }
 
-func (t *testFlagSet) IsOptionalValue(name string) bool {
+func (t *testFlagSet) BehaviorFlags(name string) (optional bool) {
 	return false
 }
 
-func (t *testFlagSet) Lookup(name string) (cli.ArgCounter, bool) {
+func (t *testFlagSet) LookupOption(name string) (cli.TransformFunc, cli.ArgCounter, cli.BindingState, bool) {
 	c, ok := t.counters[name]
-	return c, ok
+	return nil, c, nil, ok
 }
 
-func (t *testFlagSet) FlagName(name string) (string, bool) {
+func (t *testFlagSet) ResolveAlias(name string) (string, bool) {
 	c, ok := t.aliases[name]
 	if ok {
 		return c, true
 	}
 	_, ok = t.counters[name]
 	return name, ok
+}
+
+func (*testFlagSet) SetOccurrenceData(name string, v any) error {
+	return nil
+}
+
+func (*testFlagSet) SetOccurrence(name string, values ...string) error {
+	return nil
 }
 
 // Flatten actual one layer to simplify comparisons

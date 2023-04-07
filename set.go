@@ -47,10 +47,16 @@ type RawParseFlag int
 // Binding provides the representation of how a flag set is bound to values.  It defines the
 // names and aliases of flags, order of args, and how values passed to an arg or flag are counted.
 type Binding interface {
-	Lookup(name string) (ArgCounter, bool)
-	FlagName(name string) (string, bool)
-	Args() []string
-	IsOptionalValue(name string) bool
+	LookupOption(name string) (TransformFunc, ArgCounter, BindingState, bool)
+	ResolveAlias(name string) (string, bool)
+	PositionalArgNames() []string
+	BehaviorFlags(name string) (optional bool)
+}
+
+// BindingState defines the state of the binding operation.  This is generally *Arg or *Flag
+type BindingState interface {
+	SetOccurrenceData(v any) error
+	SetOccurrence(values ...string) error
 }
 
 // Raw flags used by the internal parser
@@ -92,12 +98,12 @@ func newSet() *set {
 }
 
 func newArgBinding(bind Binding) *argBinding {
-	args := bind.Args()
+	args := bind.PositionalArgNames()
 	takers := make([]ArgCounter, len(args))
 	names := make([]string, len(args))
 	for i, a := range args {
 		names[i] = a
-		if c, ok := bind.Lookup(a); ok {
+		if _, c, _, ok := bind.LookupOption(a); ok {
 			takers[i] = c
 		} else {
 			takers[i] = ArgCount(TakeUntilNextFlag)
@@ -256,7 +262,7 @@ Parsing:
 			// Lookup the flag uname given the possible alias name.
 			// If the flag name is only one character, then also check
 			// whether it can be handled as a short flag (--f=false)
-			flag, ok := b.FlagName(arg[2:])
+			flag, ok := b.ResolveAlias(arg[2:])
 
 			if !ok {
 				err = unknownOption(arg[2:], append([]string{optionName(arg[2:])}, args...))
@@ -270,7 +276,7 @@ Parsing:
 
 			// If we require an option and did not have an =
 			// then use the next argument as an option.
-			opt, _ := b.Lookup(flag)
+			_, opt, _, _ := b.LookupOption(flag)
 			if e < 0 {
 				var outputs []string
 				var oldArgs = append([]string{optionName(arg[2:])}, args...)
@@ -296,13 +302,13 @@ Parsing:
 
 		for i, c := range arg {
 			short := "-" + string(c)
-			flag, ok := b.FlagName(string(c))
+			flag, ok := b.ResolveAlias(string(c))
 			if !ok {
 				err = unknownOption(c, append([]string{"-" + arg[i:]}, args...))
 				return
 			}
 
-			opt, _ := b.Lookup(flag)
+			_, opt, _, _ := b.LookupOption(flag)
 			value := arg[1+i:]
 
 			if value != "" {
@@ -336,7 +342,7 @@ Parsing:
 				return
 			}
 
-			if b.IsOptionalValue(flag) {
+			if optional := b.BehaviorFlags(flag); optional {
 				appendOutput(flag, []string{short, ""})
 				err = opt.Done()
 				if err != nil {
@@ -365,7 +371,7 @@ func (s *set) parse(args argList, flags RawParseFlag) error {
 	if err != nil {
 		return err
 	}
-	return applyBindings(s.bindings, s.names)
+	return rawApply(s.bindings, s)
 }
 
 func (s *set) Raw(name string) []string {
@@ -380,32 +386,30 @@ func (s *set) Bindings(name string) [][]string {
 	return s.bindings[name]
 }
 
-func applyBindings(bindings BindingMap, names map[string]*internalOption) error {
-	for k, v := range bindings {
-		opt := names[k]
-
-		if opt.transform != nil {
-			for occurrence, values := range v {
-				opt.startOccurrence(occurrence + 1)
-				d, err := opt.transform(values)
-				if err != nil {
-					return err
-				}
-				if err := opt.setViaTransformOutput(d); err != nil {
-					return err
-				}
-			}
-
+func rawApply(bindings BindingMap, binding Binding) error {
+	for name, v := range bindings {
+		transform, _, value, ok := binding.LookupOption(name)
+		if !ok {
 			continue
 		}
 
-		for occurrence, values := range v {
-			opt.startOccurrence(occurrence + 1)
-			for _, value := range values[1:] {
-				err := opt.Set(value)
+		if transform != nil {
+			for _, values := range v {
+				d, err := transform(values)
 				if err != nil {
 					return err
 				}
+				if err := value.SetOccurrenceData(d); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+
+		for _, values := range v {
+			err := value.SetOccurrence(values[1:]...)
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -418,15 +422,15 @@ func (s *set) parseBindings(args argList, flags RawParseFlag) error {
 	return err
 }
 
-func (b *bindingImpl) Lookup(name string) (ArgCounter, bool) {
+func (b *bindingImpl) LookupOption(name string) (TransformFunc, ArgCounter, BindingState, bool) {
 	a, ok := b.names[name]
 	if ok {
-		return a.actualArgCounter(), true
+		return a.transform, a.actualArgCounter(), a, true
 	}
-	return nil, false
+	return nil, nil, nil, false
 }
 
-func (b *bindingImpl) FlagName(name string) (string, bool) {
+func (b *bindingImpl) ResolveAlias(name string) (string, bool) {
 	if _, ok := b.names[name]; ok {
 		return name, true
 	}
@@ -442,48 +446,65 @@ func (b *bindingImpl) FlagName(name string) (string, bool) {
 	return "", false
 }
 
-func (b *bindingImpl) IsOptionalValue(name string) bool {
+func (b *bindingImpl) BehaviorFlags(name string) (optional bool) {
 	if o, ok := b.names[name]; ok {
 		return o.flags.optional()
 	}
 	return false
 }
 
-func (b *bindingImpl) Args() []string {
+func (b *bindingImpl) PositionalArgNames() []string {
 	return b.positionalOptions
 }
 
-func (s *set) defineFlag(res *internalOption, name string, aliases []string) {
+func (b *bindingImpl) withArgs(args []*Arg) {
+	for _, a := range args {
+		a.Name = b.defineArg(a)
+	}
+}
+
+func (b *bindingImpl) withFlags(flags []*Flag) {
+	for _, f := range flags {
+		b.defineFlag(f)
+	}
+}
+
+func (b *bindingImpl) withParentFlags(flags []option) {
+	for _, f := range flags {
+		if f.internalFlags().nonPersistent() {
+			continue
+		}
+		b.defineFlag(f.(*Flag))
+		f.setInternalFlags(internalFlagPersistent, true)
+	}
+}
+
+func (b *bindingImpl) defineFlag(f *Flag) {
+	name := f.Name
 	if len(name) == 0 {
 		return
 	}
-	longs, shorts := canonicalNames(name, aliases)
+	longs, shorts := canonicalNames(name, f.Aliases)
 
 	for _, short := range shorts {
-		s.shortOptions[string(short)] = name
+		b.shortOptions[string(short)] = name
 	}
 	for _, long := range longs {
-		s.longOptions[long] = name
+		b.longOptions[long] = name
 	}
 
-	s.names[name] = res
+	b.names[name] = &f.option
 }
 
-func (s *set) defineArg(res *internalOption, uname string) string {
+func (b *bindingImpl) defineArg(a *Arg) string {
+	uname := a.Name
 	if uname == "" {
-		uname = fmt.Sprintf("_%d", len(s.positionalOptions)+1)
+		uname = fmt.Sprintf("_%d", len(b.positionalOptions)+1)
 	}
 
-	s.names[uname] = res
-	s.positionalOptions = append(s.positionalOptions, uname)
+	b.names[uname] = &a.option
+	b.positionalOptions = append(b.positionalOptions, uname)
 	return uname
-}
-
-func (s *set) withArgs(args []*Arg) *set {
-	for _, a := range args {
-		a.applyToSet(s)
-	}
-	return s
 }
 
 func (s *set) lookupValue(name string) (interface{}, bool) {
@@ -672,16 +693,35 @@ func (o *internalOption) Seen() bool {
 }
 
 func (o *internalOption) Set(arg string) error {
-	return o.value.Set(arg, o)
+	g := o.value
+	if trySetOptional(g.p, func() (interface{}, bool) {
+		return o.optionalValue, (arg == "" && o.flags.optional())
+	}) {
+		return nil
+	}
+
+	return setCore(g.p, o.flags.disableSplitting(), arg)
 }
 
-func (o *internalOption) setViaTransformOutput(v interface{}) error {
-	return o.value.setViaTransformOutput(v)
+func (o *internalOption) SetOccurrenceData(v any) error {
+	o.nextOccur()
+	return SetData(o.value.p, v)
 }
 
-func (o *internalOption) startOccurrence(n int) {
-	o.count = n
-	o.value.applyValueConventions(o.flags, n)
+func (o *internalOption) SetOccurrence(values ...string) error {
+	o.nextOccur()
+	for _, arg := range values {
+		err := o.Set(arg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (o *internalOption) nextOccur() {
+	o.count++
+	o.value.applyValueConventions(o.flags, o.count == 1)
 }
 
 func (o *internalOption) Value() *generic {
@@ -714,3 +754,5 @@ func (o *internalOption) actualArgCounter() ArgCounter {
 }
 
 var _ lookupCore = (*set)(nil)
+var _ BindingLookup = (*set)(nil)
+var _ Binding = (*set)(nil)

@@ -156,7 +156,6 @@ type option interface {
 	Set(string) error
 	SetRequired(bool)
 
-	applyToSet(s *set)
 	ensureInternalOpt()
 	contextName() string
 	value() interface{}
@@ -216,10 +215,6 @@ func groupFlagsByCategory(flags []*Flag) flagsByCategory {
 	}
 	sort.Sort(res)
 	return res
-}
-
-func (f *Flag) applyToSet(s *set) {
-	s.defineFlag(&f.option, f.Name, f.Aliases)
 }
 
 // Use appends actions to Uses pipeline
@@ -528,6 +523,16 @@ func (f *Flag) Names() []string {
 // Set will update the value of the flag
 func (f *Flag) Set(arg string) error {
 	return f.option.Set(arg)
+}
+
+// SetOccurrence will update the value of the flag
+func (f *Flag) SetOccurrence(values ...string) error {
+	return f.option.SetOccurrence(values...)
+}
+
+// SetOccurrenceData will update the value of the flag
+func (f *Flag) SetOccurrenceData(v any) error {
+	return f.option.SetOccurrenceData(v)
 }
 
 func canonicalNames(name string, aliases []string) (long []string, short []rune) {

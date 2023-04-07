@@ -145,19 +145,14 @@ type exprSynopsis struct {
 
 type boundExpr struct {
 	BindingLookup
+	args Binding
 	expr *Expr
-	args *exprArgs
 }
 
 type exprBinding struct {
 	Evaluator
 	Lookup
 	expr *Expr
-}
-
-type exprArgs struct {
-	positionalOptions []string
-	names             map[string]*internalOption
 }
 
 const (
@@ -348,11 +343,12 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 		exprs: map[string]*boundExpr{},
 	}
 	for _, e := range exprs {
-		set := newSet().withArgs(e.Args)
+		set := newSet()
+		set.withArgs(e.Args)
 		fac := &boundExpr{
 			expr:          e,
 			BindingLookup: set,
-			args:          newExprArgs(e.Args),
+			args:          set,
 		}
 		res.exprs[e.Name] = fac
 		for _, alias := range e.Aliases {
@@ -603,45 +599,6 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func newExprArgs(o []*Arg) *exprArgs {
-	names := map[string]*internalOption{}
-	opts := make([]string, len(o))
-	for i, v := range o {
-		names[v.Name] = &v.option
-		opts[i] = v.Name
-	}
-	return &exprArgs{
-		positionalOptions: opts,
-		names:             names,
-	}
-}
-
-func (b *exprArgs) Lookup(name string) (ArgCounter, bool) {
-	a, ok := b.names[name]
-	if ok {
-		return a.actualArgCounter(), true
-	}
-	return nil, false
-}
-
-func (b *exprArgs) FlagName(name string) (string, bool) {
-	if _, ok := b.names[name]; ok {
-		return name, true
-	}
-	return "", false
-}
-
-func (b *exprArgs) IsOptionalValue(name string) bool {
-	if o, ok := b.names[name]; ok {
-		return o.flags.optional()
-	}
-	return false
-}
-
-func (b *exprArgs) Args() []string {
-	return b.positionalOptions
-}
-
 func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, error) {
 	results := make([]ExprBinding, 0)
 	for len(args) > 0 {
@@ -669,7 +626,7 @@ func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, e
 			}
 		}
 
-		err = applyBindings(bin, boundExpr.args.names)
+		err = rawApply(bin, boundExpr.args)
 		if err != nil {
 			return nil, err
 		}

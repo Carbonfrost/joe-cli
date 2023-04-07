@@ -340,21 +340,12 @@ func (c *Command) Use(actions ...Action) *Command {
 
 func (c *Command) buildSet(ctx *Context) *set {
 	set := ctx.internal.(*commandContext).flagSet
-	for _, f := range c.actualFlags() {
-		f.applyToSet(set)
-	}
+	set.withFlags(c.actualFlags())
+
 	if ctx.Parent() != nil {
-		for _, f := range ctx.Parent().flags(true) {
-			if f.internalFlags().nonPersistent() {
-				continue
-			}
-			f.applyToSet(set)
-			f.setInternalFlags(internalFlagPersistent, true)
-		}
+		set.withParentFlags(ctx.Parent().flags(true))
 	}
-	for _, a := range c.actualArgs() {
-		a.applyToSet(set)
-	}
+	set.withArgs(c.actualArgs())
 	return set
 }
 
