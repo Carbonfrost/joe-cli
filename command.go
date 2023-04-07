@@ -504,16 +504,10 @@ func findSolitaryMatch(cc *CompletionContext) []CompletionItem {
 }
 
 func (c *Command) actualArgs() []*Arg {
-	if c.Args == nil {
-		return make([]*Arg, 0)
-	}
 	return c.Args
 }
 
 func (c *Command) actualFlags() []*Flag {
-	if c.Flags == nil {
-		return make([]*Flag, 0)
-	}
 	return c.Flags
 }
 

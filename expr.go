@@ -413,9 +413,6 @@ func (e *Expr) newSynopsis() *exprSynopsis {
 }
 
 func (e *Expr) actualArgs() []*Arg {
-	if e.Args == nil {
-		return make([]*Arg, 0)
-	}
 	return e.Args
 }
 
