@@ -491,7 +491,7 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 		}
 	default:
 		if m, ok := c.LookupCommand(name); ok {
-			return c.commandContext(m, nil), true
+			return c.commandContext(m), true
 		}
 	}
 	return nil, false
@@ -758,7 +758,7 @@ func (c *Context) walkCore(fn WalkFunc) error {
 	switch err {
 	case nil:
 		for _, sub := range current.Subcommands {
-			if err := c.commandContext(sub, nil).walkCore(fn); err != nil {
+			if err := c.commandContext(sub).walkCore(fn); err != nil {
 				return err
 			}
 		}
@@ -1183,10 +1183,9 @@ func newLookupSupport(t internalContext, parent lookupCore) *lookupSupport {
 	}
 }
 
-func (c *Context) commandContext(cmd *Command, args []string) *Context {
+func (c *Context) commandContext(cmd *Command) *Context {
 	return c.copy(&commandContext{
 		cmd:     cmd,
-		args:    args,
 		flagSet: newSet(),
 	})
 }

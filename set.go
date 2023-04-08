@@ -144,7 +144,9 @@ func (f RawParseFlag) skipProgramName() bool {
 // parse did not complete.
 func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings BindingMap, err error) {
 	args := argList(arguments)
-	bindings = BindingMap{}
+	bindings = BindingMap{
+		"": [][]string{arguments},
+	}
 	positionalOpts := newArgBinding(b)
 
 	if args.empty() {

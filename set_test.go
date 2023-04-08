@@ -249,6 +249,10 @@ func (*testFlagSet) SetOccurrence(name string, values ...string) error {
 func flattenParseResults(actual map[string][][]string) map[string][]string {
 	actualFlat := map[string][]string{}
 	for n, v := range actual {
+		// skip over "", which represents the inputs
+		if n == "" {
+			continue
+		}
 		flat := make([]string, len(v))
 		for i, occur := range v {
 			flat[i] = strings.Join(occur, " ")

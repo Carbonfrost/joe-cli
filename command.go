@@ -118,7 +118,6 @@ type optionGroup int
 type commandContext struct {
 	cmd     *Command
 	flagSet *set
-	args    []string
 }
 
 const (
@@ -171,7 +170,7 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 		return err
 	}
 	c.Parent().target().setInternalFlags(internalFlagDidSubcommandExecute, true)
-	newCtx := c.Parent().commandContext(cmd, invoke)
+	newCtx := c.Parent().commandContext(cmd)
 	return newCtx.Execute(invoke)
 }
 
@@ -395,7 +394,7 @@ func completeSubCommand(cc *CompletionContext) []CompletionItem {
 		return nil
 	}
 
-	newCtx := c.Parent().commandContext(cmd, invoke)
+	newCtx := c.Parent().commandContext(cmd)
 	return newCtx.Complete(invoke, cc.Incomplete)
 }
 
@@ -693,7 +692,7 @@ func initializeFlagsArgs(ctx *Context) error {
 func initializeSubcommands(ctx *Context) error {
 	cmd := ctx.target().(*Command)
 	for _, sub := range cmd.Subcommands {
-		err := ctx.commandContext(sub, nil).initialize()
+		err := ctx.commandContext(sub).initialize()
 		if err != nil {
 			return err
 		}
@@ -730,9 +729,6 @@ func (c *commandContext) execute(ctx *Context) error {
 }
 
 func (c *commandContext) lookupBinding(name string, occurs bool) []string {
-	if name == "" {
-		return c.args
-	}
 	return c.flagSet.bindings.lookup(name, occurs)
 }
 func (c *commandContext) set() BindingLookup {
