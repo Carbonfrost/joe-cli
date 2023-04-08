@@ -107,6 +107,11 @@ type Arg struct {
 	// Completion specifies a callback function that determines the auto-complete results
 	Completion Completion
 
+	// Transform defines how to interpret the text passed to the *Arg.  This is generally used
+	// when specialized syntax preprocesses the text, such as file references.  Refer to the
+	// overview in cli.Transform for information.
+	Transform TransformFunc
+
 	internalOption
 }
 
@@ -404,7 +409,7 @@ func (a *Arg) ensureInternalOpt() {
 }
 
 func (a *Arg) setTransform(fn TransformFunc) {
-	a.internalOption.transform = fn
+	a.Transform = fn
 }
 
 func (a *Arg) completion() Completion {

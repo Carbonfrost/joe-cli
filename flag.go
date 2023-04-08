@@ -136,6 +136,11 @@ type Flag struct {
 	// Completion specifies a callback function that determines the auto-complete results
 	Completion Completion
 
+	// Transform defines how to interpret the text passed to the *Flag.  This is generally used
+	// when specialized syntax preprocesses the text, such as file references.  Refer to the
+	// overview in cli.Transform for information.
+	Transform TransformFunc
+
 	internalOption
 }
 
@@ -389,7 +394,7 @@ func (f *Flag) contextName() string {
 }
 
 func (f *Flag) setTransform(fn TransformFunc) {
-	f.internalOption.transform = fn
+	f.Transform = fn
 }
 
 func (f *Flag) completion() Completion {
