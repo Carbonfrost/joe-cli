@@ -281,7 +281,7 @@ var _ = Describe("Lookup", func() {
 		DescribeTable("examples",
 			func(v any, text string, expected types.GomegaMatcher) {
 				f := &cli.Flag{Value: v}
-				c := cli.InitializeFlag(f)
+				c := cli.Initialized(f)
 
 				f.Set(text)
 				Expect(c.Value("")).To(expected)

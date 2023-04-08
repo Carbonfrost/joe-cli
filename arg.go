@@ -161,6 +161,10 @@ type argSynopsis struct {
 }
 
 const (
+	// TakeUnlessFlag is the value to use for Arg.NArg to indicate that an argument takes the
+	// value unless it looks like a flag.  This is the default
+	TakeUnlessFlag = 0
+
 	// TakeRemaining is the value to use for Arg.NArg to indicate that an argument takes
 	// all the remaining tokens from the command line
 	TakeRemaining = -1
@@ -198,11 +202,15 @@ func Args(namevalue ...interface{}) []*Arg {
 // it implies taking all arguments, or 0 means take it if it exists.
 //
 //	>= 1   take exactly n number of arguments, though if they look like flags treat as an error
-//	   0   take argument if it does not look like a flag
+//	   0   take argument if it does not look like a flag (TakeUnlessFlag)
 //	  -1   take all remaining arguments (even when they look like flags) (TakeRemaining)
 //	  -2   take all remaining arguments but stop before taking one that looks like a flag (TakeUntilNextFlag)
+//	  -3   take all remaining arguments except ones that look like flags (TakeExceptForFlags)
 //
 // Any other negative value uses the behavior of -1.
+// As a special case, if v is an initialized *Arg or *Flag, it obtains the actual arg counter which will be
+// used for it, or if v is nil, this is the same as TakeUnlessFLag.  The the value
+// is already ArgCounter, it is returned as-is.
 func ArgCount(v interface{}) ArgCounter {
 	switch count := v.(type) {
 	case ArgCounter:
@@ -211,13 +219,18 @@ func ArgCount(v interface{}) ArgCounter {
 		if count > 0 {
 			return &discreteCounter{count, count}
 		}
-		if count == 0 {
+		if count == TakeUnlessFlag {
 			return &defaultCounter{}
 		}
 		return &varArgsCounter{
 			stopOnFlags: count == TakeUntilNextFlag || count == TakeExceptForFlags,
 			intersperse: count == TakeExceptForFlags,
 		}
+	case *Arg, *Flag:
+		if !count.(option).internalFlags().initialized() {
+			panic(fmt.Sprintf("value %T is not initialized", count))
+		}
+		return count.(option).actualArgCounter()
 	case nil:
 		return ArgCount(0)
 	default:

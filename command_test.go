@@ -377,7 +377,7 @@ var _ = Describe("Command", func() {
 	Describe("Synopsis", func() {
 		DescribeTable("examples",
 			func(cmd *cli.Command, expected string) {
-				cli.InitializeCommand(cmd)
+				cli.Initialized(cmd)
 				Expect(cmd.Synopsis()).To(Equal(expected))
 			},
 			Entry(

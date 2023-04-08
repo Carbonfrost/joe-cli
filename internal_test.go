@@ -34,7 +34,7 @@ func SetActionTiming(c *Context) {
 }
 
 func (a *Arg) ActualArgCounter() ArgCounter {
-	return a.internalOption.actualArgCounter()
+	return ArgCount(a)
 }
 
 func DefaultFlagCounter() ArgCounter {
@@ -50,32 +50,40 @@ func NewFlagSynopsis(long string) *flagSynopsis {
 	}
 }
 
-func InitializeFlag(f *Flag) *Context {
+func Initialized(t target) *Context {
 	var captured *Context
-	app := &App{
-		Flags: []*Flag{
-			f,
-		},
-	}
-	f.Use(ActionFunc(func(c *Context) error {
+	useThunk := ActionFunc(func(c *Context) error {
 		captured = c
 		return nil
-	}))
-	app.Initialize(context.Background())
-	return captured
-}
+	})
 
-func InitializeCommand(f *Command) *Context {
-	var captured *Context
-	app := &App{
-		Commands: []*Command{
-			f,
-		},
-	}
-	f.Use(ActionFunc(func(c *Context) error {
-		captured = c
-		return nil
-	}))
+	app := func() *App {
+		switch f := t.(type) {
+		case *Flag:
+			f.Use(useThunk)
+			return &App{
+				Flags: []*Flag{
+					f,
+				},
+			}
+		case *Arg:
+			f.Use(useThunk)
+			return &App{
+				Args: []*Arg{
+					f,
+				},
+			}
+		case *Command:
+			f.Use(useThunk)
+			return &App{
+				Commands: []*Command{
+					f,
+				},
+			}
+		}
+		panic("unreachable!")
+	}()
+
 	app.Initialize(context.Background())
 	return captured
 }

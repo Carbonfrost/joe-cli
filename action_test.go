@@ -2451,7 +2451,7 @@ var _ = Describe("Enum", func() {
 			Aliases: []string{"t"},
 			Uses:    cli.Enum("case", "suite"),
 		}
-		_ = cli.InitializeFlag(flag)
+		_ = cli.Initialized(flag)
 
 		Expect(flag.UsageText).To(Equal("(case|suite)"))
 	})

@@ -537,6 +537,15 @@ var _ = Describe("ArgCount", func() {
 		Entry("1", 1, Not(Panic())),
 		Entry("nil", nil, Not(Panic())),
 		Entry("bad", "", Panic()),
+		Entry("uninitialized arg", &cli.Arg{}, Panic()),
+		Entry("uninitialized flag", &cli.Flag{}, Panic()),
+	)
+
+	DescribeTable("examples", func(value interface{}, expected types.GomegaMatcher) {
+		Expect(cli.ArgCount(value)).To(expected)
+	},
+		Entry("arg", cli.Initialized(&cli.Arg{NArg: 1}).Arg(), Equal(cli.ArgCount(1))),
+		Entry("flag", cli.Initialized(&cli.Flag{}).Flag(), Equal(cli.DefaultFlagCounter())),
 	)
 })
 

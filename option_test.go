@@ -62,7 +62,7 @@ var _ = Describe("FeatureMap", func() {
 			Alp: alpAction,
 			Bet: betAction,
 		}
-		cli.InitializeFlag(&cli.Flag{}).Do(fm.Pipeline(Lo | Alp | Bet))
+		cli.Initialized(&cli.Flag{}).Do(fm.Pipeline(Lo | Alp | Bet))
 
 		Expect(loAction.ExecuteCallCount()).To(Equal(1))
 		Expect(alpAction.ExecuteCallCount()).To(Equal(1))
@@ -79,7 +79,7 @@ var _ = Describe("FeatureMap", func() {
 			Alp:      alpAction,
 			Bet:      betAction,
 		}
-		cli.InitializeFlag(&cli.Flag{}).Do(fm.Pipeline(Lo | Alp | Bet))
+		cli.Initialized(&cli.Flag{}).Do(fm.Pipeline(Lo | Alp | Bet))
 
 		Expect(alpLoAction.ExecuteCallCount()).To(Equal(1))
 		Expect(alpAction.ExecuteCallCount()).To(Equal(0)) // not called because Alp|Lo was available
