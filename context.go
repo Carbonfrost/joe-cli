@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"text/template"
+	"time"
 )
 
 // Context provides the context in which the app, command, or flag is executing or initializing.
@@ -17,7 +18,6 @@ import (
 // that is currently being initialized or executed.  It wraps context.Context and
 // can be obtained from FromContext
 type Context struct {
-	context.Context
 
 	// Stdout is the output writer to Stdout
 	Stdout Writer
@@ -42,6 +42,7 @@ type Context struct {
 
 	parent    *Context
 	pathCache ContextPath
+	ref       context.Context
 }
 
 // WalkFunc provides the callback for the Walk function
@@ -115,8 +116,20 @@ func FromContext(ctx context.Context) *Context {
 	if ctx == nil {
 		return nil
 	}
+	c, ok := fromContext(ctx)
+	if !ok {
+		panic("ctx does not provide *cli.Context")
+	}
+	return c
+}
+
+func fromContext(ctx context.Context) (*Context, bool) {
+	if ctx == nil {
+		return nil, false
+	}
 	var key contextKeyType
-	return ctx.Value(key).(*Context)
+	c, ok := ctx.Value(key).(*Context)
+	return c, ok
 }
 
 func newContextPathPattern(pat string) contextPathPattern {
@@ -167,6 +180,34 @@ func (c *Context) parse(args []string) *robustParseResult {
 	flags := root.internalFlags().toRaw() | RawSkipProgramName
 	err := set.parse(args, flags)
 	return &robustParseResult{bindings: set.bindings, err: err}
+}
+
+func (c *Context) Deadline() (deadline time.Time, ok bool) {
+	return c.context().Deadline()
+}
+
+func (c *Context) Done() <-chan struct{} {
+	return c.context().Done()
+}
+
+func (c *Context) Err() error {
+	return c.context().Err()
+}
+
+func (c *Context) context() context.Context {
+	return c.ref
+}
+
+// SetContext sets the context
+func (c *Context) SetContext(ctx context.Context) error {
+	c.ref = ctx
+	return nil
+}
+
+// SetContextFunc sets the context using a function
+func (c *Context) SetContextFunc(fn func(context.Context) context.Context) error {
+	c.ref = fn(c.ref)
+	return nil
 }
 
 // Parent obtains the parent context or nil if the root context
@@ -515,7 +556,7 @@ func (c *Context) Value(name interface{}) interface{} {
 	case contextKeyType:
 		return c
 	default:
-		return c.Context.Value(name)
+		return c.context().Value(name)
 	}
 }
 
@@ -1126,7 +1167,7 @@ func rootContext(cctx context.Context, app *App) *Context {
 		flagSet: newSet(),
 	}
 	return &Context{
-		Context:       cctx,
+		ref:           cctx,
 		internal:      internal,
 		lookupSupport: newLookupSupport(internal, nil),
 	}
@@ -1210,7 +1251,7 @@ func (c *Context) initialize() error {
 
 func (c *Context) copy(t internalContext) *Context {
 	return &Context{
-		Context:       c.Context,
+		ref:           c.ref,
 		Stdin:         c.Stdin,
 		Stdout:        c.Stdout,
 		Stderr:        c.Stderr,
@@ -1506,6 +1547,7 @@ func executeOptionPipeline(ctx *Context) error {
 
 var (
 	_ Lookup          = (*Context)(nil)
+	_ context.Context = (*Context)(nil)
 	_ internalContext = (*commandContext)(nil)
 	_ internalContext = (*optionContext)(nil)
 	_ internalContext = (*valueContext)(nil)

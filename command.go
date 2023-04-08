@@ -704,7 +704,7 @@ func initializeSubcommands(ctx *Context) error {
 func copyContextToParent(ctx *Context) error {
 	p := ctx.Parent()
 	if p != nil {
-		p.Context = ctx.Context
+		p.ref = ctx.ref
 	}
 	return nil
 }

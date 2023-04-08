@@ -51,16 +51,11 @@ var _ = Describe("timings", func() {
 		})
 
 		Context("ContextValue", func() {
-			type privateKey string
 
 			BeforeEach(func() {
 				uses = nil
 				arguments = []string{"app"}
 				before = cli.ContextValue(privateKey("mykey"), "context value")
-			})
-
-			It("ContextValue can set and retrieve context value", func() {
-				Expect(captured.Context.Value(privateKey("mykey"))).To(BeIdenticalTo("context value"))
 			})
 
 			It("ContextValue can set and retrieve context value via Value", func() {
@@ -2693,6 +2688,8 @@ var _ = Describe("FromFilePath", func() {
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 })
+
+type privateKey string
 
 func SkipOnWindows() {
 	if runtime.GOOS == "windows" {

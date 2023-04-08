@@ -747,7 +747,7 @@ var _ = Describe("FromContext", func() {
 		Entry(
 			"wrapped with value",
 			func(c context.Context) error {
-				Expect(cli.FromContext(context.WithValue(c, "someKey", ""))).NotTo(BeNil())
+				Expect(cli.FromContext(context.WithValue(c, privateKey("someKey"), ""))).NotTo(BeNil())
 				pass()
 				return nil
 			},

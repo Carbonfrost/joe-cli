@@ -485,23 +485,21 @@ func ActionOf(item interface{}) Action {
 // value.
 func ContextValue(key, value interface{}) Action {
 	return ActionFunc(func(c *Context) error {
-		c.Context = context.WithValue(c.Context, key, value)
-		return nil
+		return c.SetContext(context.WithValue(c.context(), key, value))
 	})
 }
 
 // SetContext provides an action which sets the context
 func SetContext(ctx context.Context) Action {
 	return ActionFunc(func(c *Context) error {
-		c.Context = ctx
-		return nil
+		return c.SetContext(ctx)
 	})
 }
 
 // Timeout provides an action which adds a timeout to the context.
 func Timeout(timeout time.Duration) Action {
 	return Before(ActionFunc(func(c1 *Context) error {
-		ctx, cancel := context.WithTimeout(c1.Context, timeout)
+		ctx, cancel := context.WithTimeout(c1.context(), timeout)
 		return c1.Do(
 			SetContext(ctx),
 			After(ActionFunc(func(*Context) error {
@@ -817,9 +815,9 @@ func HookAfter(pattern string, handler Action) Action {
 // The signal handler is unregistered in the After pipeline.  The recommended approach
 // is therefore to place cleanup into After and consider using a timeout.
 // The process will be terminated when the user presses ^C for the second time:
-func HandleSignal(s os.Signal) Action {
+func HandleSignal(s ...os.Signal) Action {
 	return Before(ActionFunc(func(c1 *Context) error {
-		ctx, stop := signal.NotifyContext(c1.Context, s)
+		ctx, stop := signal.NotifyContext(c1.context(), s...)
 		return c1.Do(
 			SetContext(ctx),
 			After(ActionFunc(func(*Context) error {
