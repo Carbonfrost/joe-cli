@@ -1502,21 +1502,21 @@ func fixupOptionInternals(c *Context) error {
 	switch o := c.target().(type) {
 	case *Flag:
 		p := o.value()
-		if o.Value != nil && p != o.option.value.p {
-			o.option.value = wrapGeneric(p)
+		if o.Value != nil && p != o.internalOption.value.p {
+			o.internalOption.value = wrapGeneric(p)
 			o.setInternalFlags(isFlagType(p), true)
 		}
 	case *Arg:
-		if o.option.narg != o.NArg {
+		if o.internalOption.narg != o.NArg {
 			if o.internalFlags().destinationImplicitlyCreated() {
 				o.Value = nil
 			}
-			o.option.narg = o.NArg
+			o.internalOption.narg = o.NArg
 		}
 
 		p := o.value()
-		if o.Value != nil && p != o.option.value.p {
-			o.option.value = wrapGeneric(p)
+		if o.Value != nil && p != o.internalOption.value.p {
+			o.internalOption.value = wrapGeneric(p)
 		}
 		if _, ok := o.Value.(*string); ok {
 			o.setInternalFlags(internalFlagMerge, true)

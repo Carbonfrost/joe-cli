@@ -494,9 +494,9 @@ func eachOccurrenceOpt(c1 *Context) error {
 		opt := func() *internalOption {
 			switch o := c.option().(type) {
 			case *Flag:
-				return &o.option
+				return &o.internalOption
 			case *Arg:
-				return &o.option
+				return &o.internalOption
 			}
 			return nil
 		}()

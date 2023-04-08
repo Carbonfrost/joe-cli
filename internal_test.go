@@ -34,7 +34,7 @@ func SetActionTiming(c *Context) {
 }
 
 func (a *Arg) ActualArgCounter() ArgCounter {
-	return a.option.actualArgCounter()
+	return a.internalOption.actualArgCounter()
 }
 
 func DefaultFlagCounter() ArgCounter {

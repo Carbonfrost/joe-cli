@@ -18,7 +18,7 @@ type bindingImpl struct {
 	shortOptions      map[string]string
 	longOptions       map[string]string
 	positionalOptions []string
-	names             map[string]*internalOption
+	names             map[string]option
 }
 
 type argBinding struct {
@@ -85,7 +85,7 @@ const (
 func newSet() *set {
 	result := &set{
 		bindingImpl: &bindingImpl{
-			names:        map[string]*internalOption{},
+			names:        map[string]option{},
 			shortOptions: map[string]string{},
 			longOptions:  map[string]string{},
 
@@ -425,7 +425,7 @@ func (s *set) parseBindings(args argList, flags RawParseFlag) error {
 func (b *bindingImpl) LookupOption(name string) (TransformFunc, ArgCounter, BindingState, bool) {
 	a, ok := b.names[name]
 	if ok {
-		return a.transform, a.actualArgCounter(), a, true
+		return a.transformFunc(), a.actualArgCounter(), a, true
 	}
 	return nil, nil, nil, false
 }
@@ -448,7 +448,7 @@ func (b *bindingImpl) ResolveAlias(name string) (string, bool) {
 
 func (b *bindingImpl) BehaviorFlags(name string) (optional bool) {
 	if o, ok := b.names[name]; ok {
-		return o.flags.optional()
+		return o.internalFlags().optional()
 	}
 	return false
 }
@@ -493,7 +493,7 @@ func (b *bindingImpl) defineFlag(f *Flag) {
 		b.longOptions[long] = name
 	}
 
-	b.names[name] = &f.option
+	b.names[name] = f
 }
 
 func (b *bindingImpl) defineArg(a *Arg) string {
@@ -502,14 +502,14 @@ func (b *bindingImpl) defineArg(a *Arg) string {
 		uname = fmt.Sprintf("_%d", len(b.positionalOptions)+1)
 	}
 
-	b.names[uname] = &a.option
+	b.names[uname] = a
 	b.positionalOptions = append(b.positionalOptions, uname)
 	return uname
 }
 
 func (s *set) lookupValue(name string) (interface{}, bool) {
 	if g, ok := s.names[name]; ok {
-		return g.value.p, true
+		return g.value(), true
 	}
 	return nil, false
 }
@@ -688,6 +688,10 @@ func allowFlag(arg string, possibleFlag bool) bool {
 	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
 }
 
+func (o *internalOption) transformFunc() TransformFunc {
+	return o.transform
+}
+
 func (o *internalOption) Seen() bool {
 	return o.count > 0
 }
@@ -732,7 +736,19 @@ func (o *internalOption) Occurrences() int {
 	return o.count
 }
 
-func (o *internalOption) actualArgCounter() ArgCounter {
+func (o internalOption) internalFlags() internalFlags {
+	return o.flags
+}
+
+func (o *internalOption) setInternalFlags(i internalFlags, v bool) {
+	if v {
+		o.flags |= i
+	} else {
+		o.flags &= ^i
+	}
+}
+
+func (o internalOption) actualArgCounter() ArgCounter {
 	if o.flags.flagOnly() {
 		return NoArgs()
 	}

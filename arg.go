@@ -107,7 +107,7 @@ type Arg struct {
 	// Completion specifies a callback function that determines the auto-complete results
 	Completion Completion
 
-	option internalOption
+	internalOption
 }
 
 //counterfeiter:generate . ArgCounter
@@ -240,27 +240,27 @@ func OptionalArg(fn func(string) bool) ArgCounter {
 
 // Occurrences counts the number of times that the argument has occurred on the command line
 func (a *Arg) Occurrences() int {
-	return a.option.Occurrences()
+	return a.internalOption.Occurrences()
 }
 
 // Seen reports true if the argument is used at least once.
 func (a *Arg) Seen() bool {
-	return a.option.Seen()
+	return a.internalOption.Seen()
 }
 
 // Set will set the value of the argument
 func (a *Arg) Set(arg string) error {
-	return a.option.Set(arg)
+	return a.internalOption.Set(arg)
 }
 
 // SetOccurrence will update the value of the arg
 func (a *Arg) SetOccurrence(values ...string) error {
-	return a.option.SetOccurrence(values...)
+	return a.internalOption.SetOccurrence(values...)
 }
 
 // SetOccurrenceData will update the value of the arg
 func (a *Arg) SetOccurrenceData(v any) error {
-	return a.option.SetOccurrenceData(v)
+	return a.internalOption.SetOccurrenceData(v)
 }
 
 // SetHidden causes the argument to be hidden from the help screen
@@ -299,18 +299,6 @@ func (a *Arg) newSynopsisCore(defaultUsage string) *argSynopsis {
 		Value:    usage,
 		Multi:    mul,
 		Optional: opt,
-	}
-}
-
-func (a *Arg) internalFlags() internalFlags {
-	return a.option.flags
-}
-
-func (a *Arg) setInternalFlags(i internalFlags, v bool) {
-	if v {
-		a.option.flags |= i
-	} else {
-		a.option.flags &= ^i
 	}
 }
 
@@ -408,7 +396,7 @@ func (a *Arg) ensureInternalOpt() {
 	if a.Value == nil {
 		flags = internalFlagDestinationImplicitlyCreated
 	}
-	a.option = internalOption{
+	a.internalOption = internalOption{
 		value: wrapGeneric(a.value()),
 		narg:  a.NArg,
 		flags: flags,
@@ -416,7 +404,7 @@ func (a *Arg) ensureInternalOpt() {
 }
 
 func (a *Arg) setTransform(fn TransformFunc) {
-	a.option.transform = fn
+	a.internalOption.transform = fn
 }
 
 func (a *Arg) completion() Completion {

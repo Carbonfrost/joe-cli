@@ -136,7 +136,7 @@ type Flag struct {
 	// Completion specifies a callback function that determines the auto-complete results
 	Completion Completion
 
-	option internalOption
+	internalOption
 }
 
 // FlagsByName is a sortable slice for flags
@@ -150,12 +150,15 @@ type flagCategory struct {
 }
 
 type option interface {
+	BindingState
 	target
 	Occurrences() int
 	Seen() bool
 	Set(string) error
 	SetRequired(bool)
 
+	actualArgCounter() ArgCounter
+	transformFunc() TransformFunc
 	ensureInternalOpt()
 	contextName() string
 	value() interface{}
@@ -338,12 +341,12 @@ func (f *Flag) setCompletion(c Completion) {
 }
 
 func (f *Flag) setOptional() {
-	f.setOptionalValue(f.option.value.smartOptionalDefault())
+	f.setOptionalValue(f.internalOption.value.smartOptionalDefault())
 }
 
 func (f *Flag) setOptionalValue(v interface{}) {
-	f.option.flags |= internalFlagOptional
-	f.option.optionalValue = v
+	f.setInternalFlags(internalFlagOptional, true)
+	f.internalOption.optionalValue = v
 }
 
 func (f *Flag) ensureInternalOpt() {
@@ -353,7 +356,7 @@ func (f *Flag) ensureInternalOpt() {
 	}
 
 	p := f.value()
-	f.option = internalOption{
+	f.internalOption = internalOption{
 		value: wrapGeneric(p),
 		flags: flags | isFlagType(p),
 	}
@@ -386,7 +389,7 @@ func (f *Flag) contextName() string {
 }
 
 func (f *Flag) setTransform(fn TransformFunc) {
-	f.option.transform = fn
+	f.internalOption.transform = fn
 }
 
 func (f *Flag) completion() Completion {
@@ -507,12 +510,12 @@ func placeholder(v interface{}) string {
 
 // Seen returns true if the flag was used on the command line at least once
 func (f *Flag) Seen() bool {
-	return f.option.Seen()
+	return f.internalOption.Seen()
 }
 
 // Occurrences returns the number of times the flag was specified on the command line
 func (f *Flag) Occurrences() int {
-	return f.option.Occurrences()
+	return f.internalOption.Occurrences()
 }
 
 // Names obtains the name of the flag and its aliases
@@ -522,17 +525,17 @@ func (f *Flag) Names() []string {
 
 // Set will update the value of the flag
 func (f *Flag) Set(arg string) error {
-	return f.option.Set(arg)
+	return f.internalOption.Set(arg)
 }
 
 // SetOccurrence will update the value of the flag
 func (f *Flag) SetOccurrence(values ...string) error {
-	return f.option.SetOccurrence(values...)
+	return f.internalOption.SetOccurrence(values...)
 }
 
 // SetOccurrenceData will update the value of the flag
 func (f *Flag) SetOccurrenceData(v any) error {
-	return f.option.SetOccurrenceData(v)
+	return f.internalOption.SetOccurrenceData(v)
 }
 
 func canonicalNames(name string, aliases []string) (long []string, short []rune) {
@@ -558,18 +561,6 @@ func (f *Flag) SetHidden(v bool) {
 // SetRequired causes the flag to be required
 func (f *Flag) SetRequired(v bool) {
 	f.setInternalFlags(internalFlagRequired, v)
-}
-
-func (f *Flag) internalFlags() internalFlags {
-	return f.option.flags
-}
-
-func (f *Flag) setInternalFlags(i internalFlags, v bool) {
-	if v {
-		f.option.flags |= i
-	} else {
-		f.option.flags &= ^i
-	}
 }
 
 func (f *Flag) name() string {
