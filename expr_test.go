@@ -123,7 +123,7 @@ var _ = Describe("Expr", func() {
 			Expect(act.EvaluateCallCount()).To(Equal(1))
 		})
 
-		XIt("contains args in captured context", func() {
+		It("contains args in captured context", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
 			Expect(captured.Args()).To(Equal([]string{"true", "1", "2", "a", "b", "c"}))
 		})

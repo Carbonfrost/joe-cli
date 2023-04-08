@@ -144,8 +144,7 @@ type exprSynopsis struct {
 }
 
 type boundExpr struct {
-	BindingLookup
-	args Binding
+	*set
 	expr *Expr
 }
 
@@ -346,9 +345,8 @@ func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 		set := newSet()
 		set.withArgs(e.Args)
 		fac := &boundExpr{
-			expr:          e,
-			BindingLookup: set,
-			args:          set,
+			expr: e,
+			set:  set,
 		}
 		res.exprs[e.Name] = fac
 		for _, alias := range e.Aliases {
@@ -519,10 +517,12 @@ func (b *boundExpr) Expr() *Expr {
 	return b.expr
 }
 
+func (b *boundExpr) LocalArgs() []*Arg {
+	return b.expr.Args
+}
+
 func (b *boundExpr) Evaluate(c *Context, v interface{}, yield func(interface{}) error) error {
-	// TODO Pass along args
-	args := []string{}
-	ctx := c.exprContext(b.expr, args, b.BindingLookup).setTiming(ActionTiming)
+	ctx := c.valueContext(newValueTarget(b, nil), b.expr.Name).setTiming(ActionTiming)
 	return EvaluatorOf(b.expr.Evaluate).Evaluate(ctx, v, yield)
 }
 
@@ -611,7 +611,10 @@ func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, e
 		}
 
 		results = append(results, boundExpr)
-		bin, err := RawParse(args, boundExpr.args, boundExpr.expr.internalFlags().toRaw())
+		bin, err := RawParse(args, boundExpr.set, boundExpr.expr.internalFlags().toRaw())
+
+		// This specialized value contains the context args
+		boundExpr.set.bindings[""] = [][]string{args}
 
 		var pe *ParseError
 		if err != nil {
@@ -626,7 +629,7 @@ func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, e
 			}
 		}
 
-		err = rawApply(bin, boundExpr.args)
+		err = rawApply(bin, boundExpr.set)
 		if err != nil {
 			return nil, err
 		}
@@ -653,4 +656,8 @@ func emptyYielder(interface{}) error {
 	return nil
 }
 
-var _ Value = (*Expression)(nil)
+var (
+	_ Value         = (*Expression)(nil)
+	_ BindingLookup = (*boundExpr)(nil)
+	_ Binding       = (*boundExpr)(nil)
+)

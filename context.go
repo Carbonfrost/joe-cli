@@ -123,6 +123,17 @@ func newContextPathPattern(pat string) contextPathPattern {
 	return contextPathPattern{strings.Fields(pat)}
 }
 
+func newValueTarget(v any, action Action) *valueTarget {
+	return &valueTarget{
+		v: v,
+		pipelinesSupport: pipelinesSupport{
+			actionPipelines{
+				Initializers: action,
+			},
+		},
+	}
+}
+
 // Execute executes the context with the given arguments.
 func (c *Context) Execute(args []string) error {
 	if cmd, ok := c.target().(*Command); ok {
@@ -949,15 +960,8 @@ func (c *Context) AutodetectColor() {
 // the value of the flag or arg.
 // The value can provides methods such as SetDescription(string),
 // SetHelpText(string), etc. in order to operate with actions that set these values.
-func (c *Context) ProvideValueInitializer(v interface{}, name string, action Action) error {
-	adapter := &valueTarget{
-		v: v,
-		pipelinesSupport: pipelinesSupport{
-			actionPipelines{
-				Initializers: action,
-			},
-		},
-	}
+func (c *Context) ProvideValueInitializer(v any, name string, action Action) error {
+	adapter := newValueTarget(v, action)
 	return c.Do(Setup{
 		Uses: func(c1 *Context) error {
 			return c1.valueContext(adapter, name).initialize()
@@ -1155,20 +1159,9 @@ func (c *Context) optionContext(opt option) *Context {
 
 func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
 	return c.copy(&valueContext{
-		v:    adapter,
-		name: name,
-	})
-}
-
-func (c *Context) exprContext(expr *Expr, args []string, data BindingLookup) *Context {
-	adapter := &valueTarget{
-		v:                expr,
-		pipelinesSupport: pipelinesSupport{},
-	}
-	return c.copy(&valueContext{
 		v:      adapter,
-		name:   expr.Name,
-		lookup: data,
+		name:   name,
+		lookup: adapter.lookup(),
 	})
 }
 
@@ -1374,6 +1367,11 @@ func (*valueTarget) options() *Option {
 
 func (*valueTarget) pipeline(t Timing) interface{} {
 	return nil
+}
+
+func (v *valueTarget) lookup() BindingLookup {
+	b, _ := v.v.(BindingLookup)
+	return b
 }
 
 func setupInternalOption(c *Context) error {
