@@ -856,7 +856,7 @@ func OptionalValue(v interface{}) Action {
 // ProvideValueInitializer causes an additional child context to be created
 // which is used to initialize an arbitrary value.  For more information,
 // refer to the implementation provided by Context.ProvideValueInitializer.
-func ProvideValueInitializer(v target, name string, a Action) Action {
+func ProvideValueInitializer(v interface{}, name string, a Action) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.ProvideValueInitializer(v, name, a)
 	})

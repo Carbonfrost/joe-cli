@@ -375,11 +375,11 @@ func (e *Expr) Arg(name interface{}) (*Arg, bool) {
 }
 
 func (e *Expr) newSynopsis() *exprSynopsis {
-	args := make([]*argSynopsis, len(e.actualArgs()))
+	args := make([]*argSynopsis, len(e.LocalArgs()))
 	usage := parseUsage(e.HelpText)
 	pp := usage.Placeholders()
 
-	for i, a := range e.actualArgs() {
+	for i, a := range e.LocalArgs() {
 		if i < len(pp) {
 			args[i] = a.newSynopsisCore(pp[i])
 		} else {
@@ -408,7 +408,7 @@ func (e *Expr) newSynopsis() *exprSynopsis {
 	}
 }
 
-func (e *Expr) actualArgs() []*Arg {
+func (e *Expr) LocalArgs() []*Arg {
 	return e.Args
 }
 

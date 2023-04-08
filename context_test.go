@@ -580,6 +580,139 @@ var _ = Describe("Context", func() {
 		)
 	})
 
+	Describe("Flags", func() {
+		var (
+			flags = func(names ...string) []*cli.Flag {
+				res := make([]*cli.Flag, len(names))
+				for i := range names {
+					res[i] = &cli.Flag{Name: names[i]}
+				}
+				return res
+			}
+			names = func(f []*cli.Flag) string {
+				if f == nil {
+					return "<nil>"
+				}
+				res := make([]string, 0, len(f))
+				for i := range f {
+					// Don't include built-ins for the sake of this test
+					name := f[i].Name
+					if name == "help" || name == "version" || name == "zsh-completion" {
+						continue
+					}
+					res = append(res, name)
+				}
+				return strings.Join(res, ",")
+			}
+		)
+		DescribeTable("examples", func(factory func(cli.Action) *cli.App, flags, persistentFlags, localFlags string) {
+			act := new(joeclifakes.FakeAction)
+			app := factory(act)
+			app.Initialize(context.Background())
+
+			captured := act.ExecuteArgsForCall(0)
+			Expect(names(captured.Flags())).To(Equal(flags))
+			Expect(names(captured.PersistentFlags())).To(Equal(persistentFlags))
+			Expect(names(captured.LocalFlags())).To(Equal(localFlags))
+		},
+			Entry("app", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Uses:  act,
+					Flags: flags("f"),
+				}
+			}, "f", "<nil>", "f"),
+			Entry("sub-command", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Flags: flags("a", "b"),
+					Commands: []*cli.Command{
+						{
+							Name:  "c",
+							Flags: flags("d"),
+							Uses:  act,
+						},
+					},
+				}
+			}, "a,b,d", "a,b", "d"),
+			Entry("flag", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "a", Uses: act},
+					},
+				}
+			}, "<nil>", "<nil>", "<nil>"),
+			Entry("arg", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Args: []*cli.Arg{
+						{Name: "a", Uses: act},
+					},
+				}
+			}, "<nil>", "<nil>", "<nil>"),
+		)
+	})
+
+	Describe("LocalArgs", func() {
+		var (
+			names = func(f []*cli.Arg) string {
+				if f == nil {
+					return "<nil>"
+				}
+				res := make([]string, 0, len(f))
+				for i := range f {
+					// Don't include built-ins for the sake of this test
+					name := f[i].Name
+					res = append(res, name)
+				}
+				return strings.Join(res, ",")
+			}
+		)
+		DescribeTable("examples", func(factory func(cli.Action) *cli.App, localArgs string) {
+			act := new(joeclifakes.FakeAction)
+			app := factory(act)
+			app.Initialize(context.Background())
+
+			captured := act.ExecuteArgsForCall(0)
+			Expect(names(captured.LocalArgs())).To(Equal(localArgs))
+		},
+			Entry("app", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Uses: act,
+					Args: cli.Args("a", new(string)),
+				}
+			}, "a"),
+			Entry("sub-command", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Commands: []*cli.Command{
+						{
+							Name: "c",
+							Args: cli.Args("d", new(string)),
+							Uses: act,
+						},
+					},
+				}
+			}, "d"),
+			Entry("flag", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "a", Uses: act},
+					},
+				}
+			}, "<nil>"),
+			Entry("arg", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Args: []*cli.Arg{
+						{Name: "a", Uses: act},
+					},
+				}
+			}, "<nil>"),
+			Entry("value providing the convention", func(act cli.Action) *cli.App {
+				return &cli.App{
+					Args: []*cli.Arg{
+						{Name: "a", Uses: cli.ProvideValueInitializer(&haveArgs{}, "me", act)},
+					},
+				}
+			}, "x,y,z"),
+		)
+	})
 })
 
 var _ = Describe("FromContext", func() {
@@ -679,4 +812,10 @@ func argName(v interface{}) interface{} {
 
 func commandName(v interface{}) interface{} {
 	return v.(*cli.Command).Name
+}
+
+type haveArgs struct{}
+
+func (*haveArgs) LocalArgs() []*cli.Arg {
+	return cli.Args("x", "", "y", "", "z", "")
 }

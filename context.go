@@ -71,14 +71,6 @@ type parentLookup struct {
 	parent     lookupCore
 }
 
-type hasArguments interface {
-	actualArgs() []*Arg
-}
-
-type hasFlags interface {
-	actualFlags() []*Flag
-}
-
 type valueTarget struct {
 	pipelinesSupport
 
@@ -288,6 +280,53 @@ func (c *Context) Args() []string {
 	return c.internal.lookupBinding("", false)
 }
 
+// Flags obtains the flags from the command, including
+// persistent flags which were defined by ancestor commands.
+// If the current context is not a command, this is nil.
+// Compare Flags, PersistentFlags, and LocalFlags.
+func (c *Context) Flags() []*Flag {
+	if !c.IsCommand() {
+		return nil
+	}
+	return append(c.PersistentFlags(), c.LocalFlags()...)
+}
+
+// LocalFlags obtains the flags from the command.  If the current
+// context is not a command, this is nil.
+// Compare Flags, PersistentFlags, and LocalFlags.
+func (c *Context) LocalFlags() []*Flag {
+	if !c.IsCommand() {
+		return nil
+	}
+	return c.Target().(*Command).Flags
+}
+
+// LocalArgs obtains the args from the command or value target.  If the current context
+// is not a command or value target, this is nil.
+func (c *Context) LocalArgs() []*Arg {
+	if c.IsCommand() {
+		return c.Command().Args
+	}
+	if aa, ok := c.Target().(interface{ LocalArgs() []*Arg }); ok {
+		return aa.LocalArgs()
+	}
+	return nil
+}
+
+// PersistentFlags locates the nearest command and obtains flags
+// from its parent and ancestor commands.  If the current
+// context is not a command, this is nil.
+// Compare Flags, PersistentFlags,  and LocalFlags.
+func (c *Context) PersistentFlags() []*Flag {
+	if !c.IsCommand() {
+		return nil
+	}
+	if c.Parent() == nil {
+		return nil
+	}
+	return c.Parent().Flags()
+}
+
 // LookupCommand finds the command by name.  The name can be a string or *Command
 func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
 	if c == nil {
@@ -327,7 +366,7 @@ func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
 			}
 			name = c.Name()
 		}
-		if aa, ok := c.target().(hasFlags); ok {
+		if aa, ok := c.target().(*Command); ok {
 			if f, _, found := findFlagByName(aa.actualFlags(), v); found {
 				return f, true
 			}
@@ -356,10 +395,8 @@ func (c *Context) LookupArg(name interface{}) (*Arg, bool) {
 			}
 			name = c.Name()
 		}
-		if aa, ok := c.target().(hasArguments); ok {
-			if a, _, found := findArgByName(aa.actualArgs(), v); found {
-				return a, true
-			}
+		if a, _, found := findArgByName(c.LocalArgs(), v); found {
+			return a, true
 		}
 	case *Arg:
 		return v, true
@@ -431,10 +468,7 @@ func (c *Context) Expression(name string) *Expression {
 
 // NValue gets the maximum number available, exclusive, as an argument Value.
 func (c *Context) NValue() int {
-	if t, ok := c.target().(hasArguments); ok {
-		return len(t.actualArgs())
-	}
-	return 0
+	return len(c.LocalArgs())
 }
 
 // Values gets all the values from the context .
@@ -775,7 +809,7 @@ func (c *Context) lineageFunc(f func(*Context)) {
 }
 
 func (c *Context) logicalArg(index int) *Arg {
-	args := c.target().(hasArguments).actualArgs()
+	args := c.LocalArgs()
 	_, idx, _ := findArgByName(args, index)
 	return args[idx]
 }
@@ -1143,35 +1177,18 @@ func (c *Context) setTiming(t Timing) *Context {
 	return c
 }
 
-func (c *Context) flags(persistent bool) []option {
-	result := make([]option, 0)
-	var (
-		cmd hasFlags
-		ok  bool
-		all = map[string]bool{}
-	)
-	for {
-		if cmd, ok = c.target().(hasFlags); !ok {
-			break
-		}
-		for _, f := range cmd.actualFlags() {
-			if all[f.Name] {
-				continue
-			}
-			all[f.Name] = true
-			result = append(result, f)
-		}
-		if !persistent {
-			break
-		}
-		c = c.Parent()
+func (c *Context) flags() []option {
+	flags := c.Flags()
+	result := make([]option, len(flags))
+	for i, f := range flags {
+		result[i] = f
 	}
 	return result
 }
 
 func (c *Context) args() []option {
 	result := make([]option, 0)
-	for _, a := range c.target().(hasArguments).actualArgs() {
+	for _, a := range c.LocalArgs() {
 		result = append(result, a)
 	}
 	return result
@@ -1340,9 +1357,9 @@ func (v *valueTarget) LookupData(name string) (interface{}, bool) {
 	return nil, false
 }
 
-func (v *valueTarget) actualArgs() []*Arg {
-	if a, ok := v.v.(hasArguments); ok {
-		return a.actualArgs()
+func (v *valueTarget) LocalArgs() []*Arg {
+	if a, ok := v.v.(interface{ LocalArgs() []*Arg }); ok {
+		return a.LocalArgs()
 	}
 	return nil
 }
@@ -1388,7 +1405,7 @@ func executeUserPipeline(at Timing) ActionFunc {
 }
 
 func triggerBeforeFlags(ctx *Context) error {
-	return triggerBeforeOptions(ctx, ctx.flags(true))
+	return triggerBeforeOptions(ctx, ctx.flags())
 }
 
 func triggerBeforeArgs(ctx *Context) error {
@@ -1396,7 +1413,7 @@ func triggerBeforeArgs(ctx *Context) error {
 }
 
 func triggerFlags(ctx *Context) error {
-	return triggerOptions(ctx, ctx.flags(true))
+	return triggerOptions(ctx, ctx.flags())
 }
 
 func triggerArgs(ctx *Context) error {
@@ -1442,7 +1459,7 @@ func hasSeenImplied(f option, parent target) bool {
 }
 
 func triggerAfterFlags(ctx *Context) error {
-	return triggerAfterOptions(ctx, ctx.flags(true))
+	return triggerAfterOptions(ctx, ctx.flags())
 }
 
 func triggerAfterArgs(ctx *Context) error {
@@ -1528,7 +1545,6 @@ func executeOptionPipeline(ctx *Context) error {
 }
 
 var (
-	_ hasArguments    = (*Expr)(nil)
 	_ Lookup          = (*Context)(nil)
 	_ internalContext = (*commandContext)(nil)
 	_ internalContext = (*optionContext)(nil)

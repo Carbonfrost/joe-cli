@@ -293,8 +293,8 @@ func (c *Command) Arg(name interface{}) (*Arg, bool) {
 
 // VisibleArgs filters all arguments in the command by whether they are not hidden
 func (c *Command) VisibleArgs() []*Arg {
-	res := make([]*Arg, 0, len(c.actualArgs()))
-	for _, o := range c.actualArgs() {
+	res := make([]*Arg, 0, len(c.Args))
+	for _, o := range c.Args {
 		if o.internalFlags().hidden() {
 			continue
 		}
@@ -343,9 +343,9 @@ func (c *Command) buildSet(ctx *Context) *set {
 	set.withFlags(c.actualFlags())
 
 	if ctx.Parent() != nil {
-		set.withParentFlags(ctx.Parent().flags(true))
+		set.withParentFlags(ctx.Parent().flags())
 	}
-	set.withArgs(c.actualArgs())
+	set.withArgs(c.Args)
 	return set
 }
 
@@ -494,10 +494,6 @@ func findSolitaryMatch(cc *CompletionContext) []CompletionItem {
 	}
 }
 
-func (c *Command) actualArgs() []*Arg {
-	return c.Args
-}
-
 func (c *Command) actualFlags() []*Flag {
 	return c.Flags
 }
@@ -517,7 +513,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 		group := getGroup(f)
 		groups[group] = append(groups[group], f.synopsis())
 	}
-	for _, a := range c.actualArgs() {
+	for _, a := range c.Args {
 		args = append(args, a.newSynopsis())
 	}
 
@@ -653,50 +649,42 @@ func (c *commandContext) initializeDescendent(ctx *Context) error {
 
 func initializeFlagsArgs(ctx *Context) error {
 	var (
-		flagStart   int
-		argStart    int
-		_, anyFlags = ctx.target().(hasFlags)
-		_, anyArgs  = ctx.target().(hasArguments)
+		flagStart int
+		argStart  int
+		anyFlags  = true
+		anyArgs   = true
 	)
 
 	// New flags and/or args may have been introduced, so allow these to also initialize.
 	// They can ONLY be appended to the slice, not inserted elsewhere
 	for anyFlags || anyArgs {
-		if cmd, ok := ctx.target().(hasFlags); ok {
-			flags := cmd.actualFlags()[flagStart:]
-			flagStart = len(cmd.actualFlags())
+		flags := ctx.LocalFlags()[flagStart:]
+		flagStart = len(ctx.LocalFlags())
 
-			for _, sub := range flags {
-				if sub.internalFlags().initialized() {
-					continue
-				}
-				err := ctx.optionContext(sub).initialize()
-				if err != nil {
-					return err
-				}
+		for _, sub := range flags {
+			if sub.internalFlags().initialized() {
+				continue
 			}
-			anyFlags = len(flags) > 0
-		} else {
-			anyFlags = false
-		}
-
-		if cmd, ok := ctx.target().(hasArguments); ok {
-			args := cmd.actualArgs()[argStart:]
-			argStart = len(cmd.actualArgs())
-
-			for _, sub := range args {
-				if sub.internalFlags().initialized() {
-					continue
-				}
-				err := ctx.optionContext(sub).initialize()
-				if err != nil {
-					return err
-				}
+			err := ctx.optionContext(sub).initialize()
+			if err != nil {
+				return err
 			}
-			anyArgs = len(args) > 0
-		} else {
-			anyArgs = false
 		}
+		anyFlags = len(flags) > 0
+
+		args := ctx.LocalArgs()[argStart:]
+		argStart = len(ctx.LocalArgs())
+
+		for _, sub := range args {
+			if sub.internalFlags().initialized() {
+				continue
+			}
+			err := ctx.optionContext(sub).initialize()
+			if err != nil {
+				return err
+			}
+		}
+		anyArgs = len(args) > 0
 	}
 
 	return nil
