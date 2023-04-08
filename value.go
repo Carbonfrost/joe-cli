@@ -106,10 +106,6 @@ type valueCompleter interface {
 	Completion() Completion
 }
 
-type generic struct {
-	p interface{}
-}
-
 type valuePairCounter struct {
 	count int
 }
@@ -798,7 +794,7 @@ func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
 	return errors.New("too many arguments to filter")
 }
 
-func (g *generic) applyValueConventions(flags internalFlags, firstOccur bool) {
+func (g *internalOption) applyValueConventions(flags internalFlags, firstOccur bool) {
 	resetOnFirstOccur := !flags.merge()
 	if !firstOccur {
 		// string will reset on every occurrence unless Merge is turned on
@@ -839,7 +835,7 @@ func (g *generic) applyValueConventions(flags internalFlags, firstOccur bool) {
 	}
 }
 
-func (g *generic) smartOptionalDefault() interface{} {
+func (g *internalOption) smartOptionalDefault() interface{} {
 	switch g.p.(type) {
 	case *bool:
 		return true
@@ -924,49 +920,50 @@ func (v *valueContext) Name() string {
 	return "<-" + v.name + ">"
 }
 
-func wrapGeneric(v interface{}) *generic {
+func (o *internalOption) setValue(v interface{}) any {
 	switch v.(type) {
 	case Value:
-		return &generic{v}
+		o.p = v
 	case *bool:
-		return &generic{v}
+		o.p = v
 	case *string, *[]string:
-		return &generic{v}
+		o.p = v
 	case *int, *int8, *int16, *int32, *int64:
-		return &generic{v}
+		o.p = v
 	case *uint, *uint8, *uint16, *uint32, *uint64:
-		return &generic{v}
+		o.p = v
 	case *float32, *float64:
-		return &generic{v}
+		o.p = v
 	case *time.Duration:
-		return &generic{v}
+		o.p = v
 	case *map[string]string:
-		return &generic{v}
+		o.p = v
 	case *[]*NameValue:
-		return &generic{v}
+		o.p = v
 	case **url.URL:
-		return &generic{v}
+		o.p = v
 	case *net.IP:
-		return &generic{v}
+		o.p = v
 	case **regexp.Regexp:
-		return &generic{v}
+		o.p = v
 	case **big.Int:
-		return &generic{v}
+		o.p = v
 	case **big.Float:
-		return &generic{v}
+		o.p = v
 	case *[]byte:
-		return &generic{v}
+		o.p = v
 	case encoding.TextUnmarshaler:
-		return &generic{v}
+		o.p = v
 	default:
 		panic(fmt.Sprintf("unsupported flag type: %T", v))
 	}
+	return v
 }
 
 // cloneZero creates a clone with the same type
-func (g *generic) cloneZero() *generic {
-	return wrapGeneric(func() interface{} {
-		switch val := g.p.(type) {
+func (o *internalOption) cloneZero() any {
+	return o.setValue(func() interface{} {
+		switch val := o.p.(type) {
 		case *bool:
 			return Bool()
 		case *string:
@@ -1023,7 +1020,7 @@ func (g *generic) cloneZero() *generic {
 				return res
 			}
 		}
-		panic(fmt.Sprintf("unsupported flag type for copying: %T", g.p))
+		panic(fmt.Sprintf("unsupported flag type for copying: %T", o.p))
 	}())
 }
 

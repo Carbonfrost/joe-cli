@@ -30,7 +30,7 @@ type argBinding struct {
 type argList []string
 
 type internalOption struct {
-	value         *generic
+	p             any
 	count         int
 	narg          interface{}
 	optionalValue interface{} // set when blank and optional
@@ -699,7 +699,7 @@ func (o *internalOption) Seen() bool {
 }
 
 func (o *internalOption) Set(arg string) error {
-	g := o.value
+	g := o
 	if trySetOptional(g.p, func() (interface{}, bool) {
 		return o.optionalValue, (arg == "" && o.flags.optional())
 	}) {
@@ -711,7 +711,7 @@ func (o *internalOption) Set(arg string) error {
 
 func (o *internalOption) SetOccurrenceData(v any) error {
 	o.nextOccur()
-	return SetData(o.value.p, v)
+	return SetData(o.p, v)
 }
 
 func (o *internalOption) SetOccurrence(values ...string) error {
@@ -727,11 +727,7 @@ func (o *internalOption) SetOccurrence(values ...string) error {
 
 func (o *internalOption) nextOccur() {
 	o.count++
-	o.value.applyValueConventions(o.flags, o.count == 1)
-}
-
-func (o *internalOption) Value() *generic {
-	return o.value
+	o.applyValueConventions(o.flags, o.count == 1)
 }
 
 func (o *internalOption) Occurrences() int {
@@ -755,8 +751,8 @@ func (o internalOption) actualArgCounter() ArgCounter {
 		return NoArgs()
 	}
 	if o.narg == nil {
-		if o.value != nil {
-			switch value := o.value.p.(type) {
+		if o.p != nil {
+			switch value := o.p.(type) {
 			case *[]string:
 				return ArgCount(TakeUntilNextFlag)
 			case valueProvidesCounter:

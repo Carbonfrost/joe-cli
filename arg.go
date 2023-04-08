@@ -415,10 +415,10 @@ func (a *Arg) ensureInternalOpt() {
 		flags = internalFlagDestinationImplicitlyCreated
 	}
 	a.internalOption = internalOption{
-		value: wrapGeneric(a.value()),
 		narg:  a.NArg,
 		flags: flags,
 	}
+	a.internalOption.setValue(a.value())
 }
 
 func (a *Arg) setTransform(fn TransformFunc) {

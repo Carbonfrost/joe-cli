@@ -346,7 +346,7 @@ func (f *Flag) setCompletion(c Completion) {
 }
 
 func (f *Flag) setOptional() {
-	f.setOptionalValue(f.internalOption.value.smartOptionalDefault())
+	f.setOptionalValue(f.internalOption.smartOptionalDefault())
 }
 
 func (f *Flag) setOptionalValue(v interface{}) {
@@ -362,9 +362,9 @@ func (f *Flag) ensureInternalOpt() {
 
 	p := f.value()
 	f.internalOption = internalOption{
-		value: wrapGeneric(p),
 		flags: flags | isFlagType(p),
 	}
+	f.internalOption.setValue(f.value())
 }
 
 func (f *Flag) pipeline(t Timing) interface{} {

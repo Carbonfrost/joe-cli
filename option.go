@@ -513,13 +513,13 @@ func eachOccurrenceOpt(c1 *Context) error {
 			// Create a copy of the value on each occurrence (unless merge semantics
 			// are in place)
 			if i == 0 || resetOnFirstOccur {
-				opt.value = opt.value.cloneZero()
+				opt.cloneZero()
 			}
 
 			mini.index = i
 
 			// Pretend this is the first occurrence
-			opt.value.applyValueConventions(c.option().internalFlags(), true)
+			opt.applyValueConventions(c.option().internalFlags(), true)
 
 			if opt.transform != nil {
 				d, err := opt.transform(mini.lookupBinding("", false))
@@ -534,7 +534,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 					return err
 				}
 			}
-			mini.val = opt.value.p
+			mini.val = opt.p
 
 			if err := next.Execute(scope); err != nil {
 				return err

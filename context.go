@@ -1501,8 +1501,8 @@ func fixupOptionInternals(c *Context) error {
 	switch o := c.target().(type) {
 	case *Flag:
 		p := o.value()
-		if o.Value != nil && p != o.internalOption.value.p {
-			o.internalOption.value = wrapGeneric(p)
+		if o.Value != nil && p != o.internalOption.p {
+			o.setValue(p)
 			o.setInternalFlags(isFlagType(p), true)
 		}
 		o.internalOption.transform = o.Transform
@@ -1515,8 +1515,8 @@ func fixupOptionInternals(c *Context) error {
 		}
 
 		p := o.value()
-		if o.Value != nil && p != o.internalOption.value.p {
-			o.internalOption.value = wrapGeneric(p)
+		if o.Value != nil && p != o.internalOption.p {
+			o.setValue(p)
 		}
 		if _, ok := o.Value.(*string); ok {
 			o.setInternalFlags(internalFlagMerge, true)
