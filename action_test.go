@@ -1079,6 +1079,11 @@ var _ = Describe("events", func() {
 			ContainElements("before --global", "before --local"),
 		),
 		Entry(
+			"persistent flags only run Before once",
+			"app sub --global",
+			WithTransform(countOccurrences, HaveKeyWithValue("before --global", 1)),
+		),
+		Entry(
 			"sub-command call",
 			"app sub",
 			And(
@@ -2706,4 +2711,14 @@ func UseEnvVars(env map[string]string) {
 			os.Unsetenv(k)
 		}
 	})
+}
+
+func countOccurrences(v any) any {
+	// Used with WithTransform -- converts to a map counting the
+	// occurrences of a string
+	res := map[string]int{}
+	for _, s := range v.([]string) {
+		res[s]++
+	}
+	return res
 }
