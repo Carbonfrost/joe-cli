@@ -469,12 +469,12 @@ func (b *bindingImpl) withFlags(flags []*Flag) {
 	}
 }
 
-func (b *bindingImpl) withParentFlags(flags []option) {
+func (b *bindingImpl) withParentFlags(flags []*Flag) {
 	for _, f := range flags {
 		if f.internalFlags().nonPersistent() {
 			continue
 		}
-		b.defineFlag(f.(*Flag))
+		b.defineFlag(f)
 		f.setInternalFlags(internalFlagPersistent, true)
 	}
 }

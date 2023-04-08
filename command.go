@@ -343,7 +343,7 @@ func (c *Command) buildSet(ctx *Context) *set {
 	set.withFlags(c.actualFlags())
 
 	if ctx.Parent() != nil {
-		set.withParentFlags(ctx.Parent().flags())
+		set.withParentFlags(ctx.Parent().Flags())
 	}
 	set.withArgs(c.Args)
 	return set

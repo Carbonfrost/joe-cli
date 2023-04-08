@@ -1170,21 +1170,30 @@ func (c *Context) setTiming(t Timing) *Context {
 	return c
 }
 
-func (c *Context) flags() []option {
-	flags := c.Flags()
-	result := make([]option, len(flags))
-	for i, f := range flags {
-		result[i] = f
-	}
-	return result
-}
+func triggerOptionsHO(t Timing, on func(*Context) error) ActionFunc {
+	return func(ctx *Context) error {
+		for _, f := range ctx.Flags() {
+			if f.internalFlags().persistent() {
+				// This is a persistent flag that was cloned into the flag set of the current
+				// command; don't process it again
+				continue
+			}
 
-func (c *Context) args() []option {
-	result := make([]option, 0)
-	for _, a := range c.LocalArgs() {
-		result = append(result, a)
+			err := on(ctx.optionContext(f).setTiming(t))
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, f := range ctx.LocalArgs() {
+			err := on(ctx.optionContext(f).setTiming(t))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
-	return result
 }
 
 func (c *Context) initialize() error {
@@ -1402,43 +1411,20 @@ func executeUserPipeline(at Timing) ActionFunc {
 	}
 }
 
-func triggerBeforeFlags(ctx *Context) error {
-	return triggerBeforeOptions(ctx, ctx.flags())
-}
-
-func triggerBeforeArgs(ctx *Context) error {
-	return triggerBeforeOptions(ctx, ctx.args())
-}
-
-func triggerFlags(ctx *Context) error {
-	return triggerOptions(ctx, ctx.flags())
-}
-
-func triggerArgs(ctx *Context) error {
-	return triggerOptions(ctx, ctx.args())
-}
-
-func triggerBeforeOptions(ctx *Context, opts []option) error {
-	for _, f := range opts {
-		if f.internalFlags().persistent() {
-			// This is a persistent flag that was cloned into the flag set of the current
-			// command; don't process it again
-			continue
-		}
-
-		err := ctx.optionContext(f).executeBefore()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func triggerOptions(ctx *Context, opts []option) error {
+func triggerOptions(ctx *Context) error {
 	// Invoke the Before action on all flags and args, but only the actual
 	// Action when the flag or arg was set
 	parent := ctx.target()
-	for _, f := range opts {
+	for _, f := range ctx.Flags() {
+		if f.Seen() || hasSeenImplied(f, parent) {
+			err := ctx.optionContext(f).executeSelf()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, f := range ctx.LocalArgs() {
 		if f.Seen() || hasSeenImplied(f, parent) {
 			err := ctx.optionContext(f).executeSelf()
 			if err != nil {
@@ -1454,30 +1440,6 @@ func hasSeenImplied(f option, parent target) bool {
 		return f.internalFlags().impliedAction() || parent.internalFlags().impliedAction()
 	}
 	return false
-}
-
-func triggerAfterFlags(ctx *Context) error {
-	return triggerAfterOptions(ctx, ctx.flags())
-}
-
-func triggerAfterArgs(ctx *Context) error {
-	return triggerAfterOptions(ctx, ctx.args())
-}
-
-func triggerAfterOptions(ctx *Context, opts []option) error {
-	for _, f := range opts {
-		if f.internalFlags().persistent() {
-			// This is a persistent flag that was cloned into the flag set of the current
-			// command; don't process it again
-			continue
-		}
-
-		err := ctx.optionContext(f).setTiming(AfterTiming).executeAfter()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func reverse(arr []string) []string {

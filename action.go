@@ -218,6 +218,9 @@ var (
 		justBeforeTiming:    3,
 	}
 
+	triggerBeforeOptions = triggerOptionsHO(BeforeTiming, (*Context).executeBefore)
+	triggerAfterOptions  = triggerOptionsHO(AfterTiming, (*Context).executeAfter)
+
 	// defaultCommand defines the flow for how a command is executed during the
 	// initialization and other pipeline stages.  (See also defaultOption.)
 	//
@@ -253,8 +256,7 @@ var (
 			ActionFunc(copyContextToParent),
 		),
 		Action: actions(
-			ActionFunc(triggerFlags),
-			ActionFunc(triggerArgs),
+			ActionFunc(triggerOptions),
 			IfMatch(subcommandDidNotExecute,
 				actions(
 					executeDeferredPipeline(ActionTiming),
@@ -268,16 +270,14 @@ var (
 			actions(
 				executeDeferredPipeline(BeforeTiming),
 				executeUserPipeline(BeforeTiming),
-				ActionFunc(triggerBeforeFlags),
-				ActionFunc(triggerBeforeArgs),
+				ActionFunc(triggerBeforeOptions),
 			),
 			nil,
 		},
 		After: actions(
 			executeDeferredPipeline(AfterTiming),
 			executeUserPipeline(AfterTiming),
-			ActionFunc(triggerAfterArgs),
-			ActionFunc(triggerAfterFlags),
+			ActionFunc(triggerAfterOptions),
 			ActionFunc(failWithContextError),
 		),
 	}
