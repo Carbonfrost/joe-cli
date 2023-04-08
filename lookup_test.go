@@ -183,6 +183,12 @@ var _ = Describe("Lookup", func() {
 				func(lk cli.Lookup) any { return lk.Value("a") },
 				BeAssignableToTypeOf(&big.Int{}),
 			),
+			Entry(
+				"Value auto dereference (via flag.Getter)",
+				&hasGetter{v: &big.Int{}},
+				func(lk cli.Lookup) any { return lk.Value("a") },
+				BeAssignableToTypeOf(&big.Int{}),
+			),
 		)
 
 		DescribeTable("implicit conversion examples",

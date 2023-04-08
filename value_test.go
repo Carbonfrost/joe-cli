@@ -3,6 +3,7 @@ package cli_test
 import (
 	"context"
 	"encoding"
+	"flag"
 	"io/fs"
 	"math"
 	"math/big"
@@ -861,6 +862,16 @@ func (d *hasDereference) Value() interface{} {
 	return d.v
 }
 
+type hasGetter struct {
+	v interface{}
+}
+
+func (*hasGetter) Set(string) error { return nil }
+func (*hasGetter) String() string   { return "" }
+func (d *hasGetter) Get() interface{} {
+	return d.v
+}
+
 type textMarshaler string
 
 func (t *textMarshaler) UnmarshalText(text []byte) error {
@@ -869,3 +880,4 @@ func (t *textMarshaler) UnmarshalText(text []byte) error {
 }
 
 var _ encoding.TextUnmarshaler = (*textMarshaler)(nil)
+var _ flag.Getter = (*hasGetter)(nil)

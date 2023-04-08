@@ -1032,6 +1032,9 @@ func dereference(v interface{}) interface{} {
 		if d, ok := v.(valueDereference); ok {
 			return d.Value()
 		}
+		if d, ok := v.(flag.Getter); ok {
+			return d.Get()
+		}
 		return v
 	}
 
