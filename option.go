@@ -187,6 +187,7 @@ const (
 	internalFlagNonPersistent
 	internalFlagDisableSplitting
 	internalFlagMerge
+	internalFlagMergeExplicitlyRequested // only set when the user sets Options: cli.Merge explicitly
 	internalFlagRightToLeft
 	internalFlagIsFlag     // true when a flag (rather than an argument)
 	internalFlagFlagOnly   // true for Flag without an argument
@@ -212,7 +213,7 @@ var (
 		No:                     ActionFunc(noOption),
 		NonPersistent:          setInternalFlag(internalFlagNonPersistent),
 		DisableSplitting:       setInternalFlag(internalFlagDisableSplitting),
-		Merge:                  setInternalFlag(internalFlagMerge),
+		Merge:                  setInternalFlag(internalFlagMerge | internalFlagMergeExplicitlyRequested),
 		RightToLeft:            setInternalFlag(internalFlagRightToLeft),
 		PreventSetup:           ActionOf((*Context).PreventSetup),
 		EachOccurrence:         ActionFunc(eachOccurrenceOpt),
@@ -330,6 +331,10 @@ func (f internalFlags) disableSplitting() bool {
 
 func (f internalFlags) merge() bool {
 	return f&internalFlagMerge == internalFlagMerge
+}
+
+func (f internalFlags) mergeExplicitlyRequested() bool {
+	return f&internalFlagMergeExplicitlyRequested == internalFlagMergeExplicitlyRequested
 }
 
 func (f internalFlags) rightToLeft() bool {
@@ -520,7 +525,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			mini.index = i
 
 			// Pretend this is the first occurrence
-			opt.applyValueConventions(c.option().internalFlags(), true)
+			opt.reset()
 
 			if opt.transform != nil {
 				d, err := opt.transform(mini.lookupBinding("", false))

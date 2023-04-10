@@ -131,7 +131,7 @@ type exprFlags int
 type Yielder func(interface{}) error
 
 type exprPipelineFactory struct {
-	exprs map[string]*boundExpr
+	exprs map[string]*Expr
 }
 
 type exprSynopsis struct {
@@ -159,6 +159,15 @@ const (
 	exprFlagHidden = exprFlags(1 << iota)
 	exprFlagRightToLeft
 )
+
+func newBoundExpr(e *Expr) *boundExpr {
+	set := newSet()
+	set.withArgs(e.Args)
+	return &boundExpr{
+		expr: e,
+		set:  set,
+	}
+}
 
 // Initializer is an action that binds expression handling to an argument.  This
 // is set up automatically when a command defines any expression operators.  The exprFunc
@@ -368,18 +377,12 @@ func groupExprsByCategory(exprs []*Expr) exprsByCategory {
 
 func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
 	res := &exprPipelineFactory{
-		exprs: map[string]*boundExpr{},
+		exprs: map[string]*Expr{},
 	}
 	for _, e := range exprs {
-		set := newSet()
-		set.withArgs(e.Args)
-		fac := &boundExpr{
-			expr: e,
-			set:  set,
-		}
-		res.exprs[e.Name] = fac
+		res.exprs[e.Name] = e
 		for _, alias := range e.Aliases {
-			res.exprs[alias] = fac
+			res.exprs[alias] = e
 		}
 	}
 	return res
@@ -552,6 +555,21 @@ func (b *boundExpr) LocalArgs() []*Arg {
 
 func (b *boundExpr) Evaluate(c context.Context, v interface{}, yield func(interface{}) error) error {
 	ctx := FromContext(c).valueContext(newValueTarget(b, nil), b.expr.Name).setTiming(ActionTiming)
+	for _, a := range b.set.names {
+		a.reset()
+	}
+
+	err := rawApply(b.set.bindings, b.set)
+	if err != nil {
+		return err
+	}
+
+	for _, a := range b.set.names {
+		err := triggerOption(ctx, a)
+		if err != nil {
+			return err
+		}
+	}
 	return EvaluatorOf(b.expr.Evaluate).Evaluate(ctx, v, yield)
 }
 
@@ -634,16 +652,16 @@ func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, e
 		arg := args[0]
 		args = args[1:]
 
-		boundExpr, ok := e.exprs[arg[1:]]
+		expr, ok := e.exprs[arg[1:]]
 		if !ok {
 			return nil, unknownExpr(arg)
 		}
 
+		// Copy the expression in order to providing instancing
+		boundExpr := newBoundExpr(expr)
 		results = append(results, boundExpr)
 		bin, err := RawParse(args, boundExpr.set, boundExpr.expr.internalFlags().toRaw())
-
-		// This specialized value contains the context args
-		boundExpr.set.bindings[""] = [][]string{args}
+		boundExpr.set.bindings = bin
 
 		var pe *ParseError
 		if err != nil {
@@ -656,11 +674,6 @@ func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, e
 			case ExpectedArgument:
 				return nil, pe
 			}
-		}
-
-		err = rawApply(bin, boundExpr.set)
-		if err != nil {
-			return nil, err
 		}
 
 		// If the parse completed successfully, there is nothing else to do

@@ -1454,23 +1454,25 @@ func executeUserPipeline(at Timing) ActionFunc {
 func triggerOptions(ctx *Context) error {
 	// Invoke the Before action on all flags and args, but only the actual
 	// Action when the flag or arg was set
-	parent := ctx.target()
 	for _, f := range ctx.Flags() {
-		if f.Seen() || hasSeenImplied(f, parent) {
-			err := ctx.optionContext(f).executeSelf()
-			if err != nil {
-				return err
-			}
+		err := triggerOption(ctx, f)
+		if err != nil {
+			return err
 		}
 	}
 
 	for _, f := range ctx.LocalArgs() {
-		if f.Seen() || hasSeenImplied(f, parent) {
-			err := ctx.optionContext(f).executeSelf()
-			if err != nil {
-				return err
-			}
+		err := triggerOption(ctx, f)
+		if err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func triggerOption(ctx *Context, f option) error {
+	if f.Seen() || hasSeenImplied(f, ctx.target()) {
+		return ctx.optionContext(f).executeSelf()
 	}
 	return nil
 }
@@ -1518,6 +1520,7 @@ func fixupOptionInternals(c *Context) error {
 		if o.Value != nil && p != o.internalOption.p {
 			o.setValue(p)
 		}
+
 		if _, ok := o.Value.(*string); ok {
 			o.setInternalFlags(internalFlagMerge, true)
 		}

@@ -794,12 +794,21 @@ func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
 	return errors.New("too many arguments to filter")
 }
 
-func (g *internalOption) applyValueConventions(flags internalFlags, firstOccur bool) {
+func (o *internalOption) reset() {
+	// Unless merge was explicitly requested, resetting the option does not apply merge rules
+	flags := o.internalFlags()
+	if !flags.mergeExplicitlyRequested() {
+		flags &^= internalFlagMerge
+	}
+	o.applyValueConventions(flags, true)
+}
+
+func (o *internalOption) applyValueConventions(flags internalFlags, firstOccur bool) {
 	resetOnFirstOccur := !flags.merge()
 	if !firstOccur {
 		// string will reset on every occurrence unless Merge is turned on
 		if resetOnFirstOccur {
-			switch p := g.p.(type) {
+			switch p := o.p.(type) {
 			case *string:
 				*p = ""
 			case valueResetOrMerge:
@@ -810,13 +819,13 @@ func (g *internalOption) applyValueConventions(flags internalFlags, firstOccur b
 	}
 
 	if flags.disableSplitting() {
-		if i, ok := g.p.(valueDisableSplitting); ok {
+		if i, ok := o.p.(valueDisableSplitting); ok {
 			i.DisableSplitting()
 		}
 	}
 
 	if resetOnFirstOccur {
-		switch p := g.p.(type) {
+		switch p := o.p.(type) {
 		case valueResetOrMerge:
 			p.Reset()
 

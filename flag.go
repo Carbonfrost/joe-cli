@@ -162,6 +162,7 @@ type option interface {
 	Set(string) error
 	SetRequired(bool)
 
+	reset()
 	actualArgCounter() ArgCounter
 	transformFunc() TransformFunc
 	ensureInternalOpt()

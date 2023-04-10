@@ -41,7 +41,78 @@ var _ = Describe("Expr", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		captured := cli.FromContext(act.ExecuteArgsForCall(0))
-		Expect(captured.Expression("e"))
+		Expect(captured.Expression("e")).NotTo(BeNil())
+	})
+
+	It("does instance expressions", func() {
+		var seen []int
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Value: &cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name: "more",
+								Args: cli.Args("i", new(int)),
+								Evaluate: func(c *cli.Context, _ any) {
+									seen = append(seen, c.Values()[0].(int))
+								},
+							},
+						},
+					},
+				},
+			},
+			Action: act,
+		}
+		args, _ := cli.Split("app -- -more 1 -more 2 -more 3")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		captured := cli.FromContext(act.ExecuteArgsForCall(0))
+		captured.Expression("expression").Evaluate(captured, 0)
+
+		Expect(seen).To(Equal([]int{1, 2, 3}))
+	})
+
+	It("invokes the action on the arg", func() {
+		act := new(joeclifakes.FakeAction)
+		appAct := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Value: &cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name: "expr",
+								Args: []*cli.Arg{
+									{
+										Name:   "a",
+										Value:  cli.Bool(),
+										Action: act,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Action: appAct,
+		}
+		args, _ := cli.Split("app -- -expr true")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		captured := cli.FromContext(appAct.ExecuteArgsForCall(0))
+		captured.Expression("expression").Evaluate(captured, 0)
+
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+
+		captured = cli.FromContext(act.ExecuteArgsForCall(0))
+		Expect(captured.Value("")).To(Equal(true))
+		Expect(captured.Command().Name).To(Equal("app"))
+		Expect(captured.Path().String()).To(Equal("app <-expr> <a>"))
 	})
 
 	It("names it expression by default", func() {
