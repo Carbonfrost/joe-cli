@@ -164,28 +164,28 @@ func Int64() *int64 {
 	return new(int64)
 }
 
-// UInt creates an uint value.  This is for convenience to obtain the right pointer.
-func UInt() *uint {
+// Uint creates an uint value.  This is for convenience to obtain the right pointer.
+func Uint() *uint {
 	return new(uint)
 }
 
-// UInt8 creates an uint8 value.  This is for convenience to obtain the right pointer.
-func UInt8() *uint8 {
+// Uint8 creates an uint8 value.  This is for convenience to obtain the right pointer.
+func Uint8() *uint8 {
 	return new(uint8)
 }
 
-// UInt16 creates an uint16 value.  This is for convenience to obtain the right pointer.
-func UInt16() *uint16 {
+// Uint16 creates an uint16 value.  This is for convenience to obtain the right pointer.
+func Uint16() *uint16 {
 	return new(uint16)
 }
 
-// UInt32 creates an uint32 value.  This is for convenience to obtain the right pointer.
-func UInt32() *uint32 {
+// Uint32 creates an uint32 value.  This is for convenience to obtain the right pointer.
+func Uint32() *uint32 {
 	return new(uint32)
 }
 
-// UInt64 creates an uint64 value.  This is for convenience to obtain the right pointer.
-func UInt64() *uint64 {
+// Uint64 creates an uint64 value.  This is for convenience to obtain the right pointer.
+func Uint64() *uint64 {
 	return new(uint64)
 }
 
@@ -990,15 +990,15 @@ func (o *internalOption) cloneZero() any {
 		case *int64:
 			return Int64()
 		case *uint:
-			return UInt()
+			return Uint()
 		case *uint8:
-			return UInt8()
+			return Uint8()
 		case *uint16:
-			return UInt16()
+			return Uint16()
 		case *uint32:
-			return UInt32()
+			return Uint32()
 		case *uint64:
-			return UInt64()
+			return Uint64()
 		case *float32:
 			return Float32()
 		case *float64:

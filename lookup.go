@@ -47,16 +47,16 @@ type Lookup interface {
 	NameValues(name interface{}) []*NameValue
 	// String obtains the value and converts it to a string
 	String(name interface{}) string
-	// UInt obtains the value and converts it to a UInt
-	UInt(name interface{}) uint
-	// UInt16 obtains the value and converts it to a UInt16
-	UInt16(name interface{}) uint16
-	// UInt32 obtains the value and converts it to a UInt32
-	UInt32(name interface{}) uint32
-	// UInt64 obtains the value and converts it to a UInt64
-	UInt64(name interface{}) uint64
-	// UInt8 obtains the value and converts it to a UInt8
-	UInt8(name interface{}) uint8
+	// Uint obtains the value and converts it to a uint
+	Uint(name interface{}) uint
+	// Uint16 obtains the value and converts it to a uint16
+	Uint16(name interface{}) uint16
+	// Uint32 obtains the value and converts it to a uint32
+	Uint32(name interface{}) uint32
+	// Uint64 obtains the value and converts it to a uint64
+	Uint64(name interface{}) uint64
+	// Uint8 obtains the value and converts it to a uint8
+	Uint8(name interface{}) uint8
 	// Value obtains the value and converts it to Value
 	Value(name interface{}) interface{}
 	// URL obtains the value and converts it to a URL
@@ -150,29 +150,29 @@ func (c LookupValues) Int64(name interface{}) int64 {
 	return lookupInt64(c, name)
 }
 
-// UInt obtains the uint for the specified name
-func (c LookupValues) UInt(name interface{}) uint {
-	return lookupUInt(c, name)
+// Uint obtains the uint for the specified name
+func (c LookupValues) Uint(name interface{}) uint {
+	return lookupUint(c, name)
 }
 
-// UInt8 obtains the uint8 for the specified name
-func (c LookupValues) UInt8(name interface{}) uint8 {
-	return lookupUInt8(c, name)
+// Uint8 obtains the uint8 for the specified name
+func (c LookupValues) Uint8(name interface{}) uint8 {
+	return lookupUint8(c, name)
 }
 
-// UInt16 obtains the uint16 for the specified name
-func (c LookupValues) UInt16(name interface{}) uint16 {
-	return lookupUInt16(c, name)
+// Uint16 obtains the uint16 for the specified name
+func (c LookupValues) Uint16(name interface{}) uint16 {
+	return lookupUint16(c, name)
 }
 
-// UInt32 obtains the uint32 for the specified name
-func (c LookupValues) UInt32(name interface{}) uint32 {
-	return lookupUInt32(c, name)
+// Uint32 obtains the uint32 for the specified name
+func (c LookupValues) Uint32(name interface{}) uint32 {
+	return lookupUint32(c, name)
 }
 
-// UInt64 obtains the uint64 for the specified name
-func (c LookupValues) UInt64(name interface{}) uint64 {
-	return lookupUInt64(c, name)
+// Uint64 obtains the uint64 for the specified name
+func (c LookupValues) Uint64(name interface{}) uint64 {
+	return lookupUint64(c, name)
 }
 
 // Float32 obtains the float32 for the specified name
@@ -282,24 +282,24 @@ func (c *lookupSupport) Int64(name interface{}) int64 {
 	return lookupInt64(c, name)
 }
 
-func (c *lookupSupport) UInt(name interface{}) uint {
-	return lookupUInt(c, name)
+func (c *lookupSupport) Uint(name interface{}) uint {
+	return lookupUint(c, name)
 }
 
-func (c *lookupSupport) UInt8(name interface{}) uint8 {
-	return lookupUInt8(c, name)
+func (c *lookupSupport) Uint8(name interface{}) uint8 {
+	return lookupUint8(c, name)
 }
 
-func (c *lookupSupport) UInt16(name interface{}) uint16 {
-	return lookupUInt16(c, name)
+func (c *lookupSupport) Uint16(name interface{}) uint16 {
+	return lookupUint16(c, name)
 }
 
-func (c *lookupSupport) UInt32(name interface{}) uint32 {
-	return lookupUInt32(c, name)
+func (c *lookupSupport) Uint32(name interface{}) uint32 {
+	return lookupUint32(c, name)
 }
 
-func (c *lookupSupport) UInt64(name interface{}) uint64 {
-	return lookupUInt64(c, name)
+func (c *lookupSupport) Uint64(name interface{}) uint64 {
+	return lookupUint64(c, name)
 }
 
 func (c *lookupSupport) Float32(name interface{}) float32 {
@@ -489,7 +489,7 @@ func lookupInt64(c Lookup, name interface{}) (res int64) {
 	return
 }
 
-func lookupUInt(c Lookup, name interface{}) (res uint) {
+func lookupUint(c Lookup, name interface{}) (res uint) {
 	val := c.Value(name)
 	if i, ok := val.(uint); ok {
 		res = i
@@ -499,7 +499,7 @@ func lookupUInt(c Lookup, name interface{}) (res uint) {
 	return
 }
 
-func lookupUInt8(c Lookup, name interface{}) (res uint8) {
+func lookupUint8(c Lookup, name interface{}) (res uint8) {
 	val := c.Value(name)
 	if i, ok := val.(uint8); ok {
 		res = i
@@ -509,7 +509,7 @@ func lookupUInt8(c Lookup, name interface{}) (res uint8) {
 	return
 }
 
-func lookupUInt16(c Lookup, name interface{}) (res uint16) {
+func lookupUint16(c Lookup, name interface{}) (res uint16) {
 	val := c.Value(name)
 	if i, ok := val.(uint16); ok {
 		res = i
@@ -519,7 +519,7 @@ func lookupUInt16(c Lookup, name interface{}) (res uint16) {
 	return
 }
 
-func lookupUInt32(c Lookup, name interface{}) (res uint32) {
+func lookupUint32(c Lookup, name interface{}) (res uint32) {
 	val := c.Value(name)
 	if i, ok := val.(uint32); ok {
 		res = i
@@ -529,7 +529,7 @@ func lookupUInt32(c Lookup, name interface{}) (res uint32) {
 	return
 }
 
-func lookupUInt64(c Lookup, name interface{}) (res uint64) {
+func lookupUint64(c Lookup, name interface{}) (res uint64) {
 	val := c.Value(name)
 	if i, ok := val.(uint64); ok {
 		res = i

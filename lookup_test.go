@@ -118,33 +118,33 @@ var _ = Describe("Lookup", func() {
 				Equal(""),
 			),
 			Entry(
-				"UInt",
-				cli.UInt(),
-				func(lk cli.Lookup) any { return lk.UInt("a") },
+				"Uint",
+				cli.Uint(),
+				func(lk cli.Lookup) any { return lk.Uint("a") },
 				Equal(uint(0)),
 			),
 			Entry(
-				"UInt16",
-				cli.UInt16(),
-				func(lk cli.Lookup) any { return lk.UInt16("a") },
+				"Uint16",
+				cli.Uint16(),
+				func(lk cli.Lookup) any { return lk.Uint16("a") },
 				Equal(uint16(0)),
 			),
 			Entry(
-				"UInt32",
-				cli.UInt32(),
-				func(lk cli.Lookup) any { return lk.UInt32("a") },
+				"Uint32",
+				cli.Uint32(),
+				func(lk cli.Lookup) any { return lk.Uint32("a") },
 				Equal(uint32(0)),
 			),
 			Entry(
-				"UInt64",
-				cli.UInt64(),
-				func(lk cli.Lookup) any { return lk.UInt64("a") },
+				"Uint64",
+				cli.Uint64(),
+				func(lk cli.Lookup) any { return lk.Uint64("a") },
 				Equal(uint64(0)),
 			),
 			Entry(
-				"UInt8",
-				cli.UInt8(),
-				func(lk cli.Lookup) any { return lk.UInt8("a") },
+				"Uint8",
+				cli.Uint8(),
+				func(lk cli.Lookup) any { return lk.Uint8("a") },
 				Equal(uint8(0)),
 			),
 			Entry(
@@ -245,33 +245,33 @@ var _ = Describe("Lookup", func() {
 				Equal(int8(0)),
 			),
 			Entry(
-				"like UInt",
-				new(likeUInt),
-				func(lk cli.Lookup) any { return lk.UInt("a") },
+				"like Uint",
+				new(likeUint),
+				func(lk cli.Lookup) any { return lk.Uint("a") },
 				Equal(uint(0)),
 			),
 			Entry(
-				"like UInt16",
-				new(likeUInt16),
-				func(lk cli.Lookup) any { return lk.UInt16("a") },
+				"like Uint16",
+				new(likeUint16),
+				func(lk cli.Lookup) any { return lk.Uint16("a") },
 				Equal(uint16(0)),
 			),
 			Entry(
-				"like UInt32",
-				new(likeUInt32),
-				func(lk cli.Lookup) any { return lk.UInt32("a") },
+				"like Uint32",
+				new(likeUint32),
+				func(lk cli.Lookup) any { return lk.Uint32("a") },
 				Equal(uint32(0)),
 			),
 			Entry(
-				"like UInt64",
-				new(likeUInt64),
-				func(lk cli.Lookup) any { return lk.UInt64("a") },
+				"like Uint64",
+				new(likeUint64),
+				func(lk cli.Lookup) any { return lk.Uint64("a") },
 				Equal(uint64(0)),
 			),
 			Entry(
-				"like UInt8",
-				new(likeUInt8),
-				func(lk cli.Lookup) any { return lk.UInt8("a") },
+				"like Uint8",
+				new(likeUint8),
+				func(lk cli.Lookup) any { return lk.Uint8("a") },
 				Equal(uint8(0)),
 			),
 		)
@@ -353,32 +353,32 @@ var _ = Describe("Lookup", func() {
 				Equal("text"),
 			),
 			Entry(
-				"UInt",
-				cli.UInt(),
+				"Uint",
+				cli.Uint(),
 				"19",
 				Equal(uint(19)),
 			),
 			Entry(
-				"UInt16",
-				cli.UInt16(),
+				"Uint16",
+				cli.Uint16(),
 				"19",
 				Equal(uint16(19)),
 			),
 			Entry(
-				"UInt32",
-				cli.UInt32(),
+				"Uint32",
+				cli.Uint32(),
 				"19",
 				Equal(uint32(19)),
 			),
 			Entry(
-				"UInt64",
-				cli.UInt64(),
+				"Uint64",
+				cli.Uint64(),
 				"19",
 				Equal(uint64(19)),
 			),
 			Entry(
-				"UInt8",
-				cli.UInt8(),
+				"Uint8",
+				cli.Uint8(),
 				"19",
 				Equal(uint8(19)),
 			),
@@ -411,11 +411,11 @@ type (
 	likeInt16   int16
 	likeInt32   int32
 	likeInt64   int64
-	likeUInt    uint
-	likeUInt8   uint8
-	likeUInt16  uint16
-	likeUInt32  uint32
-	likeUInt64  uint64
+	likeUint    uint
+	likeUint8   uint8
+	likeUint16  uint16
+	likeUint32  uint32
+	likeUint64  uint64
 	likeFloat64 float64
 	likeFloat32 float32
 )

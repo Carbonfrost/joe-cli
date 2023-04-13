@@ -349,10 +349,10 @@ var _ = Describe("Flag", func() {
 			Entry("int32", cli.Int32(), "app -s", int32(1)),
 			Entry("int16", cli.Int16(), "app -s", int16(1)),
 			Entry("int8", cli.Int8(), "app -s", int8(1)),
-			Entry("uint64", cli.UInt64(), "app -s", uint64(1)),
-			Entry("uint32", cli.UInt32(), "app -s", uint32(1)),
-			Entry("uint16", cli.UInt16(), "app -s", uint16(1)),
-			Entry("uint8", cli.UInt8(), "app -s", uint8(1)),
+			Entry("uint64", cli.Uint64(), "app -s", uint64(1)),
+			Entry("uint32", cli.Uint32(), "app -s", uint32(1)),
+			Entry("uint16", cli.Uint16(), "app -s", uint16(1)),
+			Entry("uint8", cli.Uint8(), "app -s", uint8(1)),
 			Entry("IP", cli.IP(), "app -s", net.ParseIP("127.0.0.1")),
 			Entry("Duration", cli.Duration(), "app -s", time.Second),
 
@@ -360,7 +360,7 @@ var _ = Describe("Flag", func() {
 			Entry("long float32", cli.Float32(), "app --show", float32(1.0)),
 			Entry("long float64", cli.Float64(), "app --show", float64(1.0)),
 			Entry("long int", cli.Int(), "app --show", 1),
-			Entry("long uint64", cli.UInt64(), "app --show", uint64(1)),
+			Entry("long uint64", cli.Uint64(), "app --show", uint64(1)),
 			Entry("long IP", cli.IP(), "app --show", net.ParseIP("127.0.0.1")),
 			Entry("long Duration", cli.Duration(), "app --show", time.Second),
 		)
