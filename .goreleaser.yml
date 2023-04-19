@@ -17,9 +17,7 @@ builds:
 
 archives:
   - id: joe
-    replacements:
-      "386": i386
-      amd64: x86_64
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     format_overrides:
       - goos: windows
         format: zip
