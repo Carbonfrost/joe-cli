@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.5.0 (April 19, 2023)
+
+### New Features
+
+* Breaking changes:
+    * Remove custom context from `Action` interface (8fce8d9)
+    * Fix spelling of `Uint` to be idiomatic (dd17c3f)
+    * Encapsulation of context (86a4836)
+* `ArgCount` support for `*Arg`, `*Flag` (10eb0b8)
+* Make `Transform` API (e4bfb43)
+* Make `flag.Getter` provide the semantics of `dereference()` (c5dfaed)
+* Expose `Flags`, `PersistentFlags`, `LocalFlags`, `LocalArgs` as API (09fbb9a)
+* `SetData`; make setting transform results API (2b3ee10)
+* Allow decoder options to `provider.Factory` (bcc7d70)
+* Expose `ErrorUnused` as option to providers (bcc7d70)
+* Introduce `provider.WithServices` using basic context type (2a631d8)
+
+### Bug fixes and improvements
+
+* Bug fixes: expression parsing (daa8921)
+* Use `option` in binding instead of internals (ae3aa84)
+* Simplification to triggering before/after options (5630833)
+* Remove args from command context (23db2a2)
+* Remove handling of names from internal option solely to binding (6615a07)
+* Clean up internals and encapsulation of `internalOption` and remove `generic` (36575b8, a9587c9, 6a2674f)
+* Optimization: remove unnecessary allocations (1dd9574)
+* Addresses issues of style; update staticcheck (abadd68)
+* Formalization/additional test coverage (64aa7f6)
+* Cleanup: remove `exprContext` (2cf7b08)
+* Chores:
+    * GitHub CI update (4b92a47)
+    * Goreleaser configuration (b5a99e4)
+
+
 ## v0.4.0 (March 19, 2023)
 
 ### New Features
