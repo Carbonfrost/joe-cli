@@ -963,6 +963,7 @@ var _ = Describe("ActionOf", func() {
 		Entry("func() error", func() error { act(); return nil }),
 		Entry("middleware: func(Action) Action", func(cli.Action) cli.Action { act(); return nil }),
 		Entry("middleware: func(*cli.Context, Action) error", func(*cli.Context, cli.Action) error { act(); return nil }),
+		Entry("legacy action", &legacy{act}),
 	)
 
 	It("invokes the context action", func() {
@@ -2693,6 +2694,15 @@ var _ = Describe("FromFilePath", func() {
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 })
+
+type legacy struct {
+	act func()
+}
+
+func (l *legacy) Execute(*cli.Context) error {
+	l.act()
+	return nil
+}
 
 type privateKey string
 

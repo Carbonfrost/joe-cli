@@ -31,6 +31,16 @@ type Action interface {
 	Execute(context.Context) error
 }
 
+// legacyAction uses *Context instead of context.Context in the Execute func.
+// Allow this to be used in ActionOf
+type legacyAction interface {
+	Execute(*Context) error
+}
+
+type legacyActionWrapper struct {
+	a legacyAction
+}
+
 //counterfeiter:generate . Middleware
 
 // Middleware provides an action which controls how and whether the next
@@ -437,14 +447,16 @@ func At(t Timing, a Action) Action {
 
 // ActionOf converts a value to an Action.  Any of the following types can be converted:
 //
-//   - func(*Context) error  (same signature as Action.Execute)
+//   - func(*Context) error
 //   - func(*Context)
-//   - func(context.Context) error
+//   - func(context.Context) error  (same signature as Action.Execute)
 //   - func(context.Context)
 //   - func() error
 //   - func()
 //   - Action
 //
+// You can also implement the legacy Action interface which used *Context instead of
+// context.Context in the Execute method (i.e. Execute(*Context) error)
 // As a special case, these signatures are allowed in order to provide middleware:
 //
 //   - func(Action)Action
@@ -463,6 +475,8 @@ func ActionOf(item interface{}) Action {
 		return ActionFunc(a)
 	case Action:
 		return a
+	case legacyAction:
+		return legacyActionWrapper{a}
 	case func(*Context):
 		return ActionFunc(func(c *Context) error {
 			a(c)
@@ -1546,6 +1560,10 @@ func (v ValidatorFunc) Execute(ctx context.Context) error {
 func (t TransformFunc) Execute(ctx context.Context) error {
 	c := FromContext(ctx)
 	return c.Do(Transform(t))
+}
+
+func (w legacyActionWrapper) Execute(ctx context.Context) error {
+	return w.a.Execute(FromContext(ctx))
 }
 
 func setData(data map[string]interface{}, name string, v interface{}) map[string]interface{} {
