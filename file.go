@@ -39,6 +39,7 @@ type FS interface {
 	RemoveAll(path string) error
 	Chtimes(name string, atime time.Time, mtime time.Time) error
 	Rename(oldpath, newpath string) error
+	OpenContext(context.Context, string) (fs.File, error)
 }
 
 type fileExtension interface {
@@ -48,15 +49,6 @@ type fileExtension interface {
 	io.Writer
 	io.ReaderAt
 	io.StringWriter
-}
-
-type fsExtension interface {
-	FS
-	fsOpenContext
-}
-
-type fsOpenContext interface {
-	OpenContext(context.Context, string) (fs.File, error)
 }
 
 // fileExists tests whether file exists or all files in the file set exist
@@ -97,7 +89,7 @@ type stdFile struct {
 }
 
 type defaultFS struct {
-	fsExtension
+	FS
 	std *stdFile
 }
 
@@ -112,6 +104,22 @@ type fsExtensionWrapper struct {
 
 type dirFS string
 
+// NewFS wraps the given FS for use as a CLI file system.
+func NewFS(f fs.FS) FS {
+	return wrapFS(f)
+}
+
+// NewSysFS wraps the given FS with the semantics for the special
+// file named with a dash.  Typically, the file named by dash
+// reads from stdin and writes to stdout.
+func NewSysFS(base FS, in io.Reader, out io.Writer) FS {
+	return &defaultFS{
+		FS:  base,
+		std: &stdFile{in, out},
+	}
+}
+
+// DirFS returns a file system for files rooted at the directory dir.
 func DirFS(dir string) FS {
 	return dirFS(dir)
 }
@@ -120,11 +128,8 @@ const (
 	readWriteMask = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
 )
 
-func newDefaultFS(in io.Reader, out io.Writer) fsExtension {
-	return &defaultFS{
-		fsExtension: DirFS(".").(fsExtension),
-		std:         &stdFile{in, out},
-	}
+func newDefaultFS(in io.Reader, out io.Writer) FS {
+	return NewSysFS(DirFS("."), in, out)
 }
 
 // Set will set the name of the file
@@ -150,6 +155,11 @@ func (f *File) Dir() string {
 // Open the file
 func (f *File) Open() (fs.File, error) {
 	return f.actualFS().Open(f.Name)
+}
+
+// OpenContext is used to open the file with the given context
+func (f *File) OpenContext(c context.Context) (fs.File, error) {
+	return f.actualFS().OpenContext(c, f.Name)
 }
 
 // OpenFile will open the file using the specified flags and permissions
@@ -239,7 +249,7 @@ func (f *File) setupOptionRequireFS(c *Context) error {
 	return nil
 }
 
-func (f *File) actualFS() fsExtension {
+func (f *File) actualFS() FS {
 	if f.FS == nil {
 		return newDefaultFS(os.Stdin, os.Stdout)
 	}
@@ -301,7 +311,7 @@ func (f *FileSet) Do(fn func(*File, error) error) error {
 	return nil
 }
 
-func (f *FileSet) actualFS() fsExtension {
+func (f *FileSet) actualFS() FS {
 	if f.FS == nil {
 		return newDefaultFS(os.Stdin, os.Stdout)
 	}
@@ -367,7 +377,7 @@ func (d defaultFS) Stat(name string) (fs.FileInfo, error) {
 	if name == "-" && d.std != nil {
 		return d.std.Stat()
 	}
-	return d.fsExtension.Stat(name)
+	return d.FS.Stat(name)
 }
 
 func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
@@ -384,14 +394,14 @@ func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (fs.File, e
 			return d.std.out.(*os.File), nil
 		}
 	}
-	return d.fsExtension.OpenFile(name, flag, perm)
+	return d.FS.OpenFile(name, flag, perm)
 }
 
 func (d defaultFS) OpenContext(c context.Context, name string) (fs.File, error) {
 	if name == "-" && d.std != nil {
 		return d.std, nil
 	}
-	return d.fsExtension.OpenContext(c, name)
+	return d.FS.OpenContext(c, name)
 }
 
 func (f fsExtensionWrapper) Create(name string) (fs.File, error) {
@@ -511,7 +521,9 @@ func (f fsExtensionWrapper) Stat(name string) (fs.FileInfo, error) {
 }
 
 func (f fsExtensionWrapper) OpenContext(c context.Context, name string) (fs.File, error) {
-	if s, ok := f.FS.(fsOpenContext); ok {
+	if s, ok := f.FS.(interface {
+		OpenContext(context.Context, string) (fs.File, error)
+	}); ok {
 		return s.OpenContext(c, name)
 	}
 	return f.FS.Open(name)
@@ -730,8 +742,8 @@ func fileNotExists(err error) bool {
 	return errors.Is(err, fs.ErrNotExist)
 }
 
-func wrapFS(f fs.FS) fsExtension {
-	if ext, ok := f.(fsExtension); ok {
+func wrapFS(f fs.FS) FS {
+	if ext, ok := f.(FS); ok {
 		return ext
 	}
 	return fsExtensionWrapper{f}
@@ -748,7 +760,7 @@ func wrapContextFile(ctx context.Context, f *os.File) fs.File {
 	return &contextFile{f, ctx}
 }
 
-func walkFile(ff fsExtension, name string, fn fs.WalkDirFunc) error {
+func walkFile(ff FS, name string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(ff, name, fn)
 }
 
@@ -771,6 +783,6 @@ var (
 	_ fileExists       = (*File)(nil)
 	_ fileExists       = (*FileSet)(nil)
 	_ fileStat         = (*File)(nil)
-	_ fsExtension      = dirFS("")
+	_ FS               = dirFS("")
 	_ fs.SubFS         = dirFS("")
 )

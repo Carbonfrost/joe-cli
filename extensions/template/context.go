@@ -2,6 +2,7 @@ package template
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -153,6 +154,10 @@ func (c *Context) Stat(name string) (fs.FileInfo, error) {
 
 func (c *Context) Open(name string) (fs.File, error) {
 	return c.actualFS().Open(c.File(name))
+}
+
+func (c *Context) OpenContext(ctx context.Context, name string) (fs.File, error) {
+	return c.actualFS().OpenContext(ctx, c.File(name))
 }
 
 func (c *Context) Chmod(name string, mode fs.FileMode) error {

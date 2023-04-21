@@ -2,6 +2,7 @@
 package joeclifakes
 
 import (
+	"context"
 	"io/fs"
 	"sync"
 	"time"
@@ -95,6 +96,20 @@ type FakeFS struct {
 		result2 error
 	}
 	openReturnsOnCall map[int]struct {
+		result1 fs.File
+		result2 error
+	}
+	OpenContextStub        func(context.Context, string) (fs.File, error)
+	openContextMutex       sync.RWMutex
+	openContextArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	openContextReturns struct {
+		result1 fs.File
+		result2 error
+	}
+	openContextReturnsOnCall map[int]struct {
 		result1 fs.File
 		result2 error
 	}
@@ -604,6 +619,71 @@ func (fake *FakeFS) OpenReturnsOnCall(i int, result1 fs.File, result2 error) {
 	}{result1, result2}
 }
 
+func (fake *FakeFS) OpenContext(arg1 context.Context, arg2 string) (fs.File, error) {
+	fake.openContextMutex.Lock()
+	ret, specificReturn := fake.openContextReturnsOnCall[len(fake.openContextArgsForCall)]
+	fake.openContextArgsForCall = append(fake.openContextArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.OpenContextStub
+	fakeReturns := fake.openContextReturns
+	fake.recordInvocation("OpenContext", []interface{}{arg1, arg2})
+	fake.openContextMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeFS) OpenContextCallCount() int {
+	fake.openContextMutex.RLock()
+	defer fake.openContextMutex.RUnlock()
+	return len(fake.openContextArgsForCall)
+}
+
+func (fake *FakeFS) OpenContextCalls(stub func(context.Context, string) (fs.File, error)) {
+	fake.openContextMutex.Lock()
+	defer fake.openContextMutex.Unlock()
+	fake.OpenContextStub = stub
+}
+
+func (fake *FakeFS) OpenContextArgsForCall(i int) (context.Context, string) {
+	fake.openContextMutex.RLock()
+	defer fake.openContextMutex.RUnlock()
+	argsForCall := fake.openContextArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeFS) OpenContextReturns(result1 fs.File, result2 error) {
+	fake.openContextMutex.Lock()
+	defer fake.openContextMutex.Unlock()
+	fake.OpenContextStub = nil
+	fake.openContextReturns = struct {
+		result1 fs.File
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeFS) OpenContextReturnsOnCall(i int, result1 fs.File, result2 error) {
+	fake.openContextMutex.Lock()
+	defer fake.openContextMutex.Unlock()
+	fake.OpenContextStub = nil
+	if fake.openContextReturnsOnCall == nil {
+		fake.openContextReturnsOnCall = make(map[int]struct {
+			result1 fs.File
+			result2 error
+		})
+	}
+	fake.openContextReturnsOnCall[i] = struct {
+		result1 fs.File
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeFS) OpenFile(arg1 string, arg2 int, arg3 fs.FileMode) (fs.File, error) {
 	fake.openFileMutex.Lock()
 	ret, specificReturn := fake.openFileReturnsOnCall[len(fake.openFileArgsForCall)]
@@ -935,6 +1015,8 @@ func (fake *FakeFS) Invocations() map[string][][]interface{} {
 	defer fake.mkdirAllMutex.RUnlock()
 	fake.openMutex.RLock()
 	defer fake.openMutex.RUnlock()
+	fake.openContextMutex.RLock()
+	defer fake.openContextMutex.RUnlock()
 	fake.openFileMutex.RLock()
 	defer fake.openFileMutex.RUnlock()
 	fake.removeMutex.RLock()

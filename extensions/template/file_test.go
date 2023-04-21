@@ -241,6 +241,10 @@ func (w wrapperFS) Open(name string) (fs.File, error) {
 	return w.Fs.Open(name)
 }
 
+func (w wrapperFS) OpenContext(_ context.Context, name string) (fs.File, error) {
+	return w.Fs.Open(name)
+}
+
 func (w wrapperFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
 	return w.Fs.OpenFile(name, flag, perm)
 }
