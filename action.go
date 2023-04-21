@@ -19,6 +19,8 @@ import (
 // ActionFunc provides the basic function for an Action
 type ActionFunc func(*Context) error
 
+type actionFunc func(context.Context) error
+
 //counterfeiter:generate . Action
 
 // Action represents the building block of the various actions
@@ -385,7 +387,7 @@ func Do(c context.Context, actions ...Action) error {
 
 // SuppressError wraps an action to ignore its error.
 func SuppressError(a Action) Action {
-	return ActionFunc(func(c *Context) error {
+	return ActionOf(func(c context.Context) error {
 		a.Execute(c)
 		return nil
 	})
@@ -483,20 +485,18 @@ func ActionOf(item interface{}) Action {
 			return nil
 		})
 	case func(context.Context) error:
-		return ActionFunc(func(c *Context) error {
-			return a(c)
-		})
+		return actionFunc(a)
 	case func(context.Context):
-		return ActionFunc(func(c *Context) error {
+		return actionFunc(func(c context.Context) error {
 			a(c)
 			return nil
 		})
 	case func() error:
-		return ActionFunc(func(*Context) error {
+		return actionFunc(func(context.Context) error {
 			return a()
 		})
 	case func():
-		return ActionFunc(func(*Context) error {
+		return actionFunc(func(context.Context) error {
 			a()
 			return nil
 		})
@@ -531,7 +531,7 @@ func Timeout(timeout time.Duration) Action {
 		ctx, cancel := context.WithTimeout(c1.Context(), timeout)
 		return c1.Do(
 			SetContext(ctx),
-			After(ActionFunc(func(*Context) error {
+			After(actionFunc(func(context.Context) error {
 				cancel()
 				return nil
 			})),
@@ -1389,6 +1389,13 @@ func (af ActionFunc) Execute(ctx context.Context) error {
 		return nil
 	}
 	return af(c)
+}
+
+func (af actionFunc) Execute(ctx context.Context) error {
+	if af == nil {
+		return nil
+	}
+	return af(ctx)
 }
 
 // Append appends an action to the pipeline
