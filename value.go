@@ -499,6 +499,12 @@ func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool))
 			return true
 		}
 		return false
+	case *[]byte:
+		if v, ok := trySetOptional(); ok {
+			*p = v.([]byte)
+			return true
+		}
+		return false
 	}
 	return false
 }
@@ -844,8 +850,8 @@ func (o *internalOption) applyValueConventions(flags internalFlags, firstOccur b
 	}
 }
 
-func (g *internalOption) smartOptionalDefault() interface{} {
-	switch g.p.(type) {
+func (o *internalOption) smartOptionalDefault() interface{} {
+	switch o.p.(type) {
 	case *bool:
 		return true
 	case *int:

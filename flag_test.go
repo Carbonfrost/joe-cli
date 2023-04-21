@@ -392,6 +392,7 @@ var _ = Describe("Flag", func() {
 			Entry("URL", cli.URL(), "app -s", unwrap(url.Parse("https://hello.example"))),
 			Entry("List", cli.List(), "app -s", []string{"OK"}),
 			Entry("Map", cli.Map(), "app -s", map[string]string{"A": "B"}),
+			Entry("Bytes", cli.Bytes(), "app -s", []byte("ab")),
 		)
 
 		It("following is treated as argument", func() {
