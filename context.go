@@ -507,6 +507,12 @@ func (c *Context) Occurrences(name interface{}) int {
 	return -1
 }
 
+// ImplicitlySet returns true if the flag or arg was implicitly
+// set.
+func (c *Context) ImplicitlySet() bool {
+	return c.target().internalFlags().seenImplied()
+}
+
 // Expression obtains the expression from the context
 func (c *Context) Expression(name string) *Expression {
 	return c.Value(name).(*Expression)
@@ -632,9 +638,21 @@ func (c *Context) SetManualText(v string) error {
 	return nil
 }
 
-// SetValue sets the value of the current flag or arg
+// SetValue checks the timing and sets the value of the current
+// flag or arg.  This method can be called at any time to set
+// the value; however, if the current timing is the ImplicitValueTiming,
+// calling this method will return ErrImplicitValueAlreadySet for
+// the second and subsequent invocations of this method.  Clients
+// typically ignore this error and don't bubble it up as a usage error,
+// or they can check ImplicitlySet() to preempt it.  Note that you can
+// always set the value on the Arg or Flag directly with no checks
+// for these timing semantics.
 func (c *Context) SetValue(arg string) error {
 	if c.implicitTimingActive() {
+		if c.target().internalFlags().seenImplied() {
+			return ErrImplicitValueAlreadySet
+		}
+
 		c.target().setInternalFlags(internalFlagSeenImplied, true)
 	}
 	return c.target().(option).Set(arg)

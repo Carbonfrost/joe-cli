@@ -325,6 +325,10 @@ var (
 	}
 
 	errCantHook = errors.New("hooks are not supported in this context")
+
+	// ErrImplicitValueAlreadySet occurs when the value for a flag
+	// or arg is set multiple times within the implicit timing.
+	ErrImplicitValueAlreadySet = errors.New("value already set implicitly")
 )
 
 // Execute executes the Setup, which assigns the various parts to their
@@ -1014,8 +1018,11 @@ func optionalSetup(a func(*Context)) ActionFunc {
 	}
 }
 
-// ImplicitValue sets the implicit value which is specified for the arg or flag
-// if it was not specified for the command.  Any errors are suppressed
+// ImplicitValue sets the implicit value, which is a value specified for
+// the arg or flag when it was not specified from the command line arguments.
+// Any errors setting the value are suppressed.  In particular, note that
+// the error ErrImplicitValueAlreadySet could be generated from setting value
+// but it is also ignored.
 func ImplicitValue(fn func(*Context) (string, bool)) Action {
 	return Implicitly(ActionFunc(func(c *Context) error {
 		if v, ok := fn(c); ok {
@@ -1183,6 +1190,10 @@ func TransformFileReference(f fs.FS, usingAtSyntax bool) TransformFunc {
 // --flag-name flag.)
 func FromEnv(vars ...string) Action {
 	return Implicitly(ActionFunc(func(c *Context) error {
+		if c.ImplicitlySet() {
+			return nil
+		}
+
 		// Name should be long name transformed into SCREAMING_SNAKE_CASE.
 		name := flagScreamingSnakeCase(c.option())
 		for _, v := range vars {
@@ -1219,6 +1230,9 @@ func FromFilePath(f fs.FS, filePath string) Action {
 	return Implicitly(ActionFunc(func(c *Context) error {
 		if f == nil {
 			f = c.actualFS()
+		}
+		if c.ImplicitlySet() {
+			return nil
 		}
 		if len(filePath) > 0 {
 			data, err := fs.ReadFile(f, filePath)

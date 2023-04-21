@@ -190,6 +190,7 @@ var _ = Describe("timings", func() {
 		})
 
 		Context("SetValue", func() {
+
 			BeforeEach(func() {
 				arguments = []string{"app"}
 				uses = nil
@@ -204,6 +205,43 @@ var _ = Describe("timings", func() {
 
 			It("can set and retrieve value", func() {
 				Expect(captured.Value("int")).To(Equal(420))
+			})
+
+			Context("when in the ImplicitValueTiming", Ordered, func() {
+
+				UseEnvVars(map[string]string{
+					"TEST_IMPLICIT_1": "implicit 1",
+					"TEST_IMPLICIT_2": "implicit 2",
+				})
+
+				It("only sets the implicit value once", func() {
+					app := cli.App{
+						Flags: []*cli.Flag{
+							{
+								Name: "hello",
+								Uses: cli.Pipeline(cli.FromEnv("TEST_IMPLICIT_1"), cli.FromEnv("TEST_IMPLICIT_2")),
+							},
+						},
+					}
+					_ = app.RunContext(context.Background(), []string{"app"})
+					Expect(app.Flags[0].Value).To(PointTo(Equal("implicit 1")))
+				})
+
+				It("returns ErrImplicitValueAlreadySet when called twice in implicit timing", func() {
+					app := cli.App{
+						Flags: []*cli.Flag{
+							{
+								Name: "hello",
+								Uses: cli.Pipeline(
+									cli.At(cli.ImplicitValueTiming, cli.SetValue("ok")),
+									cli.At(cli.ImplicitValueTiming, cli.SetValue("be")),
+								),
+							},
+						},
+					}
+					err := app.RunContext(context.Background(), []string{"app"})
+					Expect(err).To(Equal(cli.ErrImplicitValueAlreadySet))
+				})
 			})
 		})
 
