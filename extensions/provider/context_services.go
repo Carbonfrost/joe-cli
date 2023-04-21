@@ -31,7 +31,7 @@ func WithServices(c context.Context) (context.Context, *ContextServices) {
 // Services obtains the contextual services used by the package.  If not
 // already present, it will be added to the context.
 func Services(c *cli.Context) *ContextServices {
-	newCtx, o := WithServices(c)
+	newCtx, o := WithServices(c.Context())
 	c.SetContext(newCtx)
 	return o
 }
