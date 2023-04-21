@@ -547,6 +547,92 @@ var _ = Describe("HandleCommandNotFound", func() {
 		Expect(fn2Called).To(BeTrue())
 	})
 
+	It("inherits behavior from containing sub-command", func() {
+		var inheritedCalled bool
+		inheritedFn := func(*cli.Context, error) (*cli.Command, error) {
+			inheritedCalled = true
+			return nil, nil
+		}
+
+		app := cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Subcommands: []*cli.Command{
+						{Name: "dom"},
+					},
+				},
+			},
+			Uses: cli.Pipeline(
+				cli.HandleCommandNotFound(inheritedFn),
+			),
+			Stderr: io.Discard,
+		}
+
+		args, _ := cli.Split("app sub unknown")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).To(HaveOccurred())
+		Expect(inheritedCalled).To(BeTrue())
+	})
+
+	It("resets behavior when set to nil", func() {
+		var fnCalled bool
+		fn := func(*cli.Context, error) (*cli.Command, error) {
+			fnCalled = true
+			return nil, nil
+		}
+
+		app := cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+				},
+			},
+			Uses: cli.Pipeline(
+				cli.HandleCommandNotFound(fn),
+				cli.HandleCommandNotFound(nil), // Should reset handling to default
+			),
+			Stderr: io.Discard,
+		}
+
+		args, _ := cli.Split("app rex")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).To(HaveOccurred())
+		Expect(fnCalled).To(BeFalse())
+	})
+
+	It("resets inherited behavior when set to nil", func() {
+		var inheritedCalled bool
+		inheritedFn := func(*cli.Context, error) (*cli.Command, error) {
+			inheritedCalled = true
+			return nil, nil
+		}
+
+		app := cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Subcommands: []*cli.Command{
+						{Name: "dom"},
+					},
+					Uses: cli.Pipeline(
+						cli.HandleCommandNotFound(nil),
+					),
+				},
+			},
+			Uses: cli.Pipeline(
+				cli.HandleCommandNotFound(inheritedFn),
+			),
+			Stderr: io.Discard,
+		}
+
+		args, _ := cli.Split("app sub unknown")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).To(HaveOccurred())
+		Expect(inheritedCalled).To(BeFalse())
+		Expect(err).To(MatchError(`"unknown" is not a command`))
+	})
+
 })
 
 var _ = Describe("ImplicitCommand", func() {

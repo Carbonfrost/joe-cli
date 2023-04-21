@@ -182,15 +182,24 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) Action {
 	return ActionFunc(func(c *Context) error {
 		cmd := c.Command()
+		if fn == nil {
+			// Use a sentinel value, which is used to indicate the default behavior should be used
+			c.SetData(commandNotFoundKey, false)
+			return nil
+		}
+
 		if existing, ok := cmd.Data[commandNotFoundKey]; ok {
-			// Compose functions
-			newFn := fn
-			fn = func(c *Context, err1 error) (*Command, error) {
-				cmd, err := newFn(c, err1)
-				if cmd != nil && err == nil {
-					return cmd, nil
+			existingFn, ok := existing.(func(*Context, error) (*Command, error))
+			if ok {
+				// Compose functions
+				newFn := fn
+				fn = func(c *Context, err1 error) (*Command, error) {
+					cmd, err := newFn(c, err1)
+					if cmd != nil && err == nil {
+						return cmd, nil
+					}
+					return existingFn(c, err)
 				}
-				return existing.(func(*Context, error) (*Command, error))(c, err)
 			}
 		}
 		c.SetData(commandNotFoundKey, fn)
@@ -804,7 +813,9 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 	defer c.SetData(searchingAlternateCommandKey, nil)
 	if interceptErr == nil {
 		if auto, ok := c.LookupData(commandNotFoundKey); ok {
-			interceptErr = auto.(func(*Context, error) (*Command, error))
+			// Invalid casts are ignored because a sentinel value can be set  to indicate that
+			// the default behavior should be used
+			interceptErr, _ = auto.(func(*Context, error) (*Command, error))
 		}
 	}
 
