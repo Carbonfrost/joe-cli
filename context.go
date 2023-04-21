@@ -647,7 +647,7 @@ func (c *Context) SetManualText(v string) error {
 // or they can check ImplicitlySet() to preempt it.  Note that you can
 // always set the value on the Arg or Flag directly with no checks
 // for these timing semantics.
-func (c *Context) SetValue(arg string) error {
+func (c *Context) SetValue(arg any) error {
 	if c.implicitTimingActive() {
 		if c.target().internalFlags().seenImplied() {
 			return ErrImplicitValueAlreadySet

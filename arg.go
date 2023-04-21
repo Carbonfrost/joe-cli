@@ -267,7 +267,7 @@ func (a *Arg) Seen() bool {
 }
 
 // Set will set the value of the argument
-func (a *Arg) Set(arg string) error {
+func (a *Arg) Set(arg any) error {
 	return a.internalOption.Set(arg)
 }
 

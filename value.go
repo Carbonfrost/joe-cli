@@ -364,147 +364,13 @@ func SetData(dest any, arg any) error {
 }
 
 func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool)) bool {
-	switch p := dest.(type) {
-	case *bool:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(bool)
-			return true
-		}
+	switch dest.(type) {
+	case Value:
 		return false
-	case *string:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(string)
-			return true
-		}
-		return false
-	case *[]string:
-		if v, ok := trySetOptional(); ok {
-			*p = v.([]string)
-			return true
-		}
-		return false
-	case *map[string]string:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(map[string]string)
-			return true
-		}
-		return false
-	case *int:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int)
-			return true
-		}
-		return false
-	case *int8:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int8)
-			return true
-		}
-		return false
-	case *int16:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int16)
-			return true
-		}
-		return false
-	case *int32:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int32)
-			return true
-		}
-		return false
-	case *int64:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(int64)
-			return true
-		}
-		return false
-	case *uint:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint)
-			return true
-		}
-		return false
-	case *uint8:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint8)
-			return true
-		}
-		return false
-	case *uint16:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint16)
-			return true
-		}
-		return false
-	case *uint32:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint32)
-			return true
-		}
-		return false
-	case *uint64:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(uint64)
-			return true
-		}
-		return false
-	case *float32:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(float32)
-			return true
-		}
-		return false
-	case *float64:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(float64)
-			return true
-		}
-		return false
-	case *time.Duration:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(time.Duration)
-			return true
-		}
-		return false
-	case **url.URL:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*url.URL)
-			return true
-		}
-		return false
-
-	case *net.IP:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(net.IP)
-			return true
-		}
-		return false
-
-	case **regexp.Regexp:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*regexp.Regexp)
-			return true
-		}
-		return false
-	case **big.Int:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*big.Int)
-			return true
-		}
-		return false
-	case **big.Float:
-		if v, ok := trySetOptional(); ok {
-			*p = v.(*big.Float)
-			return true
-		}
-		return false
-	case *[]byte:
-		if v, ok := trySetOptional(); ok {
-			*p = v.([]byte)
-			return true
-		}
-		return false
+	}
+	if v, ok := trySetOptional(); ok {
+		setDirect(dest, v)
+		return true
 	}
 	return false
 }
@@ -687,6 +553,60 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 		return p.UnmarshalText([]byte(value))
 	}
 	panic(fmt.Sprintf("unsupported flag type: %T", dest))
+}
+
+func setDirect(dest any, v any) error {
+	switch p := dest.(type) {
+	case *bool:
+		*p = v.(bool)
+	case *string:
+		*p = v.(string)
+	case *[]string:
+		*p = v.([]string)
+	case *map[string]string:
+		*p = v.(map[string]string)
+	case *int:
+		*p = v.(int)
+	case *int8:
+		*p = v.(int8)
+	case *int16:
+		*p = v.(int16)
+	case *int32:
+		*p = v.(int32)
+	case *int64:
+		*p = v.(int64)
+	case *uint:
+		*p = v.(uint)
+	case *uint8:
+		*p = v.(uint8)
+	case *uint16:
+		*p = v.(uint16)
+	case *uint32:
+		*p = v.(uint32)
+	case *uint64:
+		*p = v.(uint64)
+	case *float32:
+		*p = v.(float32)
+	case *float64:
+		*p = v.(float64)
+	case *time.Duration:
+		*p = v.(time.Duration)
+	case **url.URL:
+		*p = v.(*url.URL)
+	case *net.IP:
+		*p = v.(net.IP)
+	case **regexp.Regexp:
+		*p = v.(*regexp.Regexp)
+	case **big.Int:
+		*p = v.(*big.Int)
+	case **big.Float:
+		*p = v.(*big.Float)
+	case *[]byte:
+		*p = v.([]byte)
+	default:
+		panic(fmt.Sprintf("cannot set value directly: %T %v", dest, v))
+	}
+	return nil
 }
 
 func (b *ByteLength) UnmarshalText(data []byte) error {

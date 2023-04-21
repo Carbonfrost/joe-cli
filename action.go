@@ -544,7 +544,7 @@ func Timeout(timeout time.Duration) Action {
 }
 
 // SetValue provides an action which sets the value of the flag or argument.
-func SetValue(v string) Action {
+func SetValue(v any) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.SetValue(v)
 	})

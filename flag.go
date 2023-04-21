@@ -159,7 +159,7 @@ type option interface {
 	target
 	Occurrences() int
 	Seen() bool
-	Set(string) error
+	Set(any) error
 	SetRequired(bool)
 
 	reset()
@@ -530,7 +530,7 @@ func (f *Flag) Names() []string {
 }
 
 // Set will update the value of the flag
-func (f *Flag) Set(arg string) error {
+func (f *Flag) Set(arg any) error {
 	return f.internalOption.Set(arg)
 }
 

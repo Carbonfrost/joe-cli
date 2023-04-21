@@ -698,15 +698,18 @@ func (o *internalOption) Seen() bool {
 	return o.count > 0
 }
 
-func (o *internalOption) Set(arg string) error {
-	g := o
-	if trySetOptional(g.p, func() (interface{}, bool) {
-		return o.optionalValue, (arg == "" && o.flags.optional())
-	}) {
-		return nil
+func (o *internalOption) Set(v any) error {
+	if arg, ok := v.(string); ok {
+		if trySetOptional(o.p, func() (interface{}, bool) {
+			return o.optionalValue, (arg == "" && o.flags.optional())
+		}) {
+			return nil
+		}
+
+		return setCore(o.p, o.flags.disableSplitting(), arg)
 	}
 
-	return setCore(g.p, o.flags.disableSplitting(), arg)
+	return setDirect(o.p, v)
 }
 
 func (o *internalOption) SetOccurrenceData(v any) error {

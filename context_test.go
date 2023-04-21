@@ -2,12 +2,17 @@ package cli_test
 
 import (
 	"context"
+	"math/big"
+	"net"
+	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
@@ -258,6 +263,67 @@ var _ = Describe("Context", func() {
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"<f>", "s", "<f>", "r", "<f>", "o"}))
 			Expect(capturedContext.RawOccurrences("f")).To(Equal([]string{"s", "r", "o"}))
 		})
+	})
+
+	Describe("SetValue", func() {
+		DescribeTable("examples", func(value any, v any) {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "flag",
+						Aliases: []string{"f"},
+						Value:   value,
+						Before: func(c *cli.Context) {
+							Expect(func() { c.SetValue(v) }).NotTo(Panic())
+						},
+					},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(app.Flags[0].Value).To(PointTo(Equal(v)))
+		},
+			Entry("bool", cli.Bool(), true),
+			Entry("Float32", cli.Float32(), float32(2.0)),
+			Entry("Float64", cli.Float64(), float64(2.0)),
+			Entry("Int", cli.Int(), int(16)),
+			Entry("Int16", cli.Int16(), int16(16)),
+			Entry("Int32", cli.Int32(), int32(16)),
+			Entry("Int64", cli.Int64(), int64(16)),
+			Entry("Int8", cli.Int8(), int8(16)),
+			Entry("List", cli.List(), []string{"text", "plus"}),
+			Entry("Map", cli.Map(), map[string]string{"key": "value"}),
+			Entry("String", cli.String(), "text"),
+			Entry("Uint", cli.Uint(), uint(19)),
+			Entry("Uint16", cli.Uint16(), uint16(19)),
+			Entry("Uint32", cli.Uint32(), uint32(19)),
+			Entry("Uint64", cli.Uint64(), uint64(19)),
+			Entry("Uint8", cli.Uint8(), uint8(19)),
+			Entry("URL", cli.URL(), unwrap(url.Parse("https://localhost"))),
+			Entry("Regexp", cli.Regexp(), regexp.MustCompile("blc")),
+			Entry("IP", cli.IP(), net.ParseIP("127.0.0.1")),
+			Entry("BigFloat", cli.BigFloat(), parseBigFloat("201.12")),
+			Entry("BigInt", cli.BigInt(), parseBigInt("200")),
+			Entry("Bytes", cli.Bytes(), []byte{4, 2}),
+		)
+
+		DescribeTable("errors", func(value any, v any) {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "flag",
+						Aliases: []string{"f"},
+						Value:   value,
+						Before: func(c *cli.Context) {
+							Expect(func() { c.SetValue(v) }).To(Panic())
+						},
+					},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+		},
+			Entry("not supported TextMarshaler", new(textMarshaler), textMarshaler("")),
+			Entry("not supported Value", new(customValue), &customValue{}),
+		)
 	})
 
 	Describe("Before", func() {
@@ -814,6 +880,17 @@ func argName(v interface{}) interface{} {
 
 func commandName(v interface{}) interface{} {
 	return v.(*cli.Command).Name
+}
+
+func parseBigInt(s string) *big.Int {
+	v := new(big.Int)
+	if _, ok := v.SetString(s, 10); ok {
+	}
+	return v
+}
+func parseBigFloat(s string) *big.Float {
+	v, _, _ := big.ParseFloat(s, 10, 53, big.ToZero)
+	return v
 }
 
 type haveArgs struct{}
