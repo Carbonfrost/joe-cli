@@ -183,30 +183,24 @@ func (c *Context) parse(args []string) *robustParseResult {
 }
 
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
-	return c.context().Deadline()
+	return c.Context().Deadline()
 }
 
 func (c *Context) Done() <-chan struct{} {
-	return c.context().Done()
+	return c.Context().Done()
 }
 
 func (c *Context) Err() error {
-	return c.context().Err()
+	return c.Context().Err()
 }
 
-func (c *Context) context() context.Context {
+func (c *Context) Context() context.Context {
 	return c.ref
 }
 
 // SetContext sets the context
 func (c *Context) SetContext(ctx context.Context) error {
 	c.ref = ctx
-	return nil
-}
-
-// SetContextFunc sets the context using a function
-func (c *Context) SetContextFunc(fn func(context.Context) context.Context) error {
-	c.ref = fn(c.ref)
 	return nil
 }
 
@@ -556,7 +550,7 @@ func (c *Context) Value(name interface{}) interface{} {
 	case contextKeyType:
 		return c
 	default:
-		return c.context().Value(name)
+		return c.Context().Value(name)
 	}
 }
 
@@ -773,16 +767,7 @@ func (c *Context) walkCore(fn WalkFunc) error {
 // Do executes the specified actions in succession.  If an action returns an error, that
 // error is returned and the rest of the actions aren't run
 func (c *Context) Do(actions ...Action) error {
-	for _, a := range actions {
-		if a == nil {
-			continue
-		}
-		err := a.Execute(c)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return Do(c, actions...)
 }
 
 // Template retrieves a template by name

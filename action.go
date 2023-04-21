@@ -359,6 +359,20 @@ func Pipeline(actions ...interface{}) ActionPipeline {
 	return myActions
 }
 
+// Do invokes the actions with the given context
+func Do(c context.Context, actions ...Action) error {
+	for _, a := range actions {
+		if a == nil {
+			continue
+		}
+		err := a.Execute(c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SuppressError wraps an action to ignore its error.
 func SuppressError(a Action) Action {
 	return ActionFunc(func(c *Context) error {
@@ -486,7 +500,7 @@ func ActionOf(item interface{}) Action {
 // value.
 func ContextValue(key, value interface{}) Action {
 	return ActionFunc(func(c *Context) error {
-		return c.SetContext(context.WithValue(c.context(), key, value))
+		return c.SetContext(context.WithValue(c.Context(), key, value))
 	})
 }
 
@@ -500,7 +514,7 @@ func SetContext(ctx context.Context) Action {
 // Timeout provides an action which adds a timeout to the context.
 func Timeout(timeout time.Duration) Action {
 	return Before(ActionFunc(func(c1 *Context) error {
-		ctx, cancel := context.WithTimeout(c1.context(), timeout)
+		ctx, cancel := context.WithTimeout(c1.Context(), timeout)
 		return c1.Do(
 			SetContext(ctx),
 			After(ActionFunc(func(*Context) error {
@@ -818,7 +832,7 @@ func HookAfter(pattern string, handler Action) Action {
 // The process will be terminated when the user presses ^C for the second time:
 func HandleSignal(s ...os.Signal) Action {
 	return Before(ActionFunc(func(c1 *Context) error {
-		ctx, stop := signal.NotifyContext(c1.context(), s...)
+		ctx, stop := signal.NotifyContext(c1.Context(), s...)
 		return c1.Do(
 			SetContext(ctx),
 			After(ActionFunc(func(*Context) error {
