@@ -683,6 +683,20 @@ var _ = Describe("Flag", func() {
 
 	})
 
+	Describe("Names", func() {
+
+		DescribeTable("examples", func(f *cli.Flag, long, short string, names []string) {
+			Expect(f.Long()).To(Equal(long))
+			Expect(f.Short()).To(Equal(short))
+			Expect(f.Names()).To(Equal(names))
+		},
+			Entry("long only", &cli.Flag{Name: "flag"}, "--flag", "", []string{"--flag"}),
+			Entry("short only", &cli.Flag{Name: "f"}, "--f", "-f", []string{"-f"}),
+			Entry("long in alias", &cli.Flag{Name: "f", Aliases: []string{"g", "flag"}}, "--flag", "-f", []string{"-f", "-g", "--flag"}),
+			Entry("short in alias", &cli.Flag{Name: "flag", Aliases: []string{"rag", "f"}}, "--flag", "-f", []string{"--flag", "--rag", "-f"}),
+		)
+	})
+
 	DescribeTable("initializers", func(act cli.Action, expected types.GomegaMatcher) {
 		app := &cli.App{
 			Name: "a",

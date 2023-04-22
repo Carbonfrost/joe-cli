@@ -524,9 +524,50 @@ func (f *Flag) Occurrences() int {
 	return f.internalOption.Occurrences()
 }
 
-// Names obtains the name of the flag and its aliases
+// Short gets the short name for the flag including the leading dash.  This is
+// the Name of the flag if it contains exactly one character, or this is the
+// first alias which contains exactly one character.  This is the empty string
+// if the name and all aliases are long names.  The result starts with a dash.
+func (f *Flag) Short() string {
+	if len(f.Name) == 1 {
+		return "-" + f.Name
+	}
+	for _, nom := range f.Aliases {
+		if len(nom) == 1 {
+			return "-" + nom
+		}
+	}
+	return ""
+}
+
+// Long gets the long name for the flag including the leading dashes.
+// This is the Name of the flag if it contains more than one character, or this
+// is the first alias which contains more than one character.  If the Name and
+// all Aliases have exactly one character, then the value of Name is returned even
+// if it has exactly one character.  Note that even in this case, the result starts
+// with two leading dashes.
+func (f *Flag) Long() string {
+	if len(f.Name) > 1 {
+		return "--" + f.Name
+	}
+	for _, nom := range f.Aliases {
+		if len(nom) > 1 {
+			return "--" + nom
+		}
+	}
+	return "--" + f.Name
+}
+
+// Names obtains the name of the flag and its aliases, including their leading
+// dashes.
 func (f *Flag) Names() []string {
-	return append([]string{f.Name}, f.Aliases...)
+	res := []string{
+		optionName(f.Name),
+	}
+	for _, a := range f.Aliases {
+		res = append(res, optionName(a))
+	}
+	return res
 }
 
 // Set will update the value of the flag
@@ -602,24 +643,12 @@ func (f *Flag) usageText() string {
 	return f.UsageText
 }
 
-func (f *Flag) longNamePreferred() string {
-	if len(f.Name) > 1 {
-		return f.Name
-	}
-	for _, n := range f.Aliases {
-		if len(n) > 1 {
-			return n
-		}
-	}
-	return f.Name
-}
-
 func (f FlagsByName) Len() int {
 	return len(f)
 }
 
 func (f FlagsByName) Less(i, j int) bool {
-	return f[i].longNamePreferred() < f[j].longNamePreferred()
+	return f[i].Long() < f[j].Long()
 }
 
 func (f FlagsByName) Swap(i, j int) {
