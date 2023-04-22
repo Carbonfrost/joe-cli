@@ -104,6 +104,30 @@ var _ = Describe("Context", func() {
 		})
 	})
 
+	Describe("BindingLookup", func() {
+		It("contains names of bindings that were used", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "a",
+					},
+				},
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+					},
+				},
+				Action: act,
+			}
+
+			args, _ := cli.Split("app s")
+			_ = app.RunContext(context.TODO(), args)
+
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
+			Expect(capturedContext.BindingLookup().BindingNames()).To(Equal([]string{"a"}))
+		})
+	})
 	Describe("Raw", func() {
 		It("contains flag value at the app level", func() {
 			act := new(joeclifakes.FakeAction)
@@ -168,7 +192,7 @@ var _ = Describe("Context", func() {
 		})
 
 		DescribeTable("examples",
-			func(flag *cli.Flag, arguments string, raw, rawOccurrences []string) {
+			func(flag *cli.Flag, arguments string, raw, rawOccurrences []string, bindings [][]string) {
 				act := new(joeclifakes.FakeAction)
 				app := &cli.App{
 					Flags: []*cli.Flag{
@@ -183,6 +207,7 @@ var _ = Describe("Context", func() {
 				capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(capturedContext.Raw("f")).To(Equal(raw))
 				Expect(capturedContext.RawOccurrences("f")).To(Equal(rawOccurrences))
+				Expect(capturedContext.BindingLookup().Bindings("f")).To(Equal(bindings))
 			},
 			Entry(
 				"bool flags",
@@ -190,6 +215,7 @@ var _ = Describe("Context", func() {
 				"app -f",
 				[]string{"-f", ""},
 				[]string{""},
+				[][]string{{"-f", ""}},
 			),
 			Entry(
 				"multiple bool calls",
@@ -197,6 +223,7 @@ var _ = Describe("Context", func() {
 				"app -f -f -f",
 				[]string{"-f", "", "-f", "", "-f", ""},
 				[]string{"", "", ""},
+				[][]string{{"-f", ""}, {"-f", ""}, {"-f", ""}},
 			),
 			Entry(
 				"string with quotes",
@@ -204,6 +231,7 @@ var _ = Describe("Context", func() {
 				`app -f "text has spaces" -f ""`,
 				[]string{"-f", "text has spaces", "-f", ""},
 				[]string{"text has spaces", ""},
+				[][]string{{"-f", "text has spaces"}, {"-f", ""}},
 			),
 			Entry(
 				"name-value arg counter semantics",
@@ -211,6 +239,7 @@ var _ = Describe("Context", func() {
 				`app -f hello space`,
 				[]string{"-f", "hello", "space"},
 				[]string{"hello", "space"},
+				[][]string{{"-f", "hello", "space"}},
 			),
 			Entry(
 				"name-value arg counter semantics (long flag)",
@@ -218,6 +247,7 @@ var _ = Describe("Context", func() {
 				`app --f hello space`,
 				[]string{"-f", "hello", "space"},
 				[]string{"hello", "space"},
+				[][]string{{"-f", "hello", "space"}},
 			),
 			Entry(
 				"alias flags",
@@ -229,6 +259,7 @@ var _ = Describe("Context", func() {
 				"app --alias",
 				[]string{"--alias", ""},
 				[]string{""},
+				[][]string{{"--alias", ""}},
 			),
 			Entry(
 				"long with equals",
@@ -240,6 +271,19 @@ var _ = Describe("Context", func() {
 				"app --alias=9m32s",
 				[]string{"--alias", "9m32s"},
 				[]string{"9m32s"},
+				[][]string{{"--alias", "9m32s"}},
+			),
+			Entry(
+				"multiple instances long with alias",
+				&cli.Flag{
+					Name:    "f",
+					Aliases: []string{"alias"},
+					Value:   cli.Duration(),
+				},
+				"app --alias=9m32s -f 5m00s",
+				[]string{"--alias", "9m32s", "-f", "5m00s"},
+				[]string{"9m32s", "5m00s"},
+				[][]string{{"--alias", "9m32s"}, {"-f", "5m00s"}},
 			),
 		)
 

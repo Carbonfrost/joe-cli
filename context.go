@@ -592,6 +592,19 @@ func (c *Context) rawCore(name interface{}, occurs bool) []string {
 	}
 }
 
+// BindingLookup returns the parse data for the context.  Note that this lookup
+// only applies to the current context and does not traverse inherited contexts.
+// Compare Raw and RawOccurrences which perform this for you.
+func (c *Context) BindingLookup() BindingLookup {
+	if c == nil {
+		return nil
+	}
+	if cc, ok := c.internal.(internalCommandContext); ok {
+		return cc.set()
+	}
+	return c.Parent().BindingLookup()
+}
+
 // LookupData gets the data matching the key, including recursive traversal
 // up the lineage contexts
 func (c *Context) LookupData(name string) (interface{}, bool) {

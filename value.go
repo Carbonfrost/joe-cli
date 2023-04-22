@@ -113,9 +113,21 @@ type valuePairCounter struct {
 // BindingLookup can lookup values or their raw bindings
 type BindingLookup interface {
 	Lookup
+	// Raw obtains values which were specified for a flag or arg
+	// including the flag or arg name
 	Raw(name string) []string
+
+	// Raw obtains values which were specified for a flag or arg
+	// but not including the flag or arg name
 	RawOccurrences(name string) []string
+
+	// Bindings obtains values which were specified for a flag or arg
+	// including the flag or arg name and grouped into occurrences.
 	Bindings(name string) [][]string
+
+	// BindingNames obtains the names of the flags/args which are available.
+	// Even if it is available, the empty string "" is not returned from this list.
+	BindingNames() []string
 }
 
 type valueContext struct {

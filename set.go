@@ -388,6 +388,17 @@ func (s *set) Bindings(name string) [][]string {
 	return s.bindings[name]
 }
 
+func (s *set) BindingNames() []string {
+	keys := make([]string, 0, len(s.bindings))
+	for k := range s.bindings {
+		if k == "" {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func rawApply(bindings BindingMap, binding Binding) error {
 	for name, v := range bindings {
 		transform, _, value, ok := binding.LookupOption(name)
