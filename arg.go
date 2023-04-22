@@ -386,6 +386,10 @@ func (a *Arg) setCompletion(c Completion) {
 	a.Completion = c
 }
 
+func (a *Arg) data() map[string]any {
+	return a.Data
+}
+
 func (a *Arg) pipeline(t Timing) interface{} {
 	switch t {
 	case AfterTiming:

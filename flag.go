@@ -346,6 +346,10 @@ func (f *Flag) setCompletion(c Completion) {
 	f.Completion = c
 }
 
+func (f *Flag) data() map[string]any {
+	return f.Data
+}
+
 func (f *Flag) setOptional() {
 	f.setOptionalValue(f.internalOption.smartOptionalDefault())
 }

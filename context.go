@@ -604,6 +604,11 @@ func (c *Context) LookupData(name string) (interface{}, bool) {
 	return c.Parent().LookupData(name)
 }
 
+// Data obtains the data for the current target.  This could be a nil map.
+func (c *Context) Data() map[string]any {
+	return c.target().data()
+}
+
 // SetData sets data on the current target
 func (c *Context) SetData(name string, v interface{}) {
 	c.target().SetData(name, v)
@@ -1376,6 +1381,10 @@ func (v *valueTarget) setCompletion(c Completion) {
 	if val, ok := v.v.(interface{ SetCompletion(Completion) }); ok {
 		val.SetCompletion(c)
 	}
+}
+
+func (v *valueTarget) data() map[string]any {
+	return nil
 }
 
 func (*valueTarget) SetHidden(bool) {

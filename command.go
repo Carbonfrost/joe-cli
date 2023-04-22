@@ -597,6 +597,10 @@ func (c *Command) setCompletion(cv Completion) {
 	c.Completion = cv
 }
 
+func (c *Command) data() map[string]any {
+	return c.Data
+}
+
 func (c *Command) setInternalFlags(f internalFlags, v bool) {
 	if v {
 		c.flags |= f

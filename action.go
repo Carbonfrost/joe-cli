@@ -141,6 +141,7 @@ type target interface {
 	setInternalFlags(internalFlags, bool)
 	internalFlags() internalFlags
 	completion() Completion
+	data() map[string]any
 }
 
 type hooksSupport struct {
