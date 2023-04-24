@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.5.1 (April 24, 2023)
+
+### New Features
+
+* Make `SetValue` untyped, allowing directly setting (b2b13eb)
+* `Data`: get the data map from the context (218cc17)
+* Expose Binding and binding names from context and binding lookup (77a6938)
+* Expose `Flag` short and long name API (9ef19b6)
+* Allow resetting `HandleCommandNotFound` and inheritance (5d68328)
+* Expose `OpenContext` from FS API (c604cc4)
+* Implicit value error, `ErrImplicitValueAlreadySet` (1087d73)
+* Context API improvements; `Do` (36a1795)
+
+### Bug fixes and improvements
+
+* Allow simple action func in plain usages (1153507)
+* Bug fix: Ensure `Context` is unwrapped in provider context services (edc2fcc)
+* Allow legacy `Action` to be used in `ActionOf` (d250d94)
+* Allow `[]byte` to have optional values (b08525b)
+
 ## v0.5.0 (April 19, 2023)
 
 ### New Features
