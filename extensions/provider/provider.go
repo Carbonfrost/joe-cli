@@ -217,28 +217,34 @@ func SetArgument(name string) cli.Action {
 // If the action is set to initialize a flag that is unnamed, the prefix list- is implied.
 // The template "providers" is used, which is set to a default if unspecified.
 func ListProviders(name string) cli.Action {
-	return cli.Prototype{
-		Name:    "list-" + name,
-		Value:   new(bool),
-		Options: cli.Exits,
-		Setup: cli.Setup{
-			Optional: true,
-			Uses:     cli.RegisterTemplate("Providers", listTemplate),
-			Action: func(c *cli.Context) error {
-				registry := Services(c).Registry(name)
-				tpl := c.Template("Providers")
-				data := struct {
-					Providers []providerData
-					Debug     bool
-				}{
-					Providers: toData(registry),
-					Debug:     tpl.Debug,
-				}
-
-				return tpl.Execute(c.Stdout, data)
-			},
+	return cli.Pipeline(
+		&cli.Prototype{
+			Name:    "list-" + name,
+			Value:   new(bool),
+			Options: cli.Exits,
 		},
+		cli.Initializer(cli.ActionFunc(fallbackTemplate)),
+		cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) error {
+			registry := Services(c).Registry(name)
+			tpl := c.Template("Providers")
+			data := struct {
+				Providers []providerData
+				Debug     bool
+			}{
+				Providers: toData(registry),
+				Debug:     tpl.Debug,
+			}
+
+			return tpl.Execute(c.Stdout, data)
+		})),
+	)
+}
+
+func fallbackTemplate(c *cli.Context) error {
+	if c.Template("Providers") != nil {
+		return nil
 	}
+	return c.Do(cli.RegisterTemplate("Providers", listTemplate))
 }
 
 // Set the text of the value.  Can be called successively to append.

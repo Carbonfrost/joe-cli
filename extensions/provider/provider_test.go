@@ -268,6 +268,42 @@ var _ = Describe("ListProviders", func() {
 		))
 	})
 
+	It("can use custom template", func() {
+		var (
+			capture bytes.Buffer
+		)
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Uses: cli.Pipeline(&provider.Registry{
+				Name: "providers",
+				Providers: provider.Map{
+					"csv": {
+						"comma":   "a",
+						"useCRLF": "true",
+					},
+					"json": {
+						"indent": "true",
+					},
+				},
+			},
+				cli.RegisterTemplate("Providers", `{{ range .Providers -}}
+{{ .Name }}
+{{ end }}`),
+			),
+			Flags: []*cli.Flag{
+				{
+					Name:  "list-providers",
+					Value: new(bool),
+					Uses:  provider.ListProviders("providers"),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.TODO(), []string{"app", "--list-providers"})
+		Expect(capture.String()).To(Equal("csv\njson\n"))
+	})
+
 	It("implicitly uses provider name and value", func() {
 		app := &cli.App{
 			Name: "app",
