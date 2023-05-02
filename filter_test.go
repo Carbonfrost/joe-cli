@@ -94,5 +94,6 @@ var _ = Describe("IsMatch", func() {
 		Entry("thunk", targetApp, cli.ContextFilterFunc(func(c *cli.Context) bool { return false }), BeEmpty()),
 		Entry("nil thunk matches everything", targetApp, cli.ContextFilterFunc(nil), ConsistOf([]string{"-f", "<a>", "c", "p"})),
 		Entry("pattern", targetApp, cli.PatternFilter("c -f"), Equal([]string{"-f"})),
+		Entry("empty matches everything", targetApp, cli.PatternFilter(""), Equal([]string{"p", "c", "-f", "<a>"})),
 	)
 })

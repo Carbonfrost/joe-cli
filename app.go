@@ -338,6 +338,17 @@ func setupDefaultData(c *Context) error {
 	return nil
 }
 
+func fixupCommandInternals(c *Context) error {
+	// For the command created at the root, we may need to sync again
+	// if it was set on App
+	a := c.App()
+	cmd := c.Command()
+	if cmd.Name == "" {
+		cmd.Name = a.Name
+	}
+	return nil
+}
+
 func setupDefaultIO(c *Context) error {
 	a := c.App()
 	if a.Stdin == nil {

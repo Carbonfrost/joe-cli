@@ -629,6 +629,80 @@ var _ = Describe("Context", func() {
 		)
 	})
 
+	Describe("Path", func() {
+		Context("when the app has a name", func() {
+			DescribeTable("examples", func(v Fields) {
+				actual := new(struct {
+					App, Flag, Arg string
+				})
+				app := &cli.App{
+					Name: "myname",
+					Uses: func(c *cli.Context) {
+						actual.App = c.Path().String()
+					},
+					Flags: []*cli.Flag{
+						{
+							Name: "flag",
+							Uses: func(c *cli.Context) {
+								actual.Flag = c.Path().String()
+							},
+						},
+					},
+					Args: []*cli.Arg{
+						{
+							Name: "arg",
+							Uses: func(c *cli.Context) {
+								actual.Arg = c.Path().String()
+							},
+						},
+					},
+				}
+
+				// It's not relevant what the name of the app was in the Execute args
+				_ = app.RunContext(context.TODO(), []string{"app"})
+				Expect(actual).To(PointTo(MatchFields(IgnoreExtras, v)))
+			},
+				Entry("app", Fields{"App": Equal("myname")}),
+				Entry("flag", Fields{"Flag": Equal("myname --flag")}),
+				Entry("arg", Fields{"Arg": Equal("myname <arg>")}),
+			)
+		})
+
+		Context("when the app is unnamed", func() {
+
+			const nameComesFromProcess = "joe-cli.test"
+
+			DescribeTable("examples", func(v Fields) {
+				actual := new(struct {
+					Uses, Before, Action, After string
+				})
+				app := &cli.App{
+					Uses: func(c *cli.Context) {
+						actual.Uses = c.Path().String()
+					},
+					Before: func(c *cli.Context) {
+						actual.Before = c.Path().String()
+					},
+					Action: func(c *cli.Context) {
+						actual.Action = c.Path().String()
+					},
+					After: func(c *cli.Context) {
+						actual.After = c.Path().String()
+					},
+				}
+
+				// It's not relevant what the name of the app was in the Execute args
+				_ = app.RunContext(context.TODO(), []string{"called"})
+				Expect(actual).To(PointTo(MatchFields(IgnoreExtras, v)))
+			},
+				Entry("Before", Fields{"Before": Equal(nameComesFromProcess)}),
+				Entry("Action", Fields{"Action": Equal(nameComesFromProcess)}),
+				Entry("After", Fields{"After": Equal(nameComesFromProcess)}),
+				Entry("Uses", Fields{"Uses": Equal(nameComesFromProcess)}),
+			)
+		})
+	})
+
 	Describe("LookupFlag", func() {
 		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
 			var actual *cli.Flag

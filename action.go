@@ -253,16 +253,21 @@ var (
 	//
 	defaultCommand = actionPipelines{
 		Initializers: actions(
+			IfMatch(RootCommand,
+				actions(
+					ActionFunc(setupDefaultData),
+					ActionFunc(setupDefaultIO),
+					ActionFunc(fixupCommandInternals),
+					ActionFunc(setupDefaultTemplateFuncs),
+					ActionFunc(setupDefaultTemplates),
+				),
+			),
 			ActionFunc(preventSetupIfPresent),
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
 			ActionFunc(applyUserOptions),
 			IfMatch(RootCommand,
 				actions(
-					ActionFunc(setupDefaultIO),
-					ActionFunc(setupDefaultData),
-					ActionFunc(setupDefaultTemplateFuncs),
-					ActionFunc(setupDefaultTemplates),
 					ActionFunc(optionalCommand("help", defaultHelpCommand)),
 					ActionFunc(optionalFlag("help", defaultHelpFlag)),
 					ActionFunc(optionalCommand("version", defaultVersionCommand)),

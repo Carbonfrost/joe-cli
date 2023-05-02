@@ -841,7 +841,8 @@ func (c *Context) Name() string {
 	return c.internal.Name()
 }
 
-// Path retrieves all of the names on the context and its ancestors to the root
+// Path retrieves all of the names on the context and its ancestors to the root.
+// If the root command had no name, it is implied name from os.Args.
 func (c *Context) Path() ContextPath {
 	if len(c.pathCache) == 0 {
 		c.pathCache = c.pathSlow()
