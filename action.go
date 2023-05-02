@@ -219,16 +219,23 @@ const (
 	panicDataKey             = "__PanicData"
 )
 
+const (
+	actualBeforeIndexValidatorTiming = iota
+	actualBeforeIndexBeforeTiming
+	actualBeforeIndexImplicitValueTiming
+	actualBeforeIndexJustBeforeTiming
+)
+
 var (
 	emptyAction Action = ActionFunc(emptyActionImpl)
 	valueType          = reflect.TypeOf((*Value)(nil)).Elem()
 	patFlagName        = regexp.MustCompile(`{}`)
 
 	actualBeforeIndex = map[Timing]int{
-		ValidatorTiming:     0,
-		BeforeTiming:        1,
-		ImplicitValueTiming: 2,
-		justBeforeTiming:    3,
+		ValidatorTiming:     actualBeforeIndexValidatorTiming,
+		BeforeTiming:        actualBeforeIndexBeforeTiming,
+		ImplicitValueTiming: actualBeforeIndexImplicitValueTiming,
+		justBeforeTiming:    actualBeforeIndexJustBeforeTiming,
 	}
 
 	triggerBeforeOptions = triggerOptionsHO(BeforeTiming, (*Context).executeBefore)
@@ -306,15 +313,15 @@ var (
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
-			At(justBeforeTiming, ActionFunc(checkForRequiredOption)),
 		),
 		Before: beforePipeline{
-			nil,
-			actions(
+			actualBeforeIndexBeforeTiming: actions(
 				executeDeferredPipeline(BeforeTiming),
 				executeUserPipeline(BeforeTiming),
 			),
-			nil,
+			actualBeforeIndexJustBeforeTiming: actions(
+				ActionFunc(checkForRequiredOption),
+			),
 		},
 		Action: actions(
 			ActionFunc(executeOptionPipeline),
