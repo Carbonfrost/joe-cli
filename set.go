@@ -35,7 +35,6 @@ type internalOption struct {
 	narg          interface{}
 	optionalValue interface{} // set when blank and optional
 	flags         internalFlags
-	transform     TransformFunc
 }
 
 type argCountError int
@@ -699,10 +698,6 @@ func allowFlag(arg string, possibleFlag bool) bool {
 		return false
 	}
 	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
-}
-
-func (o *internalOption) transformFunc() TransformFunc {
-	return o.transform
 }
 
 func (o *internalOption) Seen() bool {

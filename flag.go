@@ -402,6 +402,10 @@ func (f *Flag) setTransform(fn TransformFunc) {
 	f.Transform = fn
 }
 
+func (f *Flag) transformFunc() TransformFunc {
+	return f.Transform
+}
+
 func (f *Flag) completion() Completion {
 	if f.Completion != nil {
 		return f.Completion

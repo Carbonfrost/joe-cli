@@ -429,6 +429,10 @@ func (a *Arg) setTransform(fn TransformFunc) {
 	a.Transform = fn
 }
 
+func (a *Arg) transformFunc() TransformFunc {
+	return a.Transform
+}
+
 func (a *Arg) completion() Completion {
 	if a.Completion != nil {
 		return a.Completion

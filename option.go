@@ -497,7 +497,8 @@ func noOption(c *Context) error {
 
 func eachOccurrenceOpt(c1 *Context) error {
 	return c1.At(ActionTiming, middlewareFunc(func(c *Context, next Action) error {
-		opt := func() *internalOption {
+		opt := c.option()
+		internal := func() *internalOption {
 			switch o := c.option().(type) {
 			case *Flag:
 				return &o.internalOption
@@ -519,7 +520,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			// Create a copy of the value on each occurrence (unless merge semantics
 			// are in place)
 			if i == 0 || resetOnFirstOccur {
-				opt.cloneZero()
+				internal.cloneZero()
 			}
 
 			mini.index = i
@@ -527,8 +528,8 @@ func eachOccurrenceOpt(c1 *Context) error {
 			// Pretend this is the first occurrence
 			opt.reset()
 
-			if opt.transform != nil {
-				d, err := opt.transform(mini.lookupBinding("", false))
+			if opt.transformFunc() != nil {
+				d, err := opt.transformFunc()(mini.lookupBinding("", false))
 				if err != nil {
 					return err
 				}
@@ -540,7 +541,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 					return err
 				}
 			}
-			mini.val = opt.p
+			mini.val = internal.p
 
 			if err := next.Execute(scope); err != nil {
 				return err

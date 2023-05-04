@@ -1533,7 +1533,6 @@ func fixupOptionInternals(c *Context) error {
 			o.setValue(p)
 			o.setInternalFlags(isFlagType(p), true)
 		}
-		o.internalOption.transform = o.Transform
 	case *Arg:
 		if o.internalOption.narg != o.NArg {
 			if o.internalFlags().destinationImplicitlyCreated() {
@@ -1550,7 +1549,6 @@ func fixupOptionInternals(c *Context) error {
 		if _, ok := o.Value.(*string); ok {
 			o.setInternalFlags(internalFlagMerge, true)
 		}
-		o.internalOption.transform = o.Transform
 	}
 	return nil
 }
