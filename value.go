@@ -74,6 +74,12 @@ type ByteLength int
 
 // Conventions for values
 
+// ValueReader is a flag Value that can read from an input reader
+type ValueReader interface {
+	Value
+	SetData(io.Reader) error
+}
+
 type valueDisableSplitting interface {
 	DisableSplitting()
 }
@@ -96,10 +102,6 @@ type valueDereference interface {
 
 type valueProvidesSynopsis interface {
 	Synopsis() string
-}
-
-type valueSetData interface {
-	SetData(io.Reader) error
 }
 
 type valueCompleter interface {
@@ -330,7 +332,7 @@ func Set(dest interface{}, args ...string) error {
 // If the method convention is not implemented, then ordinary Set(string)
 // method on Value is called on the input.
 func SetData(dest any, arg any) error {
-	if s, ok := dest.(valueSetData); ok {
+	if s, ok := dest.(ValueReader); ok {
 		switch val := arg.(type) {
 		case string:
 			return s.SetData(strings.NewReader(val))
