@@ -1170,7 +1170,7 @@ var _ = Describe("Pipeline", func() {
 		act2 := new(joeclifakes.FakeAction)
 
 		act1.ExecuteWithNextStub = func(_ context.Context, a cli.Action) error {
-			return a.Execute(nil)
+			return a.Execute(context.Background())
 		}
 
 		pipe := cli.Pipeline().Append(act1).Append(act2)
@@ -1185,7 +1185,7 @@ var _ = Describe("Pipeline", func() {
 		act3 := new(joeclifakes.FakeAction)
 
 		act1.ExecuteWithNextStub = func(_ context.Context, a cli.Action) error {
-			return a.Execute(nil)
+			return a.Execute(context.Background())
 		}
 		act2.ExecuteStub = func(_ context.Context) error {
 			return nil
@@ -1217,7 +1217,7 @@ var _ = Describe("Pipeline", func() {
 		act1 = cli.ActionPipeline([]cli.Action{act1a, act1b})
 
 		pipe := cli.Pipeline(cli.ActionPipeline([]cli.Action{act1, act2}))
-		pipe.Execute(nil)
+		pipe.Execute(context.Background())
 
 		Expect(called).To(Equal([]string{"1a", "1b", "2"}))
 		Expect(pipe).To(HaveLen(3))

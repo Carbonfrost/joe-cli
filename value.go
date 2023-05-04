@@ -376,8 +376,7 @@ func SetData(dest any, arg any) error {
 }
 
 func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool)) bool {
-	switch dest.(type) {
-	case Value:
+	if _, ok := dest.(Value); ok {
 		return false
 	}
 	if v, ok := trySetOptional(); ok {

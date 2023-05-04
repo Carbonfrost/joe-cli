@@ -1003,8 +1003,9 @@ func commandName(v interface{}) interface{} {
 func parseBigInt(s string) *big.Int {
 	v := new(big.Int)
 	if _, ok := v.SetString(s, 10); ok {
+		return v
 	}
-	return v
+	return nil
 }
 func parseBigFloat(s string) *big.Float {
 	v, _, _ := big.ParseFloat(s, 10, 53, big.ToZero)
