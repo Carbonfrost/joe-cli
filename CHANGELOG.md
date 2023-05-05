@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.5.2 (May 4, 2023)
+
+### New Features
+
+* Provider extension help text; `ListProviders` improvements (b2ae12f)
+* Export and document `ValueReader` (10f001f)
+
+### Bug fixes and improvements
+
+* Optimization: remove unnecessary syncing of internal option state (d750276)
+* Bug fix: Ensure that default App Name propogates (9b8642f)
+* Optimization: remove unneeded At invocation and use justBeforeTiming directly (4d408b2)
+* Provider extension: Make list provider template conditional (88af848)
+* Chores:
+    * Fix CI configuration to go1.20 only (7a30ff0)
+    * GitHub configuration: Dependabot (f6745b6)
+    * Addresses issues of style to please linter (9ce729c)
+
 ## v0.5.1 (April 24, 2023)
 
 ### New Features
