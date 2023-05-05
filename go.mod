@@ -10,7 +10,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.9.1
 	github.com/onsi/gomega v1.27.3
-	github.com/spf13/afero v1.6.0
+	github.com/spf13/afero v1.9.5
 	golang.org/x/term v0.6.0
 	honnef.co/go/tools v0.4.3
 )
