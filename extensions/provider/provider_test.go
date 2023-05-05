@@ -277,18 +277,24 @@ var _ = Describe("ListProviders", func() {
 			Stdout: &capture,
 			Uses: cli.Pipeline(&provider.Registry{
 				Name: "providers",
-				Providers: provider.Map{
+				Providers: provider.Details{
 					"csv": {
-						"comma":   "a",
-						"useCRLF": "true",
+						Defaults: map[string]string{
+							"comma":   "a",
+							"useCRLF": "true",
+						},
+						HelpText: "Use comma-separated values",
 					},
 					"json": {
-						"indent": "true",
+						Defaults: map[string]string{
+							"indent": "true",
+						},
+						HelpText: "Use JSON values",
 					},
 				},
 			},
 				cli.RegisterTemplate("Providers", `{{ range .Providers -}}
-{{ .Name }}
+{{ .Name }} {{ .HelpText }}
 {{ end }}`),
 			),
 			Flags: []*cli.Flag{
@@ -301,7 +307,7 @@ var _ = Describe("ListProviders", func() {
 		}
 
 		_ = app.RunContext(context.TODO(), []string{"app", "--list-providers"})
-		Expect(capture.String()).To(Equal("csv\njson\n"))
+		Expect(capture.String()).To(Equal("csv Use comma-separated values\njson Use JSON values\n"))
 	})
 
 	It("implicitly uses provider name and value", func() {

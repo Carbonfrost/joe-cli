@@ -58,13 +58,15 @@ type FactoryFunc func(opts map[string]string) (any, error)
 // Lookup defines how to obtain the provider or information about it from its name
 type Lookup interface {
 	ProviderNames() []string
-	LookupDefaults(name string) (map[string]string, bool)
-	LookupFactory(name string) (FactoryFunc, bool)
+	LookupProvider(name string) (Detail, bool)
 }
 
 // Details provides a lookup that porivudes information about a provider and a factory
 // for instancing it.
-type Details map[string]struct {
+type Details map[string]Detail
+
+// Detail provides information about a provider
+type Detail struct {
 	// Defaults specifies the default values for the provider
 	Defaults map[string]string
 
@@ -78,6 +80,9 @@ type Details map[string]struct {
 	// Factory is used.  The use of Value also implies that the provider has
 	// no defaults.
 	Value any
+
+	// HelpText contains text which briefly describes the usage of the provider.
+	HelpText string
 }
 
 // Map provides a map that names the providers and their the default values.
@@ -112,6 +117,7 @@ type Registry struct {
 
 type providerData struct {
 	Name     string
+	HelpText string
 	Defaults defaultsMap
 }
 
@@ -219,9 +225,10 @@ func SetArgument(name string) cli.Action {
 func ListProviders(name string) cli.Action {
 	return cli.Pipeline(
 		&cli.Prototype{
-			Name:    "list-" + name,
-			Value:   new(bool),
-			Options: cli.Exits,
+			Name:     "list-" + name,
+			Value:    new(bool),
+			Options:  cli.Exits,
+			HelpText: fmt.Sprintf("List available %s providers then exit", name),
 		},
 		cli.Initializer(cli.ActionFunc(fallbackTemplate)),
 		cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) error {
@@ -298,7 +305,8 @@ func validateProviderExists(c *cli.Context) error {
 	if registry.AllowUnknown {
 		return nil
 	}
-	p, exists := registry.LookupDefaults(v.Name)
+	pro, exists := registry.LookupProvider(v.Name)
+	p := pro.Defaults
 	if !exists {
 		return fmt.Errorf("unknown %q %s", v.Name, provider)
 	}
@@ -315,21 +323,18 @@ func (r *Registry) ProviderNames() []string {
 	return r.Providers.ProviderNames()
 }
 
-func (r *Registry) LookupFactory(name string) (f FactoryFunc, ok bool) {
-	return r.Providers.LookupFactory(name)
-}
-
-func (r *Registry) LookupDefaults(name string) (defaults map[string]string, ok bool) {
-	return r.Providers.LookupDefaults(name)
+func (r *Registry) LookupProvider(name string) (Detail, bool) {
+	return r.Providers.LookupProvider(name)
 }
 
 func (r *Registry) New(name string, opts map[string]string) (any, error) {
-	defaults, _ := r.LookupDefaults(name)
+	pro, ok := r.LookupProvider(name)
+	defaults := pro.Defaults
+	fac := pro.Factory
 	mergedOpts := map[string]string{}
 	update(mergedOpts, defaults)
 	update(mergedOpts, opts)
 
-	fac, ok := r.LookupFactory(name)
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %q", name)
 	}
@@ -353,13 +358,9 @@ func (m Map) ProviderNames() []string {
 	return keys
 }
 
-func (m Map) LookupDefaults(name string) (map[string]string, bool) {
-	r, ok := m[name]
-	return r, ok
-}
-
-func (m Map) LookupFactory(name string) (FactoryFunc, bool) {
-	return nil, false
+func (m Map) LookupProvider(name string) (d Detail, ok bool) {
+	d.Defaults, ok = m[name]
+	return
 }
 
 func (d Details) ProviderNames() []string {
@@ -372,14 +373,9 @@ func (d Details) ProviderNames() []string {
 	return keys
 }
 
-func (d Details) LookupDefaults(name string) (map[string]string, bool) {
+func (d Details) LookupProvider(name string) (Detail, bool) {
 	r, ok := d[name]
-	return r.Defaults, ok
-}
-
-func (d Details) LookupFactory(name string) (FactoryFunc, bool) {
-	r, ok := d[name]
-	return r.Factory, ok
+	return r, ok
 }
 
 func (d defaultsMap) String() string {
@@ -390,10 +386,11 @@ func toData(r *Registry) []providerData {
 	res := make([]providerData, 0)
 	if r != nil {
 		for _, n := range r.ProviderNames() {
-			defaults, _ := r.LookupDefaults(n)
+			dd, _ := r.LookupProvider(n)
 			res = append(res, providerData{
 				Name:     n,
-				Defaults: defaults,
+				Defaults: dd.Defaults,
+				HelpText: dd.HelpText,
 			})
 		}
 		sort.Slice(res, func(i, j int) bool {
