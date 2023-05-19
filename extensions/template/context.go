@@ -16,14 +16,14 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 )
 
-type Context struct {
-	*cli.Context
-
+type OutputContext struct {
 	Vars      map[string]interface{}
 	Overwrite bool
 	DryRun    bool
+	FS        cli.FS
 
 	working []string
+	out     cli.Writer
 }
 
 var (
@@ -36,9 +36,9 @@ var (
 	padding = strings.Repeat(" ", 12)
 )
 
-func (c *Context) Do(gens ...Generator) error {
+func (c *OutputContext) Do(ctx context.Context, gens ...Generator) error {
 	for _, g := range gens {
-		err := g.Generate(c)
+		err := g.Generate(ctx, c)
 		if err != nil {
 			return err
 		}
@@ -46,12 +46,12 @@ func (c *Context) Do(gens ...Generator) error {
 	return nil
 }
 
-func (c *Context) Exists(name string) bool {
+func (c *OutputContext) Exists(name string) bool {
 	_, err := c.Stat(name)
 	return err == nil || !errors.Is(err, fs.ErrNotExist)
 }
 
-func (c *Context) File(name string) string {
+func (c *OutputContext) File(name string) string {
 	if strings.HasPrefix(name, "/") {
 		return name
 	}
@@ -59,16 +59,16 @@ func (c *Context) File(name string) string {
 }
 
 // WorkDir is the path to the working directory
-func (c *Context) WorkDir() string {
+func (c *OutputContext) WorkDir() string {
 	return filepath.Clean(filepath.Join(c.working...))
 }
 
-func (c *Context) PushDir(name string) error {
+func (c *OutputContext) PushDir(name string) error {
 	c.working = append(c.working, name)
 	return nil
 }
 
-func (c *Context) PopDir() error {
+func (c *OutputContext) PopDir() error {
 	c.working = c.working[0 : len(c.working)-1]
 	if len(c.working) == 0 {
 		return fmt.Errorf("cannot pop dir")
@@ -76,32 +76,32 @@ func (c *Context) PopDir() error {
 	return nil
 }
 
-func (c *Context) SetData(name string, value interface{}) {
+func (c *OutputContext) SetData(name string, value interface{}) {
 	c.Vars[name] = value
 }
 
-func (c *Context) error(file string) {
+func (c *OutputContext) error(file string) {
 	c.trace("error", file)
 }
 
-func (c *Context) create(file string) {
+func (c *OutputContext) create(file string) {
 	c.trace("create", file)
 }
 
-func (c *Context) identical(file string) {
+func (c *OutputContext) identical(file string) {
 	c.trace("identical", file)
 }
 
-func (c *Context) overwrite(file string) {
+func (c *OutputContext) overwrite(file string) {
 	c.trace("overwrite", file)
 }
 
-func (c *Context) trace(category string, file string) {
+func (c *OutputContext) trace(category string, file string) {
 	color, ok := colors[category]
 	if !ok {
 		color = cli.Default
 	}
-	out := c.Context.Stdout
+	out := c.out
 	fmt.Fprint(out, padding[0:len(padding)-len(category)])
 	out.SetForeground(color)
 	fmt.Fprint(out, category)
@@ -115,7 +115,7 @@ func (c *Context) trace(category string, file string) {
 	fmt.Fprintln(out)
 }
 
-func (c *Context) reportChange(original []byte, name string, created bool) {
+func (c *OutputContext) reportChange(original []byte, name string, created bool) {
 	if created {
 		c.create(name)
 		return
@@ -135,7 +135,7 @@ func (c *Context) reportChange(original []byte, name string, created bool) {
 	}
 }
 
-func (c *Context) expandName(name string) string {
+func (c *OutputContext) expandName(name string) string {
 	var buf bytes.Buffer
 	tpl, err := template.New("fileName").Parse(name)
 	if err != nil {
@@ -148,19 +148,19 @@ func (c *Context) expandName(name string) string {
 	return buf.String()
 }
 
-func (c *Context) Stat(name string) (fs.FileInfo, error) {
+func (c *OutputContext) Stat(name string) (fs.FileInfo, error) {
 	return c.actualFS().Stat(c.File(name))
 }
 
-func (c *Context) Open(name string) (fs.File, error) {
+func (c *OutputContext) Open(name string) (fs.File, error) {
 	return c.actualFS().Open(c.File(name))
 }
 
-func (c *Context) OpenContext(ctx context.Context, name string) (fs.File, error) {
+func (c *OutputContext) OpenContext(ctx context.Context, name string) (fs.File, error) {
 	return c.actualFS().OpenContext(ctx, c.File(name))
 }
 
-func (c *Context) Chmod(name string, mode fs.FileMode) error {
+func (c *OutputContext) Chmod(name string, mode fs.FileMode) error {
 	name, err := c.pathEnsure(name)
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func (c *Context) Chmod(name string, mode fs.FileMode) error {
 	return c.actualFS().Chmod(name, mode)
 }
 
-func (c *Context) Chown(name string, uid, gid int) error {
+func (c *OutputContext) Chown(name string, uid, gid int) error {
 	name, err := c.pathEnsure(name)
 	if err != nil {
 		return err
@@ -176,7 +176,7 @@ func (c *Context) Chown(name string, uid, gid int) error {
 	return c.actualFS().Chown(name, uid, gid)
 }
 
-func (c *Context) Create(name string) (fs.File, error) {
+func (c *OutputContext) Create(name string) (fs.File, error) {
 	name, err := c.pathEnsure(name)
 	if err != nil {
 		return nil, err
@@ -184,7 +184,7 @@ func (c *Context) Create(name string) (fs.File, error) {
 	return c.actualFS().Create(name)
 }
 
-func (c *Context) Mkdir(name string, perm fs.FileMode) error {
+func (c *OutputContext) Mkdir(name string, perm fs.FileMode) error {
 	name, err := c.pathEnsure(name)
 	if err != nil {
 		return err
@@ -192,25 +192,25 @@ func (c *Context) Mkdir(name string, perm fs.FileMode) error {
 	return c.actualFS().Mkdir(name, perm)
 }
 
-func (c *Context) MkdirAll(path string, perm fs.FileMode) error {
+func (c *OutputContext) MkdirAll(path string, perm fs.FileMode) error {
 	return c.actualFS().MkdirAll(c.File(path), perm)
 }
 
-func (c *Context) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
+func (c *OutputContext) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
 	name = c.File(name)
 	return c.actualFS().OpenFile(name, flag, perm)
 }
 
-func (c *Context) Remove(name string) error {
+func (c *OutputContext) Remove(name string) error {
 	name = c.File(name)
 	return c.actualFS().Remove(name)
 }
 
-func (c *Context) RemoveAll(path string) error {
+func (c *OutputContext) RemoveAll(path string) error {
 	return c.actualFS().RemoveAll(c.File(path))
 }
 
-func (c *Context) Chtimes(name string, atime time.Time, mtime time.Time) error {
+func (c *OutputContext) Chtimes(name string, atime time.Time, mtime time.Time) error {
 	name, err := c.pathEnsure(name)
 	if err != nil {
 		return err
@@ -218,7 +218,7 @@ func (c *Context) Chtimes(name string, atime time.Time, mtime time.Time) error {
 	return c.actualFS().Chtimes(name, atime, mtime)
 }
 
-func (c *Context) Rename(oldpath, newpath string) error {
+func (c *OutputContext) Rename(oldpath, newpath string) error {
 	oldpath, err := c.pathEnsure(oldpath)
 	if err != nil {
 		return err
@@ -232,7 +232,7 @@ func (c *Context) Rename(oldpath, newpath string) error {
 	return c.actualFS().Rename(oldpath, newpath)
 }
 
-func (c *Context) pathEnsure(name string) (string, error) {
+func (c *OutputContext) pathEnsure(name string) (string, error) {
 	name = c.expandName(name)
 	if strings.HasPrefix(name, "/") {
 		return name, nil
@@ -249,10 +249,10 @@ func (c *Context) pathEnsure(name string) (string, error) {
 	return c.File(name), nil
 }
 
-func (c *Context) actualFS() cli.FS {
-	return c.FS.(cli.FS)
+func (c *OutputContext) actualFS() cli.FS {
+	return c.FS
 }
 
 var (
-	_ cli.FS = (*Context)(nil)
+	_ cli.FS = (*OutputContext)(nil)
 )

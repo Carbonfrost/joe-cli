@@ -2,6 +2,7 @@ package template
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"go/format"
 	"io"
@@ -11,10 +12,10 @@ import (
 )
 
 type FileGenerator interface {
-	GenerateFile(c *Context, name string) error
+	GenerateFile(ctx context.Context, c *OutputContext, name string) error
 }
 
-type FileGeneratorFunc func(*Context, string) error
+type FileGeneratorFunc func(context.Context, *OutputContext, string) error
 
 type FileMode int
 
@@ -23,7 +24,7 @@ type fileGenerator struct {
 	ops  []FileGenerator
 }
 
-type generateFile func(*Context) ([]byte, error)
+type generateFile func(context.Context, *OutputContext) ([]byte, error)
 
 // File mode bits
 const (
@@ -32,13 +33,13 @@ const (
 )
 
 func newGenerateContents(f generateFile) FileGeneratorFunc {
-	return func(c *Context, name string) error {
+	return func(ctx context.Context, c *OutputContext, name string) error {
 		if f == nil {
 			c.identical(name)
 			return nil
 		}
 
-		data, err := f(c)
+		data, err := f(ctx, c)
 		if err != nil {
 			return err
 		}
@@ -68,7 +69,7 @@ func File(name string, ops ...FileGenerator) Generator {
 // a string, []byte, or io.Reader, which is copied to the output file of the given
 // name.  As a special case, if contents is some other type, it is JSON encoded.
 func Contents(contents interface{}) FileGenerator {
-	return newGenerateContents(func(_ *Context) ([]byte, error) {
+	return newGenerateContents(func(_ context.Context, _ *OutputContext) ([]byte, error) {
 		switch c := contents.(type) {
 		case string:
 			return []byte(c), nil
@@ -84,7 +85,7 @@ func Contents(contents interface{}) FileGenerator {
 
 // Touch touches the file.
 func Touch() FileGenerator {
-	return FileGeneratorFunc(func(c *Context, name string) error {
+	return FileGeneratorFunc(func(ctx context.Context, c *OutputContext, name string) error {
 		f := c.actualFS()
 		fileName := name
 		_, err := f.Stat(fileName)
@@ -105,8 +106,8 @@ func Touch() FileGenerator {
 
 // Template generates a file by executing a template.
 func Template(tt Interface, namedata ...interface{}) FileGenerator {
-	return newGenerateContents(func(c *Context) ([]byte, error) {
-		err := someData(namedata...).Generate(c)
+	return newGenerateContents(func(ctx context.Context, c *OutputContext) ([]byte, error) {
+		err := someData(namedata...).Generate(ctx, c)
 		if err != nil {
 			return nil, err
 		}
@@ -121,8 +122,8 @@ func Template(tt Interface, namedata ...interface{}) FileGenerator {
 }
 
 func Gofmt() FileGenerator {
-	return FileGeneratorFunc(func(c *Context, name string) error {
-		file, err := c.FS.Open(name)
+	return FileGeneratorFunc(func(ctx context.Context, c *OutputContext, name string) error {
+		file, err := c.FS.OpenContext(ctx, name)
 		if err != nil {
 			return err
 		}
@@ -136,35 +137,35 @@ func Gofmt() FileGenerator {
 			return err
 		}
 
-		_, err = doFileGenerate(c, name, Contents(result))
+		_, err = doFileGenerate(ctx, c, name, Contents(result))
 		return err
 	})
 }
 
 func Mode(mode fs.FileMode) FileGenerator {
-	return FileGeneratorFunc(func(c *Context, name string) error {
+	return FileGeneratorFunc(func(ctx context.Context, c *OutputContext, name string) error {
 		return c.Chmod(name, mode)
 	})
 }
 
-func (f FileGeneratorFunc) GenerateFile(c *Context, name string) error {
+func (f FileGeneratorFunc) GenerateFile(ctx context.Context, c *OutputContext, name string) error {
 	if f == nil {
 		return nil
 	}
-	return f(c, name)
+	return f(ctx, c, name)
 }
 
-func (m FileMode) GenerateFile(c *Context, name string) error {
+func (m FileMode) GenerateFile(_ context.Context, c *OutputContext, name string) error {
 	return c.Chmod(name, fs.FileMode(int(m)))
 }
 
-func (f *fileGenerator) Generate(c *Context) error {
+func (f *fileGenerator) Generate(ctx context.Context, c *OutputContext) error {
 	if len(f.ops) == 0 {
 		c.identical(f.name)
 		return nil
 	}
 
-	file, err := c.Open(f.name)
+	file, err := c.OpenContext(ctx, f.name)
 	created := os.IsNotExist(err)
 	var original []byte
 	if err == nil {
@@ -176,7 +177,7 @@ func (f *fileGenerator) Generate(c *Context) error {
 		return nil
 	}
 
-	fileName, err := doFileGenerate(c, f.name, f.ops...)
+	fileName, err := doFileGenerate(ctx, c, f.name, f.ops...)
 	if err != nil {
 		return err
 	}
@@ -184,13 +185,13 @@ func (f *fileGenerator) Generate(c *Context) error {
 	return nil
 }
 
-func doFileGenerate(c *Context, name string, ops ...FileGenerator) (fileName string, err error) {
+func doFileGenerate(ctx context.Context, c *OutputContext, name string, ops ...FileGenerator) (fileName string, err error) {
 	fileName, err = c.pathEnsure(name)
 	if err != nil {
 		return
 	}
 	for _, o := range ops {
-		err = o.GenerateFile(c, fileName)
+		err = o.GenerateFile(ctx, c, fileName)
 		if err != nil {
 			break
 		}

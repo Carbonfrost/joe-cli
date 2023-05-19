@@ -144,6 +144,7 @@ type C    struct {  }`,
 			ff := new(joeclifakes.FakeFS)
 			ff.CreateStub = test.Create
 			ff.OpenStub = test.Open
+			ff.OpenContextStub = test.OpenContext
 			ff.StatStub = test.Stat
 			app := &cli.App{
 				Name:   "app",

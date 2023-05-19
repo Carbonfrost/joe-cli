@@ -26,7 +26,7 @@ type Sequence []Generator
 
 // Generator is the interface for generating files.
 type Generator interface {
-	Generate(c *Context) error
+	Generate(ctx context.Context, c *OutputContext) error
 }
 
 // Vars contains template variables.  Variables are copied into the template
@@ -107,28 +107,29 @@ func (r *Root) pipeline() cli.Action {
 			if workDir == "" {
 				workDir = "."
 			}
-			ctx := &Context{
-				Context:   c,
+			ctx := &OutputContext{
 				Vars:      map[string]interface{}{},
 				Overwrite: r.Overwrite,
 				DryRun:    r.DryRun,
+				FS:        c.FS.(cli.FS),
 				working:   []string{workDir},
+				out:       c.Stdout,
 			}
-			return r.Generate(ctx)
+			return r.Generate(c, ctx)
 		},
 	}
 }
 
-func (r *Root) Generate(c *Context) error {
-	return r.Sequence.Generate(c)
+func (r *Root) Generate(ctx context.Context, c *OutputContext) error {
+	return r.Sequence.Generate(ctx, c)
 }
 
-func (s Sequence) Generate(c *Context) error {
+func (s Sequence) Generate(ctx context.Context, c *OutputContext) error {
 	for _, u := range s {
 		if u == nil {
 			continue
 		}
-		err := u.Generate(c)
+		err := u.Generate(ctx, c)
 		if err != nil {
 			return err
 		}
@@ -136,12 +137,12 @@ func (s Sequence) Generate(c *Context) error {
 	return nil
 }
 
-func (d *dataSetter) Generate(c *Context) error {
+func (d *dataSetter) Generate(_ context.Context, c *OutputContext) error {
 	c.SetData(d.name, d.value)
 	return nil
 }
 
-func (v Vars) Generate(c *Context) error {
+func (v Vars) Generate(_ context.Context, c *OutputContext) error {
 	for k, o := range v {
 		c.SetData(k, o)
 	}

@@ -1,6 +1,8 @@
 package template_test
 
 import (
+	"context"
+
 	"github.com/Carbonfrost/joe-cli/extensions/template"
 	"github.com/Carbonfrost/joe-cli/extensions/template/templatefakes"
 
@@ -15,7 +17,7 @@ var _ = Describe("Sequence", func() {
 		seq := template.Sequence([]template.Generator{
 			g1, g2,
 		})
-		seq.Generate(nil)
+		seq.Generate(context.Background(), nil)
 
 		Expect(g1.GenerateCallCount()).To(Equal(1))
 		Expect(g2.GenerateCallCount()).To(Equal(1))
@@ -26,7 +28,7 @@ var _ = Describe("Sequence", func() {
 		seq := template.Sequence([]template.Generator{
 			g1, nil,
 		})
-		seq.Generate(nil)
+		seq.Generate(context.Background(), nil)
 
 		Expect(g1.GenerateCallCount()).To(Equal(1))
 	})

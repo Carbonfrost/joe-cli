@@ -1,6 +1,7 @@
 package template
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,14 +17,14 @@ type goGetter struct {
 	pkgs []string
 }
 
-func (d *goGetter) Generate(c *Context) error {
+func (d *goGetter) Generate(ctx context.Context, c *OutputContext) error {
 	if c.DryRun {
-		return d.dryRun(c)
+		return d.dryRun(ctx, c)
 	}
-	return d.realGenerate(c)
+	return d.realGenerate(ctx, c)
 }
 
-func (d *goGetter) realGenerate(c *Context) error {
+func (d *goGetter) realGenerate(ctx context.Context, c *OutputContext) error {
 	originalMod, originalSum := d.files()
 
 	err := execGoGet(d.pkgs)
@@ -37,7 +38,7 @@ func (d *goGetter) realGenerate(c *Context) error {
 	return nil
 }
 
-func (d *goGetter) dryRun(c *Context) error {
+func (d *goGetter) dryRun(ctx context.Context, c *OutputContext) error {
 	originalMod, _ := d.files()
 
 	for _, pkg := range d.pkgs {

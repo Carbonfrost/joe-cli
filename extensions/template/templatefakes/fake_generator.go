@@ -2,16 +2,18 @@
 package templatefakes
 
 import (
+	"context"
 	"sync"
 
 	"github.com/Carbonfrost/joe-cli/extensions/template"
 )
 
 type FakeGenerator struct {
-	GenerateStub        func(*template.Context) error
+	GenerateStub        func(context.Context, *template.OutputContext) error
 	generateMutex       sync.RWMutex
 	generateArgsForCall []struct {
-		arg1 *template.Context
+		arg1 context.Context
+		arg2 *template.OutputContext
 	}
 	generateReturns struct {
 		result1 error
@@ -23,18 +25,19 @@ type FakeGenerator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeGenerator) Generate(arg1 *template.Context) error {
+func (fake *FakeGenerator) Generate(arg1 context.Context, arg2 *template.OutputContext) error {
 	fake.generateMutex.Lock()
 	ret, specificReturn := fake.generateReturnsOnCall[len(fake.generateArgsForCall)]
 	fake.generateArgsForCall = append(fake.generateArgsForCall, struct {
-		arg1 *template.Context
-	}{arg1})
+		arg1 context.Context
+		arg2 *template.OutputContext
+	}{arg1, arg2})
 	stub := fake.GenerateStub
 	fakeReturns := fake.generateReturns
-	fake.recordInvocation("Generate", []interface{}{arg1})
+	fake.recordInvocation("Generate", []interface{}{arg1, arg2})
 	fake.generateMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -48,17 +51,17 @@ func (fake *FakeGenerator) GenerateCallCount() int {
 	return len(fake.generateArgsForCall)
 }
 
-func (fake *FakeGenerator) GenerateCalls(stub func(*template.Context) error) {
+func (fake *FakeGenerator) GenerateCalls(stub func(context.Context, *template.OutputContext) error) {
 	fake.generateMutex.Lock()
 	defer fake.generateMutex.Unlock()
 	fake.GenerateStub = stub
 }
 
-func (fake *FakeGenerator) GenerateArgsForCall(i int) *template.Context {
+func (fake *FakeGenerator) GenerateArgsForCall(i int) (context.Context, *template.OutputContext) {
 	fake.generateMutex.RLock()
 	defer fake.generateMutex.RUnlock()
 	argsForCall := fake.generateArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeGenerator) GenerateReturns(result1 error) {
