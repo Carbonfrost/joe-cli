@@ -589,6 +589,10 @@ func (c *Command) setHelpText(name string) {
 	c.HelpText = name
 }
 
+func (c *Command) setUsageText(s string) {
+	c.UsageText = s
+}
+
 func (c *Command) setDescription(name interface{}) {
 	c.Description = name
 }

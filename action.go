@@ -135,6 +135,7 @@ type target interface {
 	appendAction(Timing, Action)
 	setDescription(interface{})
 	setHelpText(string)
+	setUsageText(string)
 	setManualText(string)
 	setCategory(name string)
 	setCompletion(Completion)
@@ -805,6 +806,20 @@ func Alias(a ...string) Action {
 func Description(v interface{}) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.SetDescription(v)
+	})
+}
+
+// HelpText sets the help text for the current target
+func HelpText(s string) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.SetHelpText(s)
+	})
+}
+
+// Usage sets the help text for the current target
+func UsageText(s string) Action {
+	return ActionFunc(func(c *Context) error {
+		return c.SetUsageText(s)
 	})
 }
 

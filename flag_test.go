@@ -730,6 +730,16 @@ var _ = Describe("Flag", func() {
 			MatchFields(IgnoreExtras, Fields{"ManualText": Equal("abc")}),
 		),
 		Entry(
+			"HelpText",
+			cli.HelpText("abc"),
+			MatchFields(IgnoreExtras, Fields{"HelpText": Equal("abc")}),
+		),
+		Entry(
+			"UsageText",
+			cli.UsageText("abc"),
+			MatchFields(IgnoreExtras, Fields{"UsageText": Equal("abc")}),
+		),
+		Entry(
 			"Description",
 			cli.Description("abc"),
 			MatchFields(IgnoreExtras, Fields{"Description": Equal("abc")}),

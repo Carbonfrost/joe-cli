@@ -582,9 +582,10 @@ func (c *Context) rawCore(name interface{}, occurs bool) []string {
 	switch f := name.(type) {
 	case rune, string, nil, int, *Arg, *Flag:
 		d := c.internal.lookupBinding(c.nameToString(f), occurs)
-		if len(d) == 0 {
-			return c.Parent().rawCore(name, occurs)
+		if f != "" && len(d) == 0 {
+			return c.Parent().rawCore(c.nameToString(f), occurs)
 		}
+
 		return d
 
 	default:
@@ -647,6 +648,18 @@ func (c *Context) SetCategory(name string) error {
 // SetDescription sets the description on the current target
 func (c *Context) SetDescription(v interface{}) error {
 	c.target().setDescription(v)
+	return nil
+}
+
+// SetHelpText sets the helpTexgt  on the current target
+func (c *Context) SetHelpText(s string) error {
+	c.target().setHelpText(s)
+	return nil
+}
+
+// SetUsageText sets the usage text on the current target
+func (c *Context) SetUsageText(s string) error {
+	c.target().setUsageText(s)
 	return nil
 }
 
@@ -1382,6 +1395,12 @@ func (v *valueTarget) setHelpText(arg string) {
 func (v *valueTarget) setManualText(arg string) {
 	if val, ok := v.v.(interface{ SetManualText(string) }); ok {
 		val.SetManualText(arg)
+	}
+}
+
+func (v *valueTarget) setUsageText(arg string) {
+	if val, ok := v.v.(interface{ SetUsageText(string) }); ok {
+		val.SetUsageText(arg)
 	}
 }
 

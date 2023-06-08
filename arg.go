@@ -382,6 +382,10 @@ func (a *Arg) setHelpText(value string) {
 	a.HelpText = value
 }
 
+func (a *Arg) setUsageText(s string) {
+	a.UsageText = s
+}
+
 func (a *Arg) setCompletion(c Completion) {
 	a.Completion = c
 }

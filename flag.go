@@ -334,6 +334,10 @@ func (f *Flag) setHelpText(name string) {
 	f.HelpText = name
 }
 
+func (f *Flag) setUsageText(s string) {
+	f.UsageText = s
+}
+
 func (f *Flag) setManualText(name string) {
 	f.ManualText = name
 }
