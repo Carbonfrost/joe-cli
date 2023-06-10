@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -138,6 +139,10 @@ type valueContext struct {
 	lookup BindingLookup
 }
 
+type jsonValue struct {
+	V any
+}
+
 // Bool creates a bool value.  This is for convenience to obtain the right pointer.
 func Bool() *bool {
 	return new(bool)
@@ -268,6 +273,16 @@ func NameValues(namevalue ...string) *[]*NameValue {
 		})
 	}
 	return &res
+}
+
+// JSON wraps a pointer to a value which will be marshalled from files as JSON.
+// The value can't be used directly from the command line unless it also implements
+// Value.Set or ValueReader.SetData, which the value must define.  Using JSON from
+// the command line would be cumbersome.
+func JSON(v any) flag.Getter {
+	return &jsonValue{
+		V: v,
+	}
 }
 
 var (
@@ -651,6 +666,42 @@ func (h Hex) String() string {
 	return fmt.Sprintf("0x%X", int(h))
 }
 
+func (j *jsonValue) Set(s string) error {
+	if j.supportsIntrinsicSet() {
+		return Set(j.V, s)
+	}
+	return fmt.Errorf("can't set value directly; must read from file")
+}
+
+func (j *jsonValue) SetData(r io.Reader) error {
+	return json.NewDecoder(r).Decode(j.V)
+}
+
+func (j *jsonValue) Get() any {
+	return j.V
+}
+
+func (j *jsonValue) String() string {
+	if j.supportsIntrinsicSet() {
+		return Quote(j.V)
+	}
+	return ""
+}
+
+func (j *jsonValue) supportsIntrinsicSet() bool {
+	switch j.V.(type) {
+	// Supported flag types
+	case Value,
+		*bool, *string, *[]string, *[]byte, *map[string]string, *[]*NameValue,
+		*int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64,
+		*float32, *float64,
+		*time.Duration, **url.URL, *net.IP, **regexp.Regexp, **big.Int, **big.Float,
+		encoding.TextUnmarshaler:
+		return true
+	}
+	return false
+}
+
 func (v *NameValue) Reset() {
 	// Don't reset AllowFileReference because it is configuration
 	v.Name = ""
@@ -1019,4 +1070,5 @@ var (
 	_ internalCommandContext   = (*valueContext)(nil)
 	_ encoding.TextUnmarshaler = (*Octal)(nil)
 	_ encoding.TextUnmarshaler = (*Hex)(nil)
+	_ ValueReader              = (*jsonValue)(nil)
 )

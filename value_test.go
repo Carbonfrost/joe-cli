@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"context"
 	"encoding"
 	"flag"
@@ -541,6 +542,66 @@ var _ = Describe("Value", func() {
 	})
 })
 
+var _ = Describe("JSON", func() {
+
+	Describe("Set", func() {
+		It("delegates to the internal value", func() {
+			var data []byte
+			actual := cli.JSON(&data)
+			err := actual.Set("CECE")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(Equal([]byte{0xCE, 0xCE}))
+		})
+
+		It("returns an error for values that can't process JSON", func() {
+			var data struct{}
+			actual := cli.JSON(&data)
+
+			err := actual.Set("OK")
+			Expect(err).To(MatchError("can't set value directly; must read from file"))
+		})
+	})
+
+	Describe("String", func() {
+		It("delegates to the internal value", func() {
+			data := "cli"
+			actual := cli.JSON(&data).String()
+			Expect(actual).To(Equal("cli"))
+		})
+
+		It("returns empty string for values that can't process JSON", func() {
+			var data struct{}
+			actual := cli.JSON(&data).String()
+			Expect(actual).To(BeEmpty())
+		})
+	})
+
+	Describe("SetData", func() {
+		DescribeTable("examples", func(data string, expectedErr, expected types.GomegaMatcher) {
+			var actual pogo
+			value := cli.JSON(&actual)
+			err := cli.SetData(value, bytes.NewReader([]byte(data)))
+			Expect(err).To(expectedErr)
+			Expect(actual).To(expected)
+			Expect(&actual).To(Equal(value.Get()))
+		},
+			Entry(
+				"nominal",
+				`{"j": "first", "k": 20}`,
+				Not(HaveOccurred()),
+				Equal(pogo{J: "first", K: 20}),
+			),
+			Entry(
+				"nominal",
+				`"invalid JSON"`,
+				HaveOccurred(),
+				BeZero(),
+			),
+		)
+	})
+
+})
+
 var _ = Describe("ByteLength", func() {
 
 	Describe("ParseByteLength", func() {
@@ -842,6 +903,11 @@ func unwrap[V any](v V, _ any) V {
 
 func addr[V any](v V) *V {
 	return &v
+}
+
+type pogo struct {
+	J string `json:"j"`
+	K int    `json:"k"`
 }
 
 type customValue struct {
