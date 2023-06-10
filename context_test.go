@@ -128,6 +128,7 @@ var _ = Describe("Context", func() {
 			Expect(capturedContext.BindingLookup().BindingNames()).To(Equal([]string{"a"}))
 		})
 	})
+
 	Describe("Raw", func() {
 		It("contains flag value at the app level", func() {
 			act := new(joeclifakes.FakeAction)
@@ -170,6 +171,7 @@ var _ = Describe("Context", func() {
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"-f", "dom"}))
+			Expect(capturedContext.RawOccurrences("f")).To(Equal([]string{"dom"}))
 		})
 
 		It("contains flag value from self context", func() {
@@ -189,6 +191,29 @@ var _ = Describe("Context", func() {
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("")).To(Equal([]string{"-f", "sub"}))
+			Expect(capturedContext.RawOccurrences("")).To(Equal([]string{"sub"}))
+		})
+
+		It("contains flag value from self context in Before", func() {
+			// Addresses a bug: For a flag with zero occurrences, make sure that
+			// RawOccurrences("") in the Before returns the correct value
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:   "e",
+						Value:  cli.String(),
+						Before: act,
+					},
+				},
+			}
+
+			args, _ := cli.Split("app")
+			_ = app.RunContext(context.TODO(), args)
+
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
+			Expect(capturedContext.Raw("")).To(Equal([]string{}))
+			Expect(capturedContext.RawOccurrences("")).To(Equal([]string{}))
 		})
 
 		DescribeTable("examples",
