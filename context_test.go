@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -695,7 +696,12 @@ var _ = Describe("Context", func() {
 
 		Context("when the app is unnamed", func() {
 
-			const nameComesFromProcess = "joe-cli.test"
+			var nameComesFromProcess = func() string {
+				if runtime.GOOS == "windows" {
+					return "joe-cli.test.exe"
+				}
+				return "joe-cli.test"
+			}()
 
 			DescribeTable("examples", func(v Fields) {
 				actual := new(struct {
