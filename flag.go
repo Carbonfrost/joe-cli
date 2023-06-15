@@ -171,9 +171,6 @@ type option interface {
 	name() string
 	envVars() []string
 	filePath() string
-	helpText() string
-	manualText() string
-	usageText() string
 	category() string
 	setTransform(fn TransformFunc)
 }
@@ -464,13 +461,13 @@ func (o *wrapLookupContext) Name() string {
 	return o.actual.Name
 }
 
-func getValueSynopsis(o option) *valueSynopsis {
-	usage := parseUsage(o.helpText())
+func getValueSynopsis(f *Flag) *valueSynopsis {
+	usage := parseUsage(f.HelpText)
 	placeholders := strings.Join(usage.Placeholders(), " ")
 
-	if o.usageText() != "" {
+	if f.UsageText != "" {
 		return &valueSynopsis{
-			Placeholder: o.usageText(),
+			Placeholder: f.UsageText,
 			helpText:    usage.WithoutPlaceholders(),
 			usage:       usage,
 		}
@@ -484,7 +481,7 @@ func getValueSynopsis(o option) *valueSynopsis {
 		}
 	}
 	return &valueSynopsis{
-		Placeholder: placeholder(o.value()),
+		Placeholder: placeholder(f.value()),
 		helpText:    usage.WithoutPlaceholders(),
 		usage:       usage,
 	}
@@ -641,18 +638,6 @@ func (f *Flag) value() interface{} {
 
 func (f *Flag) category() string {
 	return f.Category
-}
-
-func (f *Flag) helpText() string {
-	return f.HelpText
-}
-
-func (f *Flag) manualText() string {
-	return f.ManualText
-}
-
-func (f *Flag) usageText() string {
-	return f.UsageText
 }
 
 func (f FlagsByName) Len() int {

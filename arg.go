@@ -336,18 +336,6 @@ func (a *Arg) category() string {
 	return a.Category
 }
 
-func (a *Arg) helpText() string {
-	return a.HelpText
-}
-
-func (a *Arg) manualText() string {
-	return a.ManualText
-}
-
-func (a *Arg) usageText() string {
-	return a.UsageText
-}
-
 func (a *Arg) value() interface{} {
 	_, multi := aboutArgCounter(a.NArg)
 	a.Value = ensureDestination(a, a.Value, multi)

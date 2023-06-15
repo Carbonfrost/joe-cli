@@ -744,6 +744,11 @@ var _ = Describe("Flag", func() {
 			cli.Description("abc"),
 			MatchFields(IgnoreExtras, Fields{"Description": Equal("abc")}),
 		),
+		Entry(
+			"SetCompletion",
+			cli.SetCompletion(cli.CompletionValues("ok")),
+			MatchFields(IgnoreExtras, Fields{"Completion": Not(BeNil())}),
+		),
 	)
 })
 

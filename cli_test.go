@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/url"
@@ -431,6 +432,22 @@ var _ = Describe("ReadString", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("stdin not tty"))
 	})
+
+	It("propogates inner reader error", func() {
+		app := &cli.App{
+			Name:   "any",
+			Stdout: io.Discard,
+			Stdin:  new(fakeFD),
+			Action: func(c *cli.Context) error {
+				_, err := c.ReadString("")
+				return err
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("inner reader error"))
+	})
 })
 
 type fakeMarshal struct{}
@@ -445,4 +462,11 @@ type fakeFD struct {
 
 func (*fakeFD) Fd() uintptr {
 	return 0
+}
+
+func (f *fakeFD) Read(p []byte) (n int, err error) {
+	if f.Reader == nil {
+		return 0, fmt.Errorf("inner reader error")
+	}
+	return f.Reader.Read(p)
 }
