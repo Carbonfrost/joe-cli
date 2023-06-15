@@ -972,7 +972,7 @@ func (o *internalOption) cloneZero() any {
 	}())
 }
 
-func dereference(v interface{}) interface{} {
+func dereference(v any) any {
 	if _, ok := v.(Value); ok {
 		if d, ok := v.(valueDereference); ok {
 			return d.Value()
@@ -980,6 +980,11 @@ func dereference(v interface{}) interface{} {
 		if d, ok := v.(flag.Getter); ok {
 			return d.Get()
 		}
+		return v
+	}
+	// Don't dereference built-in types twice
+	switch v.(type) {
+	case *url.URL, *regexp.Regexp, *big.Int, *big.Float:
 		return v
 	}
 

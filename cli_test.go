@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
+	"net/url"
+	"regexp"
 	"strings"
+	"time"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -25,12 +29,43 @@ type commanderValues struct {
 }
 
 var _ = Describe("Quote", func() {
-	DescribeTable("examples", func(in, out string) {
+	DescribeTable("examples", func(in any, out string) {
 		actual := cli.Quote(in)
 		Expect(actual).To(Equal(out))
 	},
-		Entry("b", "$'b", `'$'"'"'b'`),
-		Entry("empty", "", `''`),
+		Entry("string", "text", `text`),
+		Entry("escape string", "$'b", `'$'"'"'b'`),
+		Entry("empty string", "", `''`),
+
+		Entry("nil", nil, ""),
+		Entry("bool", true, "true"),
+		Entry("float32", float32(2.2), "2.2"),
+		Entry("float64", float64(2.2), "2.2"),
+		Entry("int", int(16), "16"),
+		Entry("int16", int16(16), "16"),
+		Entry("int32", int32(16), "16"),
+		Entry("int64", int64(16), "16"),
+		Entry("int8", int8(16), "16"),
+		Entry("list", []string{"text,plus"}, "text,plus"),
+		Entry("map", map[string]string{"key": "value"}, "key=value"),
+		Entry("uint", uint(19), "19"),
+		Entry("uint16", uint16(19), "19"),
+		Entry("uint32", uint32(19), "19"),
+		Entry("uint64", uint64(19), "19"),
+		Entry("uint8", uint8(19), "19"),
+		Entry("bytes", []byte{0xCE, 0xC3}, "cec3"),
+		Entry("Value", cli.Octal(0o20), "0o20"),
+		Entry("NameValues", cli.NameValues("key", "on"), "key=on"),
+		Entry("Duration", 250*time.Second, "4m10s"),
+		Entry("URL", unwrap(url.Parse("https://localhost")), "https://localhost"),
+		Entry("URL ptr", addr(unwrap(url.Parse("https://localhost"))), "https://localhost"),
+		Entry("Regexp", regexp.MustCompile("blc"), "blc"),
+		Entry("Regexp ptr", addr(regexp.MustCompile("blc")), "blc"),
+		Entry("IP", net.ParseIP("127.0.0.1"), "127.0.0.1"),
+		Entry("IP ptr", addr(net.ParseIP("127.0.0.1")), "127.0.0.1"),
+		Entry("big.Float", parseBigFloat("201.12"), "201.12"),
+		Entry("big.Int", parseBigInt("200"), "200"),
+		Entry("text marshal", new(fakeMarshal), "fake"),
 	)
 })
 
@@ -397,6 +432,12 @@ var _ = Describe("ReadString", func() {
 		Expect(err).To(MatchError("stdin not tty"))
 	})
 })
+
+type fakeMarshal struct{}
+
+func (*fakeMarshal) MarshalText() ([]byte, error) {
+	return []byte("fake"), nil
+}
 
 type fakeFD struct {
 	io.Reader

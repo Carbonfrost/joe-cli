@@ -19,7 +19,13 @@ package cli
 
 import (
 	"bufio"
+	"encoding"
+	"encoding/hex"
+	"fmt"
 	"io"
+	"math/big"
+	"net"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -44,16 +50,54 @@ func Join(args []string) string {
 	return strings.Join(quoted, " ")
 }
 
-// Quote uses shell escaping rules if necessary to quote the string
-func Quote(s string) string {
-	if s == "" {
-		return "''"
-	}
-	if !unsafeShlexChars.Match([]byte(s)) {
-		return s
+// Quote uses shell escaping rules if necessary to quote a value
+func Quote(v any) string {
+	switch p := v.(type) {
+	case nil:
+		return ""
+	case fmt.Stringer: // includes Value
+		return p.String()
+	case encoding.TextMarshaler:
+		s, _ := p.MarshalText()
+		return string(s)
 	}
 
-	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	v = dereference(v)
+
+	switch s := v.(type) {
+	case string:
+		if s == "" {
+			return "''"
+		}
+		if !unsafeShlexChars.Match([]byte(s)) {
+			return s
+		}
+
+		return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	case []string:
+		return strings.Join(s, ",")
+	case []byte:
+		return hex.EncodeToString(s)
+	case map[string]string:
+		return support.FormatMap(s, ",")
+	case []*NameValue:
+		val := make([]string, len(s))
+		for i, nvp := range s {
+			val[i] = nvp.String()
+		}
+		return strings.Join(val, ",")
+
+	case bool:
+	case int, int8, int16, int32, int64:
+	case uint, uint8, uint16, uint32, uint64:
+	case float32, float64:
+	case *url.URL:
+	case net.IP:
+	case *regexp.Regexp:
+	case *big.Int, *big.Float:
+		// These all support fmt.Sprint below
+	}
+	return fmt.Sprint(v)
 }
 
 // SplitList considers escape sequences when splitting.  sep must not
