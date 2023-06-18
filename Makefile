@@ -26,9 +26,9 @@ lint:
 	$(Q) go run honnef.co/go/tools/cmd/staticcheck -checks 'all,-ST*' $(shell go list ./...)
 
 examples:
-	$(Q) go build -o . ./examples/joegit
-	$(Q) go build -o . ./examples/joefind
-	$(Q) go build -o . ./examples/joeopen
+	$(Q) go build -o . ./_examples/joegit
+	$(Q) go build -o . ./_examples/joefind
+	$(Q) go build -o . ./_examples/joeopen
 
 install: -install-joe
 
