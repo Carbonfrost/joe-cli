@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -38,8 +39,20 @@ var _ = Describe("Option", func() {
 			Entry("AllowFileReference", cli.AllowFileReference, "ALLOW_FILE_REFERENCE"),
 			Entry("SortedCommands", cli.SortedCommands, "SORTED_COMMANDS"),
 			Entry("SortedFlags", cli.SortedFlags, "SORTED_FLAGS"),
+			Entry("ImpliedAction", cli.ImpliedAction, "IMPLIED_ACTION"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
+
+		Describe("supports all values for Option", func() {
+			for o := 1; o < int(cli.MaxOption); o <<= 1 {
+				opt := cli.Option(o)
+				It("value "+strconv.Itoa(o), func() {
+					actual, err := json.Marshal(opt)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(actual)).To(MatchRegexp(`"[A-Z_]+"`))
+				})
+			}
+		})
 	})
 })
 

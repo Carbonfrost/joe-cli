@@ -8,6 +8,8 @@ import (
 
 // Expose some members for testing
 
+const MaxOption = maxOption
+
 // Provides the logic of os.Exit for tests
 func SetOSExit(fn func(int)) {
 	osExit = fn
