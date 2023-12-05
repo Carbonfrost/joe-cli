@@ -816,7 +816,7 @@ func HelpText(s string) Action {
 	})
 }
 
-// Usage sets the help text for the current target
+// UsageText sets the help text for the current target
 func UsageText(s string) Action {
 	return ActionFunc(func(c *Context) error {
 		return c.SetUsageText(s)
@@ -895,7 +895,7 @@ func HandleSignal(s ...os.Signal) Action {
 //	&Flag {
 //	  Name: "secure",
 //	  Value: cli.String(),
-//	  Uses: cli.Optional("TLS1.2"),
+//	  Uses: cli.OptionalValue("TLS1.2"),
 //	}
 //
 // This example implies that --secure without a value is set to the value TLS1.2 (presumably other versions

@@ -117,11 +117,20 @@ type Arg struct {
 
 //counterfeiter:generate . ArgCounter
 
-// ArgCounter provides the behavior of counting
+// ArgCounter provides the behavior of counting the values that
+// are specified to an Arg.  The method Take is called repeatedly
+// to process each occurrence of a value until the special error
+// EndOfArguments is returned.  The method Done is used
+// to finalize the counting operation.
 type ArgCounter interface {
-	// Take considers the argument and and returns whether it can be used.
-	// If the error EndOfArguments is returned, then the arg counter is done with
-	// taking arguments.  All other errors are treated as fatal.
+	// Take considers the argument and determines whether it can be used.
+	// If the special error value EndOfArguments is returned, then the
+	// value is not consumed and the counting operation stops.
+	// Other errors are treated as parse errors.  When possibleFlag is
+	// set, it signals that the argument could be a flag in such cases
+	// that flags and args are interspersed on the command line.  When this is
+	// set to true, you may prefer to stop parsing and let the next argument be
+	// parsed as a flag.
 	Take(arg string, possibleFlag bool) error
 
 	// Done is invoked to signal the end of arguments

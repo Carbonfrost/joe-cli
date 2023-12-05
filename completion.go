@@ -211,8 +211,10 @@ func setupRobustParsingMode(c *Context) {
 	c.SetData(robustParseModeEnabledKey, true)
 }
 
-// CompletionValues provides a static list of completion values.  This can be
-// specified as the Completion for flags or args.
+// CompletionValues provides the context-specific completion values for
+// the given strings.  This can be specified as the Completion for flags
+// or args.  For flags, the name of the flag is automatically
+// prefixed to the completion value using valid syntax.
 func CompletionValues(values ...string) Completion {
 	return CompletionFunc(func(c *CompletionContext) []CompletionItem {
 		switch o := c.Context.Target().(type) {
