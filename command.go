@@ -313,8 +313,8 @@ func (c *Command) VisibleArgs() []*Arg {
 
 // VisibleFlags filters all flags in the command by whether they are not hidden
 func (c *Command) VisibleFlags() []*Flag {
-	res := make([]*Flag, 0, len(c.actualFlags()))
-	for _, o := range c.actualFlags() {
+	res := make([]*Flag, 0, len(c.Flags))
+	for _, o := range c.Flags {
 		if o.internalFlags().hidden() {
 			continue
 		}
@@ -348,7 +348,7 @@ func (c *Command) Use(actions ...Action) *Command {
 
 func (c *Command) buildSet(ctx *Context) *set {
 	set := ctx.internal.(*commandContext).flagSet
-	set.withFlags(c.actualFlags())
+	set.withFlags(c.Flags)
 
 	if ctx.Parent() != nil {
 		set.withParentFlags(ctx.Parent().Flags())
@@ -502,10 +502,6 @@ func findSolitaryMatch(cc *CompletionContext) []CompletionItem {
 	}
 }
 
-func (c *Command) actualFlags() []*Flag {
-	return c.Flags
-}
-
 func (c *Command) newSynopsis() *commandSynopsis {
 	groups := map[optionGroup][]*flagSynopsis{
 		onlyShortNoValue:         {},
@@ -517,7 +513,7 @@ func (c *Command) newSynopsis() *commandSynopsis {
 		other:                    {},
 	}
 	args := make([]*argSynopsis, 0)
-	for _, f := range c.actualFlags() {
+	for _, f := range c.Flags {
 		group := getGroup(f)
 		groups[group] = append(groups[group], f.synopsis())
 	}

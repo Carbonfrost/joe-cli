@@ -413,7 +413,7 @@ func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
 			name = c.Name()
 		}
 		if aa, ok := c.target().(*Command); ok {
-			if f, _, found := findFlagByName(aa.actualFlags(), v); found {
+			if f, _, found := findFlagByName(aa.Flags, v); found {
 				return f, true
 			}
 		}
