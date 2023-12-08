@@ -133,12 +133,17 @@ type target interface {
 	options() *Option
 	pipeline(Timing) interface{}
 	appendAction(Timing, Action)
-	setDescription(interface{})
+	setDescription(any)
 	setHelpText(string)
 	setUsageText(string)
 	setManualText(string)
 	setCategory(name string)
 	setCompletion(Completion)
+	description() any
+	helpText() string
+	usageText() string
+	manualText() string
+	category() string
 	setInternalFlags(internalFlags, bool)
 	internalFlags() internalFlags
 	completion() Completion
@@ -530,17 +535,13 @@ func ActionOf(item interface{}) Action {
 
 // ContextValue provides an action which updates the context with a
 // value.
-func ContextValue(key, value interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetContext(context.WithValue(c.Context(), key, value))
-	})
+func ContextValue(key, value any) Action {
+	return actionThunk2((*Context).SetContextValue, key, value)
 }
 
 // SetContext provides an action which sets the context
 func SetContext(ctx context.Context) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetContext(ctx)
-	})
+	return actionThunk1((*Context).SetContext, ctx)
 }
 
 // Timeout provides an action which adds a timeout to the context.
@@ -559,9 +560,7 @@ func Timeout(timeout time.Duration) Action {
 
 // SetValue provides an action which sets the value of the flag or argument.
 func SetValue(v any) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetValue(v)
-	})
+	return actionThunk1((*Context).SetValue, v)
 }
 
 // Bind invokes a function, either using the value specified or the value read from
@@ -770,32 +769,19 @@ func Mutex(names ...string) Action {
 // set up inside a Uses pipeline.
 // When value is nil, the corresponding
 // metadata is deleted
-func Data(name string, value interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		c.SetData(name, value)
-		return nil
-	})
+func Data(name string, value any) Action {
+	return actionThunk2((*Context).SetData, name, value)
 }
 
 // Category sets the category of a command, flag, or expression.  This handler is generally
 // set up inside a Uses pipeline.
 func Category(name string) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetCategory(name)
-	})
+	return actionThunk1((*Context).SetCategory, name)
 }
 
 // Alias sets the given alias on the flag or command.  For args, the action is ignored
 func Alias(a ...string) Action {
-	return ActionFunc(func(c *Context) error {
-		switch t := c.Target().(type) {
-		case *Command:
-			t.Aliases = append(t.Aliases, a...)
-		case *Flag:
-			t.Aliases = append(t.Aliases, a...)
-		}
-		return nil
-	})
+	return actionThunkVar1((*Context).AddAlias, a)
 }
 
 // Description sets the description of a command, flag, or expression.  This handler is generally
@@ -803,54 +789,40 @@ func Alias(a ...string) Action {
 // Consider implementing a custom Stringer value that defers calculation of the description if the
 // description is expensive to calculate.  One convenient implementation is from Template.Bind or
 // Template.BindFunc.
-func Description(v interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetDescription(v)
-	})
+func Description(v any) Action {
+	return actionThunk1((*Context).SetDescription, v)
 }
 
 // HelpText sets the help text for the current target
 func HelpText(s string) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetHelpText(s)
-	})
+	return actionThunk1((*Context).SetHelpText, s)
 }
 
 // UsageText sets the help text for the current target
 func UsageText(s string) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetUsageText(s)
-	})
+	return actionThunk1((*Context).SetUsageText, s)
 }
 
 // ManualText sets the manual text of a command, flag, arg, or expression.
-func ManualText(v string) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.SetManualText(v)
-	})
+func ManualText(s string) Action {
+	return actionThunk1((*Context).SetManualText, s)
 }
 
 // Hook registers a hook that runs for any context in the given timing.
 func Hook(timing Timing, handler Action) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.Hook(timing, handler)
-	})
+	return actionThunk2((*Context).Hook, timing, handler)
 }
 
 // HookBefore registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func HookBefore(pattern string, handler Action) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.HookBefore(pattern, handler)
-	})
+	return actionThunk2((*Context).HookBefore, pattern, handler)
 }
 
 // HookAfter registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func HookAfter(pattern string, handler Action) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.HookAfter(pattern, handler)
-	})
+	return actionThunk2((*Context).HookAfter, pattern, handler)
 }
 
 // HandleSignal provides an action that provides simple handling of a signal, usually os.Interrupt.
@@ -905,86 +877,63 @@ func HandleSignal(s ...os.Signal) Action {
 // specify a String to the -s option).
 // In general, making the value of a non-Boolean flag optional is not recommended when
 // the command also allows arguments because it can make the syntax ambiguous.
-func OptionalValue(v interface{}) Action {
-	return Initializer(ActionFunc(func(c *Context) error {
-		c.Flag().setOptionalValue(v)
-		return nil
-	}))
+func OptionalValue(v any) Action {
+	return actionThunk1((*Context).SetOptionalValue, v)
 }
 
 // ProvideValueInitializer causes an additional child context to be created
 // which is used to initialize an arbitrary value.  For more information,
 // refer to the implementation provided by Context.ProvideValueInitializer.
-func ProvideValueInitializer(v interface{}, name string, a Action) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.ProvideValueInitializer(v, name, a)
-	})
+func ProvideValueInitializer(v any, name string, a Action) Action {
+	return actionThunk3((*Context).ProvideValueInitializer, v, name, a)
 }
 
 // AddFlag provides an action which adds a flag to the command or app
 func AddFlag(f *Flag) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddFlag(f)
-	})
+	return actionThunk1((*Context).AddFlag, f)
 }
 
 // AddCommand provides an action which adds a sub-command to the command or app
-func AddCommand(v *Command) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddCommand(v)
-	})
+func AddCommand(c *Command) Action {
+	return actionThunk1((*Context).AddCommand, c)
 }
 
 // AddArg provides an action which adds an arg to the command or app
 func AddArg(a *Arg) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddArg(a)
-	})
+	return actionThunk1((*Context).AddArg, a)
 }
 
 // RemoveArg provides an action which removes an arg from the command or app.
 // The name specifies the name, index, or arg itself
-func RemoveArg(name interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.RemoveArg(name)
-	})
+func RemoveArg(name any) Action {
+	return actionThunk1((*Context).RemoveArg, name)
 }
 
 // RemoveFlag provides an action which removes a flag from the command or app.
 // The name specifies the name, index, or Flag itself
-func RemoveFlag(name interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.RemoveFlag(name)
-	})
+func RemoveFlag(name any) Action {
+	return actionThunk1((*Context).RemoveFlag, name)
 }
 
 // RemoveCommand provides an action which removes a Command from the command or app.
 // The name specifies the name, index, or Command itself
-func RemoveCommand(name interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.RemoveCommand(name)
-	})
+func RemoveCommand(name any) Action {
+	return actionThunk1((*Context).RemoveCommand, name)
 }
 
 // AddFlags provides an action which adds the specified flags to the command
 func AddFlags(flags ...*Flag) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddFlags(flags...)
-	})
+	return actionThunkVar1((*Context).AddFlags, flags)
 }
 
 // AddArgs provides an action which adds the specified args to the command
 func AddArgs(args ...*Arg) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddArgs(args...)
-	})
+	return actionThunkVar1((*Context).AddArgs, args)
 }
 
 // AddCommands provides an action which adds the specified commands to the command
 func AddCommands(commands ...*Command) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.AddCommands(commands...)
-	})
+	return actionThunkVar1((*Context).AddCommands, commands)
 }
 
 // FlagSetup action is used to apply set-up to a flag.  This is typically
@@ -1112,9 +1061,7 @@ func IfMatch(f ContextFilter, a Action) Action {
 // is usually used to apply further customization after an extension has done setup of
 // the defaults.
 func Customize(pattern string, a Action) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.Customize(pattern, a)
-	})
+	return actionThunk2((*Context).Customize, pattern, a)
 }
 
 // Transform defines how to interpret raw values passed to a flag or arg.  The action
@@ -1126,10 +1073,7 @@ func Customize(pattern string, a Action) Action {
 // usual Set method is used.  See also: FileReference and AllowFileReference, which provide
 // common transforms.
 func Transform(fn TransformFunc) Action {
-	return ActionFunc(func(c *Context) error {
-		c.option().setTransform(fn)
-		return nil
-	})
+	return actionThunk1((*Context).SetTransform, fn)
 }
 
 // ValueTransform sets the transform that applies to the syntax of the value in
@@ -1636,6 +1580,32 @@ func actions(actions ...Action) ActionPipeline {
 
 func emptyActionImpl(*Context) error {
 	return nil
+}
+
+// actionThunk1 is a higher order function that takes an argument
+// and creates an Action by currying on the specified argument
+func actionThunk1[T any](fn func(*Context, T) error, arg T) ActionFunc {
+	return func(c *Context) error {
+		return fn(c, arg)
+	}
+}
+
+func actionThunkVar1[T any](fn func(*Context, ...T) error, t []T) Action {
+	return ActionFunc(func(c *Context) error {
+		return fn(c, t...)
+	})
+}
+
+func actionThunk2[T, U any](fn func(*Context, T, U) error, arg1 T, arg2 U) Action {
+	return ActionFunc(func(c *Context) error {
+		return fn(c, arg1, arg2)
+	})
+}
+
+func actionThunk3[T, U, V any](fn func(*Context, T, U, V) error, arg1 T, arg2 U, arg3 V) Action {
+	return ActionFunc(func(c *Context) error {
+		return fn(c, arg1, arg2, arg3)
+	})
 }
 
 func execute(c context.Context, af Action) error {

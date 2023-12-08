@@ -204,6 +204,11 @@ func (c *Context) SetContext(ctx context.Context) error {
 	return nil
 }
 
+// SetContextValue updates the context with a value.
+func (c *Context) SetContextValue(key, value any) error {
+	return c.SetContext(context.WithValue(c.Context(), key, value))
+}
+
 // Parent obtains the parent context or nil if the root context
 func (c *Context) Parent() *Context {
 	if c == nil {
@@ -618,14 +623,78 @@ func (c *Context) LookupData(name string) (interface{}, bool) {
 	return c.Parent().LookupData(name)
 }
 
+// AddAlias adds one or more aliases to the current command or flag.
+// For other targets, this operation is ignored.  An error is returned
+// if this is called after initialization.
+func (c *Context) AddAlias(aliases ...string) error {
+	err := c.requireInit()
+	if err != nil {
+		return err
+	}
+	switch t := c.Target().(type) {
+	case *Command:
+		t.Aliases = append(t.Aliases, aliases...)
+	case *Flag:
+		t.Aliases = append(t.Aliases, aliases...)
+	}
+	return nil
+}
+
+// SetTransform sets the transform for the current flag or arg.
+// For other targets, this operation is ignored.  An error is returned
+// if this is called after initialization.
+func (c *Context) SetTransform(fn TransformFunc) error {
+	err := c.requireInit()
+	if err != nil {
+		return err
+	}
+	if option, ok := c.target().(option); ok {
+		option.setTransform(fn)
+	}
+
+	return nil
+}
+
 // Data obtains the data for the current target.  This could be a nil map.
 func (c *Context) Data() map[string]any {
 	return c.target().data()
 }
 
-// SetData sets data on the current target
-func (c *Context) SetData(name string, v interface{}) {
+// Category obtains the category for the current target.
+func (c *Context) Category() string {
+	return c.target().category()
+}
+
+// Description obtains the description for the current target.
+func (c *Context) Description() any {
+	return c.target().description()
+}
+
+// HelpText obtains the helpText for the current target.
+func (c *Context) HelpText() string {
+	return c.target().helpText()
+}
+
+// UsageText obtains the usageText for the current target.
+func (c *Context) UsageText() string {
+	return c.target().usageText()
+}
+
+// ManualText obtains the manualText for the current target.
+func (c *Context) ManualText() string {
+	return c.target().manualText()
+}
+
+// Completion obtains the completion for the current target.
+func (c *Context) Completion() Completion {
+	return c.target().completion()
+}
+
+// SetData sets data on the current target.  Despite the return value,
+// this method never returns an error.
+func (c *Context) SetData(name string, v interface{}) error {
 	c.target().SetData(name, v)
+	return nil
 }
 
 func (c *Context) nameToString(name interface{}) string {
@@ -637,6 +706,16 @@ func (c *Context) nameToString(name interface{}) string {
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
+}
+
+// SetOptionalValue sets the optional value for the flag
+func (c *Context) SetOptionalValue(v any) error {
+	err := c.requireInit()
+	if err != nil {
+		return err
+	}
+	c.Flag().setOptionalValue(v)
+	return nil
 }
 
 // SetCategory sets the category on the current target
@@ -651,7 +730,7 @@ func (c *Context) SetDescription(v interface{}) error {
 	return nil
 }
 
-// SetHelpText sets the helpTexgt  on the current target
+// SetHelpText sets the help text on the current target
 func (c *Context) SetHelpText(s string) error {
 	c.target().setHelpText(s)
 	return nil
@@ -1283,6 +1362,13 @@ func (c *Context) initialize() error {
 	)
 }
 
+func (c *Context) requireInit() error {
+	if !c.IsInitializing() {
+		return ErrTimingTooLate
+	}
+	return nil
+}
+
 func (c *Context) copy(t internalContext) *Context {
 	return &Context{
 		ref:           c.ref,
@@ -1414,6 +1500,26 @@ func (v *valueTarget) setCompletion(c Completion) {
 	if val, ok := v.v.(interface{ SetCompletion(Completion) }); ok {
 		val.SetCompletion(c)
 	}
+}
+
+func (v *valueTarget) description() any {
+	return nil
+}
+
+func (v *valueTarget) helpText() string {
+	return ""
+}
+
+func (v *valueTarget) usageText() string {
+	return ""
+}
+
+func (v *valueTarget) manualText() string {
+	return ""
+}
+
+func (v *valueTarget) category() string {
+	return ""
 }
 
 func (v *valueTarget) data() map[string]any {

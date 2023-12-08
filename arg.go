@@ -367,7 +367,7 @@ func (a *Arg) setCategory(name string) {
 	a.Category = name
 }
 
-func (a *Arg) setDescription(value interface{}) {
+func (a *Arg) setDescription(value any) {
 	a.Description = value
 }
 
@@ -389,6 +389,22 @@ func (a *Arg) setCompletion(c Completion) {
 
 func (a *Arg) data() map[string]any {
 	return a.Data
+}
+
+func (a *Arg) description() any {
+	return a.Description
+}
+
+func (a *Arg) helpText() string {
+	return a.HelpText
+}
+
+func (a *Arg) usageText() string {
+	return a.UsageText
+}
+
+func (a *Arg) manualText() string {
+	return a.ManualText
 }
 
 func (a *Arg) pipeline(t Timing) interface{} {

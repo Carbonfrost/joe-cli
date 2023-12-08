@@ -597,6 +597,26 @@ func (c *Command) setCompletion(cv Completion) {
 	c.Completion = cv
 }
 
+func (c *Command) description() any {
+	return c.Description
+}
+
+func (c *Command) helpText() string {
+	return c.HelpText
+}
+
+func (c *Command) usageText() string {
+	return c.UsageText
+}
+
+func (c *Command) manualText() string {
+	return c.ManualText
+}
+
+func (c *Command) category() string {
+	return c.Category
+}
+
 func (c *Command) data() map[string]any {
 	return c.Data
 }

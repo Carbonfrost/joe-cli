@@ -457,7 +457,7 @@ var _ = Describe("timings", func() {
 			})
 
 			It("can set data", func() {
-				Expect(captured.Command().Data).To(HaveKeyWithValue("ok", "money"))
+				Expect(captured.Data()).To(HaveKeyWithValue("ok", "money"))
 			})
 		})
 
@@ -467,7 +467,7 @@ var _ = Describe("timings", func() {
 			})
 
 			It("can set category", func() {
-				Expect(captured.Command().Category).To(Equal("bags"))
+				Expect(captured.Category()).To(Equal("bags"))
 			})
 		})
 	})

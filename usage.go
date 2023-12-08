@@ -276,25 +276,17 @@ func defaultData(c *Context) interface{} {
 // RenderTemplate provides an action that renders the specified template using the factory function that
 // creates the data that is passed to the template
 func RenderTemplate(name string, data func(*Context) interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		return c.RenderTemplate(name, data)
-	})
+	return actionThunk2((*Context).RenderTemplate, name, data)
 }
 
 // RegisterTemplate will register the specified template by name.
 func RegisterTemplate(name string, template string) Action {
-	return ActionFunc(func(c *Context) error {
-		c.RegisterTemplate(name, template)
-		return nil
-	})
+	return actionThunk2((*Context).RegisterTemplate, name, template)
 }
 
 // RegisterTemplateFunc will register the specified function for use in template rendering.
 func RegisterTemplateFunc(name string, fn interface{}) Action {
-	return ActionFunc(func(c *Context) error {
-		c.RegisterTemplateFunc(name, fn)
-		return nil
-	})
+	return actionThunk2((*Context).RegisterTemplateFunc, name, fn)
 }
 
 // RenderTemplate provides an action that renders the specified template using the factory function that
@@ -331,8 +323,11 @@ func (c *Context) RegisterTemplate(name string, tpl string) error {
 }
 
 // RegisterTemplateFunc will register the specified function for use in template rendering.
-func (c *Context) RegisterTemplateFunc(name string, fn interface{}) {
+// Templates are stored globally at the application level.
+// Though part of its signature, this function never returns an error.
+func (c *Context) RegisterTemplateFunc(name string, fn any) error {
 	c.root().ensureTemplateFuncs()[name] = fn
+	return nil
 }
 
 // Wrap wraps the given text using a maximum line width and indentation.

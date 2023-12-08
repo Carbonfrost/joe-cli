@@ -171,7 +171,6 @@ type option interface {
 	name() string
 	envVars() []string
 	filePath() string
-	category() string
 	setTransform(fn TransformFunc)
 }
 
@@ -349,6 +348,22 @@ func (f *Flag) setCompletion(c Completion) {
 
 func (f *Flag) data() map[string]any {
 	return f.Data
+}
+
+func (f *Flag) description() any {
+	return f.Description
+}
+
+func (f *Flag) helpText() string {
+	return f.HelpText
+}
+
+func (f *Flag) usageText() string {
+	return f.UsageText
+}
+
+func (f *Flag) manualText() string {
+	return f.ManualText
 }
 
 func (f *Flag) setOptional() {
