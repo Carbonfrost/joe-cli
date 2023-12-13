@@ -143,5 +143,10 @@ func ReadString(in io.Reader) (string, error) {
 	return "", errorNotTty
 }
 
+// Shell detects the shell which is running.
+func Shell() string {
+	return support.DetermineShell()
+}
+
 var unsafeShlexChars = regexp.MustCompile(`[^\w@%+=:,./-]`)
 var errorNotTty = Exit("stdin not tty")
