@@ -1,12 +1,10 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"text/template"
 )
@@ -91,51 +89,9 @@ type completionData struct {
 	ShellComplete    ShellComplete
 }
 
-type zshComplete struct {
-	noDesc bool
-}
-
 const (
 	robustParseModeEnabledKey = "__RobustParseModeEnabled"
 	shellCompletesKey         = "__ShellCompletes"
-
-	zshSourceScript = `
-
-#compdef {{ .App.Name }}
-{{ .CompletionFunc }}() {
-    local -a completions
-    local -a completions_with_descriptions
-    local -a response
-
-    (( ! $+commands[{{ .App.Name }}] )) && return 1
-
-    response=("${(@f)$(env COMP_WORDS="${words[*]}" COMP_CWORD=$((CURRENT-1)) \
-{{ .JoeCompletionVar }}=zsh {{ .App.Name }})}")
-    for type key descr no_space in ${response}; do
-        if [[ -n "$no_space" ]]; then
-            space="-S ''"
-        fi
-        if [[ "$type" == "plain" ]]; then
-            if [[ "$descr" == "_" ]]; then
-                completions+=("$key")
-            else
-                completions_with_descriptions+=("$key":"$descr")
-            fi
-        elif [[ "$type" == "dir" ]]; then
-            _path_files -/
-        elif [[ "$type" == "file" ]]; then
-            _path_files -f
-        fi
-    done
-    if [ -n "$completions_with_descriptions" ]; then
-        eval _describe -V unsorted completions_with_descriptions -U $space
-    fi
-    if [ -n "$completions" ]; then
-        compadd -U -V unsorted -a completions $space
-    fi
-}
-compdef {{ .CompletionFunc }} {{ .App.Name }};
-`
 )
 
 func newCompletionData(c *Context) *completionData {
@@ -199,7 +155,7 @@ func SetCompletion(c Completion) Action {
 
 func setupCompletion(c *Context) error {
 	return c.Do(AddFlags([]*Flag{
-		{Name: "zsh-completion", Uses: ShellCompleteIntegration("zsh", &zshComplete{})},
+		{Name: "zsh-completion", Uses: ShellCompleteIntegration("zsh", newZshComplete())},
 	}...),
 		ApplyShellCompletion(),
 	)
@@ -314,55 +270,6 @@ func (s StandardCompletion) Complete(c *CompletionContext) []CompletionItem {
 func (s StandardCompletion) Execute(ctx context.Context) error {
 	c := FromContext(ctx)
 	return c.Do(SetCompletion(s))
-}
-
-func (*zshComplete) GetCompletionRequest() (args []string, incomplete string) {
-	cwords, _ := Split(os.Getenv("COMP_WORDS"))
-	cword, _ := strconv.Atoi(os.Getenv("COMP_CWORD"))
-
-	if cword <= len(cwords) {
-		args = cwords[0:cword]
-	}
-	if cword < len(cwords) {
-		incomplete = cwords[cword]
-	}
-	return
-}
-
-func (z *zshComplete) SetOptions(opts map[string]string) {
-	z.noDesc, _ = parseBool(opts["no-description"])
-}
-
-func (z *zshComplete) FormatCompletions(items []CompletionItem) string {
-	var buf bytes.Buffer
-	for _, item := range items {
-		buf.WriteString(z.formatCompletion(item))
-	}
-	return buf.String()
-}
-
-func (z *zshComplete) formatCompletion(item CompletionItem) string {
-	itemDesc := item.HelpText
-	if itemDesc == "" {
-		itemDesc = "_"
-	}
-	itemType := "plain"
-	switch item.Type {
-	case FileCompletionType:
-		itemType = "file"
-	case DirectoryCompletionType:
-		itemType = "dir"
-	}
-	spaceAfter := "1"
-	if item.PreventSpaceAfter {
-		spaceAfter = ""
-	}
-
-	return fmt.Sprint(itemType, "\n", item.Value, "\n", itemDesc, "\n", spaceAfter, "\n")
-}
-
-func (*zshComplete) GetSourceTemplate() *Template {
-	return newSourceTemplate("zshSource", zshSourceScript)
 }
 
 func (c *CompletionContext) optionContext(opt option) *CompletionContext {
