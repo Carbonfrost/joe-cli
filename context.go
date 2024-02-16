@@ -1166,6 +1166,24 @@ func (c *Context) displayPrompt(prompt string, fn func(io.Reader) (string, error
 	return fn(c.Stdin)
 }
 
+// Print formats using the default formats for its operands and writes to
+// standard output using the behavior of fmt.Print.
+func (c *Context) Print(a ...any) (n int, err error) {
+	return fmt.Fprint(c.Stdout, a...)
+}
+
+// Println formats using the default formats for its operands and writes to
+// standard output using the behavior of fmt.Println
+func (c *Context) Println(a ...any) (n int, err error) {
+	return fmt.Fprintln(c.Stdout, a...)
+}
+
+// Printf formats according to a format specifier and writes to standard
+// output using the behavior of fmt.Printf
+func (c *Context) Printf(format string, a ...any) (n int, err error) {
+	return fmt.Fprintf(c.Stdout, format, a...)
+}
+
 func (c *Context) implicitTimingActive() bool {
 	_, ok := c.LookupData(implicitTimingEnabledKey)
 	return ok

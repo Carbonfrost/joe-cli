@@ -1236,6 +1236,33 @@ func expandEnvVarName(content, name string) string {
 	return buf.String()
 }
 
+// Print provides an action that formats using the default formats for its operands and writes to
+// standard output using the behavior of fmt.Print.
+func Print(a ...any) Action {
+	return ActionFunc(func(c *Context) error {
+		_, err := c.Print(a...)
+		return err
+	})
+}
+
+// Println provides an action that formats using the default formats for its operands and writes to
+// standard output using the behavior of fmt.Println
+func Println(a ...any) Action {
+	return ActionFunc(func(c *Context) error {
+		_, err := c.Println(a...)
+		return err
+	})
+}
+
+// Printf provides an action that formats according to a format specifier and writes to standard
+// output using the behavior of fmt.Printf
+func Printf(format string, a ...any) Action {
+	return ActionFunc(func(c *Context) error {
+		_, err := c.Printf(format, a...)
+		return err
+	})
+}
+
 func (t Timing) Matches(ctx context.Context) bool {
 	c := FromContext(ctx)
 	switch t {

@@ -862,7 +862,7 @@ func triggerRobustParsingAndCompletion(c *Context) error {
 
 		args, incomplete := comp.GetCompletionRequest()
 		items := c.Complete(args, incomplete)
-		c.Stdout.WriteString(comp.FormatCompletions(items))
+		c.Print(comp.FormatCompletions(items))
 		return Exit(0)
 	}
 	return nil
