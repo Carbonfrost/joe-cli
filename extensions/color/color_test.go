@@ -128,7 +128,7 @@ var _ = Describe("Templates", func() {
 					cli.SetColor(true),
 					cli.RegisterTemplate("custom", tpl),
 				),
-				Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
+				Action: cli.ExecuteTemplate("custom", func(_ *cli.Context) any {
 					return struct {
 						Data       string
 						Int        int
@@ -172,7 +172,7 @@ var _ = Describe("Templates", func() {
 					cli.SetColor(true),
 					cli.RegisterTemplate("custom", tpl),
 				),
-				Action: cli.RenderTemplate("custom", nil),
+				Action: cli.ExecuteTemplate("custom", nil),
 			}
 			err := errors.Unwrap(app.RunContext(context.Background(), []string{"app"}))
 			err = errors.Unwrap(err)
@@ -191,7 +191,7 @@ var _ = Describe("Templates", func() {
 				Before: cli.Pipeline(
 					cli.RegisterTemplate("custom", "{{ .Data | Bold }}"),
 				),
-				Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
+				Action: cli.ExecuteTemplate("custom", func(_ *cli.Context) any {
 					return struct{ Data string }{" BOLD TEXT "}
 				}),
 			}
@@ -210,7 +210,7 @@ var _ = Describe("Templates", func() {
 					cli.SetColor(true),
 					cli.RegisterTemplate("custom", tpl),
 				),
-				Action: cli.RenderTemplate("custom", nil),
+				Action: cli.ExecuteTemplate("custom", nil),
 			}
 			Expect(renderScreen(app, "app")).To(expected)
 		},
@@ -235,7 +235,7 @@ var _ = Describe("Templates", func() {
 					cli.SetColor(true),
 					cli.RegisterTemplate("custom", tpl),
 				),
-				Action: cli.RenderTemplate("custom", nil),
+				Action: cli.ExecuteTemplate("custom", nil),
 			}
 			err := errors.Unwrap(app.RunContext(context.Background(), []string{"app"}))
 			err = errors.Unwrap(err)
@@ -253,7 +253,7 @@ var _ = Describe("Templates", func() {
 					cli.SetColor(false),
 					cli.RegisterTemplate("custom", `->{{ Emoji "X" }}<-`),
 				),
-				Action: cli.RenderTemplate("custom", nil),
+				Action: cli.ExecuteTemplate("custom", nil),
 			}
 			Expect(renderScreen(app, "app")).To(Equal("-><-"))
 		})

@@ -251,7 +251,7 @@ func PrintVersion() Action {
 		HelpText: "Print the build version then exit",
 		Value:    Bool(),
 		Options:  Exits,
-	}, At(ActionTiming, RenderTemplate("Version", nil)))
+	}, At(ActionTiming, ExecuteTemplate("Version", nil)))
 }
 
 // PrintLicense displays the license.  The LicenseTemplate provides the Go template
@@ -260,7 +260,7 @@ func PrintLicense() Action {
 		Name:     "license",
 		HelpText: "Display the license and exit",
 		Options:  Exits,
-	}, At(ActionTiming, RenderTemplate("License", nil)))
+	}, At(ActionTiming, ExecuteTemplate("License", nil)))
 }
 
 func defaultData(c *Context) interface{} {
@@ -273,10 +273,10 @@ func defaultData(c *Context) interface{} {
 	}
 }
 
-// RenderTemplate provides an action that renders the specified template using the factory function that
+// ExecuteTemplate provides an action that renders the specified template using the factory function that
 // creates the data that is passed to the template
-func RenderTemplate(name string, data func(*Context) interface{}) Action {
-	return actionThunk2((*Context).RenderTemplate, name, data)
+func ExecuteTemplate(name string, data func(*Context) any) Action {
+	return actionThunk2((*Context).ExecuteTemplate, name, data)
 }
 
 // RegisterTemplate will register the specified template by name.
@@ -289,9 +289,9 @@ func RegisterTemplateFunc(name string, fn interface{}) Action {
 	return actionThunk2((*Context).RegisterTemplateFunc, name, fn)
 }
 
-// RenderTemplate provides an action that renders the specified template using the factory function that
+// ExecuteTemplate provides an action that renders the specified template using the factory function that
 // creates the data that is passed to the template
-func (c *Context) RenderTemplate(name string, data func(*Context) interface{}) error {
+func (c *Context) ExecuteTemplate(name string, data func(*Context) any) error {
 	tpl := c.Template(name)
 	if tpl == nil {
 		return fmt.Errorf("template does not exist: %q", name)

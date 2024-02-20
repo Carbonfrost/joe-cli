@@ -59,7 +59,7 @@ var _ = Describe("Wrap", func() {
 	)
 })
 
-var _ = Describe("RenderTemplate", func() {
+var _ = Describe("ExecuteTemplate", func() {
 	It("uses the template and custom funcs", func() {
 		app := &cli.App{
 			Name: "demo",
@@ -69,7 +69,7 @@ var _ = Describe("RenderTemplate", func() {
 				}),
 				cli.RegisterTemplate("custom", "template {{ CustomFunc }} {{ .Data }}"),
 			),
-			Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
+			Action: cli.ExecuteTemplate("custom", func(_ *cli.Context) any {
 				return struct{ Data int }{1}
 			}),
 		}
@@ -79,7 +79,7 @@ var _ = Describe("RenderTemplate", func() {
 	It("is error when not registered", func() {
 		app := &cli.App{
 			Name: "demo",
-			Action: cli.RenderTemplate("custom", func(_ *cli.Context) interface{} {
+			Action: cli.ExecuteTemplate("custom", func(_ *cli.Context) any {
 				return nil
 			}),
 		}

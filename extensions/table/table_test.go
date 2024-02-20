@@ -21,7 +21,7 @@ var _ = Describe("template functions", func() {
 			Name:   "demo",
 			Uses:   table.Options{},
 			Before: cli.RegisterTemplate("myTable", templ),
-			Action: cli.RenderTemplate("myTable", func(_ *cli.Context) interface{} {
+			Action: cli.ExecuteTemplate("myTable", func(_ *cli.Context) any {
 				return struct{ Data int }{1}
 			}),
 		}
@@ -44,7 +44,7 @@ var _ = Describe("template functions", func() {
 			Name:   "demo",
 			Uses:   table.Options{},
 			Before: cli.RegisterTemplate("myTable", templ),
-			Action: cli.RenderTemplate("myTable", func(_ *cli.Context) interface{} {
+			Action: cli.ExecuteTemplate("myTable", func(_ *cli.Context) any {
 				return struct{ Data int }{1}
 			}),
 			Stderr: io.Discard,
