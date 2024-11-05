@@ -5,14 +5,13 @@ import (
 	"sync"
 
 	cli "github.com/Carbonfrost/joe-cli"
-	"github.com/juju/ansiterm"
 )
 
 type FakeWriter struct {
-	ClearStyleStub        func(ansiterm.Style)
+	ClearStyleStub        func(cli.Style)
 	clearStyleMutex       sync.RWMutex
 	clearStyleArgsForCall []struct {
-		arg1 ansiterm.Style
+		arg1 cli.Style
 	}
 	ResetStub        func()
 	resetMutex       sync.RWMutex
@@ -22,25 +21,25 @@ type FakeWriter struct {
 	resetColorCapableMutex       sync.RWMutex
 	resetColorCapableArgsForCall []struct {
 	}
-	SetBackgroundStub        func(ansiterm.Color)
+	SetBackgroundStub        func(cli.Color)
 	setBackgroundMutex       sync.RWMutex
 	setBackgroundArgsForCall []struct {
-		arg1 ansiterm.Color
+		arg1 cli.Color
 	}
 	SetColorCapableStub        func(bool)
 	setColorCapableMutex       sync.RWMutex
 	setColorCapableArgsForCall []struct {
 		arg1 bool
 	}
-	SetForegroundStub        func(ansiterm.Color)
+	SetForegroundStub        func(cli.Color)
 	setForegroundMutex       sync.RWMutex
 	setForegroundArgsForCall []struct {
-		arg1 ansiterm.Color
+		arg1 cli.Color
 	}
-	SetStyleStub        func(ansiterm.Style)
+	SetStyleStub        func(cli.Style)
 	setStyleMutex       sync.RWMutex
 	setStyleArgsForCall []struct {
-		arg1 ansiterm.Style
+		arg1 cli.Style
 	}
 	WriteStub        func([]byte) (int, error)
 	writeMutex       sync.RWMutex
@@ -72,10 +71,10 @@ type FakeWriter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeWriter) ClearStyle(arg1 ansiterm.Style) {
+func (fake *FakeWriter) ClearStyle(arg1 cli.Style) {
 	fake.clearStyleMutex.Lock()
 	fake.clearStyleArgsForCall = append(fake.clearStyleArgsForCall, struct {
-		arg1 ansiterm.Style
+		arg1 cli.Style
 	}{arg1})
 	stub := fake.ClearStyleStub
 	fake.recordInvocation("ClearStyle", []interface{}{arg1})
@@ -91,13 +90,13 @@ func (fake *FakeWriter) ClearStyleCallCount() int {
 	return len(fake.clearStyleArgsForCall)
 }
 
-func (fake *FakeWriter) ClearStyleCalls(stub func(ansiterm.Style)) {
+func (fake *FakeWriter) ClearStyleCalls(stub func(cli.Style)) {
 	fake.clearStyleMutex.Lock()
 	defer fake.clearStyleMutex.Unlock()
 	fake.ClearStyleStub = stub
 }
 
-func (fake *FakeWriter) ClearStyleArgsForCall(i int) ansiterm.Style {
+func (fake *FakeWriter) ClearStyleArgsForCall(i int) cli.Style {
 	fake.clearStyleMutex.RLock()
 	defer fake.clearStyleMutex.RUnlock()
 	argsForCall := fake.clearStyleArgsForCall[i]
@@ -152,10 +151,10 @@ func (fake *FakeWriter) ResetColorCapableCalls(stub func()) {
 	fake.ResetColorCapableStub = stub
 }
 
-func (fake *FakeWriter) SetBackground(arg1 ansiterm.Color) {
+func (fake *FakeWriter) SetBackground(arg1 cli.Color) {
 	fake.setBackgroundMutex.Lock()
 	fake.setBackgroundArgsForCall = append(fake.setBackgroundArgsForCall, struct {
-		arg1 ansiterm.Color
+		arg1 cli.Color
 	}{arg1})
 	stub := fake.SetBackgroundStub
 	fake.recordInvocation("SetBackground", []interface{}{arg1})
@@ -171,13 +170,13 @@ func (fake *FakeWriter) SetBackgroundCallCount() int {
 	return len(fake.setBackgroundArgsForCall)
 }
 
-func (fake *FakeWriter) SetBackgroundCalls(stub func(ansiterm.Color)) {
+func (fake *FakeWriter) SetBackgroundCalls(stub func(cli.Color)) {
 	fake.setBackgroundMutex.Lock()
 	defer fake.setBackgroundMutex.Unlock()
 	fake.SetBackgroundStub = stub
 }
 
-func (fake *FakeWriter) SetBackgroundArgsForCall(i int) ansiterm.Color {
+func (fake *FakeWriter) SetBackgroundArgsForCall(i int) cli.Color {
 	fake.setBackgroundMutex.RLock()
 	defer fake.setBackgroundMutex.RUnlock()
 	argsForCall := fake.setBackgroundArgsForCall[i]
@@ -216,10 +215,10 @@ func (fake *FakeWriter) SetColorCapableArgsForCall(i int) bool {
 	return argsForCall.arg1
 }
 
-func (fake *FakeWriter) SetForeground(arg1 ansiterm.Color) {
+func (fake *FakeWriter) SetForeground(arg1 cli.Color) {
 	fake.setForegroundMutex.Lock()
 	fake.setForegroundArgsForCall = append(fake.setForegroundArgsForCall, struct {
-		arg1 ansiterm.Color
+		arg1 cli.Color
 	}{arg1})
 	stub := fake.SetForegroundStub
 	fake.recordInvocation("SetForeground", []interface{}{arg1})
@@ -235,23 +234,23 @@ func (fake *FakeWriter) SetForegroundCallCount() int {
 	return len(fake.setForegroundArgsForCall)
 }
 
-func (fake *FakeWriter) SetForegroundCalls(stub func(ansiterm.Color)) {
+func (fake *FakeWriter) SetForegroundCalls(stub func(cli.Color)) {
 	fake.setForegroundMutex.Lock()
 	defer fake.setForegroundMutex.Unlock()
 	fake.SetForegroundStub = stub
 }
 
-func (fake *FakeWriter) SetForegroundArgsForCall(i int) ansiterm.Color {
+func (fake *FakeWriter) SetForegroundArgsForCall(i int) cli.Color {
 	fake.setForegroundMutex.RLock()
 	defer fake.setForegroundMutex.RUnlock()
 	argsForCall := fake.setForegroundArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeWriter) SetStyle(arg1 ansiterm.Style) {
+func (fake *FakeWriter) SetStyle(arg1 cli.Style) {
 	fake.setStyleMutex.Lock()
 	fake.setStyleArgsForCall = append(fake.setStyleArgsForCall, struct {
-		arg1 ansiterm.Style
+		arg1 cli.Style
 	}{arg1})
 	stub := fake.SetStyleStub
 	fake.recordInvocation("SetStyle", []interface{}{arg1})
@@ -267,13 +266,13 @@ func (fake *FakeWriter) SetStyleCallCount() int {
 	return len(fake.setStyleArgsForCall)
 }
 
-func (fake *FakeWriter) SetStyleCalls(stub func(ansiterm.Style)) {
+func (fake *FakeWriter) SetStyleCalls(stub func(cli.Style)) {
 	fake.setStyleMutex.Lock()
 	defer fake.setStyleMutex.Unlock()
 	fake.SetStyleStub = stub
 }
 
-func (fake *FakeWriter) SetStyleArgsForCall(i int) ansiterm.Style {
+func (fake *FakeWriter) SetStyleArgsForCall(i int) cli.Style {
 	fake.setStyleMutex.RLock()
 	defer fake.setStyleMutex.RUnlock()
 	argsForCall := fake.setStyleArgsForCall[i]

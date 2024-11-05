@@ -1,6 +1,6 @@
 module github.com/Carbonfrost/joe-cli
 
-go 1.20
+go 1.23
 
 require (
 	github.com/juju/ansiterm v1.0.0
