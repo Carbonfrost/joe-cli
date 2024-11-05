@@ -21,6 +21,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -332,8 +333,8 @@ func (r *Registry) New(name string, opts map[string]string) (any, error) {
 	defaults := pro.Defaults
 	fac := pro.Factory
 	mergedOpts := map[string]string{}
-	update(mergedOpts, defaults)
-	update(mergedOpts, opts)
+	maps.Copy(mergedOpts, defaults)
+	maps.Copy(mergedOpts, opts)
 
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %q", name)
@@ -398,12 +399,6 @@ func toData(r *Registry) []providerData {
 		})
 	}
 	return res
-}
-
-func update(dst, src map[string]string) {
-	for k, v := range src {
-		dst[k] = v
-	}
 }
 
 var (

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"os/signal"
 	"reflect"
@@ -1311,7 +1312,7 @@ func (p *Prototype) copyToCommand(o *Command) {
 	}
 
 	o.Options |= p.Options
-	update(o.Data, p.Data)
+	maps.Copy(o.Data, p.Data)
 	o.Aliases = append(o.Aliases, p.Aliases...)
 }
 
@@ -1353,7 +1354,7 @@ func (p *Prototype) copyToArg(o *Arg) {
 
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
 	o.Options |= p.Options
-	update(o.Data, p.Data)
+	maps.Copy(o.Data, p.Data)
 }
 
 func (p *Prototype) copyToFlag(o *Flag) {
@@ -1392,7 +1393,7 @@ func (p *Prototype) copyToFlag(o *Flag) {
 	o.Aliases = append(o.Aliases, p.Aliases...)
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
 	o.Options |= p.Options
-	update(o.Data, p.Data)
+	maps.Copy(o.Data, p.Data)
 }
 
 // Execute the action by calling the function

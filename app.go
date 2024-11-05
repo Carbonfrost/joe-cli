@@ -454,9 +454,3 @@ func optionalFlag(name string, f func() *Flag) ActionFunc {
 		return nil
 	}
 }
-
-func update(dst, src map[string]interface{}) {
-	for k, v := range src {
-		dst[k] = v
-	}
-}
