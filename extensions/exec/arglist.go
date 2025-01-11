@@ -24,24 +24,49 @@ func (l *ArgList) Set(arg string) error {
 }
 
 func (l *ArgList) String() string {
-	return strings.Join([]string(*l), " ")
+	args, delim := l.split() // could have implied ;
+	return strings.Join(append(args, delim), " ")
 }
 
 func (l *ArgList) NewCounter() cli.ArgCounter {
 	return &counter{}
 }
 
-// Args gets the list of items added.
+// Args gets the list of items added, including the command
+// as Args()[0]
 func (l *ArgList) Args() []string {
+	args, _ := l.split()
+	return args
+}
+
+// Command gets the command and its arguments
+func (l *ArgList) Command() (string, []string) {
+	args, _ := l.split()
+	if len(args) == 0 {
+		return "", nil
+	}
+	return args[0], args[1:]
+}
+
+// split on the args and the delimiter (including
+// if it is implied)
+func (l *ArgList) split() ([]string, string) {
 	res := *l
-	return res[0 : len(res)-1]
+	if len(res) == 0 {
+		return nil, ";"
+	}
+	c := res[len(res)-1]
+	if c == ";" || c == "+" {
+		return res[0 : len(res)-1], c
+	}
+	return res, ";"
 }
 
 // UsePlaceholder gets whether the arg list ended with +, which is used to
 // indicate that the {} placeholder is to be expanded
 func (l *ArgList) UsePlaceholder() bool {
-	res := *l
-	return res[len(res)-1] == "+"
+	_, d := l.split()
+	return d == "+"
 }
 
 func (ok *counter) Take(a string, possibleFlag bool) error {
