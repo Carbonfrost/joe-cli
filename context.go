@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -641,6 +642,17 @@ func (c *Context) Aliases() []string {
 func (c *Context) AddAlias(aliases ...string) error {
 	return c.updateAliases(func(aa []string) []string {
 		return append(aa, aliases...)
+	})
+}
+
+// RemoveAlias removes the given alias from the current command or
+// flag. For other targets, this operation is ignored. An error is
+// returned if this is caleld after initialization.
+func (c *Context) RemoveAlias(a string) error {
+	return c.updateAliases(func(aliases []string) []string {
+		return slices.DeleteFunc(aliases, func(s string) bool {
+			return s == a
+		})
 	})
 }
 

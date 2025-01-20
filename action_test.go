@@ -480,6 +480,21 @@ var _ = Describe("timings", func() {
 				Expect(captured.Aliases()).To(Equal([]string{"a", "b"}))
 			})
 		})
+
+		Context("RemoveAlias", func() {
+			BeforeEach(func() {
+				initializer = cli.Pipeline(
+					func(c *cli.Context) {
+						c.Command().Aliases = []string{"a", "b", "c"}
+					},
+					cli.RemoveAlias("b"),
+				)
+			})
+
+			It("can remove an alias", func() {
+				Expect(captured.Aliases()).To(Equal([]string{"a", "c"}))
+			})
+		})
 	})
 
 	It("ensures that validation runs before other Before funcs", func() {

@@ -927,6 +927,11 @@ func RemoveCommand(name any) Action {
 	return actionThunk1((*Context).RemoveCommand, name)
 }
 
+// RemoveAlias removes the alias from the flag or command.
+func RemoveAlias(a string) Action {
+	return actionThunk1((*Context).RemoveAlias, a)
+}
+
 // AddFlags provides an action which adds the specified flags to the command
 func AddFlags(flags ...*Flag) Action {
 	return actionThunkVar1((*Context).AddFlags, flags)
