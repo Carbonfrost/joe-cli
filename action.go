@@ -904,6 +904,11 @@ func AddArg(a *Arg) Action {
 	return actionThunk1((*Context).AddArg, a)
 }
 
+// AddAlias adds the specified alias to the flag or command.
+func AddAlias(a string) Action {
+	return Alias(a)
+}
+
 // RemoveArg provides an action which removes an arg from the command or app.
 // The name specifies the name, index, or arg itself
 func RemoveArg(name any) Action {

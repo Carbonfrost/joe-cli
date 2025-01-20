@@ -623,19 +623,37 @@ func (c *Context) LookupData(name string) (interface{}, bool) {
 	return c.Parent().LookupData(name)
 }
 
+// Aliases obtains the aliases for the current command or flag; otherwise,
+// for args it is nill
+func (c *Context) Aliases() []string {
+	switch t := c.Target().(type) {
+	case *Command:
+		return t.Aliases
+	case *Flag:
+		return t.Aliases
+	}
+	return nil
+}
+
 // AddAlias adds one or more aliases to the current command or flag.
 // For other targets, this operation is ignored.  An error is returned
 // if this is called after initialization.
 func (c *Context) AddAlias(aliases ...string) error {
+	return c.updateAliases(func(aa []string) []string {
+		return append(aa, aliases...)
+	})
+}
+
+func (c *Context) updateAliases(fn func([]string) []string) error {
 	err := c.requireInit()
 	if err != nil {
 		return err
 	}
 	switch t := c.Target().(type) {
 	case *Command:
-		t.Aliases = append(t.Aliases, aliases...)
+		t.Aliases = fn(t.Aliases)
 	case *Flag:
-		t.Aliases = append(t.Aliases, aliases...)
+		t.Aliases = fn(t.Aliases)
 	}
 	return nil
 }

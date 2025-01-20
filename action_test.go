@@ -470,6 +470,16 @@ var _ = Describe("timings", func() {
 				Expect(captured.Category()).To(Equal("bags"))
 			})
 		})
+
+		Context("Alias", func() {
+			BeforeEach(func() {
+				initializer = cli.Alias("a", "b")
+			})
+
+			It("can add an alias", func() {
+				Expect(captured.Aliases()).To(Equal([]string{"a", "b"}))
+			})
+		})
 	})
 
 	It("ensures that validation runs before other Before funcs", func() {
