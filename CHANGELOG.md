@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.6.0 (January 20, 2025)
+
+### New Features
+
+* Introduce `RemoveAlias` (f07d145)
+* Introduce `Aliases` function (86aac47)
+* Introduce `Print` and `Printf` (9bc2601)
+* Introduce `UsageText`, `HelpText` actions (ed33e49)
+* Shell detection improvements (e0c9bab)
+* Improve consistency of action/context API by providing `Action` accessors where a similar `Context method exists (bef39bd)
+* Support marshaling values as JSON using the `JSON` wrapper (4c51ed8)
+* Breaking changes:
+    * Allow `Quote` to be invoked with an untyped argument (4b5aaff)
+
+### Bug fixes and improvements
+
+* Improve safety of `exec.ArgList` API (fc6f9e6)
+* Rename `RenderTemplate` to `ExecuteTemplate` (e1a9bef)
+* Improvements to test coverage; test fixes (acd004b, 86aac47, 36c5da0, b33cdfa)
+* Various code cleanups and documentation fixes (7d1e8d3, 767bc48, d0b508f)
+* Bug fix: Detect `RawOccurrences` with `Before` on flags with zero occurrences (eead11b)
+* Template extension refactoring (3769777)
+* Chores:
+    * Upgrade to go1.23 (2c50f72)
+        * Take advantage of newer features such as `maps.Copy` (75cf239)
+    * Upgrade dependent versions (a625b8b, 74c170c, 50ca385, cf5892a, f5f674d, 403ccf5, 800c9c4, e4ccb54, 61fe300, 5e7b0a5)
+    * Completion: split out ZSH to own file (fb41688)
+
 ## v0.5.2 (May 4, 2023)
 
 ### New Features
