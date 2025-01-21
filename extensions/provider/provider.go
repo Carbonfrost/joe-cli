@@ -173,7 +173,7 @@ func validFactory(fn any) bool {
 	if typ.NumOut() < 1 || typ.NumOut() > 2 {
 		return false
 	}
-	var errorType = reflect.TypeOf(new(error)).Elem()
+	var errorType = reflect.TypeFor[error]()
 	if typ.NumOut() == 2 && typ.Out(1) != errorType {
 		return false
 	}

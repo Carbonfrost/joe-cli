@@ -235,7 +235,7 @@ const (
 
 var (
 	emptyAction Action = ActionFunc(emptyActionImpl)
-	valueType          = reflect.TypeOf((*Value)(nil)).Elem()
+	valueType          = reflect.TypeFor[Value]()
 	patFlagName        = regexp.MustCompile(`{}`)
 
 	actualBeforeIndex = map[Timing]int{

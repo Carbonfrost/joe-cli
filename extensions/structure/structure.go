@@ -34,8 +34,8 @@ type Value struct {
 type DecoderOption func(*mapstructure.DecoderConfig)
 
 var (
-	valueType = reflect.TypeOf((*cli.Value)(nil)).Elem()
-	urlType   = reflect.TypeOf(&url.URL{})
+	valueType = reflect.TypeFor[cli.Value]()
+	urlType   = reflect.TypeFor[*url.URL]()
 )
 
 // ErrorUnused is an option which makes it an error to have input specify fields that
