@@ -4,13 +4,9 @@
 package structure
 
 import (
-	"encoding"
 	"flag"
-	"fmt"
-	"math/big"
 	"net/url"
 	"reflect"
-	"regexp"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
@@ -38,12 +34,8 @@ type Value struct {
 type DecoderOption func(*mapstructure.DecoderConfig)
 
 var (
-	valueType       = reflect.TypeOf((*cli.Value)(nil)).Elem()
-	unmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-	bigIntType      = reflect.TypeOf(big.NewInt(0))
-	bigFloatType    = reflect.TypeOf(big.NewFloat(0))
-	regexpType      = reflect.TypeOf(&regexp.Regexp{})
-	urlType         = reflect.TypeOf(&url.URL{})
+	valueType = reflect.TypeOf((*cli.Value)(nil)).Elem()
+	urlType   = reflect.TypeOf(&url.URL{})
 )
 
 // ErrorUnused is an option which makes it an error to have input specify fields that
@@ -133,39 +125,13 @@ func viableOptions() []DecoderOption {
 				mapstructure.StringToIPNetHookFunc(),
 				mapstructure.StringToSliceHookFunc(","),
 				mapstructure.StringToTimeDurationHookFunc(),
-				mapstructure.DecodeHookFunc(bigIntHook),
-				mapstructure.DecodeHookFunc(bigFloatHook),
 				mapstructure.DecodeHookFunc(urlHook),
-				mapstructure.DecodeHookFunc(regexpHook),
 				mapstructure.DecodeHookFunc(valueHook),
-				mapstructure.DecodeHookFunc(unmarshalerHook),
+				mapstructure.TextUnmarshallerHookFunc(),
 				mapstructure.RecursiveStructToMapHookFunc(),
 			)
 		},
 	}
-}
-
-func bigIntHook(from, to reflect.Type, data any) (any, error) {
-	if from.Kind() != reflect.String {
-		return data, nil
-	}
-	if to != bigIntType {
-		return data, nil
-	}
-
-	v := new(big.Int)
-	if _, ok := v.SetString(data.(string), 10); !ok {
-		return nil, fmt.Errorf("failed to parse big.Int")
-	}
-	return v, nil
-}
-
-func bigFloatHook(from, to reflect.Type, data any) (any, error) {
-	if from.Kind() != reflect.String || to != bigFloatType {
-		return data, nil
-	}
-	v, _, err := big.ParseFloat(data.(string), 10, 53, big.ToZero)
-	return v, err
 }
 
 func urlHook(from, to reflect.Type, data any) (any, error) {
@@ -173,13 +139,6 @@ func urlHook(from, to reflect.Type, data any) (any, error) {
 		return data, nil
 	}
 	return url.Parse(data.(string))
-}
-
-func regexpHook(from, to reflect.Type, data any) (any, error) {
-	if from.Kind() != reflect.String || to != regexpType {
-		return data, nil
-	}
-	return regexp.Compile(data.(string))
 }
 
 func valueHook(from, to reflect.Value) (any, error) {
@@ -193,24 +152,6 @@ func valueHook(from, to reflect.Value) (any, error) {
 
 	result := to.Interface()
 	err := result.(cli.Value).Set(from.String())
-	return result, err
-}
-
-func unmarshalerHook(from, to reflect.Value) (any, error) {
-	if from.Kind() != reflect.String || to.Kind() != reflect.Struct {
-		return from.Interface(), nil
-	}
-
-	// Generate a pointer to the value and check whether it is an unmarshaler
-	indirect := reflect.New(to.Type())
-	indirect.Elem().Set(to)
-
-	if !indirect.Type().Implements(unmarshalerType) {
-		return from.Interface(), nil
-	}
-
-	result := indirect.Interface()
-	err := result.(encoding.TextUnmarshaler).UnmarshalText([]byte(from.String()))
 	return result, err
 }
 
