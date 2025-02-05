@@ -198,6 +198,10 @@ const (
 	internalFlagSeenImplied
 	internalFlagDidSubcommandExecute
 	internalFlagInitialized
+	internalFlagSearchingAlternateCommand
+	internalFlagRobustParseModeEnabled
+	internalFlagImplicitTimingActive
+	internalFlagTaintSetup
 )
 
 var (
@@ -373,6 +377,22 @@ func (f internalFlags) initialized() bool {
 	return f&internalFlagInitialized == internalFlagInitialized
 }
 
+func (f internalFlags) searchingAlternateCommand() bool {
+	return f&internalFlagSearchingAlternateCommand == internalFlagSearchingAlternateCommand
+}
+
+func (f internalFlags) robustParseModeEnabled() bool {
+	return f&internalFlagRobustParseModeEnabled == internalFlagRobustParseModeEnabled
+}
+
+func (f internalFlags) implicitTimingActive() bool {
+	return f&internalFlagImplicitTimingActive == internalFlagImplicitTimingActive
+}
+
+func (f internalFlags) taintSetup() bool {
+	return f&internalFlagTaintSetup == internalFlagTaintSetup
+}
+
 func (f internalFlags) toRaw() RawParseFlag {
 	var flags RawParseFlag
 	if f.disallowFlagsAfterArgs() {
@@ -454,6 +474,13 @@ func optionalOption(c *Context) error {
 func setInternalFlag(f internalFlags) ActionFunc {
 	return func(c *Context) error {
 		c.target().setInternalFlags(f, true)
+		return nil
+	}
+}
+
+func unsetInternalFlag(f internalFlags) ActionFunc {
+	return func(c *Context) error {
+		c.target().setInternalFlags(f, false)
 		return nil
 	}
 }

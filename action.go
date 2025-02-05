@@ -222,8 +222,7 @@ const (
 )
 
 const (
-	implicitTimingEnabledKey = "__ImplicitTimingEnabled"
-	panicDataKey             = "__PanicData"
+	panicDataKey = "__PanicData"
 )
 
 const (
@@ -1530,9 +1529,9 @@ func (w withTimingWrapper) Execute(ctx context.Context) error {
 	c := FromContext(ctx)
 	if w.t == ImplicitValueTiming {
 		return c.act(Pipeline(
-			Data(implicitTimingEnabledKey, true),
+			setInternalFlag(internalFlagImplicitTimingActive),
 			w.Action,
-			Data(implicitTimingEnabledKey, nil),
+			unsetInternalFlag(internalFlagImplicitTimingActive),
 		), BeforeTiming, false)
 	}
 

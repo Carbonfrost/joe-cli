@@ -131,8 +131,7 @@ const (
 )
 
 const (
-	commandNotFoundKey           = "__CommandNotFound"
-	searchingAlternateCommandKey = "__SearchingAlternateCommand"
+	commandNotFoundKey = "__CommandNotFound"
 )
 
 // ExecuteSubcommand finds and executes a sub-command.  This action is intended to be used
@@ -829,12 +828,12 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 	if res, ok := cmd.Command(sub); ok {
 		return res, nil
 	}
-	if _, ok := c.LookupData(searchingAlternateCommandKey); ok {
+	if c.flagSetOrAncestor((internalFlags).searchingAlternateCommand) {
 		return nil, commandMissing(sub)
 	}
 
-	c.SetData(searchingAlternateCommandKey, true)
-	defer c.SetData(searchingAlternateCommandKey, nil)
+	c.target().setInternalFlags(internalFlagSearchingAlternateCommand, true)
+	defer c.target().setInternalFlags(internalFlagSearchingAlternateCommand, false)
 	if interceptErr == nil {
 		if auto, ok := c.LookupData(commandNotFoundKey); ok {
 			// Invalid casts are ignored because a sentinel value can be set  to indicate that

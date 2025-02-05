@@ -90,8 +90,7 @@ type completionData struct {
 }
 
 const (
-	robustParseModeEnabledKey = "__RobustParseModeEnabled"
-	shellCompletesKey         = "__ShellCompletes"
+	shellCompletesKey = "__ShellCompletes"
 )
 
 func newCompletionData(c *Context) *completionData {
@@ -164,7 +163,7 @@ func setupCompletion(c *Context) error {
 func setupRobustParsingMode(c *Context) {
 	// Activate robust parsing which causes errors in parsing to be
 	// ignored so that we have an incomplete binding
-	c.SetData(robustParseModeEnabledKey, true)
+	c.target().setInternalFlags(internalFlagRobustParseModeEnabled, true)
 }
 
 // CompletionValues provides the context-specific completion values for
@@ -228,8 +227,7 @@ func (c *Context) complete(args []string, incomplete string, re *robustParseResu
 }
 
 func (c *Context) robustParsingMode() bool {
-	_, ok := c.LookupData(robustParseModeEnabledKey)
-	return ok
+	return c.flagSetOrAncestor((internalFlags).robustParseModeEnabled)
 }
 
 func (c *Context) shellCompletes() map[string]ShellComplete {

@@ -95,8 +95,7 @@ type contextPathPattern struct {
 type contextKeyType struct{}
 
 const (
-	taintSetupKey = "_taintSetup"
-	synopsisKey   = "_Synopsis"
+	synopsisKey = "_Synopsis"
 )
 
 var (
@@ -1132,16 +1131,13 @@ func (c *Context) AddArgs(args ...*Arg) (err error) {
 
 // SkipImplicitSetup gets whether implicit setup steps should be skipped
 func (c *Context) SkipImplicitSetup() bool {
-	_, ok := c.LookupData(taintSetupKey)
-	return ok
+	return c.flagSetOrAncestor((internalFlags).taintSetup)
 }
 
 // PreventSetup causes implicit setup options to be skipped.  The function
 // returns an error if the timing is not initial timing.
 func (c *Context) PreventSetup() error {
-	return c.Use(func() {
-		c.SetData(taintSetupKey, true)
-	})
+	return c.Use(setInternalFlag(internalFlagTaintSetup))
 }
 
 // SetColor sets whether terminal color and styles are enabled on stdout.
@@ -1224,8 +1220,15 @@ func (c *Context) Printf(format string, a ...any) (n int, err error) {
 }
 
 func (c *Context) implicitTimingActive() bool {
-	_, ok := c.LookupData(implicitTimingEnabledKey)
-	return ok
+	return c.flagSetOrAncestor((internalFlags).implicitTimingActive)
+}
+
+func (c *Context) flagSetOrAncestor(fn func(internalFlags) bool) bool {
+	var result bool
+	c.lineageFunc(func(c1 *Context) {
+		result = result || fn(c1.target().internalFlags())
+	})
+	return result
 }
 
 // Last gets the last name in the path
