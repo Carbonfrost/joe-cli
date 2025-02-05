@@ -882,13 +882,22 @@ func (c *Context) Hook(timing Timing, handler Action) error {
 // HookBefore registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func (c *Context) HookBefore(pattern string, handler Action) error {
-	return c.Hook(BeforeTiming, IfMatch(PatternFilter(pattern), handler))
+	return c.hookAt(BeforeTiming, pattern, handler)
 }
 
 // HookAfter registers a hook that runs for the matching elements.  See ContextPath for
 // the syntax of patterns and how they are matched.
 func (c *Context) HookAfter(pattern string, handler Action) error {
-	return c.Hook(AfterTiming, IfMatch(PatternFilter(pattern), handler))
+	return c.hookAt(AfterTiming, pattern, handler)
+}
+
+func (c *Context) hookAt(timing Timing, pattern string, handler Action) error {
+	// Specifying the empty string for the pattern is the same as acting
+	// on itself and therefore does not need a hook
+	if pattern == "" {
+		return c.At(timing, handler)
+	}
+	return c.Hook(timing, IfMatch(PatternFilter(pattern), handler))
 }
 
 func (c *Context) hookable() (hookable, bool) {
@@ -1167,16 +1176,7 @@ func (c *Context) ProvideValueInitializer(v any, name string, action Action) err
 // is usually used to apply further customization after an extension has done setup of
 // the defaults.
 func (c *Context) Customize(pattern string, a Action) error {
-	// Specifying the empty string for the pattern is the same as acting
-	// on itself and therefore does not need a hook
-	if pattern == "" {
-		return c.Use(a)
-	}
-
-	if h, ok := c.hookable(); ok {
-		return h.hook(InitialTiming, IfMatch(PatternFilter(pattern), a))
-	}
-	return errCantHook
+	return c.hookAt(InitialTiming, pattern, a)
 }
 
 // ReadPasswordString securely gets a password, without the trailing '\n'.

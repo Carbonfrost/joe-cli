@@ -1029,6 +1029,12 @@ var _ = Describe("ActionOf", func() {
 		Entry("legacy action", &legacy{act}),
 	)
 
+	It("supports nil as action", func() {
+		Expect(func() {
+			cli.ActionOf(nil)
+		}).NotTo(Panic())
+	})
+
 	It("invokes the context action", func() {
 		ctx := &cli.Context{}
 		var called int
@@ -1896,7 +1902,69 @@ var _ = Describe("PreventSetup", func() {
 	)
 })
 
+var _ = Describe("HookAfter", func() {
+
+	It("flag can hook itself", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.HookAfter("", cli.Data("ok", "2")),
+				},
+			},
+		}
+		err := app.RunContext(context.Background(), []string{"app", "-f", "_"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
+	})
+
+	DescribeTable("examples",
+		func(a *cli.App) {
+			err := a.RunContext(context.Background(), []string{"app", "-f", "_"})
+			cmd, _ := a.Command("")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cmd.Data).To(HaveKeyWithValue("f", "set"))
+		},
+		Entry(
+			"in action",
+			&cli.App{
+				Action: cli.HookAfter("*", cli.Data("f", "set")),
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+					},
+				},
+			}),
+		Entry(
+			"in flag action delegating to parent command",
+			&cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+						Action: func(c *cli.Context) error {
+							return c.Parent().HookAfter("", cli.Data("f", "set"))
+						},
+					},
+				},
+			}),
+	)
+})
+
 var _ = Describe("HookBefore", func() {
+
+	It("flag can hook itself", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.HookBefore("", cli.Data("ok", "2")),
+				},
+			},
+		}
+		err := app.RunContext(context.Background(), []string{"app", "-f", "_"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
+	})
 
 	DescribeTable("errors",
 		func(a *cli.App) {
@@ -1905,7 +1973,7 @@ var _ = Describe("HookBefore", func() {
 			Expect(err).To(MatchError(cli.ErrTimingTooLate))
 		},
 		Entry(
-			"HookBefore in action",
+			"in action",
 			&cli.App{
 				Action: cli.HookBefore("*", nil),
 				Flags: []*cli.Flag{
@@ -1915,7 +1983,7 @@ var _ = Describe("HookBefore", func() {
 				},
 			}),
 		Entry(
-			"HookBefore delegated to parent in action",
+			"delegated to parent in action",
 			&cli.App{
 				Flags: []*cli.Flag{
 					{
