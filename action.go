@@ -1061,7 +1061,7 @@ func IfMatch(f ContextFilter, a Action) Action {
 		return a
 	}
 	return ActionFunc(func(c *Context) error {
-		if f.Matches(c) {
+		if c.Matches(f) {
 			return c.Do(a)
 		}
 		return nil

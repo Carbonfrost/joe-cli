@@ -210,6 +210,15 @@ func (c *Context) SetContextValue(key, value any) error {
 	return c.SetContext(context.WithValue(c.Context(), key, value))
 }
 
+// Matches detects if the given context filter matches the current
+// context
+func (c *Context) Matches(f ContextFilter) bool {
+	if f == nil {
+		return true
+	}
+	return f.Matches(c)
+}
+
 // Parent obtains the parent context or nil if the root context
 func (c *Context) Parent() *Context {
 	if c == nil {
