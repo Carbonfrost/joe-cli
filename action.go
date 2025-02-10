@@ -440,7 +440,7 @@ func formatStack() string {
 func failWithContextError(c *Context) error {
 	if r, ok := c.LookupData(panicDataKey); ok {
 		rvr := r.(*panicData)
-		fmt.Fprintf(c.Stderr, rvr.stack)
+		fmt.Fprint(c.Stderr, rvr.stack)
 		return fmt.Errorf(rvr.recovered)
 	}
 	return nil

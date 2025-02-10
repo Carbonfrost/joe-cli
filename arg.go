@@ -347,7 +347,7 @@ func (a *Arg) category() string {
 
 func (a *Arg) value() interface{} {
 	_, multi := aboutArgCounter(a.NArg)
-	a.Value = ensureDestination(a, a.Value, multi)
+	a.Value = ensureDestination(a.Value, multi)
 	return a.Value
 }
 

@@ -319,19 +319,13 @@ Parsing:
 					continue Parsing
 				}
 
-				// If an equal sign is present, this is the syntax -s=value,
+				// If an equal sign is present, this is the synt ax -s=value,
 				// which implies trying to set a value.  Include the = in
 				// the binding
 				if value[0] == '=' {
-					if err != nil {
-						// The flag previously checked for value but didn't
-						// support them
-						var oldArgs = append([]string{short + value}, args...)
-						err = flagUnexpectedArgument(short, value, oldArgs)
-						return
-					}
-					appendOutput(flag, []string{short, value})
-					continue Parsing
+					var oldArgs = append([]string{short + value}, args...)
+					err = flagUnexpectedArgument(short, value, oldArgs)
+					return
 				}
 
 				if err == EndOfArguments {

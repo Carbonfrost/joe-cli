@@ -184,7 +184,7 @@ func (e *Expression) Initializer() Action {
 		arg.Action = Pipeline(arg.Action, func(c *Context) error {
 			pipe := c.Value("").(*Expression)
 			fac := newExprPipelineFactory(e.Exprs)
-			return pipe.applyFactory(c, fac)
+			return pipe.applyFactory(fac)
 		})
 		arg.Description = c.Template("Expressions").BindFunc(e.descriptionData)
 		e.boundContext = c
@@ -646,7 +646,7 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, error) {
+func (e *exprPipelineFactory) parse(args []string) ([]ExprBinding, error) {
 	results := make([]ExprBinding, 0)
 	for len(args) > 0 {
 		arg := args[0]
@@ -684,8 +684,8 @@ func (e *exprPipelineFactory) parse(c *Context, args []string) ([]ExprBinding, e
 	return results, nil
 }
 
-func (e *Expression) applyFactory(c *Context, fac *exprPipelineFactory) error {
-	exprs, err := fac.parse(c, e.args)
+func (e *Expression) applyFactory(fac *exprPipelineFactory) error {
+	exprs, err := fac.parse(e.args)
 	e.items = exprs
 	return err
 }
