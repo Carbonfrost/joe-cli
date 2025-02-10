@@ -272,6 +272,7 @@ var (
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
 			ActionFunc(applyUserOptions),
+			ActionFunc(applyImplicitVisibility),
 			IfMatch(RootCommand,
 				actions(
 					ActionFunc(optionalCommand("help", defaultHelpCommand)),
@@ -320,6 +321,7 @@ var (
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
 			ActionFunc(applyUserOptions),
+			ActionFunc(applyImplicitVisibility),
 			ActionFunc(setupValueInitializer),
 			ActionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),

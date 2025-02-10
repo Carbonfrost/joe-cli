@@ -169,6 +169,14 @@ const (
 	// The option can be set on the command to apply this behavior to all flags and args.
 	ImpliedAction
 
+	// Visible sets a flag or command as being visible in usage
+	Visible
+
+	// DisableAutoVisibility disables the default behavior of treating flags
+	// and commands whose names start with underscores as hidden.  This is typically
+	// used on commands to prevent the behavior for sub-commands and flags.
+	DisableAutoVisibility
+
 	maxOption
 
 	// None represents no options
@@ -202,11 +210,15 @@ const (
 	internalFlagRobustParseModeEnabled
 	internalFlagImplicitTimingActive
 	internalFlagTaintSetup
+	internalFlagDisableAutoVisibility
+	internalFlagVisibleExplicitlyRequested
 )
 
 var (
 	builtinOptions = FeatureMap[Option]{
 		Hidden:                 ActionFunc(hiddenOption),
+		Visible:                ActionFunc(visibleOption),
+		DisableAutoVisibility:  setInternalFlag(internalFlagDisableAutoVisibility),
 		Required:               ActionFunc(requiredOption),
 		Exits:                  ActionFunc(wrapWithExit),
 		MustExist:              Before(ActionFunc(mustExistOption)),
@@ -249,6 +261,8 @@ var (
 		SortedFlags:            "SORTED_FLAGS",
 		SortedCommands:         "SORTED_COMMANDS",
 		ImpliedAction:          "IMPLIED_ACTION",
+		Visible:                "VISIBLE",
+		DisableAutoVisibility:  "DISABLE_AUTO_VISIBILITY",
 	}
 )
 
@@ -393,6 +407,14 @@ func (f internalFlags) taintSetup() bool {
 	return f&internalFlagTaintSetup == internalFlagTaintSetup
 }
 
+func (f internalFlags) disableAutoVisibility() bool {
+	return f&internalFlagDisableAutoVisibility == internalFlagDisableAutoVisibility
+}
+
+func (f internalFlags) visibleExplicitlyRequested() bool {
+	return f&internalFlagVisibleExplicitlyRequested == internalFlagVisibleExplicitlyRequested
+}
+
 func (f internalFlags) toRaw() RawParseFlag {
 	var flags RawParseFlag
 	if f.disallowFlagsAfterArgs() {
@@ -416,6 +438,12 @@ func splitOptionsHO(opts Option, fn func(Option)) {
 
 func hiddenOption(c *Context) error {
 	c.target().SetHidden(true)
+	return nil
+}
+
+func visibleOption(c *Context) error {
+	c.target().setInternalFlags(internalFlagVisibleExplicitlyRequested, true)
+	c.target().setInternalFlags(internalFlagHidden, false)
 	return nil
 }
 

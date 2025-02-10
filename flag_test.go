@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -750,6 +751,32 @@ var _ = Describe("Flag", func() {
 			MatchFields(IgnoreExtras, Fields{"Completion": Not(BeNil())}),
 		),
 	)
+
+	Describe("visibility", func() {
+		DescribeTable("examples", func(flag *cli.Flag, finder string, visibleExpected bool) {
+			var found *cli.Flag
+			app := &cli.App{
+				Flags: []*cli.Flag{flag},
+				Action: func(c *cli.Context) {
+					parent, _ := c.FindTarget(strings.Fields("app " + finder))
+					found = parent.Target().(*cli.Flag)
+				},
+				Name: "app",
+			}
+			args, _ := cli.Split("app")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cli.IsVisible(found)).To(Equal(visibleExpected))
+		},
+			Entry("nominal", &cli.Flag{Name: "visible"}, "-visible", true),
+			Entry("visible", &cli.Flag{Name: "visible", Options: cli.Visible}, "-visible", true),
+			Entry("implicitly hidden by name", &cli.Flag{Name: "_hidden"}, "-_hidden", false),
+			Entry("disable implicitly hidden behavior (self)", &cli.Flag{Name: "_hidden", Options: cli.DisableAutoVisibility}, "-_hidden", true),
+			Entry("explicitly made visible implicitly hidden behavior", &cli.Flag{Name: "_hidden", Options: cli.Visible}, "-_hidden", true),
+			Entry("hidden wins over visible", &cli.Flag{Name: "hidden", Options: cli.Visible | cli.Hidden}, "-hidden", false),
+		)
+	})
+
 })
 
 type temperature string

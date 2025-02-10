@@ -40,6 +40,8 @@ var _ = Describe("Option", func() {
 			Entry("SortedCommands", cli.SortedCommands, "SORTED_COMMANDS"),
 			Entry("SortedFlags", cli.SortedFlags, "SORTED_FLAGS"),
 			Entry("ImpliedAction", cli.ImpliedAction, "IMPLIED_ACTION"),
+			Entry("Visible", cli.Visible, "VISIBLE"),
+			Entry("DisableAutoVisibility", cli.DisableAutoVisibility, "DISABLE_AUTO_VISIBILITY"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 

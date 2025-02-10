@@ -1634,6 +1634,20 @@ func (v *valueTarget) lookup() BindingLookup {
 	return b
 }
 
+func applyImplicitVisibility(c *Context) error {
+	if strings.HasPrefix(strings.TrimLeft(c.Name(), "-"), "_") {
+		if c.target().internalFlags().visibleExplicitlyRequested() {
+			return nil
+		}
+		if c.flagSetOrAncestor((internalFlags).disableAutoVisibility) {
+			return nil
+		}
+
+		c.target().setInternalFlags(internalFlagHidden, true)
+	}
+	return nil
+}
+
 func setupInternalOption(c *Context) error {
 	c.option().ensureInternalOpt()
 	return nil

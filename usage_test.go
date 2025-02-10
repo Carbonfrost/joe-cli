@@ -386,6 +386,16 @@ var _ = Describe("DisplayHelpScreen", func() {
 				Before: cli.RegisterTemplate("Flag", `my custom synopsis`),
 			},
 			ContainSubstring("my custom synopsis")),
+		Entry("does not show hidden flags",
+			&cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "hidden",
+						Options: cli.Hidden,
+					},
+				},
+			},
+			Not(ContainSubstring("--hidden"))),
 	)
 
 	DescribeTable("sub-command examples",

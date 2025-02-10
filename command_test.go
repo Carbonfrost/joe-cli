@@ -171,6 +171,45 @@ var _ = Describe("Command", func() {
 		),
 	)
 
+	Describe("visibility", func() {
+		DescribeTable("examples", func(cmd *cli.Command, finder string, visibleExpected bool) {
+			var found any
+			app := &cli.App{
+				Commands: []*cli.Command{cmd},
+				Action: func(c *cli.Context) {
+					parent, _ := c.FindTarget(strings.Fields("app " + finder))
+					found = parent.Target()
+				},
+				Name: "app",
+			}
+			args, _ := cli.Split("app")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cli.IsVisible(found)).To(Equal(visibleExpected))
+		},
+			Entry("nominal", &cli.Command{Name: "visible"}, "visible", true),
+			Entry("visible", &cli.Command{Name: "visible", Options: cli.Visible}, "visible", true),
+			Entry("implicitly hidden by name", &cli.Command{Name: "_hidden"}, "_hidden", false),
+			Entry("disable implicitly hidden behavior (self)", &cli.Command{Name: "_hidden", Options: cli.DisableAutoVisibility}, "_hidden", true),
+			Entry("disable implicitly hidden behavior of a command (parent)", &cli.Command{
+				Name:    "parent",
+				Options: cli.DisableAutoVisibility,
+				Subcommands: []*cli.Command{
+					{Name: "_hidden"},
+				},
+			}, "parent _hidden", true),
+			Entry("disable implicitly hidden behavior of a flag (parent)", &cli.Command{
+				Name:    "parent",
+				Options: cli.DisableAutoVisibility,
+				Flags: []*cli.Flag{
+					{Name: "_hidden"},
+				},
+			}, "parent -_hidden", true),
+			Entry("explicitly made visible implicitly hidden behavior", &cli.Command{Name: "_hidden", Options: cli.Visible}, "_hidden", true),
+			Entry("hidden wins over visible", &cli.Command{Name: "hidden", Options: cli.Hidden | cli.Visible}, "hidden", false),
+		)
+	})
+
 	Describe("SkipFlagParsing", func() {
 
 		It("disables parsing of flags", func() {

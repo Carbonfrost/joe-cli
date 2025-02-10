@@ -15,6 +15,10 @@ func SetOSExit(fn func(int)) {
 	osExit = fn
 }
 
+func IsVisible(t any) bool {
+	return !t.(target).internalFlags().hidden()
+}
+
 func ParseUsage(text string) *usage {
 	return parseUsage(text)
 }

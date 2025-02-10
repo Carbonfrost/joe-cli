@@ -98,7 +98,10 @@ func decompose[T ~int, V any](m map[T]V) *bitSet[T, V] {
 		i++
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return bits.OnesCount(keys[i]) > bits.OnesCount(keys[j])
+		if bits.OnesCount(keys[i]) > bits.OnesCount(keys[j]) {
+			return true
+		}
+		return keys[i] > keys[j]
 	})
 	return &bitSet[T, V]{keys: keys, m: m}
 }

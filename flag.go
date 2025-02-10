@@ -28,6 +28,10 @@ import (
 // The corresponding, typed method to access the value of the flag by name is available from the Context.
 // In this case, you can  obtain value of the --age=21 flag using Context.Int("flag"), which may be
 // necessary when you don't use your own variable.
+//
+// By default, if a flag name starts with an underscore, it
+// is hidden.  To stop this, either set Visible option explicitly or disable
+// global behavior with the DisableAutoVisibility option.
 type Flag struct {
 	pipelinesSupport
 
@@ -626,7 +630,7 @@ func canonicalNames(name string, aliases []string) (long []string, short []rune)
 
 // SetHidden causes the flag to be hidden
 func (f *Flag) SetHidden(v bool) {
-	f.setInternalFlags(internalFlagHidden, true)
+	f.setInternalFlags(internalFlagHidden, v)
 }
 
 // SetRequired causes the flag to be required

@@ -7,6 +7,10 @@ import (
 )
 
 // Command represents a command with arguments, flags, and expressions
+//
+// By default, if a command name starts with an underscore, it
+// is hidden.  To stop this, either set Visible option explicitly or disable
+// global behavior with the DisableAutoVisibility option.
 type Command struct {
 	hooksSupport
 	pipelinesSupport
