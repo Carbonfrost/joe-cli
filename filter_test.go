@@ -10,6 +10,33 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
+var _ = Describe("Assert", func() {
+	DescribeTable("examples", func(app *cli.App, expected types.GomegaMatcher) {
+		args, _ := cli.Split("app")
+		err := app.RunContext(context.TODO(), args)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(expected)
+	},
+		Entry(
+			"initial timing",
+			&cli.App{Action: cli.Assert(cli.InitialTiming, nil)},
+			MatchError("context must be initial timing")),
+		Entry(
+			"before timing",
+			&cli.App{Action: cli.Assert(cli.BeforeTiming, nil)},
+			MatchError("context must be before timing")),
+		Entry(
+			"after timing",
+			&cli.App{Action: cli.Assert(cli.AfterTiming, nil)},
+			MatchError("context must be after timing")),
+		Entry(
+			"has value",
+			&cli.App{Action: cli.Assert(cli.HasValue, nil)},
+			MatchError("context must be target with value")),
+	)
+})
+
 var _ = Describe("IfMatch", func() {
 
 	var (

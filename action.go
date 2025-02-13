@@ -346,7 +346,8 @@ var (
 		),
 	}
 
-	errCantHook = errors.New("hooks are not supported in this context")
+	errCantHook     = errors.New("hooks are not supported in this context")
+	errAssertFailed = errors.New("context does not meet requirements for action")
 
 	timingLabels = map[Timing][2]string{
 		ActionTiming:        {"action timing", "ACTION"},
@@ -1076,6 +1077,28 @@ func IfMatch(f ContextFilter, a Action) Action {
 			return c.Do(a)
 		}
 		return nil
+	})
+}
+
+// Assert provides an action that returns an error if the context filter does not
+// match the context or otherwise runs the action. If the filter value has a method
+// Describe() or String() that returns a string, it is consulted in order to produce the error
+// message; otherwise, a generic error is returned.   Compare to IfMatch.
+func Assert(filter ContextFilter, a Action) Action {
+	return ActionFunc(func(c *Context) error {
+		if !c.Matches(filter) {
+			var desc string
+			if d, ok := filter.(interface{ Describe() string }); ok {
+				desc = d.Describe()
+			} else if d, ok := filter.(fmt.Stringer); ok {
+				desc = d.String()
+			}
+			if desc != "" {
+				return fmt.Errorf("context must be %s", desc)
+			}
+			return errAssertFailed
+		}
+		return Do(c, a)
 	})
 }
 
