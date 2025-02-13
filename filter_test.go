@@ -83,6 +83,7 @@ var _ = Describe("IsMatch", func() {
 		Entry("AnyFlag", targetApp, cli.AnyFlag, Equal([]string{"-f"})),
 		Entry("AnyArg", targetApp, cli.AnyArg, Equal([]string{"<a>"})),
 		Entry("Anything", targetApp, cli.Anything, ConsistOf([]string{"-f", "<a>", "c", "p"})),
+		Entry("HasValue", targetApp, cli.HasValue, Equal([]string{"-f", "<a>"})),
 		Entry("RootCommand", targetApp, cli.RootCommand, Equal([]string{"p"})),
 		Entry("Seen", targetApp, cli.Seen, ConsistOf([]string{"-f", "<a>"})),
 		Entry("Initial", timingApp, cli.InitialTiming, Equal([]string{"i"})),

@@ -42,6 +42,9 @@ const (
 	// RootCommand filters the context to detect if the current command is the root command
 	RootCommand
 
+	// HasValue checks whether the target is an arg, flag, or value setup
+	HasValue
+
 	subcommandDidNotExecute
 
 	// Anything matches any kind of target
@@ -54,6 +57,7 @@ var (
 		AnyFlag:                 (*Context).IsFlag,
 		AnyArg:                  (*Context).IsArg,
 		AnyCommand:              (*Context).IsCommand,
+		HasValue:                (*Context).HasValue,
 		Seen:                    seenThis,
 		RootCommand:             isRoot,
 		subcommandDidNotExecute: (*Context).subcommandDidNotExecute,

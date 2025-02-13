@@ -306,6 +306,12 @@ func (c *Context) Timing() Timing {
 	return c.timing
 }
 
+// HasValue tests whether the last segment of the path represents a command
+func (c *Context) HasValue() bool {
+	_, ok := c.target().(*valueTarget)
+	return c.isOption() || ok
+}
+
 // IsCommand tests whether the last segment of the path represents a command
 func (c *Context) IsCommand() bool {
 	_, ok := c.target().(*Command)
