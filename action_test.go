@@ -2629,7 +2629,7 @@ var _ = Describe("Enum", func() {
 		args, _ := cli.Split(arguments)
 		ctx, err := app.Initialize(context.TODO())
 		Expect(err).NotTo(HaveOccurred())
-		Expect(ctx.Complete(args, incomplete)).To(expected)
+		Expect(cli.FromContext(ctx).Complete(args, incomplete)).To(expected)
 	},
 		Entry("long enum", "app --long=", "--long=", cli.Enum("ok", "no"), ConsistOf([]cli.CompletionItem{
 			{Value: "--long=ok"},

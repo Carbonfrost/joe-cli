@@ -251,16 +251,16 @@ func (a *App) SetData(name string, v interface{}) {
 	a.Data = setData(a.Data, name, v)
 }
 
-func (a *App) runContextCore(c context.Context, args []string) (*Context, error) {
+func (a *App) runContextCore(c context.Context, args []string) (context.Context, error) {
 	ctx, err := a.Initialize(c)
 	if err != nil {
 		return ctx, err
 	}
-	return ctx, ctx.Execute(args)
+	return ctx, FromContext(ctx).Execute(args)
 }
 
 // Initialize sets up the app with the given context and arguments
-func (a *App) Initialize(c context.Context) (*Context, error) {
+func (a *App) Initialize(c context.Context) (context.Context, error) {
 	defer provideCurrentApp(a)()
 	ctx := rootContext(c, a)
 	err := ctx.initialize()
@@ -292,7 +292,7 @@ func (a *rootCommandData) ensureTemplateFuncs() template.FuncMap {
 	return a.templateFuncs
 }
 
-func exit(c *Context, err error) {
+func exit(c context.Context, err error) {
 	if err == nil {
 		return
 	}
@@ -305,7 +305,7 @@ func exit(c *Context, err error) {
 	if coder, ok := err.(ExitCoder); ok {
 		code = coder.ExitCode()
 	}
-	handler(c, err.Error(), code)
+	handler(FromContext(c), err.Error(), code)
 }
 
 func defaultExitHandler(c *Context, message string, status int) {

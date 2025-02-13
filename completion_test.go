@@ -42,7 +42,7 @@ var _ = Describe("Complete", func() {
 		args, _ := cli.Split(arguments)
 		ctx, err := app.Initialize(context.TODO())
 		Expect(err).NotTo(HaveOccurred())
-		Expect(ctx.Complete(args, incomplete)).To(expected)
+		Expect(cli.FromContext(ctx).Complete(args, incomplete)).To(expected)
 	},
 		Entry("no matches", "app", "--fr", WithTransform(ignoringDefaults, BeEmpty())),
 		Entry("all options", "app", "-", WithTransform(ignoringDefaults, ConsistOf([]cli.CompletionItem{
@@ -108,7 +108,7 @@ var _ = Describe("Complete", func() {
 		args, _ := cli.Split(arguments)
 		ctx, err := app.Initialize(context.TODO())
 		Expect(err).NotTo(HaveOccurred())
-		Expect(ctx.Complete(args, incomplete)).To(expected)
+		Expect(cli.FromContext(ctx).Complete(args, incomplete)).To(expected)
 	},
 		Entry("completion all values", "app", "--flag", rosesAndViolets, WithTransform(ignoringDefaults, Equal([]cli.CompletionItem{
 			{Value: "--flag=roses"},
