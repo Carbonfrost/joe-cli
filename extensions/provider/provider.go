@@ -36,7 +36,7 @@ import (
 //
 //	&cli.Flag{
 //	   Name: "p"
-//	   Value: new(provider.Provider),
+//	   Value: new(provider.Value),
 //	}
 //
 // It becomes possible to specify the syntax -p Name,arg1=v,arg2=v, which provides the name
@@ -62,7 +62,7 @@ type Lookup interface {
 	LookupProvider(name string) (Detail, bool)
 }
 
-// Details provides a lookup that porivudes information about a provider and a factory
+// Details provides a lookup that provides information about a provider and a factory
 // for instancing it.
 type Details map[string]Detail
 

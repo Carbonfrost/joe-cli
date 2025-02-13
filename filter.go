@@ -18,8 +18,7 @@ type ContextFilter interface {
 	Matches(c context.Context) bool
 }
 
-// FilterModes enumerates common context filters.  These are bitwise-combinable
-// including with Timing.
+// FilterModes enumerates common context filters.  These are bitwise-combinable.
 type FilterModes int
 
 type bitSet[T ~int, V any] struct {

@@ -10,6 +10,10 @@ import (
 )
 
 // Open a file or URL, optionally in the given app.
+// Either one or two arguments is specified, the name/URL of the file to open
+// and the name of the app to use. If the argument looks like a URL, then it
+// triggers the use of the protocol handler associated with the protocol
+// if no app is specified.
 func Open(fileapp ...string) error {
 	cmd, err := func() (*eexec.Cmd, error) {
 		switch len(fileapp) {

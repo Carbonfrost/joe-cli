@@ -190,8 +190,8 @@ const (
 
 // Args provides a simple initializer for positional arguments.  You specify each argument name and value
 // in order to this function.    It generates the corresponding list of required positional arguments.
-// A panic occurs when this function is not called properly: when a name is blank, when names and values
-// are not arranged in pairs, or when a supported type of value is used.
+// A panic occurs when this function is not called properly: when names and values
+// are not arranged in pairs or when an unsupported type of value is used.
 func Args(namevalue ...interface{}) []*Arg {
 	if len(namevalue)%2 != 0 {
 		panic("unexpected number of arguments")
@@ -211,14 +211,14 @@ func Args(namevalue ...interface{}) []*Arg {
 // it implies taking all arguments, or 0 means take it if it exists.
 //
 //	>= 1   take exactly n number of arguments, though if they look like flags treat as an error
-//	   0   take argument if it does not look like a flag (TakeUnlessFlag)
-//	  -1   take all remaining arguments (even when they look like flags) (TakeRemaining)
-//	  -2   take all remaining arguments but stop before taking one that looks like a flag (TakeUntilNextFlag)
-//	  -3   take all remaining arguments except ones that look like flags (TakeExceptForFlags)
+//	   0   take argument if it does not look like a flag ([TakeUnlessFlag])
+//	  -1   take all remaining arguments (even when they look like flags) ([TakeRemaining])
+//	  -2   take all remaining arguments but stop before taking one that looks like a flag ([TakeUntilNextFlag])
+//	  -3   take all remaining arguments except ones that look like flags ([TakeExceptForFlags])
 //
 // Any other negative value uses the behavior of -1.
 // As a special case, if v is an initialized *Arg or *Flag, it obtains the actual arg counter which will be
-// used for it, or if v is nil, this is the same as TakeUnlessFLag.  The the value
+// used for it, or if v is nil, this is the same as [TakeUnlessFlag].  If the value
 // is already ArgCounter, it is returned as-is.
 func ArgCount(v interface{}) ArgCounter {
 	switch count := v.(type) {

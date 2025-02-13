@@ -138,7 +138,7 @@ func (c *Context) NewBuffer() *buffer {
 	return res
 }
 
-// NewWriter creates a new writer
+// NewWriter creates a new writer with support for color if TTY is detected
 func NewWriter(w io.Writer) Writer {
 	return &stringHelper{
 		Writer:  ansiterm.NewWriter(w),

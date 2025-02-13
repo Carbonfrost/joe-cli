@@ -738,6 +738,8 @@ func (v *NameValue) SetAllowFileReference(val bool) error {
 	return nil
 }
 
+// AllowFileReferencesFlag obtains a flag configuration for setting the
+// AllowFileReferences value
 func (v *NameValue) AllowFileReferencesFlag() Prototype {
 	return Prototype{
 		Name:     "allow-files",
