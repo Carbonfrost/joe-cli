@@ -687,8 +687,8 @@ var _ = Describe("Flag", func() {
 	Describe("Names", func() {
 
 		DescribeTable("examples", func(f *cli.Flag, long, short string, names []string) {
-			Expect(f.Long()).To(Equal(long))
-			Expect(f.Short()).To(Equal(short))
+			Expect(f.LongName()).To(Equal(long))
+			Expect(f.ShortName()).To(Equal(short))
 			Expect(f.Names()).To(Equal(names))
 		},
 			Entry("long only", &cli.Flag{Name: "flag"}, "--flag", "", []string{"--flag"}),

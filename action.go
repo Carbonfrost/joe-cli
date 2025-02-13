@@ -1199,7 +1199,7 @@ func FromEnv(vars ...string) Action {
 func flagScreamingSnakeCase(o option) string {
 	name := o.name()
 	if f, ok := o.(*Flag); ok {
-		name = f.Long()
+		name = f.LongName()
 	}
 	name = strings.Trim(name, "-")
 	name = strings.ReplaceAll(name, "-", "_")

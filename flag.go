@@ -556,7 +556,7 @@ func (f *Flag) Occurrences() int {
 // the Name of the flag if it contains exactly one character, or this is the
 // first alias which contains exactly one character.  This is the empty string
 // if the name and all aliases are long names.  The result starts with a dash.
-func (f *Flag) Short() string {
+func (f *Flag) ShortName() string {
 	if len(f.Name) == 1 {
 		return "-" + f.Name
 	}
@@ -574,7 +574,7 @@ func (f *Flag) Short() string {
 // all Aliases have exactly one character, then the value of Name is returned even
 // if it has exactly one character.  Note that even in this case, the result starts
 // with two leading dashes.
-func (f *Flag) Long() string {
+func (f *Flag) LongName() string {
 	if len(f.Name) > 1 {
 		return "--" + f.Name
 	}
@@ -664,7 +664,7 @@ func (f FlagsByName) Len() int {
 }
 
 func (f FlagsByName) Less(i, j int) bool {
-	return f[i].Long() < f[j].Long()
+	return f[i].LongName() < f[j].LongName()
 }
 
 func (f FlagsByName) Swap(i, j int) {
