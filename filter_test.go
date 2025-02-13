@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/Carbonfrost/joe-cli"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -9,7 +10,7 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-var _ = Describe("IsMatch", func() {
+var _ = Describe("IfMatch", func() {
 
 	var (
 		timingStrings = map[cli.Timing]string{
@@ -97,4 +98,42 @@ var _ = Describe("IsMatch", func() {
 		Entry("pattern", targetApp, cli.PatternFilter("c -f"), Equal([]string{"-f"})),
 		Entry("empty matches everything", targetApp, cli.PatternFilter(""), Equal([]string{"p", "c", "-f", "<a>"})),
 	)
+})
+
+var _ = Describe("FilterModes", func() {
+
+	Describe("MarshalJSON", func() {
+
+		DescribeTable("examples", func(val cli.FilterModes, expected string) {
+			actual, _ := json.Marshal(val)
+			Expect(string(actual)).To(Equal("\"" + expected + "\""))
+
+			var o cli.FilterModes
+			_ = json.Unmarshal(actual, &o)
+			Expect(o).To(Equal(val))
+			Expect(o.String()).To(Equal(expected))
+		},
+			Entry("AnyFlag", cli.AnyFlag, "ANY_FLAG"),
+			Entry("AnyArg", cli.AnyArg, "ANY_ARG"),
+			Entry("Anything", cli.Anything, "ANYTHING"),
+			Entry("HasValue", cli.HasValue, "HAS_VALUE"),
+			Entry("RootCommand", cli.RootCommand, "ROOT_COMMAND"),
+			Entry("Seen", cli.Seen, "SEEN"),
+		)
+	})
+
+	Describe("Describe", func() {
+
+		DescribeTable("examples", func(val cli.FilterModes, expected string) {
+			actual := val.Describe()
+			Expect(actual).To(Equal(expected))
+		},
+			Entry("AnyFlag", cli.AnyFlag, "any flag"),
+			Entry("AnyArg", cli.AnyArg, "any arg"),
+			Entry("Anything", cli.Anything, "anything"),
+			Entry("HasValue", cli.HasValue, "target with value"),
+			Entry("RootCommand", cli.RootCommand, "root command"),
+			Entry("Seen", cli.Seen, "option that has been seen"),
+		)
+	})
 })

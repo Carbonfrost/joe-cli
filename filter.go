@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/bits"
 	"sort"
+	"strings"
 )
 
 // ContextFilterFunc provides a predicate function which detects whether the context
@@ -62,6 +63,16 @@ var (
 		RootCommand:             isRoot,
 		subcommandDidNotExecute: (*Context).subcommandDidNotExecute,
 	}
+
+	filterModeLabels = map[FilterModes][2]string{
+		AnyFlag:     {"any flag", "ANY_FLAG"},
+		AnyArg:      {"any arg", "ANY_ARG"},
+		AnyCommand:  {"any command", "ANY_COMMAND"},
+		Anything:    {"anything", "ANYTHING"},
+		Seen:        {"option that has been seen", "SEEN"},
+		RootCommand: {"root command", "ROOT_COMMAND"},
+		HasValue:    {"target with value", "HAS_VALUE"},
+	}
 )
 
 func anyImpl(*Context) bool    { return true }
@@ -84,6 +95,33 @@ func (f FilterModes) Matches(ctx context.Context) bool {
 		}
 	}
 	return true
+}
+
+// String produces a textual representation of the timing
+func (f FilterModes) String() string {
+	return filterModeLabels[f][1]
+}
+
+// MarshalText provides the textual representation
+func (f FilterModes) MarshalText() ([]byte, error) {
+	return []byte(f.String()), nil
+}
+
+// UnmarshalText converts the textual representation
+func (f *FilterModes) UnmarshalText(b []byte) error {
+	token := strings.TrimSpace(string(b))
+	for k, y := range filterModeLabels {
+		if token == y[1] {
+			*f = k
+			return nil
+		}
+	}
+	return nil
+}
+
+// Describe produces a representation of the timing suitable for use in messages
+func (f FilterModes) Describe() string {
+	return filterModeLabels[f][0]
 }
 
 func (f ContextFilterFunc) Matches(c context.Context) bool {

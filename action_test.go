@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -525,6 +526,44 @@ var _ = Describe("timings", func() {
 		Expect(events).To(Equal([]string{"validator", "before", "implicitValue"}))
 	})
 
+})
+
+var _ = Describe("Timing", func() {
+
+	Describe("MarshalJSON", func() {
+
+		DescribeTable("examples", func(val cli.Timing, expected string) {
+			actual, _ := json.Marshal(val)
+			Expect(string(actual)).To(Equal("\"" + expected + "\""))
+
+			var o cli.Timing
+			_ = json.Unmarshal(actual, &o)
+			Expect(o).To(Equal(val))
+			Expect(o.String()).To(Equal(expected))
+		},
+			Entry("ActionTiming", cli.ActionTiming, "ACTION"),
+			Entry("AfterTiming", cli.AfterTiming, "AFTER"),
+			Entry("BeforeTiming", cli.BeforeTiming, "BEFORE"),
+			Entry("ImplicitValueTiming", cli.ImplicitValueTiming, "IMPLICIT_VALUE"),
+			Entry("InitialTiming", cli.InitialTiming, "INITIAL"),
+			Entry("ValidatorTiming", cli.ValidatorTiming, "VALIDATOR"),
+		)
+	})
+
+	Describe("Describe", func() {
+
+		DescribeTable("examples", func(val cli.Timing, expected string) {
+			actual := val.Describe()
+			Expect(actual).To(Equal(expected))
+		},
+			Entry("ActionTiming", cli.ActionTiming, "action timing"),
+			Entry("AfterTiming", cli.AfterTiming, "after timing"),
+			Entry("BeforeTiming", cli.BeforeTiming, "before timing"),
+			Entry("ImplicitValueTiming", cli.ImplicitValueTiming, "implicit value timing"),
+			Entry("InitialTiming", cli.InitialTiming, "initial timing"),
+			Entry("ValidatorTiming", cli.ValidatorTiming, "validator timing"),
+		)
+	})
 })
 
 var _ = Describe("Uses", func() {

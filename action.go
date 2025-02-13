@@ -348,6 +348,15 @@ var (
 
 	errCantHook = errors.New("hooks are not supported in this context")
 
+	timingLabels = map[Timing][2]string{
+		ActionTiming:        {"action timing", "ACTION"},
+		AfterTiming:         {"after timing", "AFTER"},
+		BeforeTiming:        {"before timing", "BEFORE"},
+		ImplicitValueTiming: {"implicit value timing", "IMPLICIT_VALUE"},
+		InitialTiming:       {"initial timing", "INITIAL"},
+		ValidatorTiming:     {"validator timing", "VALIDATOR"},
+	}
+
 	// ErrImplicitValueAlreadySet occurs when the value for a flag
 	// or arg is set multiple times within the implicit timing.
 	ErrImplicitValueAlreadySet = errors.New("value already set implicitly")
@@ -1288,6 +1297,33 @@ func (t Timing) Matches(ctx context.Context) bool {
 	case BeforeTiming:
 	}
 	return c.IsBefore()
+}
+
+// String produces a textual representation of the timing
+func (t Timing) String() string {
+	return timingLabels[t][1]
+}
+
+// MarshalText provides the textual representation
+func (t Timing) MarshalText() ([]byte, error) {
+	return []byte(t.String()), nil
+}
+
+// UnmarshalText converts the textual representation
+func (t *Timing) UnmarshalText(b []byte) error {
+	token := strings.TrimSpace(string(b))
+	for k, y := range timingLabels {
+		if token == y[1] {
+			*t = k
+			return nil
+		}
+	}
+	return nil
+}
+
+// Describe produces a representation of the timing suitable for use in messages
+func (t Timing) Describe() string {
+	return timingLabels[t][0]
 }
 
 func (p Prototype) Execute(ctx context.Context) error {
