@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"sort"
@@ -111,9 +112,6 @@ type ExprBinding interface {
 	// Expr retrieves the expression operator if it is available
 	Expr() *Expr
 }
-
-// ExprsByName is a sortable slice for exprs
-type ExprsByName []*Expr
 
 type exprsByCategory []*exprCategory
 
@@ -481,18 +479,6 @@ func (e EvaluatorFunc) Evaluate(c context.Context, v interface{}, yield func(int
 	return e(FromContext(c), v, yield)
 }
 
-func (e ExprsByName) Len() int {
-	return len(e)
-}
-
-func (e ExprsByName) Less(i, j int) bool {
-	return e[i].Name < e[j].Name
-}
-
-func (e ExprsByName) Swap(i, j int) {
-	e[i], e[j] = e[j], e[i]
-}
-
 func (f exprFlags) hidden() bool {
 	return f&exprFlagHidden == exprFlagHidden
 }
@@ -696,6 +682,10 @@ func (b *exprBinding) Expr() *Expr {
 
 func emptyYielder(interface{}) error {
 	return nil
+}
+
+func exprsByNameOrder(x *Expr, y *Expr) int {
+	return cmp.Compare(x.Name, y.Name)
 }
 
 var (

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"sort"
 	"strings"
 	"text/template"
@@ -97,9 +98,6 @@ type robustParseResult struct {
 	bindings BindingMap
 	err      error
 }
-
-// CommandsByName provides a slice that can sort on name
-type CommandsByName []*Command
 
 type commandCategory struct {
 	Category string
@@ -662,18 +660,6 @@ func (c *Command) pipeline(t Timing) interface{} {
 	}
 }
 
-func (c CommandsByName) Len() int {
-	return len(c)
-}
-
-func (c CommandsByName) Less(i, j int) bool {
-	return c[i].Name < c[j].Name
-}
-
-func (c CommandsByName) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
-}
-
 func (c *commandContext) initialize(ctx *Context) error {
 	return execute(ctx, defaultCommand.Initializers)
 }
@@ -802,6 +788,10 @@ func sortedByName(flags []*flagSynopsis) {
 	sort.Slice(flags, func(i, j int) bool {
 		return flags[i].Short < flags[j].Short
 	})
+}
+
+func commandsByNameOrder(x, y *Command) int {
+	return cmp.Compare(x.Name, y.Name)
 }
 
 func findCommandByName(cmds []*Command, v any) (*Command, int, bool) {

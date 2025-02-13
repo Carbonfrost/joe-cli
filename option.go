@@ -5,7 +5,7 @@ import (
 	"encoding"
 	"fmt"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -160,6 +160,9 @@ const (
 	// SortedCommands causes sub-commands to be sorted on the help screen generated for the command or app.
 	SortedCommands
 
+	// SortedExprs causes exprs to be sorted on the help screen generated for the command or app.
+	SortedExprs
+
 	// ImpliedAction causes the Action for a flag or arg to be run if it was implicitly
 	// set.  By default, the Action for a flag or arg is only executed when it is
 	// set explicitly.  When this option is used, if the flag or arg has an implied value
@@ -183,7 +186,7 @@ const (
 	None Option = 0
 
 	// Sorted causes flags and sub-commands to be sorted on the help screen generated for the command or app.
-	Sorted = SortedFlags | SortedCommands
+	Sorted = SortedExprs | SortedFlags | SortedCommands
 )
 
 const (
@@ -237,6 +240,7 @@ var (
 		FileReference:          ActionFunc(fileReferenceOpt),
 		SortedFlags:            Before(ActionFunc(sortedFlagsOpt)),
 		SortedCommands:         Before(ActionFunc(sortedCommandsOpt)),
+		SortedExprs:            Before(ActionFunc(sortedExprsOpt)),
 		ImpliedAction:          setInternalFlag(internalFlagImpliedAction),
 	}
 
@@ -260,6 +264,7 @@ var (
 		FileReference:          "FILE_REFERENCE",
 		SortedFlags:            "SORTED_FLAGS",
 		SortedCommands:         "SORTED_COMMANDS",
+		SortedExprs:            "SORTED_EXPRS",
 		ImpliedAction:          "IMPLIED_ACTION",
 		Visible:                "VISIBLE",
 		DisableAutoVisibility:  "DISABLE_AUTO_VISIBILITY",
@@ -616,13 +621,27 @@ func fileReferenceOpt(c *Context) error {
 
 func sortedFlagsOpt(c *Context) error {
 	cmd := c.Command()
-	sort.Sort(FlagsByName(cmd.Flags))
+	slices.SortFunc(cmd.Flags, flagsByNameOrder)
 	return nil
 }
 
 func sortedCommandsOpt(c *Context) error {
 	cmd := c.Command()
-	sort.Sort(CommandsByName(cmd.Subcommands))
+	slices.SortFunc(cmd.Subcommands, commandsByNameOrder)
+	return nil
+}
+
+func sortedExprsOpt(c *Context) error {
+	opt, ok := c.target().(option)
+	if !ok {
+		return nil
+	}
+	exp, ok := opt.value().(*Expression)
+	if !ok {
+		return nil
+	}
+
+	slices.SortFunc(exp.Exprs, exprsByNameOrder)
 	return nil
 }
 

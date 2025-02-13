@@ -376,6 +376,22 @@ var _ = Describe("DisplayHelpScreen", func() {
 			},
 			MatchRegexp(`(?s)d,.*z,`)),
 
+		Entry("display sorted exprs",
+			&cli.App{
+				Args: []*cli.Arg{
+					{
+						Options: cli.SortedExprs,
+						Value: &cli.Expression{
+							Exprs: []*cli.Expr{
+								{Name: "z,"},
+								{Name: "d,"},
+							},
+						},
+					},
+				},
+			},
+			MatchRegexp(`(?s)-d,.*-z,`)),
+
 		Entry("custom help part",
 			&cli.App{
 				Flags: []*cli.Flag{

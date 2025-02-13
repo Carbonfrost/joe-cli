@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"net"
 	"net/url"
@@ -147,9 +148,6 @@ type Flag struct {
 
 	internalOption
 }
-
-// FlagsByName is a sortable slice for flags
-type FlagsByName []*Flag
 
 type flagsByCategory []*flagCategory
 
@@ -659,18 +657,6 @@ func (f *Flag) category() string {
 	return f.Category
 }
 
-func (f FlagsByName) Len() int {
-	return len(f)
-}
-
-func (f FlagsByName) Less(i, j int) bool {
-	return f[i].LongName() < f[j].LongName()
-}
-
-func (f FlagsByName) Swap(i, j int) {
-	f[i], f[j] = f[j], f[i]
-}
-
 // VisibleFlags filters all flags in the flag category by whether they are not hidden
 func (f *flagCategory) VisibleFlags() []*Flag {
 	res := make([]*Flag, 0, len(f.Flags))
@@ -772,6 +758,10 @@ func isFlagType(p interface{}) internalFlags {
 		return internalFlagFlagOnly
 	}
 	return 0
+}
+
+func flagsByNameOrder(x, y *Flag) int {
+	return cmp.Compare(x.Name, y.Name)
 }
 
 var _ target = (*Flag)(nil)
