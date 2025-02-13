@@ -179,7 +179,7 @@ type cons struct {
 type middlewareFunc func(*Context, Action) error
 
 // beforePipeline has sub-timings, defined in actualBeforeIndex map
-type beforePipeline [4]ActionPipeline
+type beforePipeline [actualBeforeIndexMaxValue]ActionPipeline
 
 type panicData struct {
 	recovered string
@@ -230,6 +230,7 @@ const (
 	actualBeforeIndexBeforeTiming
 	actualBeforeIndexImplicitValueTiming
 	actualBeforeIndexJustBeforeTiming
+	actualBeforeIndexMaxValue
 )
 
 var (
