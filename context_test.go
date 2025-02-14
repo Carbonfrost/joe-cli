@@ -103,6 +103,29 @@ var _ = Describe("Context", func() {
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal([]string{"s", "r", "o"}))
 		})
+
+		It("contains value inherited in value target context", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name:  "a",
+						Value: cli.List(),
+						Uses:  cli.ProvideValueInitializer("", "<name>", cli.At(cli.ActionTiming, act)),
+						NArg:  -1,
+					},
+				},
+				Flags: []*cli.Flag{
+					{Name: "f", Value: cli.Int()},
+				},
+			}
+
+			args, _ := cli.Split("app -f 60 s")
+			_ = app.RunContext(context.TODO(), args)
+
+			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
+			Expect(capturedContext.Value("f")).To(Equal(60))
+		})
 	})
 
 	Describe("BindingLookup", func() {

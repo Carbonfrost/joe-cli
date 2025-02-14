@@ -145,6 +145,12 @@ var _ = Describe("Expr", func() {
 			act = new(joeclifakes.FakeEvaluator)
 			app = &cli.App{
 				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name:  "flag",
+						Value: new(int),
+					},
+				},
 				Args: []*cli.Arg{
 					{
 						Name: "f",
@@ -186,7 +192,7 @@ var _ = Describe("Expr", func() {
 		})
 
 		JustBeforeEach(func() {
-			args, _ := cli.Split("app arg -expr true 1 2 a b c")
+			args, _ := cli.Split("app --flag 9 arg -expr true 1 2 a b c")
 			app.RunContext(context.TODO(), args)
 		})
 
@@ -212,6 +218,11 @@ var _ = Describe("Expr", func() {
 		It("provides context Path", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
 			Expect(cli.FromContext(captured).Path().String()).To(Equal("app <-expr>"))
+		})
+
+		It("provides values from flags", func() {
+			captured, _, _ := act.EvaluateArgsForCall(0)
+			Expect(cli.FromContext(captured).Int("flag")).To(Equal(9))
 		})
 	})
 
