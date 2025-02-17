@@ -736,6 +736,62 @@ var _ = Describe("Context", func() {
 		})
 	})
 
+	Describe("ContextOf", func() {
+		It("obtains context for subtargets", func() {
+			var (
+				actualFlag    *cli.Context
+				actualArg     *cli.Context
+				actualCommand *cli.Context
+				app           *cli.App
+			)
+			app = &cli.App{
+				Action: func(c context.Context) {
+					actualFlag = c.(*cli.Context).ContextOf(app.Flags[0])
+					actualArg = c.(*cli.Context).ContextOf(app.Args[0])
+					actualCommand = c.(*cli.Context).ContextOf(app.Commands[0])
+				},
+				Flags: []*cli.Flag{
+					{Name: "f"},
+				},
+				Args: []*cli.Arg{
+					{Name: "a"},
+				},
+				Commands: []*cli.Command{
+					{Name: "c"},
+				},
+			}
+
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(actualFlag.Target()).To(Equal(app.Flags[0]))
+			Expect(actualCommand.Target()).To(Equal(app.Commands[0]))
+			Expect(actualArg.Target()).To(Equal(app.Args[0]))
+		})
+
+		DescribeTable("examples", func(name any, expected types.GomegaMatcher) {
+			var actual any
+			app := &cli.App{
+				Name: "theApp",
+				Action: func(c context.Context) {
+					actual = c.(*cli.Context).ContextOf(name).Target()
+				},
+				Flags: []*cli.Flag{
+					{Name: "flag", Aliases: []string{"f"}},
+				},
+				Args: []*cli.Arg{
+					{Name: "a"},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(actual).To(expected)
+		},
+			Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
+			Entry("name of arg", "a", WithTransform(argName, Equal("a"))),
+			Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
+			Entry("index", 0, WithTransform(argName, Equal("a"))),
+			Entry("self", "", WithTransform(commandName, Equal("theApp"))),
+		)
+	})
+
 	Describe("LookupFlag", func() {
 		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
 			var actual *cli.Flag

@@ -393,6 +393,42 @@ func (c *Context) PersistentFlags() []*Flag {
 	return c.Parent().Flags()
 }
 
+// ContextOf creates a context for use with the given target, which must
+// be a flag, arg, or sub-command, or it must be the name of a flag or arg
+// (using the typing and rules of LookupFlag and LookupArg). This method
+// does not check whether the target is actually in the scope of the
+// current target. The result could be nil if the name or index does not
+// exist.
+func (c *Context) ContextOf(target any) *Context {
+	switch name := target.(type) {
+	case *Arg, *Flag:
+		return c.optionContext(target.(option))
+	case *Command:
+		return c.commandContext(target.(*Command))
+	case int:
+		return c.tryOptionContext(c.LookupArg(name))
+	case rune:
+		return c.tryOptionContext(c.LookupFlag(name))
+	case string:
+		if name == "" {
+			return c
+		}
+		if a, ok := c.LookupArg(name); ok {
+			return c.optionContext(a)
+		}
+		return c.tryOptionContext(c.LookupFlag(name))
+	default:
+		panic(fmt.Sprintf("unexpected target type %T", target))
+	}
+}
+
+func (c *Context) tryOptionContext(target any, ok bool) *Context {
+	if !ok {
+		return nil
+	}
+	return c.optionContext(target.(option))
+}
+
 // LookupCommand finds the command by name.  The name can be a string or *Command
 func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
 	if c == nil {
