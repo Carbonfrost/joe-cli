@@ -368,6 +368,10 @@ func (c *lookupSupport) Value(name interface{}) interface{} {
 }
 
 func (c *lookupSupport) try(n interface{}, deref bool) (interface{}, bool) {
+	return tryLookup(c, n, deref)
+}
+
+func tryLookup(c lookupCore, n any, deref bool) (any, bool) {
 	if c == nil {
 		return nil, false
 	}

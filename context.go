@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/big"
+	"net"
+	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"text/template"
@@ -37,7 +41,7 @@ type Context struct {
 	// own fs.File implementations provided from an FS implementation.
 	FS fs.FS
 
-	*lookupSupport
+	lookupCore
 	internal internalContext
 	timing   Timing
 
@@ -608,7 +612,8 @@ func (c *Context) Value(name interface{}) interface{} {
 
 	switch v := name.(type) {
 	case rune, string, nil, *Arg, *Flag, int:
-		return c.lookupSupport.Value(c.nameToString(v))
+		it, _ := tryLookup(c.lookupCore, c.nameToString(v), true)
+		return it
 	case contextKeyType:
 		return c
 	default:
@@ -1386,20 +1391,18 @@ func rootContext(cctx context.Context, app *App) *Context {
 		flagSet: newSet(),
 	}
 	return &Context{
-		ref:           cctx,
-		internal:      internal,
-		lookupSupport: newLookupSupport(internal, nil),
+		ref:        cctx,
+		internal:   internal,
+		lookupCore: newLookupCore(internal, nil),
 	}
 }
 
-func newLookupSupport(t internalContext, parent lookupCore) *lookupSupport {
+func newLookupCore(t internalContext, parent lookupCore) lookupCore {
 	if parent == nil {
-		return &lookupSupport{t}
+		return t
 	}
 
-	return &lookupSupport{
-		&parentLookup{t, parent},
-	}
+	return &parentLookup{t, parent}
 }
 
 func (c *Context) commandContext(cmd *Command) *Context {
@@ -1476,14 +1479,14 @@ func (c *Context) requireInit() error {
 
 func (c *Context) copy(t internalContext) *Context {
 	return &Context{
-		ref:           c.ref,
-		Stdin:         c.Stdin,
-		Stdout:        c.Stdout,
-		Stderr:        c.Stderr,
-		FS:            c.FS,
-		internal:      t,
-		parent:        c,
-		lookupSupport: newLookupSupport(t, c),
+		ref:        c.ref,
+		Stdin:      c.Stdin,
+		Stdout:     c.Stdout,
+		Stderr:     c.Stderr,
+		FS:         c.FS,
+		internal:   t,
+		parent:     c,
+		lookupCore: newLookupCore(t, c),
 	}
 }
 
@@ -1491,7 +1494,7 @@ func (c *Context) copyWithoutReparent(t internalContext) *Context {
 	res := c.copy(t)
 	// Keep existing parent and lookup
 	res.parent = c.parent
-	res.lookupSupport = newLookupSupport(t, c.parent)
+	res.lookupCore = newLookupCore(t, c.parent)
 	return res
 }
 
@@ -1566,6 +1569,146 @@ func (c *Context) actualFS() fs.FS {
 		return newDefaultFS(c.Stdin, c.Stdout)
 	}
 	return c.FS
+}
+
+// Bool obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Bool(name any) bool {
+	return lookupBool(c, name)
+}
+
+// String obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) String(name any) string {
+	return lookupString(c, name)
+}
+
+// List obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) List(name any) []string {
+	return lookupList(c, name)
+}
+
+// Int obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Int(name any) int {
+	return lookupInt(c, name)
+}
+
+// Int8 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Int8(name any) int8 {
+	return lookupInt8(c, name)
+}
+
+// Int16 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Int16(name any) int16 {
+	return lookupInt16(c, name)
+}
+
+// Int32 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Int32(name any) int32 {
+	return lookupInt32(c, name)
+}
+
+// Int64 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Int64(name any) int64 {
+	return lookupInt64(c, name)
+}
+
+// Uint obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Uint(name any) uint {
+	return lookupUint(c, name)
+}
+
+// Uint8 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Uint8(name any) uint8 {
+	return lookupUint8(c, name)
+}
+
+// Uint16 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Uint16(name any) uint16 {
+	return lookupUint16(c, name)
+}
+
+// Uint32 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Uint32(name any) uint32 {
+	return lookupUint32(c, name)
+}
+
+// Uint64 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Uint64(name any) uint64 {
+	return lookupUint64(c, name)
+}
+
+// Float32 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Float32(name any) float32 {
+	return lookupFloat32(c, name)
+}
+
+// Float64 obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Float64(name any) float64 {
+	return lookupFloat64(c, name)
+}
+
+// Duration obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Duration(name any) time.Duration {
+	return lookupDuration(c, name)
+}
+
+// File obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) File(name any) *File {
+	return lookupFile(c, name)
+}
+
+// FileSet obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) FileSet(name any) *FileSet {
+	return lookupFileSet(c, name)
+}
+
+// Map obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Map(name any) map[string]string {
+	return lookupMap(c, name)
+}
+
+// NameValue obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) NameValue(name any) *NameValue {
+	return lookupNameValue(c, name)
+}
+
+// NameValues obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) NameValues(name any) []*NameValue {
+	return lookupNameValues(c, name)
+}
+
+// URL obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) URL(name any) *url.URL {
+	return lookupURL(c, name)
+}
+
+// Regexp obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Regexp(name any) *regexp.Regexp {
+	return lookupRegexp(c, name)
+}
+
+// IP obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) IP(name any) net.IP {
+	return lookupIP(c, name)
+}
+
+// BigInt obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) BigInt(name any) *big.Int {
+	return lookupBigInt(c, name)
+}
+
+// BigFloat obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) BigFloat(name any) *big.Float {
+	return lookupBigFloat(c, name)
+}
+
+// Bytes obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Bytes(name any) []byte {
+	return lookupBytes(c, name)
+}
+
+// Interface obtains a value by the name of the flag, arg, or other value in scope
+func (c *Context) Interface(name any) (any, bool) {
+	return tryLookup(c, name, false)
 }
 
 func (v *valueTarget) setDescription(arg interface{}) {
