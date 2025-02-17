@@ -518,4 +518,31 @@ var _ = Describe("FileSet", func() {
 				&cli.FileSet{FS: testFileSystem, Recursive: true, Files: []string{"src"}}, "bc"),
 		)
 	})
+
+	Describe("All", func() {
+
+		DescribeTable("examples",
+			func(set *cli.FileSet, expected []string) {
+				var all []string
+				for f := range set.All() {
+					all = append(all, f.Name)
+				}
+
+				Expect(all).To(Equal(expected))
+			},
+
+			Entry("process file",
+				&cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/a/b.txt"},
+				},
+				[]string{"src/a/b.txt"}),
+			Entry("process files recursive",
+				&cli.FileSet{
+					FS:        testFileSystem,
+					Recursive: true,
+					Files:     []string{"src"},
+				}, []string{"src", "src/a", "src/a/b.txt", "src/c.txt"}),
+		)
+	})
 })

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"os"
 	"path"
 	"path/filepath"
@@ -103,6 +104,8 @@ type fsExtensionWrapper struct {
 }
 
 type dirFS string
+
+var errStopWalk = errors.New("stop walking")
 
 // NewFS wraps the given FS for use as a CLI file system.
 func NewFS(f fs.FS) FS {
@@ -285,6 +288,18 @@ func (f *FileSet) Exists() bool {
 // Reset will resets the file set to empty
 func (f *FileSet) Reset() {
 	f.Files = nil
+}
+
+func (f *FileSet) All() iter.Seq2[*File, error] {
+	return func(yield func(*File, error) bool) {
+		f.Do(func(f *File, err error) error {
+			ok := yield(f, err)
+			if !ok {
+				return errStopWalk
+			}
+			return nil
+		})
+	}
 }
 
 // Do will invoke the given function on each file in the set.  If recursion is
