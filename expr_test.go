@@ -115,6 +115,83 @@ var _ = Describe("Expr", func() {
 		Expect(captured.Path().String()).To(Equal("app <-expr> <a>"))
 	})
 
+	Describe("arg events are invoked", func() {
+
+		DescribeTable("examples", func(middleware func(cli.Action) cli.Action) {
+			act := new(joeclifakes.FakeAction)
+			appAct := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						Value: &cli.Expression{
+							Exprs: []*cli.Expr{
+								{
+									Name: "expr",
+									Args: []*cli.Arg{
+										{
+											Name:  "a",
+											Value: cli.Bool(),
+											Uses:  middleware(act),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Action: appAct,
+			}
+			args, _ := cli.Split("app -- -expr true")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+
+			captured := cli.FromContext(appAct.ExecuteArgsForCall(0))
+			captured.Expression("expression").Evaluate(captured, 0)
+
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+
+			captured = cli.FromContext(act.ExecuteArgsForCall(0))
+			Expect(captured.Path().String()).To(Equal("app <expression> <-expr> <a>"))
+		},
+			Entry("initializer", cli.Initializer),
+			Entry("before", cli.Before),
+			Entry("after", cli.After),
+		)
+	})
+
+	It("marks the arg with expressions as initialized", func() {
+		act := new(joeclifakes.FakeAction)
+		appAct := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Value: &cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name: "expr",
+								Args: []*cli.Arg{
+									{
+										Name:   "a",
+										Action: act,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Action: appAct,
+		}
+		// args, _ := cli.Split("app -- -expr true")
+		_, _ = app.Initialize(context.TODO())
+
+		myArg := app.Args[0].Value.(*cli.Expression).Exprs[0].Args[0]
+		Expect(cli.IsInitialized(myArg)).To(BeTrue())
+		Expect(cli.IsDestinationImplicitlyCreated(myArg)).To(BeTrue())
+	})
+
 	It("names it expression by default", func() {
 		app := &cli.App{
 			Args: []*cli.Arg{

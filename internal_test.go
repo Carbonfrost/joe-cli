@@ -19,6 +19,14 @@ func IsVisible(t any) bool {
 	return !t.(target).internalFlags().hidden()
 }
 
+func IsInitialized(t any) bool {
+	return t.(target).internalFlags().initialized()
+}
+
+func IsDestinationImplicitlyCreated(t any) bool {
+	return t.(target).internalFlags().destinationImplicitlyCreated()
+}
+
 func ParseUsage(text string) *usage {
 	return parseUsage(text)
 }
