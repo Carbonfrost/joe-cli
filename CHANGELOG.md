@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.7.0 (February 17, 2025)
+
+### New Features
+
+* Introduce the `bind` extension to facilitate common idioms (a1a6799)
+* Introduce `ContextOf` (72cd831)
+* Introduce `SortedExprs` (a50971c)
+* Introduce `HasValue` filter modes (80fbbcf)
+* Introduce `Assert` action (a4bcb98)
+* Introduce `iter` support to `FileSet` (cdc4dc5)
+* Add marshaling, describe to `FilterModes` and `Timing` (b8e7455)
+* Support implicit and explicit visibility of flags and commands (e8d774c)
+* Introduce `Context.Matches` method to increase symmetry between actions and context methods (144f09c)
+* Allow `Target` to support for values in value initialization contexts (80e5bc0)
+* Breaking changes:
+    * Merge `CompletionContext` into `Context` (286f328)
+    * Replace return value in `Initialize` with `context.Context` (5cba6a6)
+    * Rename `Flag.{Short,Long}Name()` (3eab579)
+
+### Bug fixes and improvements
+
+* Split `lookupSupport` logic from `Context` (e936eee)
+* Documentation fixes (be48a05)
+* Various modernizations and cleanup (d290ad2, b1d7e2b, 046293d, acef537, a50971c, ef92c89)
+* Remove internal state from annotations to internal flags (da285dd)
+* Improve consistency in the definition of hooks; additional tests (90bdd8d)
+
 ## v0.6.0 (January 20, 2025)
 
 ### New Features
