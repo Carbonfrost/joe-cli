@@ -906,7 +906,10 @@ func (c *Context) act(v interface{}, desired Timing, optional bool) error {
 
 // Target retrieves the target of the context, which is *App, *Command, *Flag, *Arg,
 // or *Expr
-func (c *Context) Target() interface{} {
+func (c *Context) Target() any {
+	if val, ok := c.target().(*valueTarget); ok {
+		return val.v
+	}
 	return c.target()
 }
 

@@ -792,6 +792,87 @@ var _ = Describe("Context", func() {
 		)
 	})
 
+	Describe("Target", func() {
+		It("obtains target from the context", func() {
+			var (
+				actualFlag    any
+				actualArg     any
+				actualCommand any
+				actualExpr    any
+			)
+			app := &cli.App{
+				Action: func() {},
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+						Uses: func(c *cli.Context) {
+							actualFlag = c.Target()
+						},
+					},
+				},
+				Args: []*cli.Arg{
+					{
+						Name: "a",
+						Uses: func(c *cli.Context) {
+							actualArg = c.Target()
+						},
+					},
+					{
+						Name: "expression",
+						Value: &cli.Expression{
+							Exprs: []*cli.Expr{
+								{
+									Name: "e",
+									Uses: func(c *cli.Context) {
+										actualExpr = c.Target()
+									},
+								},
+							},
+						},
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+						Uses: func(c *cli.Context) {
+							actualCommand = c.Target()
+						},
+					},
+				},
+			}
+
+			_ = app.RunContext(context.TODO(), []string{"app", "c"})
+			Expect(actualFlag).To(Equal(app.Flags[0]))
+			Expect(actualCommand).To(Equal(app.Commands[0]))
+			Expect(actualArg).To(Equal(app.Args[0]))
+			Expect(actualExpr).To(Equal(app.Args[1].Value.(*cli.Expression).Exprs[0]))
+		})
+
+		DescribeTable("examples", func(name any, expected types.GomegaMatcher) {
+			var actual any
+			app := &cli.App{
+				Name: "theApp",
+				Action: func(c context.Context) {
+					actual = c.(*cli.Context).ContextOf(name).Target()
+				},
+				Flags: []*cli.Flag{
+					{Name: "flag", Aliases: []string{"f"}},
+				},
+				Args: []*cli.Arg{
+					{Name: "a"},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(actual).To(expected)
+		},
+			Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
+			Entry("name of arg", "a", WithTransform(argName, Equal("a"))),
+			Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
+			Entry("index", 0, WithTransform(argName, Equal("a"))),
+			Entry("self", "", WithTransform(commandName, Equal("theApp"))),
+		)
+	})
+
 	Describe("LookupFlag", func() {
 		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
 			var actual *cli.Flag
