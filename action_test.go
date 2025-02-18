@@ -1488,7 +1488,7 @@ var _ = Describe("Prototype", func() {
 		Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
 		Entry("Value", cli.Prototype{Value: new(time.Duration)}, Fields{"Value": Equal(new(time.Duration))}),
 		Entry("Completion", cli.Prototype{
-			Completion: cli.CompletionFunc(func(*cli.CompletionContext) []cli.CompletionItem {
+			Completion: cli.CompletionFunc(func(*cli.Context) []cli.CompletionItem {
 				return nil
 			}),
 		}, Fields{"Completion": Not(BeNil())}),
@@ -1519,7 +1519,7 @@ var _ = Describe("Prototype", func() {
 		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Options": Equal(cli.Hidden | cli.RightToLeft)}),
 		Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
 		Entry("Completion", cli.Prototype{
-			Completion: cli.CompletionFunc(func(*cli.CompletionContext) []cli.CompletionItem {
+			Completion: cli.CompletionFunc(func(*cli.Context) []cli.CompletionItem {
 				return nil
 			}),
 		}, Fields{"Completion": Not(BeNil())}),

@@ -18,17 +18,14 @@ type CompletionType int
 
 // Completion is the shell auto-complete function for the flag, arg, or value
 type Completion interface {
-	Complete(*CompletionContext) []CompletionItem
+	Complete(context.Context) []CompletionItem
 }
 
 // StandardCompletion enumerates standard completion results
 type StandardCompletion int
 
-// CompletionContext provides information about the completion request
-type CompletionContext struct {
-	// Context is the context where completion is occurring
-	Context *Context
-
+// CompletionRequest provides information about the completion request
+type CompletionRequest struct {
 	// Args that have been passed to the command so far
 	Args []string
 
@@ -43,7 +40,7 @@ type CompletionContext struct {
 }
 
 // CompletionFunc provide a function that can be used as a Completer
-type CompletionFunc func(*CompletionContext) []CompletionItem
+type CompletionFunc func(*Context) []CompletionItem
 
 // Completion types
 const (
@@ -92,6 +89,16 @@ type completionData struct {
 const (
 	shellCompletesKey = "__ShellCompletes"
 )
+
+// CompletionRequest gets the completion request from the
+// context if a completion is being requested.
+func (c *Context) CompletionRequest() *CompletionRequest {
+	return c.request
+}
+
+func (c *Context) clearCompletionRequest() {
+	c.request = nil
+}
 
 func newCompletionData(c *Context) *completionData {
 	appName := c.App().Name
@@ -171,12 +178,12 @@ func setupRobustParsingMode(c *Context) {
 // or args.  For flags, the name of the flag is automatically
 // prefixed to the completion value using valid syntax.
 func CompletionValues(values ...string) Completion {
-	return CompletionFunc(func(c *CompletionContext) []CompletionItem {
-		switch o := c.Context.Target().(type) {
+	return CompletionFunc(func(c *Context) []CompletionItem {
+		switch o := c.Target().(type) {
 		case *Flag:
 			res := make([]CompletionItem, 0, len(values))
 
-			if c.Incomplete == "" {
+			if c.CompletionRequest().Incomplete == "" {
 				for _, v := range values {
 					res = append(res, CompletionItem{Value: v})
 				}
@@ -191,7 +198,7 @@ func CompletionValues(values ...string) Completion {
 				}
 				for _, a := range values {
 					v := prefix + a
-					if strings.HasPrefix(v, c.Incomplete) {
+					if strings.HasPrefix(v, c.CompletionRequest().Incomplete) {
 						res = append(res, CompletionItem{Value: v})
 					}
 				}
@@ -200,7 +207,7 @@ func CompletionValues(values ...string) Completion {
 		default:
 			res := make([]CompletionItem, 0, len(values))
 			for _, v := range values {
-				if strings.HasPrefix(v, c.Incomplete) {
+				if strings.HasPrefix(v, c.CompletionRequest().Incomplete) {
 					res = append(res, CompletionItem{Value: v})
 				}
 			}
@@ -216,14 +223,16 @@ func (c *Context) Complete(args []string, incomplete string) []CompletionItem {
 }
 
 func (c *Context) complete(args []string, incomplete string, re *robustParseResult) []CompletionItem {
-	cc := &CompletionContext{
-		Context:    c,
+	cc := &CompletionRequest{
 		Args:       args,
 		Incomplete: incomplete,
 		Bindings:   re.bindings,
 		Err:        re.err,
 	}
-	return c.target().completion().Complete(cc)
+	c.request = cc
+	defer c.clearCompletionRequest()
+
+	return c.target().completion().Complete(c)
 }
 
 func (c *Context) robustParsingMode() bool {
@@ -239,19 +248,19 @@ func (c *Context) shellCompletes() map[string]ShellComplete {
 	return l.(map[string]ShellComplete)
 }
 
-func (f CompletionFunc) Complete(c *CompletionContext) []CompletionItem {
+func (f CompletionFunc) Complete(c context.Context) []CompletionItem {
 	if f == nil {
 		return nil
 	}
-	return f(c)
+	return f(FromContext(c))
 }
 
 func (f CompletionFunc) Execute(ctx context.Context) error {
-	c := FromContext(ctx)
-	return c.Do(SetCompletion(f))
+	return Do(ctx, SetCompletion(f))
 }
 
-func (s StandardCompletion) Complete(c *CompletionContext) []CompletionItem {
+func (s StandardCompletion) Complete(ctx context.Context) []CompletionItem {
+	c := FromContext(ctx).CompletionRequest()
 	switch s {
 	case FileCompletion:
 		return []CompletionItem{
@@ -268,20 +277,6 @@ func (s StandardCompletion) Complete(c *CompletionContext) []CompletionItem {
 func (s StandardCompletion) Execute(ctx context.Context) error {
 	c := FromContext(ctx)
 	return c.Do(SetCompletion(s))
-}
-
-func (c *CompletionContext) optionContext(opt option) *CompletionContext {
-	return c.copy(c.Context.optionContext(opt))
-}
-
-func (c *CompletionContext) copy(t *Context) *CompletionContext {
-	return &CompletionContext{
-		Context:    t,
-		Args:       c.Args,
-		Incomplete: c.Incomplete,
-		Bindings:   c.Bindings,
-		Err:        c.Err,
-	}
 }
 
 func actualCompletion(c Completion) Completion {

@@ -373,8 +373,8 @@ func ensureSubcommands(c *Context) error {
 	return nil
 }
 
-func completeSubCommand(cc *CompletionContext) []CompletionItem {
-	c := cc.Context
+func completeSubCommand(c *Context) []CompletionItem {
+	cc := c.CompletionRequest()
 	invoke := c.List("")
 	detect := func(s string) bool {
 		return strings.HasPrefix(s, cc.Incomplete)
@@ -415,13 +415,14 @@ func (c *Command) completion() Completion {
 	return CompletionFunc(defaultCommandCompletion)
 }
 
-func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
-	cmd := cc.Context.Target().(*Command)
+func defaultCommandCompletion(c *Context) []CompletionItem {
+	cc := c.CompletionRequest()
+	cmd := c.Target().(*Command)
 	var items []CompletionItem
 
 	if strings.HasPrefix(cc.Incomplete, "-") {
 		// If a search only finds one match, then complete the flag
-		items = findSolitaryMatch(cc)
+		items = findSolitaryMatch(c)
 		if items != nil {
 			return items
 		}
@@ -442,7 +443,7 @@ func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
 		if strings.HasPrefix(name, "-") {
 			flag, ok := cmd.Flag(name)
 			if ok {
-				return actualCompletion(flag.completion()).Complete(cc)
+				return actualCompletion(flag.completion()).Complete(c)
 			}
 		}
 
@@ -453,7 +454,7 @@ func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
 		if arg == nil {
 			return nil
 		}
-		return actualCompletion(arg.completion()).Complete(cc)
+		return actualCompletion(arg.completion()).Complete(c)
 	}
 
 	// Request completion of the last argument that was seen
@@ -465,14 +466,15 @@ func defaultCommandCompletion(cc *CompletionContext) []CompletionItem {
 				break
 			}
 		}
-		return actualCompletion(last.completion()).Complete(cc.optionContext(last))
+		return actualCompletion(last.completion()).Complete(c.optionContext(last))
 	}
 
 	return items
 }
 
-func findSolitaryMatch(cc *CompletionContext) []CompletionItem {
-	cmd := cc.Context.Target().(*Command)
+func findSolitaryMatch(c *Context) []CompletionItem {
+	cc := c.CompletionRequest()
+	cmd := c.Target().(*Command)
 	flagName, _, hasArg := strings.Cut(cc.Incomplete, "=")
 	var match *Flag
 	var matchName string
@@ -480,7 +482,7 @@ func findSolitaryMatch(cc *CompletionContext) []CompletionItem {
 	for _, f := range cmd.VisibleFlags() {
 		for _, n := range f.synopsis().Names {
 			if n == cc.Incomplete || (hasArg && strings.HasPrefix(n, flagName)) {
-				return actualCompletion(f.completion()).Complete(cc.optionContext(f))
+				return actualCompletion(f.completion()).Complete(c.optionContext(f))
 			}
 			if strings.HasPrefix(n, cc.Incomplete) {
 				if match != nil && match != f {

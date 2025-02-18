@@ -44,6 +44,7 @@ type Context struct {
 	lookupCore
 	internal internalContext
 	timing   Timing
+	request  *CompletionRequest
 
 	parent    *Context
 	pathCache ContextPath
@@ -1486,6 +1487,7 @@ func (c *Context) copy(t internalContext) *Context {
 		FS:         c.FS,
 		internal:   t,
 		parent:     c,
+		request:    c.request,
 		lookupCore: newLookupCore(t, c),
 	}
 }
