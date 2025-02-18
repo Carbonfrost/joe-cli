@@ -183,11 +183,15 @@ func validFactory(fn any) bool {
 // ArgumentFlag obtains a conventions-based flag for setting an argument
 func (v *Value) ArgumentFlag() cli.Prototype {
 	return cli.Prototype{
-		Name:     "arg",
-		Value:    new(string),
-		HelpText: "Sets an argument for %s",
+		Name:  "arg",
+		Value: new(string),
 		Setup: cli.Setup{
-			Uses: cli.Bind(v.Set),
+			Uses: cli.Pipeline(
+				cli.Bind(v.Set),
+				func(c *cli.Context) {
+					c.SetHelpText(fmt.Sprintf("Sets an argument for %s", c.Data()["DependentFlag"]))
+				},
+			),
 		},
 	}
 }

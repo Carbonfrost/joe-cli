@@ -2190,6 +2190,25 @@ var _ = Describe("Accessory", func() {
 		Expect(flag.Name).To(Equal("recursive"))
 	})
 
+	It("allows nil func as prototype", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "s",
+					Value: new(string),
+					Uses:  cli.Accessory("name", (func(string) cli.Prototype)(nil)),
+				},
+			},
+			Action: act,
+		}
+
+		_ = app.RunContext(context.TODO(), []string{"app"})
+		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
+		flag := flags[len(flags)-1]
+		Expect(flag.Name).To(Equal("name"))
+	})
+
 	It("creates the flag with implied name", func() {
 		act := new(joeclifakes.FakeAction)
 		app := &cli.App{
@@ -2226,6 +2245,31 @@ var _ = Describe("Accessory", func() {
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Description).To(Equal("my custom description"))
+	})
+
+	It("works with actions pipelines", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:     "files",
+					Value:    new(cli.FileSet),
+					Category: "same category",
+					Uses:     cli.Accessory0("custom", cli.Category(""), cli.Named("recursive")),
+				},
+			},
+			Action: act,
+		}
+		Expect(func() {
+			_ = app.RunContext(context.TODO(), []string{"app"})
+		}).NotTo(Panic())
+		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
+		flag := flags[len(flags)-1]
+
+		Expect(flag.Name).To(Equal("recursive"))
+		Expect(flag.Value).To(Equal(new(string)))
+		Expect(flag.Category).To(Equal(""))
+
 	})
 })
 

@@ -672,29 +672,58 @@ func bindSupportedValue(v interface{}) interface{} {
 // then the name from the prototype will be used.  If it is "-", then it will be derived from the other flag.
 // For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
 // named "files", then the accessory flag would be named --files-recursive.
-func Accessory[T Value](name string, fn func(T) Prototype, actions ...Action) Action {
+func Accessory[T any, A Action](name string, fn func(T) A, actions ...Action) Action {
 	return ActionFunc(func(c *Context) error {
 		val := c.Value("").(T)
-		proto := fn(val)
-
-		if proto.Category == "" {
-			proto.Category = c.option().category()
-		}
-
-		switch name {
-		case "":
-			// user specified value
-		case "-":
-			proto.Name = withoutDecorators(c.Name()) + "-" + proto.Name
-		default:
-			proto.Name = name
+		var proto Action
+		if fn != nil {
+			proto = fn(val)
 		}
 
 		f := &Flag{
-			Uses: Pipeline(proto).Append(actions...),
+			Uses: accessory(c, proto, name).Append(actions...),
+		}
+		return c.AddFlag(f)
+	})
+}
+
+// Accessory0 provides an action which sets up an accessory flag for the current flag or argument.
+// A common pattern is that a flag has a related sibling flag that can be used to refine the value.
+//
+// The value of name determines the accessory flag name.  There are two special cases.  If it is blank,
+// then the name from the prototype will be used.  If it is "-", then it will be derived from the other flag.
+// For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
+// named "files", then the accessory flag would be named --files-recursive.
+func Accessory0(name string, actions ...Action) Action {
+	return ActionFunc(func(c *Context) error {
+		f := &Flag{
+			Uses: accessory(c, nil, name).Append(actions...),
 		}
 		return c.Do(AddFlag(f))
 	})
+}
+
+func accessory(c *Context, proto Action, name string) ActionPipeline {
+	var (
+		dep = withoutDecorators(c.Name())
+
+		ensureCategory = Prototype{
+			Category: c.option().category(),
+		}
+		ensureName = func() Action {
+			switch name {
+			case "":
+				return nil
+			case "-":
+				return ActionFunc(func(c *Context) error {
+					return c.SetName(dep + "-" + withoutDecorators(c.Name()))
+				})
+			default:
+				return Named(name)
+			}
+		}()
+	)
+	return Pipeline(Data("DependentFlag", dep), proto, ensureCategory, ensureName)
 }
 
 // Enum provides validation that a particular flag or arg value matches a given set of

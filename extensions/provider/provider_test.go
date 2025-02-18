@@ -229,6 +229,25 @@ var _ = Describe("SetArgument", func() {
 		Expect(app.Flags[0].Name).To(Equal("provider-arg"))
 		Expect(app.Flags[0].Value).To(Equal(new(string)))
 	})
+
+	It("uses correct accessory flag HelpText", func() {
+		// Addresses a bug where the incorrect HelpText was being used
+		// since automatic %s expansion was removed in 3e976a
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:  "provider",
+					Value: new(provider.Value),
+					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
+				},
+			},
+		}
+
+		_, _ = app.Initialize(context.TODO())
+		flag, _ := app.Flag("provider-arg")
+		Expect(flag.HelpText).To(Equal("Sets an argument for provider"))
+	})
 })
 
 var _ = Describe("ListProviders", func() {
