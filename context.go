@@ -804,6 +804,21 @@ func (c *Context) SetOptionalValue(v any) error {
 	return nil
 }
 
+// SetName sets the name on the current target
+func (c *Context) SetName(name string) error {
+	switch o := c.target().(type) {
+	case *Arg:
+		o.Name = name
+	case *Flag:
+		o.Name = name
+	case *Command:
+		o.Name = name
+	case interface{ SetName(string) }:
+		o.SetName(name)
+	}
+	return nil
+}
+
 // SetCategory sets the category on the current target
 func (c *Context) SetCategory(name string) error {
 	c.target().setCategory(name)

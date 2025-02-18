@@ -451,6 +451,10 @@ func (e *Expr) LookupData(name string) (interface{}, bool) {
 	return v, ok
 }
 
+func (e *Expr) SetName(name string) {
+	e.Name = name
+}
+
 func (e *Expr) SetCategory(name string) {
 	e.Category = name
 }

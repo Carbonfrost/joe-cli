@@ -781,6 +781,12 @@ func Category(name string) Action {
 	return actionThunk1((*Context).SetCategory, name)
 }
 
+// Named sets the name of a command, flag, or expression.  This handler is generally
+// set up inside a Uses pipeline.
+func Named(name string) Action {
+	return actionThunk1((*Context).SetName, name)
+}
+
 // Alias sets the given alias on the flag or command.  For args, the action is ignored
 func Alias(a ...string) Action {
 	return actionThunkVar1((*Context).AddAlias, a)

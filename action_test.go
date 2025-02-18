@@ -472,6 +472,19 @@ var _ = Describe("timings", func() {
 			})
 		})
 
+		Context("Named", func() {
+			BeforeEach(func() {
+				initializer = cli.Pipeline(
+					cli.AddAlias("sub"), // so that the invocation 'app sub' still works
+					cli.Named("subcommand"),
+				)
+			})
+
+			It("can set name", func() {
+				Expect(captured.Name()).To(Equal("subcommand"))
+			})
+		})
+
 		Context("Alias", func() {
 			BeforeEach(func() {
 				initializer = cli.Alias("a", "b")
