@@ -10,12 +10,12 @@ var _ = Describe("Mode", func() {
 
 	Describe("Set", func() {
 		DescribeTable("examples",
-			func(arg string, expected int) {
+			func(arg string, expected color.Mode) {
 				actual := new(color.Mode)
 				err := actual.Set(arg)
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(*actual).To(Equal(color.Mode(expected)))
+				Expect(*actual).To(Equal(expected))
 			},
 			Entry("nominal", "auto", color.Auto),
 			Entry("bool true", "true", color.Always),
@@ -38,8 +38,8 @@ var _ = Describe("Mode", func() {
 
 	Describe("String", func() {
 		DescribeTable("examples",
-			func(arg int, expected string) {
-				Expect(color.Mode(arg).String()).To(Equal(expected))
+			func(arg color.Mode, expected string) {
+				Expect(arg.String()).To(Equal(expected))
 			},
 			Entry("nominal", color.Auto, "auto"),
 			Entry("bool true", color.Never, "never"),

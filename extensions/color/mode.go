@@ -11,7 +11,7 @@ type Mode int
 
 const (
 	// Auto will enable color depending upon whether stdout is detected as TTY.
-	Auto = iota
+	Auto Mode = iota
 
 	// Always enable terminal color
 	Always
