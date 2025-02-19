@@ -154,6 +154,31 @@ func Evaluator3[T, U, V any](eval func(T, U, V) cli.Evaluator, t Binder[T], u Bi
 		})
 }
 
+// Indirect binds a value to the specified option indirectly.
+// For example, it is common to define a FileSet arg and a Boolean flag that
+// controls whether or not the file set is enumerated recursively.  You can use
+// Indirect to update the arg indirectly by naming it and the bind function:
+//
+//	&cli.Arg{
+//	    Name: "files",
+//	    Value: new(cli.FileSet),
+//	}
+//	&cli.Flag{
+//	    Name: "recursive",
+//	    HelpText: "Whether files is recursively searched",
+//	    Action: bind.Indirect("files", (*cli.FileSet).SetRecursive),
+//	}
+//
+// The name parameter specifies the name of the flag or arg that is affected.  The
+// bind function is the function to set the value, and valopt is optional, and if specified,
+// indicates the value to set; otherwise, the value is read from the flag.
+func Indirect[T, V any](name string, call func(T, V) error, valopt ...V) cli.Action {
+	if len(valopt) == 0 {
+		return Call2(call, Value[T](name), Value[V](""))
+	}
+	return Call2(call, Value[T](name), Exact[V](valopt[0]))
+}
+
 func newEvaluator(initz cli.Action, evaluator evaluatorFunc) *evaluatorInit {
 	return &evaluatorInit{
 		Action:    cli.Pipeline(initz, willSetEvaluator(evaluator)),

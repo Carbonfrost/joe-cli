@@ -511,6 +511,81 @@ var _ = Describe("Evaluator", func() {
 	})
 })
 
+var _ = Describe("Indirect", func() {
+
+	It("copies the implied value of the function", func() {
+		fs := &cli.FileSet{Recursive: true}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "no-recursive",
+					Uses: bind.Indirect("files", (*cli.FileSet).SetRecursive, false),
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: fs,
+				},
+			},
+		}
+		app.Initialize(context.Background())
+		Expect(app.Flags[0].Value).To(Equal(new(bool)))
+	})
+
+	It("invokes bind func with static value", func() {
+		fs := &cli.FileSet{Recursive: true}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "no-recursive",
+					Value: new(bool),
+					Uses:  bind.Indirect("files", (*cli.FileSet).SetRecursive, false),
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: fs,
+				},
+			},
+		}
+		args, _ := cli.Split("app --no-recursive .")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(fs.Recursive).To(BeFalse())
+	})
+
+	It("invokes bind func with corresponding value", func() {
+		var calledWith string
+		fs := new(cli.FileSet)
+		act := new(joeclifakes.FakeAction)
+		call := func(_ *cli.FileSet, s string) error {
+			calledWith = s
+			return nil
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:   "recursive",
+					Value:  new(string),
+					Action: act,
+					Uses:   bind.Indirect("files", call),
+				},
+			},
+			Args: []*cli.Arg{
+				{
+					Name:  "files",
+					Value: fs,
+				},
+			},
+		}
+		args, _ := cli.Split("app --recursive YES .")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(act.ExecuteCallCount()).To(Equal(1), "action should still be called")
+		Expect(calledWith).To(Equal("YES"))
+	})
+})
+
 func evalFactory[T any](t *T) func(T) cli.Evaluator {
 	return func(s T) cli.Evaluator {
 		*t = s

@@ -87,6 +87,22 @@ func (f bindFunc[T]) Bind(c context.Context) (T, error) {
 	return f(c)
 }
 
+type exactBinder[V any] struct {
+	binderSupport[V]
+	v V
+}
+
+func (b *exactBinder[V]) Bind(_ context.Context) (V, error) {
+	return b.v, nil
+}
+
+// binderSupport facilitates the implied naming/initializer logic that
+// ensures that any flag or arg referenced by a binder gets a corresponding
+// default value
+type binderSupport[V any] struct {
+	impliedName any
+}
+
 type binderInit interface {
 	Initializer() cli.Action
 }
@@ -96,7 +112,7 @@ type binderImpliedName interface {
 }
 
 type binder[V any] struct {
-	impliedName any
+	binderSupport[V]
 	lookupValue func(*cli.Context, any) V
 }
 
@@ -104,13 +120,13 @@ var (
 	valueType = reflect.TypeFor[cli.Value]()
 )
 
-func (b *binder[V]) SetName(name any) {
+func (b *binderSupport[_]) SetName(name any) {
 	if b.impliedName == nil {
 		b.impliedName = name
 	}
 }
 
-func (b *binder[V]) Initializer() cli.Action {
+func (b *binderSupport[V]) Initializer() cli.Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
 		ctx := c.ContextOf(b.name())
 		if ctx == nil {
@@ -120,7 +136,7 @@ func (b *binder[V]) Initializer() cli.Action {
 	})
 }
 
-func (b *binder[V]) name() any {
+func (b *binderSupport[_]) name() any {
 	if b.impliedName == nil {
 		return ""
 	}
@@ -128,7 +144,26 @@ func (b *binder[V]) name() any {
 }
 
 func (b *binder[V]) Bind(c context.Context) (V, error) {
-	return b.lookupValue(cli.FromContext(c), b.name()), nil
+	return b.lookupValue(cli.FromContext(c), b.binderSupport.name()), nil
+}
+
+// Exact provides a wrapper that binds the exact value
+func Exact[T any](value T) Binder[T] {
+	return &exactBinder[T]{v: value}
+}
+
+// Value obtains a binder that obtains a value from the context. If the name is
+// not specified, then either the current flag or arg is used or the corresponding
+// argument by index.
+// When present in the Uses pipeline, this also sets up the corresponding flag or
+// arg with a reasonable default of the same type.
+func Value[T any](nameopt ...any) Binder[T] {
+	return byName(contextValue[T], nameopt)
+}
+
+func contextValue[T any](c *cli.Context, name any) T {
+	v := c.Value(name)
+	return v.(T)
 }
 
 // FromContext locates a value within the context.
@@ -482,8 +517,10 @@ func byName[T any](f func(*cli.Context, any) T, nameopt []any) Binder[T] {
 		panic("expected 0 or 1 args for nameopt")
 	}
 	return &binder[T]{
-		impliedName: name,
-		lookupValue: f,
+		binderSupport[T]{
+			impliedName: name,
+		},
+		f,
 	}
 }
 
@@ -532,5 +569,9 @@ func bindSupportedValue(v interface{}) interface{} {
 	return v
 }
 
-var _ binderInit = (*binder[any])(nil)
-var _ binderImpliedName = (*binder[any])(nil)
+var (
+	_ binderInit        = (*binder[any])(nil)
+	_ binderImpliedName = (*binder[any])(nil)
+	_ binderInit        = (*exactBinder[any])(nil)
+	_ binderImpliedName = (*exactBinder[any])(nil)
+)
