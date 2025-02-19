@@ -10,6 +10,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
+	"github.com/Carbonfrost/joe-cli/extensions/color"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -450,6 +451,30 @@ var _ = Describe("Evaluator", func() {
 
 		app.RunContext(context.Background(), []string{})
 		Expect(varNames.iface).To(Equal(fakeValue))
+	})
+
+	It("uses value from the context (Value)", func() {
+		var varNames struct {
+			value *color.Mode
+		}
+		var mode color.Mode = color.Never
+		evaluators := []cli.Evaluator{
+			bind.Evaluator(evalFactory(&varNames.value), bind.Value[*color.Mode]("mode")),
+		}
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{Name: "mode", Value: &mode},
+			},
+			Action: func(c context.Context) {
+				for _, e := range evaluators {
+					e.Evaluate(c, nil, nil)
+				}
+			},
+		}
+
+		app.RunContext(context.Background(), []string{})
+		Expect(*varNames.value).To(Equal(color.Never))
 	})
 
 	Describe("binding arguments", func() {
