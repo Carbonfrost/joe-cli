@@ -790,29 +790,63 @@ var _ = Describe("Context", func() {
 			Expect(actualArg.Target()).To(Equal(app.Args[0]))
 		})
 
-		DescribeTable("examples", func(name any, expected types.GomegaMatcher) {
-			var actual any
-			app := &cli.App{
-				Name: "theApp",
-				Action: func(c context.Context) {
-					actual = c.(*cli.Context).ContextOf(name).Target()
-				},
-				Flags: []*cli.Flag{
-					{Name: "flag", Aliases: []string{"f"}},
-				},
-				Args: []*cli.Arg{
-					{Name: "a"},
-				},
-			}
-			_ = app.RunContext(context.TODO(), []string{"app"})
-			Expect(actual).To(expected)
-		},
-			Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
-			Entry("name of arg", "a", WithTransform(argName, Equal("a"))),
-			Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
-			Entry("index", 0, WithTransform(argName, Equal("a"))),
-			Entry("self", "", WithTransform(commandName, Equal("theApp"))),
-		)
+		Describe("resolving from a command", func() {
+
+			DescribeTable("examples", func(name any, expected types.GomegaMatcher) {
+				var actual any
+				app := &cli.App{
+					Name: "theApp",
+					Action: func(c context.Context) {
+						actual = c.(*cli.Context).ContextOf(name).Target()
+					},
+					Flags: []*cli.Flag{
+						{Name: "flag", Aliases: []string{"f"}},
+					},
+					Args: []*cli.Arg{
+						{Name: "a"},
+					},
+				}
+				_ = app.RunContext(context.TODO(), []string{"app"})
+				Expect(actual).To(expected)
+			},
+				Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
+				Entry("name of arg", "a", WithTransform(argName, Equal("a"))),
+				Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
+				Entry("index", 0, WithTransform(argName, Equal("a"))),
+				Entry("self", "", WithTransform(commandName, Equal("theApp"))),
+			)
+
+		})
+
+		Describe("resolving from an option", func() {
+
+			DescribeTable("examples", func(name any, expected types.GomegaMatcher) {
+				var actual any
+				app := &cli.App{
+					Name: "theApp",
+					Flags: []*cli.Flag{
+						{Name: "flag", Aliases: []string{"f"}},
+						{
+							Name: "self",
+							Action: func(c context.Context) {
+								actual = c.(*cli.Context).ContextOf(name).Target()
+							},
+						},
+					},
+					Args: []*cli.Arg{
+						{Name: "a"},
+					},
+				}
+				_ = app.RunContext(context.TODO(), []string{"app", "--self", "v"})
+				Expect(actual).To(expected)
+			},
+				Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
+				Entry("name of arg", "a", WithTransform(argName, Equal("a"))),
+				Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
+				Entry("index", 0, WithTransform(argName, Equal("a"))),
+				Entry("self", "", WithTransform(flagName, Equal("self"))),
+			)
+		})
 	})
 
 	Describe("Target", func() {

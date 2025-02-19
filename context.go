@@ -405,6 +405,12 @@ func (c *Context) PersistentFlags() []*Flag {
 // current target. The result could be nil if the name or index does not
 // exist.
 func (c *Context) ContextOf(target any) *Context {
+	if target == "" {
+		return c
+	}
+	if !c.IsCommand() {
+		return c.Parent().ContextOf(target)
+	}
 	switch name := target.(type) {
 	case *Arg, *Flag:
 		return c.optionContext(target.(option))
@@ -415,9 +421,6 @@ func (c *Context) ContextOf(target any) *Context {
 	case rune:
 		return c.tryOptionContext(c.LookupFlag(name))
 	case string:
-		if name == "" {
-			return c
-		}
 		if a, ok := c.LookupArg(name); ok {
 			return c.optionContext(a)
 		}
