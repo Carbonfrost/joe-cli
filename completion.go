@@ -275,8 +275,7 @@ func (s StandardCompletion) Complete(ctx context.Context) []CompletionItem {
 }
 
 func (s StandardCompletion) Execute(ctx context.Context) error {
-	c := FromContext(ctx)
-	return c.Do(SetCompletion(s))
+	return Do(ctx, SetCompletion(s))
 }
 
 func actualCompletion(c Completion) Completion {

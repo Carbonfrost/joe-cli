@@ -347,10 +347,10 @@ func (r *Registry) New(name string, opts map[string]string) (any, error) {
 }
 
 func (r *Registry) Execute(c context.Context) error {
-	return cli.FromContext(c).Before(cli.ActionFunc(func(c1 *cli.Context) error {
+	return cli.Do(c, cli.Before(cli.ActionFunc(func(c1 *cli.Context) error {
 		Services(c1).registries[r.Name] = r
 		return nil
-	}))
+	})))
 }
 
 func (m Map) ProviderNames() []string {

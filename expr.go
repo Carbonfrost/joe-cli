@@ -575,11 +575,11 @@ func (e *Expression) String() string {
 	return strings.Join(e.args, " ")
 }
 
-func (e *Expression) Evaluate(ctx *Context, items ...interface{}) error {
+func (e *Expression) Evaluate(ctx context.Context, items ...interface{}) error {
 	return e.evaluateCore(ctx, items...)
 }
 
-func (e *Expression) evaluateCore(ctx *Context, items ...interface{}) error {
+func (e *Expression) evaluateCore(ctx context.Context, items ...interface{}) error {
 	yielders := make([]Yielder, len(e.items))
 	yielderThunk := func(i int) Yielder {
 		if i >= len(yielders) || yielders[i] == nil {

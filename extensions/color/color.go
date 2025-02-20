@@ -182,7 +182,7 @@ func standaloneFlag(c *cli.Context) error {
 }
 
 func (o Options) Execute(c context.Context) error {
-	return cli.FromContext(c).Do(o.Features.Pipeline())
+	return cli.Do(c, o.Features.Pipeline())
 }
 
 func (f Feature) Pipeline() cli.Action {

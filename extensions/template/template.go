@@ -91,8 +91,7 @@ func (r *Root) DryRunFlag() cli.Prototype {
 }
 
 func (r *Root) Execute(ctx context.Context) error {
-	c := cli.FromContext(ctx)
-	return c.Do(r.pipeline())
+	return cli.Do(ctx, r.pipeline())
 }
 
 func (r *Root) pipeline() cli.Action {

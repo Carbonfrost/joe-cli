@@ -1374,8 +1374,7 @@ func (t Timing) Describe() string {
 }
 
 func (p Prototype) Execute(ctx context.Context) error {
-	c := FromContext(ctx)
-	return c.Do(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), commandSetupCore(true, p.copyToCommand), p.Setup)
+	return Do(ctx, FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), commandSetupCore(true, p.copyToCommand), p.Setup)
 }
 
 func (p Prototype) Use(actions ...Action) Prototype {
@@ -1493,11 +1492,10 @@ func (p *Prototype) copyToFlag(o *Flag) {
 
 // Execute the action by calling the function
 func (af ActionFunc) Execute(ctx context.Context) error {
-	c := FromContext(ctx)
 	if af == nil {
 		return nil
 	}
-	return af(c)
+	return af(FromContext(ctx))
 }
 
 func (af actionFunc) Execute(ctx context.Context) error {
@@ -1663,19 +1661,18 @@ func (m middlewareFunc) ExecuteWithNext(ctx context.Context, a Action) error {
 }
 
 func (v ValidatorFunc) Execute(ctx context.Context) error {
-	return FromContext(ctx).At(ValidatorTiming, ActionFunc(func(c *Context) error {
+	return Do(ctx, At(ValidatorTiming, ActionFunc(func(c *Context) error {
 		occur := c.RawOccurrences("")
 		if err := v(occur); err != nil {
 			return argTakerError(c.Name(), "", err, nil)
 		}
 
 		return nil
-	}))
+	})))
 }
 
 func (t TransformFunc) Execute(ctx context.Context) error {
-	c := FromContext(ctx)
-	return c.Do(Transform(t))
+	return Do(ctx, Transform(t))
 }
 
 func (w legacyActionWrapper) Execute(ctx context.Context) error {
