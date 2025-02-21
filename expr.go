@@ -543,8 +543,8 @@ func (b *boundExpr) LocalArgs() []*Arg {
 	return b.expr.Args
 }
 
-func (b *boundExpr) Evaluate(c context.Context, v interface{}, yield func(interface{}) error) error {
-	ctx := FromContext(c).valueContext(newValueTarget(b, nil), b.expr.Name).setTiming(ActionTiming)
+func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) error {
+	ctx := FromContext(c).ValueContextOf(b.expr.Name, b).setTiming(ActionTiming)
 	for _, a := range b.set.names {
 		a.reset()
 	}

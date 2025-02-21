@@ -311,7 +311,7 @@ func (c *Context) Timing() Timing {
 	return c.timing
 }
 
-// HasValue tests whether the last segment of the path represents a command
+// HasValue tests whether the target has a value
 func (c *Context) HasValue() bool {
 	_, ok := c.target().(*valueTarget)
 	return c.isOption() || ok
@@ -396,6 +396,16 @@ func (c *Context) PersistentFlags() []*Flag {
 		return nil
 	}
 	return c.Parent().Flags()
+}
+
+// ValueContextOf creates a context for the use with values that
+// may have initialization steps.
+func (c *Context) ValueContextOf(name string, v any) *Context {
+	switch v.(type) {
+	case *Arg, *Flag, *Command, *App:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
+	return c.valueContext(newValueTarget(v, nil), name)
 }
 
 // ContextOf creates a context for use with the given target, which must
