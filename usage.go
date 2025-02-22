@@ -47,6 +47,8 @@ type Writer interface {
 	SetColorCapable(bool)
 	// ResetColorCapable uses auto detect to apply the default
 	ResetColorCapable()
+	// ColorCapable gets whether the writer is capable of writing color and style
+	ColorCapable() bool
 	// SetBackground updates the background color
 	SetBackground(Color)
 	// SetForeground updates the foreground color
@@ -568,6 +570,10 @@ func (w *stringHelper) WriteString(s string) (int, error) {
 
 func (w *stringHelper) ResetColorCapable() {
 	w.SetColorCapable(colorEnabled(w.Writer))
+}
+
+func (w *stringHelper) ColorCapable() bool {
+	return w.enabled
 }
 
 func (w *stringHelper) SetColorCapable(value bool) {

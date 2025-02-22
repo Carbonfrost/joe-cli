@@ -211,14 +211,9 @@ func (t *templateContext) emoji(name string) (string, error) {
 }
 
 func (t *templateContext) colorEnabled() bool {
-	// HACK Detect whether color is enabled
 	if t.colorEnabledCache == nil {
 		res := t.c.NewBuffer()
-		res.SetForeground(cli.Black)
-		res.WriteString("B")
-
-		// If any ANSI codes were written, implies color is enabled
-		enabled := len(res.String()) > 1
+		enabled := res.ColorCapable()
 		t.colorEnabledCache = &enabled
 	}
 	return *t.colorEnabledCache

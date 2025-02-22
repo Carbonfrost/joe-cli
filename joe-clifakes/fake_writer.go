@@ -13,6 +13,16 @@ type FakeWriter struct {
 	clearStyleArgsForCall []struct {
 		arg1 cli.Style
 	}
+	ColorCapableStub        func() bool
+	colorCapableMutex       sync.RWMutex
+	colorCapableArgsForCall []struct {
+	}
+	colorCapableReturns struct {
+		result1 bool
+	}
+	colorCapableReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	ResetStub        func()
 	resetMutex       sync.RWMutex
 	resetArgsForCall []struct {
@@ -101,6 +111,59 @@ func (fake *FakeWriter) ClearStyleArgsForCall(i int) cli.Style {
 	defer fake.clearStyleMutex.RUnlock()
 	argsForCall := fake.clearStyleArgsForCall[i]
 	return argsForCall.arg1
+}
+
+func (fake *FakeWriter) ColorCapable() bool {
+	fake.colorCapableMutex.Lock()
+	ret, specificReturn := fake.colorCapableReturnsOnCall[len(fake.colorCapableArgsForCall)]
+	fake.colorCapableArgsForCall = append(fake.colorCapableArgsForCall, struct {
+	}{})
+	stub := fake.ColorCapableStub
+	fakeReturns := fake.colorCapableReturns
+	fake.recordInvocation("ColorCapable", []interface{}{})
+	fake.colorCapableMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeWriter) ColorCapableCallCount() int {
+	fake.colorCapableMutex.RLock()
+	defer fake.colorCapableMutex.RUnlock()
+	return len(fake.colorCapableArgsForCall)
+}
+
+func (fake *FakeWriter) ColorCapableCalls(stub func() bool) {
+	fake.colorCapableMutex.Lock()
+	defer fake.colorCapableMutex.Unlock()
+	fake.ColorCapableStub = stub
+}
+
+func (fake *FakeWriter) ColorCapableReturns(result1 bool) {
+	fake.colorCapableMutex.Lock()
+	defer fake.colorCapableMutex.Unlock()
+	fake.ColorCapableStub = nil
+	fake.colorCapableReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FakeWriter) ColorCapableReturnsOnCall(i int, result1 bool) {
+	fake.colorCapableMutex.Lock()
+	defer fake.colorCapableMutex.Unlock()
+	fake.ColorCapableStub = nil
+	if fake.colorCapableReturnsOnCall == nil {
+		fake.colorCapableReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.colorCapableReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
 }
 
 func (fake *FakeWriter) Reset() {
@@ -417,6 +480,8 @@ func (fake *FakeWriter) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.clearStyleMutex.RLock()
 	defer fake.clearStyleMutex.RUnlock()
+	fake.colorCapableMutex.RLock()
+	defer fake.colorCapableMutex.RUnlock()
 	fake.resetMutex.RLock()
 	defer fake.resetMutex.RUnlock()
 	fake.resetColorCapableMutex.RLock()
