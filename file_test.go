@@ -9,14 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"testing/fstest"
 	"time"
 
-	"github.com/Carbonfrost/joe-cli"
-	"github.com/Carbonfrost/joe-cli/joe-clifakes"
+	cli "github.com/Carbonfrost/joe-cli"
+	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
-	"github.com/spf13/afero"
 )
 
 type emptyFS struct{}
@@ -335,14 +335,9 @@ var _ = Describe("File", func() {
 
 var _ = Describe("FileReference", func() {
 
-	var testFileSystem = func() fs.FS {
-		appFS := afero.NewMemMapFs()
-
-		appFS.MkdirAll("d", 0755)
-		afero.WriteFile(appFS, "d/b.bin", []byte("facade"), 0644)
-
-		return afero.NewIOFS(appFS)
-	}()
+	testFileSystem := fstest.MapFS{
+		"d/b.bin": {Data: []byte("facade")},
+	}
 
 	It("gets the contents of a file", func() {
 		act := new(joeclifakes.FakeAction)
@@ -450,15 +445,10 @@ var _ = Describe("FileSet", func() {
 		Expect(context.FileSet("f").String()).To(Equal("fiche"))
 	})
 
-	var testFileSystem = func() fs.FS {
-		appFS := afero.NewMemMapFs()
-
-		appFS.MkdirAll("src/a", 0755)
-		afero.WriteFile(appFS, "src/a/b.txt", []byte("b"), 0644)
-		afero.WriteFile(appFS, "src/c.txt", []byte("c"), 0644)
-
-		return afero.NewIOFS(appFS)
-	}()
+	testFileSystem := fstest.MapFS{
+		"src/a/b.txt": {Data: []byte("b")},
+		"src/c.txt":   {Data: []byte("c")},
+	}
 
 	It("all files must exist", func() {
 		set := &cli.FileSet{FS: testFileSystem, Files: []string{"src/a/b.txt"}}

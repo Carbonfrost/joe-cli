@@ -6,20 +6,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/signal"
 	"regexp"
 	"runtime"
+	"testing/fstest"
 	"time"
 
-	"github.com/Carbonfrost/joe-cli"
-	"github.com/Carbonfrost/joe-cli/joe-clifakes"
+	cli "github.com/Carbonfrost/joe-cli"
+	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
-	"github.com/spf13/afero"
 )
 
 var _ = Describe("timings", func() {
@@ -2782,13 +2781,10 @@ var _ = Describe("Mutex", func() {
 
 var _ = Describe("ValueTransform", func() {
 
-	var testFileSystem = func() fs.FS {
-		appFS := afero.NewMemMapFs()
-
-		afero.WriteFile(appFS, "world", []byte("earth"), 0644)
-		afero.WriteFile(appFS, "plan", []byte("b"), 0644)
-		return afero.NewIOFS(appFS)
-	}()
+	testFileSystem := fstest.MapFS{
+		"world": {Data: []byte("earth")},
+		"plan":  {Data: []byte("b")},
+	}
 
 	DescribeTable("examples", func(arguments string, value interface{}, expected types.GomegaMatcher) {
 		app := &cli.App{
@@ -2893,13 +2889,10 @@ var _ = Describe("FromFilePath", func() {
 
 	It("sets up value from option", func() {
 		act := new(joeclifakes.FakeAction)
-		var testFileSystem = func() fs.FS {
-			appFS := afero.NewMemMapFs()
+		testFileSystem := fstest.MapFS{
+			"src/a/b.txt": {Data: []byte("b contents")},
+		}
 
-			appFS.MkdirAll("src/a", 0755)
-			afero.WriteFile(appFS, "src/a/b.txt", []byte("b contents"), 0644)
-			return afero.NewIOFS(appFS)
-		}()
 		var actual string
 
 		app := &cli.App{

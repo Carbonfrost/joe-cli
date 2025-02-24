@@ -2,10 +2,10 @@ package cli_test
 
 import (
 	"context"
-	"io/fs"
 	"os"
 	"regexp"
 	"strings"
+	"testing/fstest"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -13,7 +13,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
-	"github.com/spf13/afero"
 )
 
 var _ = Describe("Arg", func() {
@@ -282,13 +281,9 @@ var _ = Describe("Arg", func() {
 
 		It("sets up value from option", func() {
 			impliedAct := new(joeclifakes.FakeAction)
-			var testFileSystem = func() fs.FS {
-				appFS := afero.NewMemMapFs()
-
-				appFS.MkdirAll("src/a", 0755)
-				afero.WriteFile(appFS, "src/a/b.txt", []byte("b contents"), 0644)
-				return afero.NewIOFS(appFS)
-			}()
+			testFileSystem := fstest.MapFS{
+				"src/a/b.txt": {Data: []byte("b contents")},
+			}
 			var actual string
 
 			app := &cli.App{

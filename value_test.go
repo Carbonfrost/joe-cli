@@ -5,21 +5,20 @@ import (
 	"context"
 	"encoding"
 	"flag"
-	"io/fs"
 	"math"
 	"math/big"
 	"net"
 	"net/url"
 	"regexp"
+	"testing/fstest"
 	"time"
 
-	"github.com/Carbonfrost/joe-cli"
-	"github.com/Carbonfrost/joe-cli/joe-clifakes"
+	cli "github.com/Carbonfrost/joe-cli"
+	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
-	"github.com/spf13/afero"
 )
 
 var _ = Describe("Value", func() {
@@ -740,12 +739,9 @@ var _ = Describe("NameValue", func() {
 
 	It("loads from file reference", func() {
 
-		var testFileSystem = func() fs.FS {
-			appFS := afero.NewMemMapFs()
-
-			afero.WriteFile(appFS, "world", []byte("file contents"), 0644)
-			return afero.NewIOFS(appFS)
-		}()
+		testFileSystem := fstest.MapFS{
+			"world": {Data: []byte("file contents")},
+		}
 
 		app := &cli.App{
 			FS: testFileSystem,
@@ -770,13 +766,12 @@ var _ = Describe("NameValue", func() {
 	})
 
 	It("loads from FileReferences with EachOccurrence", func() {
-		var testFileSystem = func() fs.FS {
-			appFS := afero.NewMemMapFs()
 
-			afero.WriteFile(appFS, "world", []byte("Earth"), 0644)
-			afero.WriteFile(appFS, "planet", []byte("Mars"), 0644)
-			return afero.NewIOFS(appFS)
-		}()
+		testFileSystem := fstest.MapFS{
+			"world":  {Data: []byte("Earth")},
+			"planet": {Data: []byte("Mars")},
+		}
+
 		var values []*cli.NameValue
 		binder := func(r *cli.NameValue) error {
 			// Notice that we are able to use *NameValue here without having
