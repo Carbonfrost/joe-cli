@@ -1308,28 +1308,58 @@ func expandEnvVarName(content, name string) string {
 // Print provides an action that formats using the default formats for its operands and writes to
 // standard output using the behavior of fmt.Print.
 func Print(a ...any) Action {
-	return ActionFunc(func(c *Context) error {
-		_, err := c.Print(a...)
-		return err
-	})
+	return unwrapPrintFunc((*Context).Print, a)
 }
 
 // Println provides an action that formats using the default formats for its operands and writes to
 // standard output using the behavior of fmt.Println
 func Println(a ...any) Action {
-	return ActionFunc(func(c *Context) error {
-		_, err := c.Println(a...)
-		return err
-	})
+	return unwrapPrintFunc((*Context).Println, a)
 }
 
 // Printf provides an action that formats according to a format specifier and writes to standard
 // output using the behavior of fmt.Printf
 func Printf(format string, a ...any) Action {
-	return ActionFunc(func(c *Context) error {
-		_, err := c.Printf(format, a...)
+	return unwrapPrintFunc2((*Context).Printf, format, a)
+}
+
+// Fprint provides an action that formats using the default formats for its operands and writes to
+// a file using the behavior of fmt.Fprint.
+func Fprint(w io.Writer, a ...any) Action {
+	return unwrapPrintFunc2((*Context).Fprint, w, a)
+}
+
+// Fprintln provides an action that formats using the default formats for its operands and writes to
+// a file using the behavior of fmt.Fprintln
+func Fprintln(w io.Writer, a ...any) Action {
+	return unwrapPrintFunc2((*Context).Fprintln, w, a)
+}
+
+// Fprintf provides an action that formats according to a format specifier and writes to a file
+// using the behavior of fmt.Fprintf
+func Fprintf(w io.Writer, format string, a ...any) Action {
+	return unwrapPrintFunc3((*Context).Fprintf, w, format, a)
+}
+
+func unwrapPrintFunc(f func(*Context, ...any) (int, error), a []any) ActionFunc {
+	return func(c *Context) error {
+		_, err := f(c, a...)
 		return err
-	})
+	}
+}
+
+func unwrapPrintFunc2[T any](f func(*Context, T, ...any) (int, error), t T, a []any) ActionFunc {
+	return func(c *Context) error {
+		_, err := f(c, t, a...)
+		return err
+	}
+}
+
+func unwrapPrintFunc3[T, U any](f func(*Context, T, U, ...any) (int, error), t T, u U, a []any) ActionFunc {
+	return func(c *Context) error {
+		_, err := f(c, t, u, a...)
+		return err
+	}
 }
 
 func (t Timing) Matches(ctx context.Context) bool {

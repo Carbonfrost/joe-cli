@@ -1298,6 +1298,24 @@ func (c *Context) Printf(format string, a ...any) (n int, err error) {
 	return fmt.Fprintf(c.Stdout, format, a...)
 }
 
+// Fprint formats using the default formats for its operands and writes to
+// a file using the behavior of fmt.Fprint.
+func (c *Context) Fprint(w io.Writer, a ...any) (n int, err error) {
+	return fmt.Fprint(w, a...)
+}
+
+// Fprintln formats using the default formats for its operands and writes to
+// a file using the behavior of fmt.Fprintln
+func (c *Context) Fprintln(w io.Writer, a ...any) (n int, err error) {
+	return fmt.Fprintln(w, a...)
+}
+
+// Fprintf formats according to a format specifier and writes to a file
+// using the behavior of fmt.Fprintf
+func (c *Context) Fprintf(w io.Writer, format string, a ...any) (n int, err error) {
+	return fmt.Fprintf(w, format, a...)
+}
+
 func (c *Context) implicitTimingActive() bool {
 	return c.flagSetOrAncestor((internalFlags).implicitTimingActive)
 }
