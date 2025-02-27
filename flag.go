@@ -3,12 +3,10 @@ package cli
 import (
 	"cmp"
 	"fmt"
-	"net"
-	"net/url"
-	"regexp"
 	"sort"
 	"strings"
-	"time"
+
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 // Flag represents a command line flag.  The only required attribute that must be set is Name.
@@ -187,23 +185,6 @@ type wrapOccurrenceContext struct {
 	val   interface{}
 }
 
-type flagSynopsis struct {
-	Short          string
-	Shorts         []rune
-	Long           string
-	Primary        string // Long if present, otherwise Short
-	Separator      string
-	Names          []string
-	AlternateNames []string
-	Value          *valueSynopsis
-}
-
-type valueSynopsis struct {
-	Placeholder string
-	helpText    string
-	usage       *usage
-}
-
 func groupFlagsByCategory(flags []*Flag) flagsByCategory {
 	res := flagsByCategory{}
 	all := map[string]*flagCategory{}
@@ -233,83 +214,26 @@ func (f *Flag) Use(actions ...Action) *Flag {
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
 // is inferred from the HelpText.  Up to one short and one long name will be used.
 func (f *Flag) Synopsis() string {
-	return sprintSynopsis("FlagSynopsis", f.synopsis())
+	return sprintSynopsis(f.synopsis())
 }
 
-func (f *Flag) cacheSynopsis(syn *flagSynopsis) *flagSynopsis {
+func (f *Flag) cacheSynopsis(syn *synopsis.Flag) *synopsis.Flag {
 	f.SetData(synopsisKey, syn)
 	return syn
 }
 
-func (f *Flag) synopsis() *flagSynopsis {
+func (f *Flag) synopsis() *synopsis.Flag {
 	if f.Data != nil {
 		if a, ok := f.Data[synopsisKey]; ok {
-			return a.(*flagSynopsis)
+			return a.(*synopsis.Flag)
 		}
 	}
 	return f.cacheSynopsis(f.newSynopsis())
 }
 
-func (f *Flag) newSynopsis() *flagSynopsis {
+func (f *Flag) newSynopsis() *synopsis.Flag {
 	long, short := canonicalNames(f.Name, f.Aliases)
-	sep := "="
-
-	if len(long) == 0 {
-		sep = " "
-	}
-	value := getValueSynopsis(f)
-	if len(value.Placeholder) == 0 {
-		sep = ""
-	}
-
-	return (&flagSynopsis{
-		Separator: sep,
-		Value:     value,
-	}).withLongAndShort(long, short)
-}
-
-func (f *flagSynopsis) withLongAndShort(long []string, short []rune) *flagSynopsis {
-	var primary string
-
-	if len(long) == 0 {
-		primary = optionName(string(short[0]))
-	} else {
-		primary = optionName(long[0])
-	}
-
-	var (
-		shorts = func() []string {
-			res := make([]string, len(short))
-			for i := range short {
-				res[i] = "-" + string(short[i])
-			}
-			return res
-		}()
-		longs = func() []string {
-			res := make([]string, len(long))
-			for i := range long {
-				res[i] = optionName(long[i])
-			}
-			return res
-		}()
-
-		names, alternateNames = func() ([]string, []string) {
-			if len(longs) == 0 {
-				return []string{shorts[0]}, shorts[1:]
-			}
-			if len(short) == 0 {
-				return []string{longs[0]}, longs[1:]
-			}
-			return []string{shorts[0], longs[0]}, append(shorts[1:], longs[1:]...)
-		}()
-	)
-	f.Short = shortName(short)
-	f.Shorts = short
-	f.Long = longName(long)
-	f.Primary = primary
-	f.Names = names
-	f.AlternateNames = alternateNames
-	return f
+	return synopsis.NewFlag(long, short, f.HelpText, f.UsageText, f.value(), getGroup(f))
 }
 
 // SetData sets the specified metadata on the flag.  When v is nil, the corresponding
@@ -476,68 +400,6 @@ func (o *wrapLookupContext) lookupValue(name string) (interface{}, bool) {
 
 func (o *wrapLookupContext) Name() string {
 	return o.actual.Name
-}
-
-func getValueSynopsis(f *Flag) *valueSynopsis {
-	usage := parseUsage(f.HelpText)
-	placeholders := strings.Join(usage.Placeholders(), " ")
-
-	if f.UsageText != "" {
-		return &valueSynopsis{
-			Placeholder: f.UsageText,
-			helpText:    usage.WithoutPlaceholders(),
-			usage:       usage,
-		}
-	}
-
-	if len(placeholders) > 0 {
-		return &valueSynopsis{
-			Placeholder: placeholders,
-			usage:       usage,
-			helpText:    usage.WithoutPlaceholders(),
-		}
-	}
-	return &valueSynopsis{
-		Placeholder: placeholder(f.value()),
-		helpText:    usage.WithoutPlaceholders(),
-		usage:       usage,
-	}
-}
-
-func placeholder(v interface{}) string {
-	switch m := v.(type) {
-	case *bool:
-		return ""
-	case interface{ IsBoolFlag() bool }:
-		if m.IsBoolFlag() {
-			return ""
-		}
-
-	case *int, *int8, *int16, *int32, *int64:
-		return "NUMBER"
-	case *uint, *uint8, *uint16, *uint32, *uint64:
-		return "NUMBER"
-	case *float32, *float64:
-		return "NUMBER"
-	case *string:
-		return "STRING"
-	case *[]string:
-		return "VALUES"
-	case *time.Duration:
-		return "DURATION"
-	case *map[string]string:
-		return "NAME=VALUE"
-	case **url.URL:
-		return "URL"
-	case *net.IP:
-		return "IP"
-	case **regexp.Regexp:
-		return "PATTERN"
-	case valueProvidesSynopsis:
-		return m.Synopsis()
-	default:
-	}
-	return "VALUE"
 }
 
 // Seen returns true if the flag was used on the command line at least once
@@ -737,20 +599,6 @@ func findFlagByName(items []*Flag, v any) (*Flag, int, bool) {
 		}
 	}
 	return nil, -1, false
-}
-
-func longName(s []string) string {
-	if len(s) == 0 {
-		return ""
-	}
-	return s[0]
-}
-
-func shortName(s []rune) string {
-	if len(s) == 0 {
-		return ""
-	}
-	return string(s[0])
 }
 
 func isFlagType(p interface{}) internalFlags {

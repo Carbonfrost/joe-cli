@@ -7,19 +7,17 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"sort"
-	"strconv"
 	"strings"
 	"text/template"
 	"unicode"
 
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	"github.com/juju/ansiterm"
 	"github.com/juju/ansiterm/tabwriter"
 	"golang.org/x/term"
 )
 
 var (
-	usagePattern = regexp.MustCompile(`{(.+?)}`)
 	controlCodes = regexp.MustCompile("\u001B\\[\\d+m")
 )
 
@@ -55,6 +53,12 @@ type Writer interface {
 	SetForeground(Color)
 	// SetStyle updates the style
 	SetStyle(Style)
+	// Underline writes values in underline (if available)
+	Underline(...any) (int, error)
+	// Bold writes values in bold (if available)
+	Bold(...any) (int, error)
+	// Styled writes values in corresponding style (if available)
+	Styled(Style, ...any) (int, error)
 }
 
 // Color of terminal output
@@ -84,6 +88,10 @@ type wrapper struct {
 	pending bytes.Buffer
 	Limit   int
 	Indent  string
+}
+
+type synopsisWrapper[T synopsis.Stringer] struct {
+	s T
 }
 
 // ANSI terminal styles
@@ -147,25 +155,6 @@ func NewWriter(w io.Writer) Writer {
 		enabled: colorEnabled(w),
 	}
 }
-
-type usage struct {
-	exprs []expr
-}
-
-type expr interface {
-	exprSigil()
-}
-
-type placeholderExpr struct {
-	name string
-	pos  int
-}
-
-type literal struct {
-	text string
-}
-
-type placeholdersByPos []*placeholderExpr
 
 // SetColor enables or disables color output on stdout.
 func SetColor(enabled bool) Action {
@@ -492,76 +481,8 @@ func (t *templateBinding) String() string {
 	return buf.String()
 }
 
-func (u *usage) Placeholders() []string {
-	res := make([]string, 0)
-	for _, e := range u.placeholders() {
-		res = append(res, e.name)
-	}
-	return res
-}
-
-func (p placeholdersByPos) Less(i, j int) bool {
-	return p[i].pos < p[j].pos
-}
-
-func (p placeholdersByPos) Len() int {
-	return len(p)
-}
-
-func (p placeholdersByPos) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-func (u *usage) placeholders() []*placeholderExpr {
-	res := make(placeholdersByPos, 0, len(u.exprs))
-	seen := map[string]bool{}
-	for _, item := range u.exprs {
-		if e, ok := item.(*placeholderExpr); ok {
-			if !seen[e.name] {
-				res = append(res, e)
-				seen[e.name] = true
-			}
-		}
-	}
-	sort.Sort(res)
-	return res
-}
-
-func (u *usage) WithoutPlaceholders() string {
-	var b bytes.Buffer
-	for _, e := range u.exprs {
-		switch item := e.(type) {
-		case *placeholderExpr:
-			b.WriteString(item.name)
-		case *literal:
-			b.WriteString(item.text)
-		}
-	}
-	return b.String()
-}
-
 func (b *buffer) String() string {
 	return b.res.String()
-}
-
-func (*placeholderExpr) exprSigil() {}
-func (*literal) exprSigil()         {}
-
-func (u *usage) helpText() string {
-	var b bytes.Buffer
-	w := NewWriter(&b)
-
-	for _, e := range u.exprs {
-		switch item := e.(type) {
-		case *placeholderExpr:
-			w.SetStyle(Underline)
-			w.WriteString(item.name)
-			w.Reset()
-		case *literal:
-			b.WriteString(item.text)
-		}
-	}
-	return b.String()
 }
 
 func (w *stringHelper) WriteString(s string) (int, error) {
@@ -581,6 +502,31 @@ func (w *stringHelper) SetColorCapable(value bool) {
 	w.Writer.SetColorCapable(value)
 }
 
+func (s *stringHelper) Underline(v ...any) (int, error) {
+	return s.Styled(Underline, v...)
+}
+
+func (s *stringHelper) Bold(v ...any) (int, error) {
+	return s.Styled(Bold, v...)
+}
+
+func (s *stringHelper) Styled(style Style, v ...any) (int, error) {
+	s.SetStyle(style)
+	n, err := fmt.Fprint(s, v...)
+	s.Reset()
+	return n, err
+}
+
+func wrapSynopsis[T synopsis.Stringer](s T) *synopsisWrapper[T] {
+	return &synopsisWrapper[T]{s}
+}
+
+func (s *synopsisWrapper[T]) String() string {
+	buf := NewBuffer()
+	s.s.WriteTo(buf)
+	return buf.String()
+}
+
 func colorEnabled(w io.Writer) bool {
 	if s, ok := w.(*stringHelper); ok {
 		return s.enabled
@@ -598,48 +544,11 @@ func colorEnabled(w io.Writer) bool {
 	return os.Getenv("TERM") != "dumb" && term.IsTerminal(int(f.Fd()))
 }
 
-func sprintSynopsis(template string, data interface{}) string {
-	w := bytes.NewBuffer(nil)
-	synopsisTemplate.ExecuteTemplate(w, template, data)
-	return w.String()
-}
-
-func parseUsage(text string) *usage {
-	content := []byte(text)
-	allIndexes := usagePattern.FindAllSubmatchIndex(content, -1)
-	result := []expr{}
-
-	var index int
-	for _, loc := range allIndexes {
-		if index < loc[0] {
-			result = append(result, newLiteral(content[index:loc[0]]))
-		}
-		key := content[loc[2]:loc[3]]
-		result = append(result, newExpr(key))
-		index = loc[1]
-	}
-	if index < len(content) {
-		result = append(result, newLiteral(content[index:]))
-	}
-
-	return &usage{
-		result,
-	}
-}
-
-func newLiteral(token []byte) expr {
-	return &literal{string(token)}
-}
-
-func newExpr(token []byte) expr {
-	positionAndName := strings.SplitN(string(token), ":", 2)
-	if len(positionAndName) == 1 {
-		return &placeholderExpr{name: positionAndName[0], pos: -1}
-	}
-
-	pos, _ := strconv.Atoi(positionAndName[0])
-	name := positionAndName[1]
-	return &placeholderExpr{name: name, pos: pos}
+func sprintSynopsis(s synopsis.Stringer) string {
+	buf := NewBuffer()
+	buf.SetColorCapable(false)
+	s.WriteTo(buf)
+	return buf.String()
 }
 
 func displayHelp(c *Context) error {

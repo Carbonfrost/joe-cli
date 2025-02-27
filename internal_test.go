@@ -27,10 +27,6 @@ func IsDestinationImplicitlyCreated(t any) bool {
 	return t.(target).internalFlags().destinationImplicitlyCreated()
 }
 
-func ParseUsage(text string) *usage {
-	return parseUsage(text)
-}
-
 func SetInitialTiming(c *Context) {
 	c.timing = InitialTiming
 }
@@ -53,15 +49,6 @@ func (a *Arg) ActualArgCounter() ArgCounter {
 
 func DefaultFlagCounter() ArgCounter {
 	return &defaultCounter{requireSeen: true}
-}
-
-func NewFlagSynopsis(long string) *flagSynopsis {
-	return &flagSynopsis{
-		Long:    long,
-		Primary: long,
-		Names:   []string{"--" + long},
-		Value:   &valueSynopsis{},
-	}
 }
 
 func Initialized(t target) *Context {

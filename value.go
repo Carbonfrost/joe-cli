@@ -101,10 +101,6 @@ type valueDereference interface {
 	Value() interface{}
 }
 
-type valueProvidesSynopsis interface {
-	Synopsis() string
-}
-
 type valueCompleter interface {
 	Completion() Completion
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 type commandData struct {
@@ -12,7 +14,7 @@ type commandData struct {
 	Description        interface{}
 	HelpText           string
 	ManualText         string
-	Synopsis           *commandSynopsis
+	Synopsis           *synopsisWrapper[*synopsis.Command]
 	Lineage            string
 	VisibleCommands    []*commandData
 	VisibleFlags       flagDataList
@@ -31,7 +33,7 @@ type persistentCommandData struct {
 
 type flagData struct {
 	Name        string
-	Synopsis    *flagSynopsis
+	Synopsis    *synopsisWrapper[*synopsis.Flag]
 	HelpText    string
 	ManualText  string
 	Description interface{}
@@ -40,7 +42,7 @@ type flagData struct {
 
 type exprData struct {
 	Name        string
-	Synopsis    *exprSynopsis
+	Synopsis    *synopsisWrapper[*synopsis.Expr]
 	HelpText    string
 	ManualText  string
 	Description string
@@ -50,7 +52,6 @@ type exprData struct {
 type commandDataCategory struct {
 	Category        string
 	VisibleCommands []*commandData
-	Data            map[string]interface{}
 }
 
 type flagDataList []*flagData
@@ -58,14 +59,12 @@ type flagDataCategory struct {
 	Undocumented bool
 	Category     string
 	VisibleFlags flagDataList
-	Data         map[string]interface{}
 }
 
 type exprDataCategory struct {
 	Undocumented bool
 	Category     string
 	VisibleExprs []*exprData
-	Data         map[string]interface{}
 }
 
 type exprDescriptionData struct {
@@ -94,7 +93,7 @@ var (
 {{- end -}}
 
 {{- define "Flag" -}}
-{{ "\t" }}{{ Execute "FlagSynopsis" .Synopsis | ExtraSpaceBeforeFlag }}{{ "\t" }}{{.HelpText}}
+{{ "\t" }}{{ .Synopsis | print | ExtraSpaceBeforeFlag }}{{ "\t" }}{{.HelpText}}
 {{- end -}}
 
 {{- define "Flags" -}}
@@ -141,7 +140,7 @@ usage: {{ if .SelectedCommand.Lineage -}}
 	{{- .SelectedCommand.Lineage -}}
 	{{- " " -}}
 {{- end -}}
-{{ Execute "CommandSynopsis" .SelectedCommand.Synopsis | HangingIndent .SelectedCommand.HangingIndent }}
+{{ .SelectedCommand.Synopsis | print | HangingIndent .SelectedCommand.HangingIndent }}
 
 {{ if .SelectedCommand.Description }}
 {{ .SelectedCommand.Description | Wrap 4 }}
@@ -159,7 +158,7 @@ usage: {{ if .SelectedCommand.Lineage -}}
 
 	expressionTemplate = `
 {{- define "Expression" -}}
-{{ "\t" }}{{ template "ExpressionSynopsis" .Synopsis }}{{ "\t" }}{{.HelpText}}
+{{ "\t" }}{{ .Synopsis }}{{ "\t" }}{{.HelpText}}
 {{- end -}}
 
 
@@ -223,110 +222,6 @@ Expressions:
 		},
 		"Trim": strings.TrimSpace,
 	}
-
-	synopsisTemplate = template.Must(
-		template.New("Synopsis").Funcs(builtinFuncs).Parse(`
-{{- define "ArgSynopsis" -}}
-	{{ .Value }}
-	{{- if .Multi -}}
-	    ...
-	{{- end -}}
-{{- end -}}
-
-{{- define "FlagSynopsis" -}}
-   {{- .Names | Join ", " | Bold }}{{ .Separator -}}
-   {{- template "ValueSynopsis" .Value -}}
-{{- end -}}
-
-{{- define "FlagSynopsisPrimary" -}}
-   {{- .Primary | Bold }}{{ .Separator -}}
-   {{- template "ValueSynopsis" .Value -}}
-{{- end -}}
-
-{{- define "CommandSynopsis" -}}
-{{- .Name | Bold -}}
-	{{ with index .Flags 5 -}}{{/* actionGroup */ -}}
-		{{ if . -}}
-			{{- " {" -}}
-				{{- range $i, $f := . -}}
-					{{- if $i }} | {{ end -}}
-					{{ template "FlagSynopsisPrimary" $f }}
-				{{- end -}}
-			{{ "}" -}}
-		{{ end -}}
-	{{ end -}}
-	{{ with index .Flags 0 -}}{{/* onlyShortNoValue */ -}}
-		{{ if . -}}
-			{{- " -" -}}
-				{{- range $i, $f := . -}}
-					{{- $f.Short }}
-				{{- end -}}
-		{{ end -}}
-	{{ end -}}	
-	{{ with index .Flags 1 -}}{{/* onlyShortNoValueOptional */ -}}
-		{{ if . -}}
-			{{- " [-" -}}
-				{{- range $i, $f := . -}}
-					{{- $f.Short }}
-				{{- end -}}
-			{{- "]" -}}
-		{{ end -}}
-	{{ end -}}		
-	{{ with index .Flags 3 -}}{{/* otherOptional */ -}}
-		{{ if . -}}
-				{{- range $i, $f := . -}}
-					{{- " [" -}}
-						{{ template "FlagSynopsisPrimary" $f }}
-					{{- "]" -}}
-				{{- end -}}
-		{{ end -}}
-	{{ end -}}		
-	{{ with index .Flags 4 -}}{{/* other */ -}}
-		{{ if . -}}
-				{{- range $i, $f := . -}}
-						{{ template "FlagSynopsisPrimary" $f }}
-				{{- end -}}
-		{{ end -}}
-	{{ end -}}			
-
-	{{- template "ArgList" . }}
-{{- end -}}
-
-{{- define "ArgList" -}}
-	{{- range $a := .RequiredArgs -}}
-		{{- " " -}}
-		{{ template "ArgSynopsis" $a }}
-	{{- end -}}	
-
-	{{- if .OptionalArgs -}}
-		{{- " " -}}
-		{{- range $i, $a := .OptionalArgs -}}
-			{{- if $.RTL  -}}
-				{{- if (eq 0 $i) -}}
-					{{- "[" | Repeat ($.OptionalArgs | len) -}}
-				{{- else -}}
-					{{- " " -}}
-				{{- end -}}
-			{{- else -}}
-				{{- "[" -}}
-			{{- end -}}	
-
-			{{ template "ArgSynopsis" $a -}}
-			{{- "]" -}}
-		{{- end -}}		
-	{{- end -}}			
-{{- end -}}
-
-{{- define "ExpressionSynopsis" -}}
-{{- .Names | BoldFirst | Join ", " -}}
-	{{- template "ArgList" . }}
-{{- end -}}
-
-{{- define "ValueSynopsis" -}}
-   {{- .Placeholder | Underline -}}
-{{- end -}}
-
-`))
 )
 
 func (c *commandData) withLineage(lineage string, persistent []*Flag) *commandData {
@@ -406,7 +301,7 @@ func commandAdapter(val *Command) *commandData {
 		Description:        val.Description,
 		HelpText:           val.HelpText,
 		ManualText:         val.ManualText,
-		Synopsis:           val.newSynopsis(),
+		Synopsis:           wrapSynopsis(val.newSynopsis()),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
 		VisibleCommands:    visibleCommands(val.VisibleSubcommands()),
@@ -419,14 +314,20 @@ func commandAdapter(val *Command) *commandData {
 	}
 }
 
+func renderHelp(us *synopsis.Usage) string {
+	sb := NewBuffer()
+	us.HelpText(sb)
+	return sb.String()
+}
+
 func flagAdapter(val *Flag) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
 		Name:        val.Name,
-		HelpText:    syn.Value.usage.helpText(),
+		HelpText:    renderHelp(syn.Value.Usage),
 		ManualText:  val.ManualText,
 		Description: val.Description,
-		Synopsis:    syn,
+		Synopsis:    wrapSynopsis(syn),
 		Data:        val.Data,
 	}
 }
@@ -445,10 +346,10 @@ func exprAdapter(val *Expr) *exprData {
 	syn := val.newSynopsis()
 	return &exprData{
 		Name:        val.Name,
-		HelpText:    syn.usage.helpText(),
+		HelpText:    renderHelp(syn.Usage),
 		Description: fmt.Sprint(val.Description),
 		ManualText:  val.ManualText,
-		Synopsis:    syn,
+		Synopsis:    wrapSynopsis(syn),
 		Data:        val.Data,
 	}
 }

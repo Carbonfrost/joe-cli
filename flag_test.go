@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -666,7 +667,12 @@ var _ = Describe("Flag", func() {
 				&cli.Flag{
 					Name: "reason",
 					Data: map[string]interface{}{
-						"_Synopsis": cli.NewFlagSynopsis("[no-]reason"),
+						"_Synopsis": &synopsis.Flag{
+							Long:    "[no-]reason",
+							Primary: "[no-]reason",
+							Names:   []string{"--[no-]reason"},
+							Value:   &synopsis.Value{},
+						},
 					},
 					Value: cli.Bool(),
 				},

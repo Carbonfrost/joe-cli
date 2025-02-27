@@ -417,13 +417,6 @@ func setupDefaultTemplateFuncs(c *Context) error {
 }
 
 func setupDefaultTemplates(c *Context) error {
-	scope := c.root().ensureTemplates()
-
-	// Synopsis templates are imported into the global template context
-	for _, n := range synopsisTemplate.Templates() {
-		scope.AddParseTree(n.Name(), n.Tree)
-	}
-
 	for k, v := range defaultTemplates {
 		err := c.RegisterTemplate(k, v())
 		if err != nil {

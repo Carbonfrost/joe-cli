@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 // Command represents a command with arguments, flags, and expressions
@@ -106,31 +108,10 @@ type commandCategory struct {
 
 type commandsByCategory []*commandCategory
 
-type commandSynopsis struct {
-	Name         string
-	Flags        map[optionGroup][]*flagSynopsis
-	Args         []*argSynopsis
-	RequiredArgs []*argSynopsis
-	OptionalArgs []*argSynopsis
-	RTL          bool
-}
-
-type optionGroup int
-
 type commandContext struct {
 	cmd     *Command
 	flagSet *set
 }
-
-const (
-	onlyShortNoValue         = optionGroup(iota) // -v
-	onlyShortNoValueOptional                     // [-v]
-	onlyBoolLong                                 // [--[no-]support]
-	otherOptional                                // [--long=value]
-	other                                        // --long=value
-	actionGroup                                  // { --help|--version}
-	hidden
-)
 
 const (
 	commandNotFoundKey = "__CommandNotFound"
@@ -279,7 +260,7 @@ func (c commandsByCategory) Swap(i, j int) {
 // Synopsis returns the UsageText for the command or produces a succinct representation
 // that names each flag and arg
 func (c *Command) Synopsis() string {
-	return sprintSynopsis("CommandSynopsis", c.newSynopsis())
+	return sprintSynopsis(c.newSynopsis())
 }
 
 // Command tries to obtain a sub-command by name or alias
@@ -505,60 +486,19 @@ func findSolitaryMatch(c *Context) []CompletionItem {
 	}
 }
 
-func (c *Command) newSynopsis() *commandSynopsis {
-	groups := map[optionGroup][]*flagSynopsis{
-		onlyShortNoValue:         {},
-		onlyShortNoValueOptional: {},
-		onlyBoolLong:             {},
-		hidden:                   {},
-		otherOptional:            {},
-		actionGroup:              {},
-		other:                    {},
+func (c *Command) newSynopsis() *synopsis.Command {
+	flags := make([]*synopsis.Flag, len(c.Flags))
+	args := make([]*synopsis.Arg, len(c.Args))
+	for i, f := range c.Flags {
+		flags[i] = f.synopsis()
 	}
-	args := make([]*argSynopsis, 0)
-	for _, f := range c.Flags {
-		group := getGroup(f)
-		groups[group] = append(groups[group], f.synopsis())
-	}
-	for _, a := range c.Args {
-		args = append(args, a.newSynopsis())
+	for i, a := range c.Args {
+		args[i] = a.newSynopsis()
 	}
 
-	sortedByName(groups[onlyShortNoValueOptional])
-	sortedByName(groups[onlyShortNoValue])
-
-	var required []*argSynopsis
-	var optional []*argSynopsis
-
-	rtl := c.internalFlags().rightToLeft()
-	if rtl {
-		var start int
-		for i, p := range args {
-			if p.Optional {
-				start = i
-				break
-			}
-		}
-		required = args[0:start]
-		optional = args[start:]
-	} else {
-		for _, p := range args {
-			if p.Optional {
-				optional = append(optional, p)
-			} else {
-				required = append(required, p)
-			}
-		}
-	}
-
-	return &commandSynopsis{
-		Name:         c.Name,
-		Flags:        groups,
-		Args:         args,
-		RequiredArgs: required,
-		OptionalArgs: optional,
-		RTL:          rtl,
-	}
+	return synopsis.NewCommand(
+		c.Name, flags, args, c.internalFlags().rightToLeft(),
+	)
 }
 
 // SetData sets the specified metadata on the command
@@ -767,29 +707,23 @@ func (c *commandContext) Name() string {
 	return c.cmd.Name
 }
 
-func getGroup(f *Flag) optionGroup {
+func getGroup(f *Flag) synopsis.OptionGroup {
 	if f.internalFlags().hidden() {
-		return hidden
+		return synopsis.Hidden
 	}
 	if f.internalFlags().exits() {
-		return actionGroup
+		return synopsis.ActionGroup
 	}
 	if hasOnlyShortName(f) && impliesValueFlagOnly(f.Value) {
 		if f.internalFlags().required() {
-			return onlyShortNoValue
+			return synopsis.OnlyShortNoValue
 		}
-		return onlyShortNoValueOptional
+		return synopsis.OnlyShortNoValueOptional
 	}
 	if f.internalFlags().required() {
-		return other
+		return synopsis.Other
 	}
-	return otherOptional
-}
-
-func sortedByName(flags []*flagSynopsis) {
-	sort.Slice(flags, func(i, j int) bool {
-		return flags[i].Short < flags[j].Short
-	})
+	return synopsis.OtherOptional
 }
 
 func commandsByNameOrder(x, y *Command) int {

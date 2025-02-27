@@ -522,10 +522,8 @@ func noOption(c *Context) error {
 	f := c.Flag()
 
 	syn := f.synopsis()
-	_ = syn.withLongAndShort(
-		[]string{"[no-]" + syn.Long},
-		syn.Shorts,
-	)
+	syn.WithNo()
+
 	wrapAction := func(v Action) ActionFunc {
 		return func(c *Context) error {
 			return execute(c.copyWithoutReparent(

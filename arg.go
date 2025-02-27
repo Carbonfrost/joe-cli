@@ -1,8 +1,11 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
+
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 // Arg provides the representation of a positional argument.
@@ -131,10 +134,21 @@ type ArgCounter interface {
 	// that flags and args are interspersed on the command line.  When this is
 	// set to true, you may prefer to stop parsing and let the next argument be
 	// parsed as a flag.
+	//
+	// The interface can optionally provide a method that describes
+	// the synopsis for args used with the counter:
+	//
+	//   - Usage() (optional, multi bool)  called to query the usage of the
+	//                       arg counter, whether the arg is possibly optional
+	//                       and whether the arg may be multiple values.
 	Take(arg string, possibleFlag bool) error
 
 	// Done is invoked to signal the end of arguments
 	Done() error
+}
+
+type argCounterUsage interface {
+	Usage() (bool, bool)
 }
 
 type optionContext struct {
@@ -161,12 +175,6 @@ type matchesArgsCounter struct {
 	fn    func(string) bool
 	count int
 	max   int
-}
-
-type argSynopsis struct {
-	Value    string
-	Multi    bool
-	Optional bool
 }
 
 const (
@@ -308,25 +316,12 @@ func (a *Arg) Use(actions ...Action) *Arg {
 
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
-	return sprintSynopsis("ArgSynopsis", a.newSynopsis())
+	return sprintSynopsis(a.newSynopsis())
 }
 
-func (a *Arg) newSynopsis() *argSynopsis {
-	return a.newSynopsisCore(fmt.Sprintf("<%s>", a.Name))
-}
-
-func (a *Arg) newSynopsisCore(defaultUsage string) *argSynopsis {
-	usage := a.UsageText
-	if usage == "" {
-		usage = defaultUsage
-	}
-
-	opt, mul := aboutArgCounter(a.NArg)
-	return &argSynopsis{
-		Value:    usage,
-		Multi:    mul,
-		Optional: opt,
-	}
+func (a *Arg) newSynopsis() *synopsis.Arg {
+	defaultUsage := fmt.Sprintf("<%s>", a.Name)
+	return synopsis.NewArg(cmp.Or(a.UsageText, defaultUsage), a.NArg)
 }
 
 func (a *Arg) name() string {
@@ -346,7 +341,7 @@ func (a *Arg) category() string {
 }
 
 func (a *Arg) value() interface{} {
-	_, multi := aboutArgCounter(a.NArg)
+	_, multi := synopsis.ArgCounter(a.NArg)
 	a.Value = ensureDestination(a.Value, multi)
 	return a.Value
 }
@@ -459,13 +454,6 @@ func (a *Arg) completion() Completion {
 	}
 
 	return nil
-}
-
-func (a *argSynopsis) String() string {
-	if a.Multi {
-		return a.Value + "..."
-	}
-	return a.Value
 }
 
 func (o *optionContext) initialize(c *Context) error {
@@ -593,20 +581,22 @@ func findArgByName(items []*Arg, v interface{}) (*Arg, int, bool) {
 	return nil, -1, false
 }
 
-func aboutArgCounter(narg interface{}) (optional, multi bool) {
-	switch c := narg.(type) {
-	case int:
-		return c == 0, c < 0 || c > 1
-	case *varArgsCounter:
-		return true, true
-	case nil:
-		return true, false
-	case *defaultCounter:
-		return !c.requireSeen, false
-	case *discreteCounter:
-		return false, c.count > 1
-	}
-	return false, false
+var _ target = (*Arg)(nil)
+
+var (
+	_ argCounterUsage = (*varArgsCounter)(nil)
+	_ argCounterUsage = (*defaultCounter)(nil)
+	_ argCounterUsage = (*discreteCounter)(nil)
+)
+
+func (c *varArgsCounter) Usage() (optional, multi bool) {
+	return true, true
 }
 
-var _ target = (*Arg)(nil)
+func (c *defaultCounter) Usage() (optional, multi bool) {
+	return !c.requireSeen, false
+}
+
+func (c *discreteCounter) Usage() (optional, multi bool) {
+	return false, c.count > 1
+}

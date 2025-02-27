@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 //counterfeiter:generate . Evaluator
@@ -130,16 +132,6 @@ type Yielder func(interface{}) error
 
 type exprPipelineFactory struct {
 	exprs map[string]*Expr
-}
-
-type exprSynopsis struct {
-	Long         string
-	Short        string
-	usage        *usage
-	Names        []string
-	Args         []*argSynopsis
-	RequiredArgs []*argSynopsis
-	OptionalArgs []*argSynopsis
 }
 
 type boundExpr struct {
@@ -393,7 +385,7 @@ func (e *Expr) Names() []string {
 
 // Synopsis retrieves the synopsis for the expression operator.
 func (e *Expr) Synopsis() string {
-	return sprintSynopsis("ExpressionSynopsis", e.newSynopsis())
+	return sprintSynopsis(e.newSynopsis())
 }
 
 // Arg gets the expression operator by name
@@ -402,38 +394,22 @@ func (e *Expr) Arg(name interface{}) (*Arg, bool) {
 	return a, ok
 }
 
-func (e *Expr) newSynopsis() *exprSynopsis {
-	args := make([]*argSynopsis, len(e.LocalArgs()))
-	usage := parseUsage(e.HelpText)
+func (e *Expr) newSynopsis() *synopsis.Expr {
+	args := make([]*synopsis.Arg, len(e.LocalArgs()))
+	usage := synopsis.ParseUsage(e.HelpText)
 	pp := usage.Placeholders()
 
 	for i, a := range e.LocalArgs() {
 		if i < len(pp) {
-			args[i] = a.newSynopsisCore(pp[i])
+			args[i] = a.newSynopsis().WithUsage(pp[i])
 		} else {
 			// Use a simpler default name with less noise from angle brackets
-			args[i] = a.newSynopsisCore(strings.ToUpper(a.Name))
+			args[i] = a.newSynopsis().WithUsage(strings.ToUpper(a.Name))
 		}
-	}
-	long, short := canonicalNames(e.Name, e.Aliases)
-	names := func() []string {
-		if len(long) == 0 {
-			return []string{fmt.Sprintf("-%s", string(short[0]))}
-		}
-		if len(short) == 0 {
-			return []string{fmt.Sprintf("-%s", long[0])}
-		}
-		return []string{fmt.Sprintf("-%s", string(short[0])), fmt.Sprintf("-%s", string(long[0]))}
 	}
 
-	return &exprSynopsis{
-		Long:         longName(long),
-		Short:        shortName(short),
-		usage:        usage,
-		Args:         args,
-		RequiredArgs: args,
-		Names:        names(),
-	}
+	long, short := canonicalNames(e.Name, e.Aliases)
+	return synopsis.NewExpr(long, short, usage, args)
 }
 
 func (e *Expr) LocalArgs() []*Arg {

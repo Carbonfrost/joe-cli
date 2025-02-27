@@ -8,6 +8,19 @@ import (
 )
 
 type FakeWriter struct {
+	BoldStub        func(...any) (int, error)
+	boldMutex       sync.RWMutex
+	boldArgsForCall []struct {
+		arg1 []any
+	}
+	boldReturns struct {
+		result1 int
+		result2 error
+	}
+	boldReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
 	ClearStyleStub        func(cli.Style)
 	clearStyleMutex       sync.RWMutex
 	clearStyleArgsForCall []struct {
@@ -51,6 +64,33 @@ type FakeWriter struct {
 	setStyleArgsForCall []struct {
 		arg1 cli.Style
 	}
+	StyledStub        func(cli.Style, ...any) (int, error)
+	styledMutex       sync.RWMutex
+	styledArgsForCall []struct {
+		arg1 cli.Style
+		arg2 []any
+	}
+	styledReturns struct {
+		result1 int
+		result2 error
+	}
+	styledReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
+	UnderlineStub        func(...any) (int, error)
+	underlineMutex       sync.RWMutex
+	underlineArgsForCall []struct {
+		arg1 []any
+	}
+	underlineReturns struct {
+		result1 int
+		result2 error
+	}
+	underlineReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
 	WriteStub        func([]byte) (int, error)
 	writeMutex       sync.RWMutex
 	writeArgsForCall []struct {
@@ -79,6 +119,70 @@ type FakeWriter struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeWriter) Bold(arg1 ...any) (int, error) {
+	fake.boldMutex.Lock()
+	ret, specificReturn := fake.boldReturnsOnCall[len(fake.boldArgsForCall)]
+	fake.boldArgsForCall = append(fake.boldArgsForCall, struct {
+		arg1 []any
+	}{arg1})
+	stub := fake.BoldStub
+	fakeReturns := fake.boldReturns
+	fake.recordInvocation("Bold", []interface{}{arg1})
+	fake.boldMutex.Unlock()
+	if stub != nil {
+		return stub(arg1...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeWriter) BoldCallCount() int {
+	fake.boldMutex.RLock()
+	defer fake.boldMutex.RUnlock()
+	return len(fake.boldArgsForCall)
+}
+
+func (fake *FakeWriter) BoldCalls(stub func(...any) (int, error)) {
+	fake.boldMutex.Lock()
+	defer fake.boldMutex.Unlock()
+	fake.BoldStub = stub
+}
+
+func (fake *FakeWriter) BoldArgsForCall(i int) []any {
+	fake.boldMutex.RLock()
+	defer fake.boldMutex.RUnlock()
+	argsForCall := fake.boldArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeWriter) BoldReturns(result1 int, result2 error) {
+	fake.boldMutex.Lock()
+	defer fake.boldMutex.Unlock()
+	fake.BoldStub = nil
+	fake.boldReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeWriter) BoldReturnsOnCall(i int, result1 int, result2 error) {
+	fake.boldMutex.Lock()
+	defer fake.boldMutex.Unlock()
+	fake.BoldStub = nil
+	if fake.boldReturnsOnCall == nil {
+		fake.boldReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.boldReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeWriter) ClearStyle(arg1 cli.Style) {
@@ -342,6 +446,135 @@ func (fake *FakeWriter) SetStyleArgsForCall(i int) cli.Style {
 	return argsForCall.arg1
 }
 
+func (fake *FakeWriter) Styled(arg1 cli.Style, arg2 ...any) (int, error) {
+	fake.styledMutex.Lock()
+	ret, specificReturn := fake.styledReturnsOnCall[len(fake.styledArgsForCall)]
+	fake.styledArgsForCall = append(fake.styledArgsForCall, struct {
+		arg1 cli.Style
+		arg2 []any
+	}{arg1, arg2})
+	stub := fake.StyledStub
+	fakeReturns := fake.styledReturns
+	fake.recordInvocation("Styled", []interface{}{arg1, arg2})
+	fake.styledMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeWriter) StyledCallCount() int {
+	fake.styledMutex.RLock()
+	defer fake.styledMutex.RUnlock()
+	return len(fake.styledArgsForCall)
+}
+
+func (fake *FakeWriter) StyledCalls(stub func(cli.Style, ...any) (int, error)) {
+	fake.styledMutex.Lock()
+	defer fake.styledMutex.Unlock()
+	fake.StyledStub = stub
+}
+
+func (fake *FakeWriter) StyledArgsForCall(i int) (cli.Style, []any) {
+	fake.styledMutex.RLock()
+	defer fake.styledMutex.RUnlock()
+	argsForCall := fake.styledArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeWriter) StyledReturns(result1 int, result2 error) {
+	fake.styledMutex.Lock()
+	defer fake.styledMutex.Unlock()
+	fake.StyledStub = nil
+	fake.styledReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeWriter) StyledReturnsOnCall(i int, result1 int, result2 error) {
+	fake.styledMutex.Lock()
+	defer fake.styledMutex.Unlock()
+	fake.StyledStub = nil
+	if fake.styledReturnsOnCall == nil {
+		fake.styledReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.styledReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeWriter) Underline(arg1 ...any) (int, error) {
+	fake.underlineMutex.Lock()
+	ret, specificReturn := fake.underlineReturnsOnCall[len(fake.underlineArgsForCall)]
+	fake.underlineArgsForCall = append(fake.underlineArgsForCall, struct {
+		arg1 []any
+	}{arg1})
+	stub := fake.UnderlineStub
+	fakeReturns := fake.underlineReturns
+	fake.recordInvocation("Underline", []interface{}{arg1})
+	fake.underlineMutex.Unlock()
+	if stub != nil {
+		return stub(arg1...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeWriter) UnderlineCallCount() int {
+	fake.underlineMutex.RLock()
+	defer fake.underlineMutex.RUnlock()
+	return len(fake.underlineArgsForCall)
+}
+
+func (fake *FakeWriter) UnderlineCalls(stub func(...any) (int, error)) {
+	fake.underlineMutex.Lock()
+	defer fake.underlineMutex.Unlock()
+	fake.UnderlineStub = stub
+}
+
+func (fake *FakeWriter) UnderlineArgsForCall(i int) []any {
+	fake.underlineMutex.RLock()
+	defer fake.underlineMutex.RUnlock()
+	argsForCall := fake.underlineArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeWriter) UnderlineReturns(result1 int, result2 error) {
+	fake.underlineMutex.Lock()
+	defer fake.underlineMutex.Unlock()
+	fake.UnderlineStub = nil
+	fake.underlineReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeWriter) UnderlineReturnsOnCall(i int, result1 int, result2 error) {
+	fake.underlineMutex.Lock()
+	defer fake.underlineMutex.Unlock()
+	fake.UnderlineStub = nil
+	if fake.underlineReturnsOnCall == nil {
+		fake.underlineReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.underlineReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeWriter) Write(arg1 []byte) (int, error) {
 	var arg1Copy []byte
 	if arg1 != nil {
@@ -478,6 +711,8 @@ func (fake *FakeWriter) WriteStringReturnsOnCall(i int, result1 int, result2 err
 func (fake *FakeWriter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.boldMutex.RLock()
+	defer fake.boldMutex.RUnlock()
 	fake.clearStyleMutex.RLock()
 	defer fake.clearStyleMutex.RUnlock()
 	fake.colorCapableMutex.RLock()
@@ -494,6 +729,10 @@ func (fake *FakeWriter) Invocations() map[string][][]interface{} {
 	defer fake.setForegroundMutex.RUnlock()
 	fake.setStyleMutex.RLock()
 	defer fake.setStyleMutex.RUnlock()
+	fake.styledMutex.RLock()
+	defer fake.styledMutex.RUnlock()
+	fake.underlineMutex.RLock()
+	defer fake.underlineMutex.RUnlock()
 	fake.writeMutex.RLock()
 	defer fake.writeMutex.RUnlock()
 	fake.writeStringMutex.RLock()
