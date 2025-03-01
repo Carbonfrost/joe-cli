@@ -2049,6 +2049,9 @@ var _ = Describe("HookBefore", func() {
 var _ = Describe("Customize", func() {
 	DescribeTable("examples",
 		func(uses cli.Action, expected func(app *cli.App)) {
+			valueInit := &haveArgs{
+				Args: cli.Args("m", new(int)),
+			}
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -2058,8 +2061,11 @@ var _ = Describe("Customize", func() {
 				Args: []*cli.Arg{
 					{
 						Name:  "arg",
-						Value: &cli.Expression{},
-						Uses:  cli.Data("arg", 1),
+						Value: valueInit,
+						Uses: cli.Pipeline(
+							cli.Data("arg", 1),
+							cli.ProvideValueInitializer(valueInit, "value", nil),
+						),
 					},
 				},
 				Commands: []*cli.Command{
@@ -2101,6 +2107,22 @@ var _ = Describe("Customize", func() {
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				Expect(root.VisibleSubcommands()).To(HaveLen(1 + 2)) // Includes "help" and "version"
+			}),
+
+		Entry("customizes an arg",
+			cli.Customize("<arg>", cli.Named("renamed")),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				arg, _ := root.Arg(0)
+				Expect(arg.Name).To(Equal("renamed"))
+			}),
+
+		Entry("customizes an arg within a value",
+			cli.Customize("<arg> <-value> <m>", cli.Named("renamed")),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				arg, _ := root.Arg(0)
+				Expect(arg.Value.(*haveArgs).LocalArgs()[0].Name).To(Equal("renamed"))
 			}),
 	)
 

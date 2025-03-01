@@ -1235,9 +1235,13 @@ func (c *Context) AutodetectColor() {
 
 // ProvideValueInitializer causes an additional child context to be created
 // which is used to initialize an arbitrary value.  Typically, the value is
-// the value of the flag or arg.
-// The value can provides methods such as SetDescription(string),
+// the value of the flag or arg.  Indeed, a pattern is to expose this action as
+// the return value of a method Initializer()Action (refer to the overview in [Value]
+// about methods implemented by values by convention).
+//
+// The value can also provide methods such as SetDescription(string),
 // SetHelpText(string), etc. in order to operate with actions that set these values.
+//
 // If the value has local args (a method LocalArgs() []*Arg), then their
 // pipelines are triggered.
 func (c *Context) ProvideValueInitializer(v any, name string, action Action) error {
