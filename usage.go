@@ -250,6 +250,7 @@ func PrintLicense() Action {
 	return Pipeline(&Prototype{
 		Name:     "license",
 		HelpText: "Display the license and exit",
+		Value:    Bool(),
 		Options:  Exits,
 	}, At(ActionTiming, ExecuteTemplate("License", nil)))
 }

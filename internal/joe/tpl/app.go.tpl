@@ -47,9 +47,11 @@ func createApp() *cli.App {
         },
         Version: {{ .App.Version | Quote }},
         Args: []*cli.Arg{
+        },
+        Flags: []*cli.Flag{
 {{- if .App.License }}
             {Uses: cli.PrintLicense() },
 {{- end -}}
-        },
+        },        
     }
 }

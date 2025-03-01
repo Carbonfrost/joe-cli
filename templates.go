@@ -187,7 +187,7 @@ Expressions:
 
 	// LicenseTemplate specifies the Go template for what is printed when
 	//   the license flag or command is used.
-	LicenseTemplate = "{{ .App.License | Wrap }}\n"
+	LicenseTemplate = "{{ .App.License | Wrap 4 }}\n"
 
 	builtinFuncs = template.FuncMap{
 		"Join": func(v string, args []string) string {
