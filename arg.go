@@ -206,9 +206,13 @@ func Args(namevalue ...interface{}) []*Arg {
 	}
 	res := make([]*Arg, 0, len(namevalue)/2)
 	for i := 0; i < len(namevalue); i += 2 {
+		value := namevalue[i+1]
+		if err := checkSupportedFlagType(value); err != nil {
+			panic(err)
+		}
 		res = append(res, &Arg{
 			Name:  namevalue[i].(string),
-			Value: namevalue[i+1],
+			Value: value,
 		})
 	}
 	return res

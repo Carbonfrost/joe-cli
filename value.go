@@ -917,43 +917,49 @@ func (v *valueContext) Name() string {
 	return "<-" + v.name + ">"
 }
 
-func (o *internalOption) setValue(v interface{}) any {
+func checkSupportedFlagType(v any) error {
 	switch v.(type) {
 	case Value:
-		o.p = v
+		return nil
 	case *bool:
-		o.p = v
+		return nil
 	case *string, *[]string:
-		o.p = v
+		return nil
 	case *int, *int8, *int16, *int32, *int64:
-		o.p = v
+		return nil
 	case *uint, *uint8, *uint16, *uint32, *uint64:
-		o.p = v
+		return nil
 	case *float32, *float64:
-		o.p = v
+		return nil
 	case *time.Duration:
-		o.p = v
+		return nil
 	case *map[string]string:
-		o.p = v
+		return nil
 	case *[]*NameValue:
-		o.p = v
+		return nil
 	case **url.URL:
-		o.p = v
+		return nil
 	case *net.IP:
-		o.p = v
+		return nil
 	case **regexp.Regexp:
-		o.p = v
+		return nil
 	case **big.Int:
-		o.p = v
+		return nil
 	case **big.Float:
-		o.p = v
+		return nil
 	case *[]byte:
-		o.p = v
+		return nil
 	case encoding.TextUnmarshaler:
-		o.p = v
-	default:
-		panic(fmt.Sprintf("unsupported flag type: %T", v))
+		return nil
 	}
+	return fmt.Errorf("unsupported flag type: %T", v)
+}
+
+func (o *internalOption) setValue(v any) any {
+	if err := checkSupportedFlagType(v); err != nil {
+		panic(err)
+	}
+	o.p = v
 	return v
 }
 

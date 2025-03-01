@@ -535,6 +535,13 @@ var _ = Describe("Args", func() {
 		Expect(func() { cli.Args("unevent") }).To(PanicWith(Equal("unexpected number of arguments")))
 	})
 
+	It("panics on invalid value", func() {
+		// It's better that Args panics upfront on incorrect
+		// flag types
+		Expect(func() { cli.Args("a", "invalid value") }).To(
+			PanicWith(MatchError("unsupported flag type: string")))
+	})
+
 })
 
 var _ = Describe("ArgCount", func() {
