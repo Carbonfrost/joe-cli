@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.8.0 (March 1, 2025)
+
+### New Features
+
+* `Named` (e18a8f9)
+* `ValueContextOf` (845f5ac)
+* `Fprint` actions (2c22b35)
+* `Accessory0` action, a simpler version to support accessories (5d6ee2a)
+* Expose `ColorCapable` as API (e1e696f)
+* Bind extension: Indirect, Exact, Value (cf95843, b369930)
+* Breaking changes:
+    * Improve the signature of `Accessory` so that it is contravariant (5d6ee2a)
+
+### Bug fixes and improvements
+
+* Improve `Args` method by panicking sooner with invalid args (c19c091)
+* Make `ProvideValueInitializer` implicitly initialize args and flags (5920087)
+* Bug fix: License template and its generation from joe (c557a93)
+* Bug fix: `ContextOf` should resolve from flag, arg contexts (34c4a22)
+* Bug fix: avoid panics and incorrect results in `Lookup{Arg,Flag,Command}` when nil or out of range index is used (b95cd89)
+* Convert `Synopsis` templates and logic into ordinary string manipulation (a463b1a)
+* Ensure typing of color constants (41d9993)
+* Additional unit tests and documentation improvements (43e01ac, 73ad697, fc006b2)
+* Chores:
+    * Use base library fstest where possible (90b418a)
+    * Cleanup to remove some spurious calls or generalize (7943f6d)
+
 ## v0.7.0 (February 17, 2025)
 
 ### New Features
