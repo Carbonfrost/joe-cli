@@ -181,9 +181,9 @@ func (e *Expression) Initializer() Action {
 
 		for _, sub := range e.Exprs {
 			err := c.ProvideValueInitializer(sub, sub.Name, Setup{
-				Uses:   Pipeline(sub.Uses, initializeFlagsArgs),
-				Before: Pipeline(sub.Before, triggerBeforeOptions),
-				After:  Pipeline(sub.After, triggerAfterOptions),
+				Uses:   sub.Uses,
+				Before: sub.Before,
+				After:  sub.After,
 			})
 			if err != nil {
 				return err

@@ -346,6 +346,33 @@ var (
 		),
 	}
 
+	defaultValue = actionPipelines{
+		Initializers: actions(
+			executeDeferredPipeline(InitialTiming),
+			executeUserPipeline(InitialTiming),
+			ActionFunc(initializeFlagsArgs),
+		),
+		Before: beforePipeline{
+			nil,
+			actions(
+				executeDeferredPipeline(BeforeTiming),
+				executeUserPipeline(BeforeTiming),
+				ActionFunc(triggerBeforeOptions),
+			),
+			nil,
+		},
+		Action: actions(
+			ActionFunc(triggerOptions),
+			executeDeferredPipeline(ActionTiming),
+			executeUserPipeline(ActionTiming),
+		),
+		After: actions(
+			executeDeferredPipeline(AfterTiming),
+			executeUserPipeline(AfterTiming),
+			ActionFunc(triggerAfterOptions),
+		),
+	}
+
 	errCantHook     = errors.New("hooks are not supported in this context")
 	errAssertFailed = errors.New("context does not meet requirements for action")
 

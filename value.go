@@ -868,25 +868,25 @@ func (o *internalOption) smartOptionalDefault() interface{} {
 	return nil
 }
 
-func (v *valueContext) initialize(c *Context) error {
-	return execute(c, v.v.uses().Initializers)
+func (*valueContext) initialize(c *Context) error {
+	return execute(c, defaultValue.Initializers)
 }
 
-func (v *valueContext) executeBefore(ctx *Context) error {
-	return execute(ctx, v.v.uses().Before)
+func (*valueContext) executeBefore(c *Context) error {
+	return execute(c, defaultValue.Before)
 }
 
-func (v *valueContext) executeAfter(ctx *Context) error {
-	return execute(ctx, v.v.uses().After)
+func (*valueContext) executeAfter(c *Context) error {
+	return execute(c, defaultValue.After)
 }
 
-func (v *valueContext) execute(ctx *Context) error {
-	return execute(ctx, v.v.uses().Action)
+func (*valueContext) execute(c *Context) error {
+	return execute(c, defaultValue.Action)
 }
 
-func (*valueContext) initializeDescendent(ctx *Context) error      { return nil }
-func (v *valueContext) executeBeforeDescendent(ctx *Context) error { return nil }
-func (v *valueContext) executeAfterDescendent(ctx *Context) error  { return nil }
+func (*valueContext) initializeDescendent(*Context) error    { return nil }
+func (*valueContext) executeBeforeDescendent(*Context) error { return nil }
+func (*valueContext) executeAfterDescendent(*Context) error  { return nil }
 
 func (v *valueContext) lookupBinding(name string, occurs bool) []string {
 	if v.lookup == nil {

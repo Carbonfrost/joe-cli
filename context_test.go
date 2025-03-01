@@ -1118,9 +1118,15 @@ var _ = Describe("Context", func() {
 				}
 			}, "<nil>"),
 			Entry("value providing the convention", func(act cli.Action) *cli.App {
+				value := &haveArgs{
+					Args: cli.Args("x", new(string), "y", new(string), "z", new(string)),
+				}
 				return &cli.App{
 					Args: []*cli.Arg{
-						{Name: "a", Uses: cli.ProvideValueInitializer(&haveArgs{}, "me", act)},
+						{
+							Name: "a",
+							Uses: cli.ProvideValueInitializer(value, "me", act),
+						},
 					},
 				}
 			}, "x,y,z"),
@@ -1239,8 +1245,18 @@ func parseBigFloat(s string) *big.Float {
 	return v
 }
 
-type haveArgs struct{}
+type haveArgs struct {
+	Args []*cli.Arg
+}
 
-func (*haveArgs) LocalArgs() []*cli.Arg {
-	return cli.Args("x", "", "y", "", "z", "")
+func (a *haveArgs) LocalArgs() []*cli.Arg {
+	return a.Args
+}
+
+func (*haveArgs) Set(string) error {
+	return nil
+}
+
+func (*haveArgs) String() string {
+	return ""
 }

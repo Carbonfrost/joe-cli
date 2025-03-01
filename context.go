@@ -1238,6 +1238,8 @@ func (c *Context) AutodetectColor() {
 // the value of the flag or arg.
 // The value can provides methods such as SetDescription(string),
 // SetHelpText(string), etc. in order to operate with actions that set these values.
+// If the value has local args (a method LocalArgs() []*Arg), then their
+// pipelines are triggered.
 func (c *Context) ProvideValueInitializer(v any, name string, action Action) error {
 	adapter := newValueTarget(v, action)
 	return c.Do(Setup{
