@@ -949,6 +949,7 @@ var _ = Describe("Context", func() {
 			Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
 			Entry("rune alias", 'g', WithTransform(flagName, Equal("g"))),
 			Entry("Flag", &cli.Flag{Name: "flag"}, WithTransform(flagName, Equal("flag"))),
+			Entry("Flag typed nil", (*cli.Flag)(nil), BeNil()),
 		)
 	})
 
@@ -969,7 +970,23 @@ var _ = Describe("Context", func() {
 			Entry("name", "arg", WithTransform(argName, Equal("arg"))),
 			Entry("index", 0, WithTransform(argName, Equal("arg"))),
 			Entry("Arg", &cli.Arg{Name: "arg"}, WithTransform(argName, Equal("arg"))),
+			Entry("Arg typed nil", (*cli.Arg)(nil), BeNil()),
 		)
+
+		It("returns false on out of range arg index", func() {
+			var (
+				actual *cli.Arg
+				ok     bool
+			)
+			app := &cli.App{
+				Uses: func(c context.Context) {
+					actual, ok = c.(*cli.Context).LookupArg(0)
+				},
+			}
+			_, _ = app.Initialize(context.TODO())
+			Expect(actual).To(BeNil())
+			Expect(ok).To(BeFalse())
+		})
 	})
 
 	Describe("LookupCommand", func() {
@@ -990,6 +1007,7 @@ var _ = Describe("Context", func() {
 			Entry("name", "cmd", WithTransform(commandName, Equal("cmd"))),
 			Entry("empty", "", WithTransform(commandName, Equal("app"))),
 			Entry("Command", &cli.Command{Name: "cmd"}, WithTransform(commandName, Equal("cmd"))),
+			Entry("Command typed nil", (*cli.Command)(nil), BeNil()),
 		)
 	})
 

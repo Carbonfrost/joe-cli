@@ -463,7 +463,7 @@ func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
 			}
 		}
 	case *Command:
-		return v, true
+		return v, v != nil
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
@@ -492,7 +492,7 @@ func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
 			}
 		}
 	case *Flag:
-		return v, true
+		return v, v != nil
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
@@ -519,7 +519,7 @@ func (c *Context) LookupArg(name interface{}) (*Arg, bool) {
 			return a, true
 		}
 	case *Arg:
-		return v, true
+		return v, v != nil
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
@@ -1103,6 +1103,9 @@ func (c *Context) lineageFunc(f func(*Context)) {
 func (c *Context) logicalArg(index int) *Arg {
 	args := c.LocalArgs()
 	_, idx, _ := findArgByName(args, index)
+	if idx < 0 || idx >= len(args) {
+		return nil
+	}
 	return args[idx]
 }
 
