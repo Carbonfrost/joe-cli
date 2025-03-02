@@ -96,6 +96,16 @@ func (b *exactBinder[V]) Bind(_ context.Context) (V, error) {
 	return b.v, nil
 }
 
+func (b *exactBinder[V]) Initializer() cli.Action {
+	return cli.ActionFunc(func(c *cli.Context) error {
+		ctx := c.ContextOf(b.name())
+		if ctx == nil {
+			return nil
+		}
+		return ctx.Do(&cli.Prototype{Value: new(bool)})
+	})
+}
+
 // binderSupport facilitates the implied naming/initializer logic that
 // ensures that any flag or arg referenced by a binder gets a corresponding
 // default value
@@ -147,9 +157,16 @@ func (b *binder[V]) Bind(c context.Context) (V, error) {
 	return b.lookupValue(cli.FromContext(c), b.binderSupport.name()), nil
 }
 
-// Exact provides a wrapper that binds the exact value
-func Exact[T any](value T) Binder[T] {
-	return &exactBinder[T]{v: value}
+// Exact takes either the exact value that is specified
+// or will take the value from the flag or arg.
+func Exact[T any](valopt ...T) Binder[T] {
+	if len(valopt) == 0 {
+		return Value[T]()
+	}
+	if len(valopt) > 1 {
+		panic("expected 0 or 1 args for valopt")
+	}
+	return &exactBinder[T]{v: valopt[0]}
 }
 
 // Value obtains a binder that obtains a value from the context. If the name is

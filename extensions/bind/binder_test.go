@@ -13,6 +13,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("Binder", func() {
@@ -96,6 +97,91 @@ var _ = Describe("FromContext", func() {
 		Expect(called).To(BeTrue())
 		Expect(actionCalledWith).To(Equal(2))
 	})
+})
+
+var _ = Describe("Exact", func() {
+
+	Describe("intitializer", func() {
+
+		Describe("implicitly sets the type of the flag", func() {
+
+			var factory = func(int) error {
+				return nil
+			}
+
+			DescribeTable("examples", func(actual cli.Action, args string, expected any) {
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "flag", Uses: actual},
+					},
+					Action: cli.Pipeline(
+						func(c *cli.Context) {
+							Expect(c.Value("flag")).To(Equal(expected))
+						},
+					),
+				}
+
+				arguments, _ := cli.Split(args)
+				err := app.RunContext(context.Background(), arguments)
+				Expect(err).NotTo(HaveOccurred())
+			},
+				Entry(
+					"explicit value",
+					bind.Call(factory, bind.Exact[int]()),
+					"app --flag 300",
+					300,
+				),
+				Entry(
+					"value from flag",
+					bind.Call(factory, bind.Exact(300)),
+					"app --flag",
+					true,
+				),
+			)
+		})
+	})
+
+	It("invokes bind func with value from flag", func() {
+		var value int
+		call := func(r int) error {
+			value = r
+			return nil
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:   "memory",
+					Value:  new(int),
+					Action: bind.Call(call, bind.Exact[int]()),
+				},
+			},
+		}
+		args, _ := cli.Split("app --memory 33")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(value).To(Equal(33))
+	})
+
+	It("invokes bind func with static value", func() {
+		var value int
+		call := func(r int) error {
+			value = r
+			return nil
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "max-memory",
+					Value: new(bool),
+					Uses:  bind.Call(call, bind.Exact(1024)),
+				},
+			},
+		}
+		args, _ := cli.Split("app --max-memory")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(value).To(Equal(1024))
+		Expect(app.Flags[0].Value).To(PointTo(BeTrue()))
+	})
+
 })
 
 var _ = Describe("For", func() {
