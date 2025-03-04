@@ -2124,6 +2124,22 @@ var _ = Describe("Customize", func() {
 				arg, _ := root.Arg(0)
 				Expect(arg.Value.(*haveArgs).LocalArgs()[0].Name).To(Equal("renamed"))
 			}),
+
+		Entry("customizes the built-in version flag",
+			cli.Customize("-version", cli.AddAlias("V")),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				flag, _ := root.Flag("version")
+				Expect(flag.Aliases).To(ContainElement("V"))
+			}),
+
+		Entry("customizes the built-in help flag",
+			cli.Customize("-help", cli.AddAlias("?")),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				flag, _ := root.Flag("help")
+				Expect(flag.Aliases).To(ContainElement("?"))
+			}),
 	)
 
 	It("flag can customize itself", func() {
@@ -2166,6 +2182,39 @@ var _ = Describe("Customize", func() {
 		)
 	})
 
+	It("runs customizations after prototype (addresses bug)", func() {
+		app := &cli.App{
+			Uses: cli.Customize("-a", cli.Description("description")),
+			Flags: []*cli.Flag{
+				{
+					// The flag uses a prototype and the outer
+					// command defines a customization, which should
+					// run after the prototype has been applied.
+					Uses: cli.Prototype{
+						Name: "a",
+					},
+				},
+			},
+		}
+
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Flags[0].Description).To(Equal("description"))
+	})
+
+	It("runs customizations to flags that were created", func() {
+		app := &cli.App{
+			Uses: cli.Pipeline(
+				cli.Customize("-", cli.Description("description")),
+				cli.AddFlag(&cli.Flag{}),
+			),
+		}
+
+		_, err := app.Initialize(context.Background())
+		root, _ := app.Command("")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(root.Flags[0].Description).To(Equal("description"))
+	})
 })
 
 var _ = Describe("Accessory", func() {

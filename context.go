@@ -1267,7 +1267,12 @@ func (c *Context) ProvideValueInitializer(v any, name string, action Action) err
 
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
 // is usually used to apply further customization after an extension has done setup of
-// the defaults.
+// the defaults.  As a special case, if pattern is the empty string, this is the same as
+// calling Use, because it pertains to the current target.
+//
+// During the initialization process, the customization action will be run for each matching
+// flag, arg, or command.  As a special case, if the flag or arg is created or changes its
+// name during its own initialization process, customizations will be re-run on it.
 func (c *Context) Customize(pattern string, a Action) error {
 	return c.hookAt(InitialTiming, pattern, a)
 }
@@ -1526,6 +1531,21 @@ func (c *Context) initialize() error {
 	)
 }
 
+// reinitialize is a special case where hooks need to be
+// re-run because a flag or arg changed its name during its
+// own initialization process
+func (c *Context) reinitialize() error {
+	if c == nil {
+		return nil
+	}
+	c.setTiming(InitialTiming)
+	return tunnel(
+		c,
+		nil,
+		(internalContext).initializeDescendent,
+	)
+}
+
 func (c *Context) requireInit() error {
 	if !c.IsInitializing() {
 		return ErrTimingTooLate
@@ -1575,6 +1595,9 @@ func tunnel(start *Context, self, anc func(internalContext, *Context) error) err
 		current := lineage[i]
 		if i == 0 {
 			fn = self
+		}
+		if fn == nil {
+			continue
 		}
 		if err := fn(current.internal, start); err != nil {
 			return err

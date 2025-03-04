@@ -628,9 +628,16 @@ func initializeFlagsArgs(ctx *Context) error {
 			if sub.internalFlags().initialized() {
 				continue
 			}
+
+			originalName := sub.Name
 			err := ctx.optionContext(sub).initialize()
 			if err != nil {
 				return err
+			}
+			// The name has changed, so hooks need to run again
+			// on the flag
+			if sub.Name != originalName {
+				ctx.optionContext(sub).reinitialize()
 			}
 		}
 		anyFlags = len(flags) > 0
