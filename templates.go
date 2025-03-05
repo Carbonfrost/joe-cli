@@ -79,17 +79,21 @@ var (
 	// you can use to define a from-scratch template.
 	HelpTemplate = `
 {{- define "Subcommands" -}}
+{{ if .CommandsByCategory -}}
+{{ "\n" }}Sub-commands:{{ "\n" -}}
+{{ end -}}
 {{ range .CommandsByCategory -}}
 {{ if and .VisibleCommands .Category }}{{ "\n" }}{{.Category}}:{{ "\n" }}{{ end -}}
-{{- template "SubcommandListing" .VisibleCommands -}}
+{{ "\n" }}{{- template "SubcommandListing" .VisibleCommands -}}
 {{ else }}
-{{- template "SubcommandListing" .VisibleCommands -}}
+{{ "\n" }}{{- template "SubcommandListing" .VisibleCommands -}}
 {{ end }}
 {{- end -}}
 
 {{- define "SubcommandListing" -}}
-{{- range . }}
-{{ "\t" }}{{ .Names | BoldFirst | Join ", " }}{{ "\t" }}{{.HelpText}}{{end}}
+{{- range . -}}
+{{ "\t" }}{{ .Names | BoldFirst | Join ", " }}{{ "\t" }}{{.HelpText}}{{ "\n" }}
+{{- end -}}
 {{- end -}}
 
 {{- define "Flag" -}}
@@ -100,7 +104,7 @@ var (
 {{ range .FlagsByCategory -}}
 {{ if and .VisibleFlags .Category }}{{ "\n" }}{{.Category}}:{{ "\n" }}{{ end -}}
 {{ if .Undocumented -}}
-{{- template "InlineFlagListing" .VisibleFlags -}}
+{{ "\n" }}{{- template "InlineFlagListing" .VisibleFlags -}}
 {{- else -}}
 {{- template "FlagListing" .VisibleFlags -}}
 {{- end -}}
@@ -110,7 +114,10 @@ var (
 {{- end -}}
 
 {{- define "FlagListing" -}}
-{{ range . }}{{- template "Flag" . -}}{{ "\n" }}{{end}}
+{{ if . }}{{ "\n" }}{{ end -}}
+{{ range . }}
+    {{- template "Flag" . -}}{{ "\n" }}
+{{- end }}
 {{- end -}}
 
 {{- define "InlineFlagListing" -}}
@@ -129,7 +136,7 @@ var (
 
 {{- define "PersistentFlags" -}}
 {{ if .Persistent.VisibleFlags -}}
-Global options (specify before any sub-commands): {{ "\n" }}
+{{ "\n" }}Global options (specify before any sub-commands){{ "\n" }}
 {{- template "Flags" .Persistent -}}
 {{ end }}
 {{- end -}}
@@ -140,12 +147,12 @@ usage: {{ if .SelectedCommand.Lineage -}}
 	{{- .SelectedCommand.Lineage -}}
 	{{- " " -}}
 {{- end -}}
-{{ .SelectedCommand.Synopsis | print | HangingIndent .SelectedCommand.HangingIndent }}
+{{- .SelectedCommand.Synopsis | print | HangingIndent .SelectedCommand.HangingIndent -}}{{ "\n" }}
 
-{{ if .SelectedCommand.Description }}
-{{ .SelectedCommand.Description | Wrap 4 }}
-{{ else if .SelectedCommand.HelpText }}
-{{ .SelectedCommand.HelpText | Wrap 4 }}
+{{- if .SelectedCommand.Description -}}
+{{ "\n" }}{{- .SelectedCommand.Description | Wrap 4 -}}
+{{ else if .SelectedCommand.HelpText -}}
+{{ "\n" }}{{- .SelectedCommand.HelpText | Wrap 4 -}}
 {{- end -}}
 {{- template "Flags" .SelectedCommand -}}
 {{- template "Subcommands" .SelectedCommand -}}
