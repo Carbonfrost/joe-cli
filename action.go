@@ -479,7 +479,7 @@ func failWithContextError(c *Context) error {
 	if r, ok := c.LookupData(panicDataKey); ok {
 		rvr := r.(*panicData)
 		fmt.Fprint(c.Stderr, rvr.stack)
-		return fmt.Errorf(rvr.recovered)
+		return c.internalError(fmt.Errorf(rvr.recovered))
 	}
 	return nil
 }
@@ -1145,7 +1145,7 @@ func Assert(filter ContextFilter, a Action) Action {
 				desc = d.String()
 			}
 			if desc != "" {
-				return fmt.Errorf("context must be %s", desc)
+				return c.internalError(fmt.Errorf("context must be %s", desc))
 			}
 			return errAssertFailed
 		}

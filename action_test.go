@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -989,7 +990,7 @@ var _ = Describe("Do", func() {
 
 		It("applies Before timing if specified", func() {
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("too late for requested action timing"))
+			Expect(err).To(MatchError(ContainSubstring("too late for requested action timing")))
 		})
 	})
 })
@@ -1411,7 +1412,7 @@ var _ = Describe("Recover", func() {
 		err := app.RunContext(context.Background(), []string{"app"})
 
 		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError("panic in action"))
+		Expect(err).To(MatchError(`internal error, at "any" (after timing): panic in action`))
 		Expect(capture.String()).To(ContainSubstring("runtime/debug.Stack()"))
 	})
 
@@ -1433,7 +1434,7 @@ var _ = Describe("Recover", func() {
 		err := app.RunContext(context.Background(), []string{"app"})
 
 		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError("panic in action"))
+		Expect(err).To(MatchError(`internal error, at "any" (after timing): panic in action`))
 	})
 })
 
@@ -1738,7 +1739,10 @@ var _ = Describe("Setup", func() {
 
 		It("returns timing mismatch error ", func() {
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(cli.ErrTimingTooLate))
+			Expect(errors.Is(err, cli.ErrTimingTooLate)).To(BeTrue())
+			Expect(errors.Unwrap(err)).To(Equal(cli.ErrTimingTooLate))
+			Expect(err.(*cli.InternalError).Path.String()).To(Equal("app"))
+			Expect(err.Error()).To(Equal(`internal error, at "app" (action timing): too late for requested action timing`))
 		})
 	})
 

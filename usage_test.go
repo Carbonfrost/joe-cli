@@ -59,7 +59,7 @@ var _ = Describe("ExecuteTemplate", func() {
 			}),
 		}
 		err := app.RunContext(context.Background(), []string{"app"})
-		Expect(err).To(MatchError(`template does not exist: "custom"`))
+		Expect(err).To(MatchError(ContainSubstring(`template does not exist: "custom"`)))
 	})
 })
 

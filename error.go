@@ -29,6 +29,21 @@ type ParseError struct {
 	Remaining []string
 }
 
+// InternalError represents an error that has occurred because of the
+// way the library is used rather than a user parse error. An example
+// of this is ErrTimingTooLAte, which has occurred because an action
+// was added to pipeline that wasn't acceptable.
+type InternalError struct {
+	// Path describes the path where the internal error occurred
+	Path ContextPath
+
+	// Timing specifies when the error is occurring
+	Timing Timing
+
+	// Err returns the internal error
+	Err error
+}
+
 // ExitCoder is an error that knows how to convert to its exit code
 type ExitCoder interface {
 	error
@@ -200,6 +215,18 @@ func (f errorTemplate) FillTemplate(p *ParseError) error {
 	return fmt.Errorf(f.format, p.Name, p.Value)
 }
 
+func (i *InternalError) Unwrap() error {
+	return i.Err
+}
+
+func (i *InternalError) Error() string {
+	return fmt.Sprintf(
+		"internal error, at %q (%v): %v",
+		i.Path.String(),
+		i.Timing.Describe(),
+		i.Err)
+}
+
 func commandMissing(name string) error {
 	return &ParseError{
 		Code: CommandNotFound,
@@ -357,4 +384,5 @@ func listOfValues(values []string) string {
 	}
 }
 
+var _ error = (*InternalError)(nil)
 var _ formattableError = errorTemplate{}

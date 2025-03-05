@@ -934,7 +934,7 @@ func (c *Context) act(v interface{}, desired Timing, optional bool) error {
 		return nil
 	}
 	if c.timing > actual {
-		return ErrTimingTooLate
+		return c.internalError(ErrTimingTooLate)
 	}
 	return nil
 }
@@ -962,7 +962,7 @@ func (c *Context) Hook(timing Timing, handler Action) error {
 			return h.hook(timing, handler)
 		}
 
-		return fmt.Errorf("%s: %w", errCantHook, ErrTimingTooLate)
+		return c.internalError(fmt.Errorf("%s: %w", errCantHook, ErrTimingTooLate))
 	}
 	return errCantHook
 }
@@ -1057,6 +1057,10 @@ func debugTemplates() bool {
 // Name gets the name of the context, which is the name of the command, arg, flag, or expression
 // operator in use
 func (c *Context) Name() string {
+	if c.internal == nil {
+		// Due to tests this could be unset
+		return ""
+	}
 	return c.internal.Name()
 }
 
@@ -1552,9 +1556,13 @@ func (c *Context) reinitialize() error {
 
 func (c *Context) requireInit() error {
 	if !c.IsInitializing() {
-		return ErrTimingTooLate
+		return c.internalError(ErrTimingTooLate)
 	}
 	return nil
+}
+
+func (c *Context) internalError(err error) error {
+	return &InternalError{Path: c.Path(), Timing: c.Timing(), Err: err}
 }
 
 func (c *Context) copy(t internalContext) *Context {

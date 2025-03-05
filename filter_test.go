@@ -21,19 +21,19 @@ var _ = Describe("Assert", func() {
 		Entry(
 			"initial timing",
 			&cli.App{Action: cli.Assert(cli.InitialTiming, nil)},
-			MatchError("context must be initial timing")),
+			MatchError(ContainSubstring("context must be initial timing"))),
 		Entry(
 			"before timing",
 			&cli.App{Action: cli.Assert(cli.BeforeTiming, nil)},
-			MatchError("context must be before timing")),
+			MatchError(ContainSubstring("context must be before timing"))),
 		Entry(
 			"after timing",
 			&cli.App{Action: cli.Assert(cli.AfterTiming, nil)},
-			MatchError("context must be after timing")),
+			MatchError(ContainSubstring("context must be after timing"))),
 		Entry(
 			"has value",
 			&cli.App{Action: cli.Assert(cli.HasValue, nil)},
-			MatchError("context must be target with value")),
+			MatchError(ContainSubstring("context must be target with value"))),
 	)
 })
 

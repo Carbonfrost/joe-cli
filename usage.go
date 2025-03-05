@@ -286,7 +286,7 @@ func RegisterTemplateFunc(name string, fn interface{}) Action {
 func (c *Context) ExecuteTemplate(name string, data func(*Context) any) error {
 	tpl := c.Template(name)
 	if tpl == nil {
-		return fmt.Errorf("template does not exist: %q", name)
+		return c.internalError(fmt.Errorf("template does not exist: %q", name))
 	}
 	if data == nil {
 		data = defaultData
