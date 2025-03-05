@@ -174,11 +174,6 @@ type option interface {
 	setTransform(fn TransformFunc)
 }
 
-type wrapLookupContext struct {
-	*optionContext
-	actual *Flag
-}
-
 type wrapOccurrenceContext struct {
 	*optionContext
 	index int
@@ -389,17 +384,6 @@ func (c *wrapOccurrenceContext) lookupValue(name string) (interface{}, bool) {
 		return c.val, true
 	}
 	return c.optionContext.lookupValue(name)
-}
-
-func (o *wrapLookupContext) lookupValue(name string) (interface{}, bool) {
-	if name == "" {
-		return o.actual.value(), true
-	}
-	return nil, false
-}
-
-func (o *wrapLookupContext) Name() string {
-	return o.actual.Name
 }
 
 // Seen returns true if the flag was used on the command line at least once

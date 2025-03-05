@@ -537,33 +537,23 @@ func noOption(c *Context) error {
 	syn := f.synopsis()
 	syn.WithNo()
 
-	wrapAction := func(v Action) ActionFunc {
-		return func(c *Context) error {
-			return execute(c.copyWithoutReparent(
-				&wrapLookupContext{
-					optionContext: c.internal.(*optionContext),
-					actual:        f,
-				},
-			), v)
-		}
-	}
-
-	cmd := c.Command()
-	cmd.Flags = append(cmd.Flags, &Flag{
+	return Do(c, AddFlag(&Flag{
 		HelpText:  f.HelpText,
 		UsageText: f.UsageText,
 		Name:      "no-" + f.Name,
 		Category:  f.Category,
 		Value:     Bool(),
 		Options:   Hidden,
-		Before:    wrapAction(ActionOf(f.Before)),
-		After:     wrapAction(ActionOf(f.After)),
-		Action: func(c context.Context) error {
-			f.Set("false")
-			return execute(c, wrapAction(ActionOf(f.Action)))
+		Before: func(c *Context) error {
+			if c.Seen("") {
+				return c.ContextOf(f).Trigger()
+			}
+			return nil
 		},
-	})
-	return nil
+		Action: func(c *Context) error {
+			return c.ContextOf(f).SetValue(false)
+		},
+	}))
 }
 
 func eachOccurrenceOpt(c1 *Context) error {

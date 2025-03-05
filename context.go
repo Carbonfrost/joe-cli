@@ -1611,14 +1611,6 @@ func (c *Context) copy(t internalContext) *Context {
 	}
 }
 
-func (c *Context) copyWithoutReparent(t internalContext) *Context {
-	res := c.copy(t)
-	// Keep existing parent and lookup
-	res.parent = c.parent
-	res.lookupCore = newLookupCore(t, c.parent)
-	return res
-}
-
 func bubble(start *Context, self, anc func(internalContext, context.Context) error) error {
 	current := start
 	fn := self

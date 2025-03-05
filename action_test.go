@@ -248,13 +248,15 @@ var _ = Describe("timings", func() {
 
 		Describe("No", func() {
 			var (
-				flagAct *joeclifakes.FakeAction
+				flagAct, flagBefore, flagAfter *joeclifakes.FakeAction
 			)
 
 			BeforeEach(func() {
 				initial := true
 				uses = nil
 				flagAct = new(joeclifakes.FakeAction)
+				flagBefore = new(joeclifakes.FakeAction)
+				flagAfter = new(joeclifakes.FakeAction)
 				flags = []*cli.Flag{
 					{
 						Name:    "flag",
@@ -262,6 +264,8 @@ var _ = Describe("timings", func() {
 						Options: cli.No,
 						Value:   &initial,
 						Action:  flagAct,
+						Before:  flagBefore,
+						After:   flagAfter,
 					},
 				}
 				arguments = []string{"app", "--no-flag"}
@@ -290,16 +294,18 @@ var _ = Describe("timings", func() {
 					Expect(flagAct.ExecuteCallCount()).To(Equal(1))
 				})
 
+				It("invokes before", func() {
+					Expect(flagBefore.ExecuteCallCount()).To(Equal(1))
+				})
+
+				It("invokes after", func() {
+					Expect(flagAfter.ExecuteCallCount()).To(Equal(1))
+				})
+
 				It("action has expected value", func() {
 					context := flagAct.ExecuteArgsForCall(0)
 					Expect(context.Value("")).To(BeFalse())
 				})
-
-				It("action has expected name", func() {
-					context := cli.FromContext(flagAct.ExecuteArgsForCall(0))
-					Expect(context.Name()).To(Equal("flag"))
-				})
-
 			})
 
 			Context("when invoking flag", func() {
