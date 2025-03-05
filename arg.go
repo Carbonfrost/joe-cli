@@ -2,6 +2,7 @@ package cli
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"strings"
 
@@ -460,22 +461,22 @@ func (a *Arg) completion() Completion {
 	return nil
 }
 
-func (o *optionContext) initialize(c *Context) error {
+func (o *optionContext) initialize(c context.Context) error {
 	return execute(c, defaultOption.Initializers)
 }
 
-func (o *optionContext) executeBefore(ctx *Context) error {
+func (o *optionContext) executeBefore(ctx context.Context) error {
 	return execute(ctx, defaultOption.Before)
 }
 
-func (o *optionContext) initializeDescendent(ctx *Context) error    { return nil }
-func (o *optionContext) executeBeforeDescendent(ctx *Context) error { return nil }
-func (o *optionContext) executeAfterDescendent(ctx *Context) error  { return nil }
-func (o *optionContext) executeAfter(ctx *Context) error {
+func (o *optionContext) initializeDescendent(context.Context) error    { return nil }
+func (o *optionContext) executeBeforeDescendent(context.Context) error { return nil }
+func (o *optionContext) executeAfterDescendent(context.Context) error  { return nil }
+func (o *optionContext) executeAfter(ctx context.Context) error {
 	return execute(ctx, defaultOption.After)
 }
 
-func (o *optionContext) execute(ctx *Context) error {
+func (o *optionContext) execute(ctx context.Context) error {
 	return execute(ctx, defaultOption.Action)
 }
 

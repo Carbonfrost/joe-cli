@@ -2,6 +2,7 @@ package cli
 
 import (
 	"cmp"
+	"context"
 	"sort"
 	"strings"
 	"text/template"
@@ -339,14 +340,14 @@ func (c *Command) buildSet(ctx *Context) *set {
 	return set
 }
 
-func ensureSubcommands(c *Context) error {
-	cmd := c.target().(*Command)
+func ensureSubcommands(ctx context.Context) error {
+	cmd := FromContext(ctx).target().(*Command)
 
 	if len(cmd.Subcommands) > 0 {
 		if cmd.Action == nil {
 			cmd.Action = DisplayHelpScreen()
 		}
-		return c.Do(AddArg(&Arg{
+		return Do(ctx, AddArg(&Arg{
 			Name: "command",
 			Uses: ExecuteSubcommand(nil),
 		}))
@@ -602,11 +603,11 @@ func (c *Command) pipeline(t Timing) interface{} {
 	}
 }
 
-func (c *commandContext) initialize(ctx *Context) error {
+func (c *commandContext) initialize(ctx context.Context) error {
 	return execute(ctx, defaultCommand.Initializers)
 }
 
-func (c *commandContext) initializeDescendent(ctx *Context) error {
+func (c *commandContext) initializeDescendent(ctx context.Context) error {
 	return c.cmd.executeInitializeHooks(ctx)
 }
 
@@ -679,23 +680,23 @@ func copyContextToParent(ctx *Context) error {
 	return nil
 }
 
-func (c *commandContext) executeBeforeDescendent(ctx *Context) error {
+func (c *commandContext) executeBeforeDescendent(ctx context.Context) error {
 	return c.cmd.executeBeforeHooks(ctx)
 }
 
-func (c *commandContext) executeBefore(ctx *Context) error {
+func (c *commandContext) executeBefore(ctx context.Context) error {
 	return execute(ctx, Pipeline(c.cmd.executeBeforeHooks, defaultCommand.Before))
 }
 
-func (c *commandContext) executeAfter(ctx *Context) error {
+func (c *commandContext) executeAfter(ctx context.Context) error {
 	return execute(ctx, Pipeline(c.cmd.executeAfterHooks, defaultCommand.After))
 }
 
-func (c *commandContext) executeAfterDescendent(ctx *Context) error {
+func (c *commandContext) executeAfterDescendent(ctx context.Context) error {
 	return c.cmd.executeAfterHooks(ctx)
 }
 
-func (c *commandContext) execute(ctx *Context) error {
+func (c *commandContext) execute(ctx context.Context) error {
 	return execute(ctx, defaultCommand.Action)
 }
 
@@ -788,7 +789,8 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 	return nil, commandMissing(sub)
 }
 
-func triggerRobustParsingAndCompletion(c *Context) error {
+func triggerRobustParsingAndCompletion(ctx context.Context) error {
+	c := FromContext(ctx)
 	if c.robustParsingMode() && c.App() != nil {
 		cc := newCompletionData(c)
 		comp := cc.ShellComplete

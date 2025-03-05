@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -552,15 +553,15 @@ func sprintSynopsis(s synopsis.Stringer) string {
 	return buf.String()
 }
 
-func displayHelp(c *Context) error {
+func displayHelp(c context.Context) error {
 	command := make([]string, 0)
 
 	// Ignore any flags that were detected in this context
-	for _, c := range c.List("command") {
+	for _, c := range FromContext(c).List("command") {
 		if c[0] == '-' {
 			continue
 		}
 		command = append(command, c)
 	}
-	return c.Do(DisplayHelpScreen(command...))
+	return Do(c, DisplayHelpScreen(command...))
 }

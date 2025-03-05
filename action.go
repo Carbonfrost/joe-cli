@@ -269,10 +269,10 @@ var (
 					ActionFunc(setupDefaultTemplates),
 				),
 			),
-			ActionFunc(preventSetupIfPresent),
+			actionFunc(preventSetupIfPresent),
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
-			ActionFunc(applyUserOptions),
+			actionFunc(applyUserOptions),
 			ActionFunc(applyImplicitVisibility),
 			IfMatch(RootCommand,
 				actions(
@@ -280,10 +280,10 @@ var (
 					ActionFunc(optionalFlag("help", defaultHelpFlag)),
 					ActionFunc(optionalCommand("version", defaultVersionCommand)),
 					ActionFunc(optionalFlag("version", defaultVersionFlag)),
-					ActionFunc(setupCompletion),
+					actionFunc(setupCompletion),
 				),
 			),
-			ActionFunc(ensureSubcommands),
+			actionFunc(ensureSubcommands),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
 			ActionFunc(copyContextToParent),
@@ -293,7 +293,7 @@ var (
 			IfMatch(subcommandDidNotExecute,
 				actions(
 					executeDeferredPipeline(ActionTiming),
-					ActionFunc(triggerRobustParsingAndCompletion),
+					actionFunc(triggerRobustParsingAndCompletion),
 					executeUserPipeline(ActionTiming),
 				),
 			),
@@ -318,13 +318,13 @@ var (
 	defaultOption = actionPipelines{
 		Initializers: actions(
 			ActionFunc(setupInternalOption),
-			ActionFunc(preventSetupIfPresent),
+			actionFunc(preventSetupIfPresent),
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
-			ActionFunc(applyUserOptions),
+			actionFunc(applyUserOptions),
 			ActionFunc(applyImplicitVisibility),
-			ActionFunc(setupValueInitializer),
-			ActionFunc(setupOptionFromEnv),
+			actionFunc(setupValueInitializer),
+			actionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
 		),
@@ -338,7 +338,7 @@ var (
 			),
 		},
 		Action: actions(
-			ActionFunc(executeOptionPipeline),
+			actionFunc(executeOptionPipeline),
 		),
 		After: actions(
 			executeDeferredPipeline(AfterTiming),
@@ -452,16 +452,16 @@ func SuppressError(a Action) Action {
 
 // Recover wraps an action to recover from a panic
 func Recover(a Action) Action {
-	return ActionFunc(func(c *Context) error {
+	return actionFunc(func(c context.Context) error {
 		defer func() {
 			if rvr := recover(); rvr != nil {
-				c.SetData(panicDataKey, &panicData{
+				FromContext(c).SetData(panicDataKey, &panicData{
 					recovered: fmt.Sprint(rvr),
 					stack:     formatStack(),
 				})
 			}
 		}()
-		return a.Execute(c)
+		return Do(c, a)
 	})
 }
 
@@ -561,7 +561,7 @@ func ActionOf(item interface{}) Action {
 		return middlewareFunc(a)
 	case func(Action) Action:
 		return middlewareFunc(func(c *Context, next Action) error {
-			return c.Do(a(next))
+			return Do(c, a(next))
 		})
 	}
 	panic(fmt.Sprintf("unexpected type: %T", item))
@@ -580,15 +580,12 @@ func SetContext(ctx context.Context) Action {
 
 // Timeout provides an action which adds a timeout to the context.
 func Timeout(timeout time.Duration) Action {
-	return Before(ActionFunc(func(c1 *Context) error {
-		ctx, cancel := context.WithTimeout(c1.Context(), timeout)
-		return c1.Do(Pipeline(
+	return Before(actionFunc(func(c context.Context) error {
+		ctx, cancel := context.WithTimeout(c, timeout)
+		return Do(c, Pipeline(
 			SetContext(ctx),
-			After(actionFunc(func(context.Context) error {
-				cancel()
-				return nil
-			}))),
-		)
+			After(ActionOf((func())(cancel))),
+		))
 	}))
 }
 
@@ -601,9 +598,7 @@ func SetValue(v any) Action {
 // the flag or arg.  The bind function is the function to execute, and valopt is optional,
 // and if specified, indicates the value to set; otherwise, the value is read from the flag.
 func Bind[V any](bind func(V) error, valopt ...V) Action {
-	return bindThunk(func(c *Context) *Context {
-		return c
-	}, func(_ *Context, v V) error {
+	return bindThunk(FromContext, func(_ *Context, v V) error {
 		return bind(v)
 	}, valopt...)
 }
@@ -614,7 +609,7 @@ func Bind[V any](bind func(V) error, valopt ...V) Action {
 // and valopt is optional, and if specified, indicates the value to set; otherwise, the
 // value is read from the flag.
 func BindContext[T, V any](value func(context.Context) *T, bind func(*T, V) error, valopt ...V) Action {
-	return bindThunk(func(c *Context) *T {
+	return bindThunk(func(c context.Context) *T {
 		return value(c)
 	}, bind, valopt...)
 }
@@ -638,23 +633,23 @@ func BindContext[T, V any](value func(context.Context) *T, bind func(*T, V) erro
 // bind function is the function to set the value, and valopt is optional, and if specified,
 // indicates the value to set; otherwise, the value is read from the flag.
 func BindIndirect[T, V any](name string, bind func(*T, V) error, valopt ...V) Action {
-	return bindThunk(func(c *Context) *T {
-		return c.Value(name).(*T)
+	return bindThunk(func(c context.Context) *T {
+		return FromContext(c).Value(name).(*T)
 	}, bind, valopt...)
 }
 
-func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt ...V) Action {
+func bindThunk[T, V any](thunk func(context.Context) *T, bind func(*T, V) error, valopt ...V) Action {
 	switch len(valopt) {
 	case 0:
 		proto := &Prototype{Value: bindSupportedValue(new(V))}
-		return Pipeline(proto, bindTiming(func(c *Context) error {
+		return Pipeline(proto, bindTiming(func(c context.Context) error {
 			return bind(thunk(c), c.Value("").(V))
 		}))
 
 	case 1:
 		proto := &Prototype{Value: new(bool)}
 		val := valopt[0]
-		return Pipeline(proto, bindTiming(func(c *Context) error {
+		return Pipeline(proto, bindTiming(func(c context.Context) error {
 			return bind(thunk(c), val)
 		}))
 	default:
@@ -662,7 +657,7 @@ func bindThunk[T, V any](thunk func(*Context) *T, bind func(*T, V) error, valopt
 	}
 }
 
-func bindTiming(a ActionFunc) Action {
+func bindTiming(a actionFunc) Action {
 	return At(ActionTiming, a)
 }
 
@@ -716,15 +711,16 @@ func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) 
 // For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
 // named "files", then the accessory flag would be named --files-recursive.
 func Accessory0(name string, actionopt ...Action) Action {
-	return ActionFunc(func(c *Context) error {
+	return actionFunc(func(c context.Context) error {
 		f := &Flag{
 			Uses: accessory(c, nil, name).Append(actionopt...),
 		}
-		return c.Do(AddFlag(f))
+		return Do(c, AddFlag(f))
 	})
 }
 
-func accessory(c *Context, proto Action, name string) ActionPipeline {
+func accessory(ctx context.Context, proto Action, name string) ActionPipeline {
+	c := FromContext(ctx)
 	var (
 		dep = withoutDecorators(c.Name())
 
@@ -907,14 +903,11 @@ func HookAfter(pattern string, handler Action) Action {
 // is therefore to place cleanup into After and consider using a timeout.
 // The process will be terminated when the user presses ^C for the second time:
 func HandleSignal(s ...os.Signal) Action {
-	return Before(ActionFunc(func(c1 *Context) error {
-		ctx, stop := signal.NotifyContext(c1.Context(), s...)
-		return c1.Do(Pipeline(
+	return Before(actionFunc(func(c context.Context) error {
+		ctx, stop := signal.NotifyContext(c, s...)
+		return Do(c, Pipeline(
 			SetContext(ctx),
-			After(ActionFunc(func(*Context) error {
-				stop()
-				return nil
-			})),
+			After(ActionOf((func())(stop))),
 		))
 	}))
 }
@@ -1080,9 +1073,9 @@ func ImplicitValue(fn func(*Context) (string, bool)) Action {
 // Implicitly runs an action when there are zero occurrences (when an implicit value is
 // set)
 func Implicitly(a Action) Action {
-	return At(ImplicitValueTiming, ActionFunc(func(c *Context) error {
-		if c.Occurrences("") == 0 {
-			return c.Do(a)
+	return At(ImplicitValueTiming, actionFunc(func(c context.Context) error {
+		if FromContext(c).Occurrences("") == 0 {
+			return Do(c, a)
 		}
 		return nil
 	}))
@@ -1117,9 +1110,9 @@ func IfMatch(f ContextFilter, a Action) Action {
 	if f == nil {
 		return a
 	}
-	return ActionFunc(func(c *Context) error {
-		if c.Matches(f) {
-			return c.Do(a)
+	return actionFunc(func(c context.Context) error {
+		if f.Matches(c) {
+			return Do(c, a)
 		}
 		return nil
 	})
@@ -1130,8 +1123,8 @@ func IfMatch(f ContextFilter, a Action) Action {
 // Describe() or String() that returns a string, it is consulted in order to produce the error
 // message; otherwise, a generic error is returned.   Compare to IfMatch.
 func Assert(filter ContextFilter, a Action) Action {
-	return ActionFunc(func(c *Context) error {
-		if !c.Matches(filter) {
+	return actionFunc(func(ctx context.Context) error {
+		if !filter.Matches(ctx) {
 			var desc string
 			if d, ok := filter.(interface{ Describe() string }); ok {
 				desc = d.Describe()
@@ -1139,11 +1132,12 @@ func Assert(filter ContextFilter, a Action) Action {
 				desc = d.String()
 			}
 			if desc != "" {
+				c := FromContext(ctx)
 				return c.internalError(fmt.Errorf("context must be %s", desc))
 			}
 			return errAssertFailed
 		}
-		return Do(c, a)
+		return Do(ctx, a)
 	})
 }
 
@@ -1687,16 +1681,16 @@ func (i *hooksSupport) hook(at Timing, a Action) error {
 	return nil
 }
 
-func (i *hooksSupport) executeBeforeHooks(target *Context) error {
-	return target.Do(i.hooks.Before)
+func (i *hooksSupport) executeBeforeHooks(target context.Context) error {
+	return Do(target, i.hooks.Before)
 }
 
-func (i *hooksSupport) executeAfterHooks(target *Context) error {
-	return target.Do(i.hooks.After)
+func (i *hooksSupport) executeAfterHooks(target context.Context) error {
+	return Do(target, i.hooks.After)
 }
 
-func (i *hooksSupport) executeInitializeHooks(target *Context) error {
-	return target.Do(i.hooks.Initializers)
+func (i *hooksSupport) executeInitializeHooks(target context.Context) error {
+	return Do(target, i.hooks.Initializers)
 }
 
 func (s *pipelinesSupport) uses() *actionPipelines {
@@ -1792,7 +1786,7 @@ func execute(c context.Context, af Action) error {
 }
 
 func doThenExit(a Action) Action {
-	return ActionFunc(func(c *Context) error {
+	return actionFunc(func(c context.Context) error {
 		err := a.Execute(c)
 		if err != nil {
 			return err

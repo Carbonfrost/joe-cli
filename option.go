@@ -236,8 +236,8 @@ var (
 		RightToLeft:            setInternalFlag(internalFlagRightToLeft),
 		PreventSetup:           ActionOf((*Context).PreventSetup),
 		EachOccurrence:         ActionFunc(eachOccurrenceOpt),
-		AllowFileReference:     ActionFunc(allowFileReferenceOpt),
-		FileReference:          ActionFunc(fileReferenceOpt),
+		AllowFileReference:     actionFunc(allowFileReferenceOpt),
+		FileReference:          actionFunc(fileReferenceOpt),
 		SortedFlags:            Before(ActionFunc(sortedFlagsOpt)),
 		SortedCommands:         Before(ActionFunc(sortedCommandsOpt)),
 		SortedExprs:            Before(ActionFunc(sortedExprsOpt)),
@@ -545,7 +545,7 @@ func noOption(c *Context) error {
 		Options:   Hidden,
 		Before:    wrapAction(ActionOf(f.Before)),
 		After:     wrapAction(ActionOf(f.After)),
-		Action: func(c *Context) error {
+		Action: func(c context.Context) error {
 			f.Set("false")
 			return execute(c, wrapAction(ActionOf(f.Action)))
 		},
@@ -609,12 +609,12 @@ func eachOccurrenceOpt(c1 *Context) error {
 	}))
 }
 
-func allowFileReferenceOpt(c *Context) error {
-	return c.Do(Transform(TransformFileReference(c.actualFS(), true)))
+func allowFileReferenceOpt(c context.Context) error {
+	return Do(c, Transform(TransformFileReference(FromContext(c).actualFS(), true)))
 }
 
-func fileReferenceOpt(c *Context) error {
-	return c.Do(Transform(TransformFileReference(c.actualFS(), false)))
+func fileReferenceOpt(c context.Context) error {
+	return Do(c, Transform(TransformFileReference(FromContext(c).actualFS(), false)))
 }
 
 func sortedFlagsOpt(c *Context) error {

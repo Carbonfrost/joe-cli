@@ -159,8 +159,8 @@ func SetCompletion(c Completion) Action {
 	})
 }
 
-func setupCompletion(c *Context) error {
-	return c.Do(Pipeline(
+func setupCompletion(c context.Context) error {
+	return Do(c, Pipeline(
 		AddFlags([]*Flag{
 			{Name: "zsh-completion", Uses: ShellCompleteIntegration("zsh", newZshComplete())},
 		}...),

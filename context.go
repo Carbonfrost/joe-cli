@@ -58,13 +58,13 @@ type WalkFunc func(cmd *Context) error
 type internalContext interface {
 	lookupCore
 	lookupBinding(name string, occurs bool) []string
-	initialize(*Context) error
-	initializeDescendent(*Context) error
-	executeBeforeDescendent(*Context) error
-	executeBefore(*Context) error
-	executeAfter(*Context) error
-	executeAfterDescendent(*Context) error
-	execute(*Context) error
+	initialize(context.Context) error
+	initializeDescendent(context.Context) error
+	executeBeforeDescendent(context.Context) error
+	executeBefore(context.Context) error
+	executeAfter(context.Context) error
+	executeAfterDescendent(context.Context) error
+	execute(context.Context) error
 	target() target // *Command, *Arg, *Flag, or *Expr
 	Name() string
 }
@@ -885,7 +885,7 @@ func (c *Context) SetValue(arg any) error {
 
 // At either stores or executes the action at the given timing.
 func (c *Context) At(t Timing, v Action) error {
-	return c.Do(At(t, v))
+	return Do(c, At(t, v))
 }
 
 // Action either stores or executes the action. When called from the initialization or before pipelines, this
@@ -1254,7 +1254,7 @@ func (c *Context) AutodetectColor() {
 // pipelines are triggered.
 func (c *Context) ProvideValueInitializer(v any, name string, actionopt ...Action) error {
 	adapter := newValueTarget(v, ActionPipeline(actionopt))
-	return c.Do(Setup{
+	return Do(c, Setup{
 		Uses: func(c1 *Context) error {
 			return c1.valueContext(adapter, name).initialize()
 		},
@@ -1587,7 +1587,7 @@ func (c *Context) copyWithoutReparent(t internalContext) *Context {
 	return res
 }
 
-func bubble(start *Context, self, anc func(internalContext, *Context) error) error {
+func bubble(start *Context, self, anc func(internalContext, context.Context) error) error {
 	current := start
 	fn := self
 	for current != nil {
@@ -1600,7 +1600,7 @@ func bubble(start *Context, self, anc func(internalContext, *Context) error) err
 	return nil
 }
 
-func tunnel(start *Context, self, anc func(internalContext, *Context) error) error {
+func tunnel(start *Context, self, anc func(internalContext, context.Context) error) error {
 	lineage := start.Lineage()
 	fn := anc
 	for i := len(lineage) - 1; i >= 0; i-- {
@@ -1933,26 +1933,26 @@ func setupInternalOption(c *Context) error {
 	return nil
 }
 
-func preventSetupIfPresent(c *Context) error {
+func preventSetupIfPresent(c context.Context) error {
 	// PreventSetup if specified must be handled before all other options
-	opts := c.target().options()
+	opts := FromContext(c).target().options()
 	return execute(c, *opts&PreventSetup)
 }
 
-func applyUserOptions(c *Context) error {
-	opts := c.target().options()
+func applyUserOptions(c context.Context) error {
+	opts := FromContext(c).target().options()
 	return execute(c, opts)
 }
 
-func executeDeferredPipeline(at Timing) ActionFunc {
-	return func(c *Context) error {
-		return execute(c, c.target().uses().pipeline(at))
+func executeDeferredPipeline(at Timing) actionFunc {
+	return func(c context.Context) error {
+		return execute(c, FromContext(c).target().uses().pipeline(at))
 	}
 }
 
-func executeUserPipeline(at Timing) ActionFunc {
-	return func(c *Context) error {
-		return execute(c, ActionOf(c.target().pipeline(at)))
+func executeUserPipeline(at Timing) actionFunc {
+	return func(c context.Context) error {
+		return execute(c, ActionOf(FromContext(c).target().pipeline(at)))
 	}
 }
 
@@ -1996,9 +1996,9 @@ func reverse(arr []string) []string {
 	return arr
 }
 
-func setupValueInitializer(c *Context) error {
-	if v, ok := c.option().value().(valueInitializer); ok {
-		return c.Do(v.Initializer())
+func setupValueInitializer(c context.Context) error {
+	if v, ok := FromContext(c).option().value().(valueInitializer); ok {
+		return Do(c, v.Initializer())
 	}
 	return nil
 }
@@ -2032,10 +2032,11 @@ func fixupOptionInternals(c *Context) error {
 	return nil
 }
 
-func setupOptionFromEnv(c *Context) error {
-	return c.Do(Pipeline(
-		FromEnv(c.option().envVars()...),
-		FromFilePath(nil, c.option().filePath()),
+func setupOptionFromEnv(c context.Context) error {
+	opt := FromContext(c).option()
+	return Do(c, Pipeline(
+		FromEnv(opt.envVars()...),
+		FromFilePath(nil, opt.filePath()),
 	))
 }
 
@@ -2048,8 +2049,9 @@ func checkForRequiredOption(c *Context) error {
 	return nil
 }
 
-func executeOptionPipeline(ctx *Context) error {
-	return ctx.Do(Pipeline(ctx.target().uses().pipeline(ActionTiming), ctx.target().pipeline(ActionTiming)))
+func executeOptionPipeline(ctx context.Context) error {
+	target := FromContext(ctx).target()
+	return Do(ctx, Pipeline(target.uses().pipeline(ActionTiming), target.pipeline(ActionTiming)))
 }
 
 var (

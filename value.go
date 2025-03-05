@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding"
 	"encoding/hex"
 	"encoding/json"
@@ -748,8 +749,8 @@ func (v *NameValue) AllowFileReferencesFlag() Prototype {
 
 func (v *NameValue) Initializer() Action {
 	if v.AllowFileReference {
-		return ActionFunc(func(c *Context) error {
-			return c.Do(ValueTransform(TransformFileReference(c.actualFS(), true)))
+		return actionFunc(func(c context.Context) error {
+			return Do(c, ValueTransform(TransformFileReference(FromContext(c).actualFS(), true)))
 		})
 	}
 	return nil
@@ -868,25 +869,25 @@ func (o *internalOption) smartOptionalDefault() interface{} {
 	return nil
 }
 
-func (*valueContext) initialize(c *Context) error {
+func (*valueContext) initialize(c context.Context) error {
 	return execute(c, defaultValue.Initializers)
 }
 
-func (*valueContext) executeBefore(c *Context) error {
+func (*valueContext) executeBefore(c context.Context) error {
 	return execute(c, defaultValue.Before)
 }
 
-func (*valueContext) executeAfter(c *Context) error {
+func (*valueContext) executeAfter(c context.Context) error {
 	return execute(c, defaultValue.After)
 }
 
-func (*valueContext) execute(c *Context) error {
+func (*valueContext) execute(c context.Context) error {
 	return execute(c, defaultValue.Action)
 }
 
-func (*valueContext) initializeDescendent(*Context) error    { return nil }
-func (*valueContext) executeBeforeDescendent(*Context) error { return nil }
-func (*valueContext) executeAfterDescendent(*Context) error  { return nil }
+func (*valueContext) initializeDescendent(context.Context) error    { return nil }
+func (*valueContext) executeBeforeDescendent(context.Context) error { return nil }
+func (*valueContext) executeAfterDescendent(context.Context) error  { return nil }
 
 func (v *valueContext) lookupBinding(name string, occurs bool) []string {
 	if v.lookup == nil {
