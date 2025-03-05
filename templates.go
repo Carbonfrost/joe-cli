@@ -82,6 +82,7 @@ var (
 {{ if or .CommandsByCategory .VisibleCommands -}}
 {{ "\n" }}Sub-commands:{{ "\n" -}}
 {{ range .CommandsByCategory -}}
+{{ "\n" }}Sub-commands:{{ "\n" -}}
 {{ if and .VisibleCommands .Category }}{{ "\n" }}{{.Category}}:{{ "\n" }}{{ end -}}
 {{ "\n" }}{{- template "SubcommandListing" .VisibleCommands -}}
 {{ else }}
