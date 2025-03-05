@@ -81,13 +81,13 @@ var (
 {{- define "Subcommands" -}}
 {{ if or .CommandsByCategory .VisibleCommands -}}
 {{ "\n" }}Sub-commands:{{ "\n" -}}
-{{ end -}}
 {{ range .CommandsByCategory -}}
 {{ if and .VisibleCommands .Category }}{{ "\n" }}{{.Category}}:{{ "\n" }}{{ end -}}
 {{ "\n" }}{{- template "SubcommandListing" .VisibleCommands -}}
 {{ else }}
 {{ "\n" }}{{- template "SubcommandListing" .VisibleCommands -}}
 {{ end }}
+{{ end -}}
 {{- end -}}
 
 {{- define "SubcommandListing" -}}
