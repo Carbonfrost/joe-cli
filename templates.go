@@ -79,7 +79,7 @@ var (
 	// you can use to define a from-scratch template.
 	HelpTemplate = `
 {{- define "Subcommands" -}}
-{{ if .CommandsByCategory -}}
+{{ if or .CommandsByCategory .VisibleCommands -}}
 {{ "\n" }}Sub-commands:{{ "\n" -}}
 {{ end -}}
 {{ range .CommandsByCategory -}}
