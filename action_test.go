@@ -1306,6 +1306,27 @@ var _ = Describe("Pipeline", func() {
 	})
 })
 
+var _ = Describe("printing", func() {
+
+	DescribeTableSubtree("examples", func(printf cli.Action) {
+		It("writes to Stderr when nil", func() {
+			var buffer bytes.Buffer
+			app := &cli.App{
+				Action: printf,
+				Stderr: &buffer,
+			}
+			_ = app.RunContext(context.TODO(), []string{"app"})
+			Expect(buffer.String()).To(Equal("special case stderr\n"))
+		})
+
+	},
+		Entry("Fprint", cli.Fprint(nil, "special case stderr\n")),
+		Entry("Fprintln", cli.Fprintln(nil, "special case stderr")),
+		Entry("Fprint", cli.Fprintf(nil, "special %s stderr%s", "case", "\n")),
+	)
+
+})
+
 var _ = Describe("HandleSignal", Ordered, func() {
 
 	BeforeAll(func() {

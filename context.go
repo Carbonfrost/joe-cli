@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -1314,20 +1315,23 @@ func (c *Context) Printf(format string, a ...any) (n int, err error) {
 
 // Fprint formats using the default formats for its operands and writes to
 // a file using the behavior of fmt.Fprint.
+// As a special case, if writer is nil, [Context.Stderr] is used.
 func (c *Context) Fprint(w io.Writer, a ...any) (n int, err error) {
-	return fmt.Fprint(w, a...)
+	return fmt.Fprint(cmp.Or[io.Writer](w, c.Stderr), a...)
 }
 
 // Fprintln formats using the default formats for its operands and writes to
 // a file using the behavior of fmt.Fprintln
+// As a special case, if writer is nil, [Context.Stderr] is used.
 func (c *Context) Fprintln(w io.Writer, a ...any) (n int, err error) {
-	return fmt.Fprintln(w, a...)
+	return fmt.Fprintln(cmp.Or[io.Writer](w, c.Stderr), a...)
 }
 
 // Fprintf formats according to a format specifier and writes to a file
 // using the behavior of fmt.Fprintf
+// As a special case, if writer is nil, [Context.Stderr] is used.
 func (c *Context) Fprintf(w io.Writer, format string, a ...any) (n int, err error) {
-	return fmt.Fprintf(w, format, a...)
+	return fmt.Fprintf(cmp.Or[io.Writer](w, c.Stderr), format, a...)
 }
 
 func (c *Context) implicitTimingActive() bool {
