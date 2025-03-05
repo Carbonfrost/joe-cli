@@ -313,8 +313,8 @@ func (a *Arg) SetRequired(v bool) {
 }
 
 // Use appends actions to Uses pipeline
-func (a *Arg) Use(actions ...Action) *Arg {
-	a.Uses = Pipeline(a.Uses).Append(actions...)
+func (a *Arg) Use(action Action) *Arg {
+	a.Uses = Pipeline(a.Uses).Append(action)
 	return a
 }
 

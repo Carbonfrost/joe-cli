@@ -400,21 +400,21 @@ func (s Setup) Execute(ctx context.Context) error {
 		}
 	}
 	if s.Before != nil {
-		if err := c.Before(s.Before); err != nil {
+		if err := c.Before(ActionOf(s.Before)); err != nil {
 			return err
 		}
 	}
-	if err := c.Action(s.Action); err != nil {
+	if err := c.Action(ActionOf(s.Action)); err != nil {
 		return err
 	}
-	if err := c.After(s.After); err != nil {
+	if err := c.After(ActionOf(s.After)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s Setup) Use(actions ...Action) Setup {
-	s.Uses = Pipeline(s.Uses).Append(actions...)
+func (s Setup) Use(action Action) Setup {
+	s.Uses = Pipeline(s.Uses).Append(action)
 	return s
 }
 
@@ -435,17 +435,11 @@ func Pipeline(actions ...interface{}) ActionPipeline {
 }
 
 // Do invokes the actions with the given context
-func Do(c context.Context, actions ...Action) error {
-	for _, a := range actions {
-		if a == nil {
-			continue
-		}
-		err := a.Execute(c)
-		if err != nil {
-			return err
-		}
+func Do(c context.Context, action Action) error {
+	if action == nil {
+		return nil
 	}
-	return nil
+	return action.Execute(c)
 }
 
 // SuppressError wraps an action to ignore its error.
@@ -588,12 +582,12 @@ func SetContext(ctx context.Context) Action {
 func Timeout(timeout time.Duration) Action {
 	return Before(ActionFunc(func(c1 *Context) error {
 		ctx, cancel := context.WithTimeout(c1.Context(), timeout)
-		return c1.Do(
+		return c1.Do(Pipeline(
 			SetContext(ctx),
 			After(actionFunc(func(context.Context) error {
 				cancel()
 				return nil
-			})),
+			}))),
 		)
 	}))
 }
@@ -699,7 +693,7 @@ func bindSupportedValue(v interface{}) interface{} {
 // then the name from the prototype will be used.  If it is "-", then it will be derived from the other flag.
 // For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
 // named "files", then the accessory flag would be named --files-recursive.
-func Accessory[T any, A Action](name string, fn func(T) A, actions ...Action) Action {
+func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) Action {
 	return ActionFunc(func(c *Context) error {
 		val := c.Value("").(T)
 		var proto Action
@@ -708,7 +702,7 @@ func Accessory[T any, A Action](name string, fn func(T) A, actions ...Action) Ac
 		}
 
 		f := &Flag{
-			Uses: accessory(c, proto, name).Append(actions...),
+			Uses: accessory(c, proto, name).Append(actionopt...),
 		}
 		return c.AddFlag(f)
 	})
@@ -721,10 +715,10 @@ func Accessory[T any, A Action](name string, fn func(T) A, actions ...Action) Ac
 // then the name from the prototype will be used.  If it is "-", then it will be derived from the other flag.
 // For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
 // named "files", then the accessory flag would be named --files-recursive.
-func Accessory0(name string, actions ...Action) Action {
+func Accessory0(name string, actionopt ...Action) Action {
 	return ActionFunc(func(c *Context) error {
 		f := &Flag{
-			Uses: accessory(c, nil, name).Append(actions...),
+			Uses: accessory(c, nil, name).Append(actionopt...),
 		}
 		return c.Do(AddFlag(f))
 	})
@@ -915,13 +909,13 @@ func HookAfter(pattern string, handler Action) Action {
 func HandleSignal(s ...os.Signal) Action {
 	return Before(ActionFunc(func(c1 *Context) error {
 		ctx, stop := signal.NotifyContext(c1.Context(), s...)
-		return c1.Do(
+		return c1.Do(Pipeline(
 			SetContext(ctx),
 			After(ActionFunc(func(*Context) error {
 				stop()
 				return nil
 			})),
-		)
+		))
 	}))
 }
 
@@ -948,8 +942,8 @@ func OptionalValue(v any) Action {
 // ProvideValueInitializer causes an additional child context to be created
 // which is used to initialize an arbitrary value.  For more information,
 // refer to the implementation provided by Context.ProvideValueInitializer.
-func ProvideValueInitializer(v any, name string, a Action) Action {
-	return actionThunk3((*Context).ProvideValueInitializer, v, name, a)
+func ProvideValueInitializer(v any, name string, actionopt ...Action) Action {
+	return actionThunkVar3((*Context).ProvideValueInitializer, v, name, actionopt...)
 }
 
 // AddFlag provides an action which adds a flag to the command or app
@@ -1431,11 +1425,11 @@ func (t Timing) Describe() string {
 }
 
 func (p Prototype) Execute(ctx context.Context) error {
-	return Do(ctx, FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), commandSetupCore(true, p.copyToCommand), p.Setup)
+	return Do(ctx, Pipeline(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), commandSetupCore(true, p.copyToCommand), p.Setup))
 }
 
-func (p Prototype) Use(actions ...Action) Prototype {
-	p.Setup = p.Setup.Use(actions...)
+func (p Prototype) Use(action Action) Prototype {
+	p.Setup = p.Setup.Use(action)
 	return p
 }
 
@@ -1562,9 +1556,14 @@ func (af actionFunc) Execute(ctx context.Context) error {
 	return af(ctx)
 }
 
-// Append appends an action to the pipeline
+// Append appends actions to the pipeline
 func (p ActionPipeline) Append(x ...Action) ActionPipeline {
-	return ActionPipeline(append(p, x...))
+	return append(p, x...)
+}
+
+// Prepend prepends actions to the pipeline
+func (p ActionPipeline) Prepend(x ...Action) ActionPipeline {
+	return append(x, p...)
 }
 
 // Execute the pipeline by calling each action successively
@@ -1779,9 +1778,9 @@ func actionThunk2[T, U any](fn func(*Context, T, U) error, arg1 T, arg2 U) Actio
 	})
 }
 
-func actionThunk3[T, U, V any](fn func(*Context, T, U, V) error, arg1 T, arg2 U, arg3 V) Action {
+func actionThunkVar3[T, U, V any](fn func(*Context, T, U, ...V) error, arg1 T, arg2 U, arg3 ...V) Action {
 	return ActionFunc(func(c *Context) error {
-		return fn(c, arg1, arg2, arg3)
+		return fn(c, arg1, arg2, arg3...)
 	})
 }
 

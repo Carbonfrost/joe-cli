@@ -206,8 +206,8 @@ func groupFlagsByCategory(flags []*Flag) flagsByCategory {
 }
 
 // Use appends actions to Uses pipeline
-func (f *Flag) Use(actions ...Action) *Flag {
-	f.Uses = Pipeline(f.Uses).Append(actions...)
+func (f *Flag) Use(action Action) *Flag {
+	f.Uses = Pipeline(f.Uses).Append(action)
 	return f
 }
 

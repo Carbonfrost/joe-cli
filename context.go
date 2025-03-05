@@ -891,29 +891,29 @@ func (c *Context) At(t Timing, v Action) error {
 // Action either stores or executes the action. When called from the initialization or before pipelines, this
 // appends the action to the pipeline for the current flag, arg, or command/app.
 // When called from the action pipeline, this simply causes the action to be invoked immediately.
-func (c *Context) Action(v interface{}) error {
-	return c.At(ActionTiming, ActionOf(v))
+func (c *Context) Action(action Action) error {
+	return c.At(ActionTiming, action)
 }
 
 // Before either stores or executes the action.  When called from the initialization pipeline, this appends
 // the action to the Before pipeline for the current flag, arg, expression, or command/app.  If called
 // from the Before pipeline, this causes the action to be invoked immediately.  If called
 // at any other time, this causes the action to be ignored and an error to be returned.
-func (c *Context) Before(v interface{}) error {
-	return c.At(BeforeTiming, ActionOf(v))
+func (c *Context) Before(action Action) error {
+	return c.At(BeforeTiming, action)
 }
 
 // After either stores or executes the action.  When called from the initialization, before, or action pipelines,
 // this appends the action to the After pipeline for the current flag, arg, expression, or command/app.  If called
 // from the After pipeline itself, the action is invoked immediately
-func (c *Context) After(v interface{}) error {
-	return c.At(AfterTiming, ActionOf(v))
+func (c *Context) After(action Action) error {
+	return c.At(AfterTiming, action)
 }
 
 // Use can only be used during initialization timing, in which case the action is just invoked.  In other timings,
 // this is an error
-func (c *Context) Use(v interface{}) error {
-	return c.At(InitialTiming, ActionOf(v))
+func (c *Context) Use(action Action) error {
+	return c.At(InitialTiming, action)
 }
 
 func (c *Context) act(v interface{}, desired Timing, optional bool) error {
@@ -1021,8 +1021,8 @@ func (c *Context) walkCore(fn WalkFunc) error {
 
 // Do executes the specified actions in succession.  If an action returns an error, that
 // error is returned and the rest of the actions aren't run
-func (c *Context) Do(actions ...Action) error {
-	return Do(c, actions...)
+func (c *Context) Do(action Action) error {
+	return Do(c, action)
 }
 
 // Template retrieves a template by name
@@ -1117,25 +1117,25 @@ func (c *Context) logicalArg(index int) *Arg {
 // AddFlag provides a convenience method that adds a flag to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddFlag(f *Flag) error {
-	return c.Use(func() {
+	return c.Use(ActionOf(func() {
 		c.Command().Flags = append(c.Command().Flags, f)
-	})
+	}))
 }
 
 // AddCommand provides a convenience method that adds a Command to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddCommand(v *Command) error {
-	return c.Use(func() {
+	return c.Use(ActionOf(func() {
 		c.Command().Subcommands = append(c.Command().Subcommands, v)
-	})
+	}))
 }
 
 // AddArg provides a convenience method that adds an Arg to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddArg(v *Arg) error {
-	return c.Use(func() {
+	return c.Use(ActionOf(func() {
 		c.Command().Args = append(c.Command().Args, v)
-	})
+	}))
 }
 
 // RemoveArg provides a convenience method that removes an Arg from the current command or app.
@@ -1144,14 +1144,14 @@ func (c *Context) AddArg(v *Arg) error {
 // If the arg does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
 func (c *Context) RemoveArg(name interface{}) error {
-	return c.Use(func() {
+	return c.Use(ActionOf(func() {
 		args := c.Command().Args
 		_, index, ok := findArgByName(args, name)
 		if ok {
 			args = append(args[0:index], args[index+1:]...)
 			c.Command().Args = args
 		}
-	})
+	}))
 }
 
 // RemoveCommand provides a convenience method that removes a command from the current command or app.
@@ -1160,14 +1160,14 @@ func (c *Context) RemoveArg(name interface{}) error {
 // If the Command does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
 func (c *Context) RemoveCommand(name interface{}) error {
-	return c.Use(func() {
+	return c.Use(ActionOf(func() {
 		cmds := c.Command().Subcommands
 		_, index, ok := findCommandByName(cmds, name)
 		if ok {
 			cmds = append(cmds[0:index], cmds[index+1:]...)
 			c.Command().Subcommands = cmds
 		}
-	})
+	}))
 }
 
 // RemoveFlag provides a convenience method that removes a Flag from the current command or app.
@@ -1176,14 +1176,14 @@ func (c *Context) RemoveCommand(name interface{}) error {
 // If the flag does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
 func (c *Context) RemoveFlag(name interface{}) error {
-	return c.Use(func() {
+	return c.Use(ActionOf(func() {
 		flags := c.Command().Flags
 		_, index, ok := findFlagByName(flags, name)
 		if ok {
 			flags = append(flags[0:index], flags[index+1:]...)
 			c.Command().Flags = flags
 		}
-	})
+	}))
 }
 
 // AddFlags provides a convenience method for adding flags to the current command or app.
@@ -1252,8 +1252,8 @@ func (c *Context) AutodetectColor() {
 //
 // If the value has local args (a method LocalArgs() []*Arg), then their
 // pipelines are triggered.
-func (c *Context) ProvideValueInitializer(v any, name string, action Action) error {
-	adapter := newValueTarget(v, action)
+func (c *Context) ProvideValueInitializer(v any, name string, actionopt ...Action) error {
+	adapter := newValueTarget(v, ActionPipeline(actionopt))
 	return c.Do(Setup{
 		Uses: func(c1 *Context) error {
 			return c1.valueContext(adapter, name).initialize()
@@ -2033,10 +2033,10 @@ func fixupOptionInternals(c *Context) error {
 }
 
 func setupOptionFromEnv(c *Context) error {
-	return c.Do(
+	return c.Do(Pipeline(
 		FromEnv(c.option().envVars()...),
 		FromFilePath(nil, c.option().filePath()),
-	)
+	))
 }
 
 func checkForRequiredOption(c *Context) error {

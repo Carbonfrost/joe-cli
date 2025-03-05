@@ -1280,17 +1280,27 @@ var _ = Describe("Pipeline", func() {
 		Expect(act3.ExecuteCallCount()).To(Equal(1))
 	})
 
+	It("appends to the pipeline in order", func() {
+		calls := trackCalls()
+		makeAction := calls.makeAction
+		pipe := cli.Pipeline().Append(makeAction("1"), makeAction("2"), makeAction("3"))
+		pipe.Execute(context.Background())
+
+		Expect(calls.called).To(Equal([]string{"1", "2", "3"}))
+	})
+
+	It("prepends to the pipeline in order", func() {
+		calls := trackCalls()
+		makeAction := calls.makeAction
+		pipe := cli.Pipeline(makeAction("_")).Prepend(makeAction("1"), makeAction("2"), makeAction("3"))
+		pipe.Execute(context.Background())
+
+		Expect(calls.called).To(Equal([]string{"1", "2", "3", "_"}))
+	})
+
 	It("flattens nested pipelines and invokes in order", func() {
-		var called []string
-		// We don't set up a full action-pipelineThis function is dependent upon
-		var makeAction = func(name string) cli.Action {
-			fa := new(joeclifakes.FakeAction)
-			fa.ExecuteStub = func(context.Context) error {
-				called = append(called, name)
-				return nil
-			}
-			return fa
-		}
+		calls := trackCalls()
+		makeAction := calls.makeAction
 
 		var act1 cli.ActionPipeline
 		act2 := makeAction("2")
@@ -1302,7 +1312,7 @@ var _ = Describe("Pipeline", func() {
 		pipe := cli.Pipeline(cli.ActionPipeline([]cli.Action{act1, act2}))
 		pipe.Execute(context.Background())
 
-		Expect(called).To(Equal([]string{"1a", "1b", "2"}))
+		Expect(calls.called).To(Equal([]string{"1a", "1b", "2"}))
 		Expect(pipe).To(HaveLen(3))
 	})
 })
@@ -3049,4 +3059,21 @@ func countOccurrences(v any) any {
 		res[s]++
 	}
 	return res
+}
+
+func trackCalls() *callTracker {
+	return &callTracker{}
+}
+
+type callTracker struct {
+	called []string
+}
+
+func (t *callTracker) makeAction(name string) cli.Action {
+	fa := new(joeclifakes.FakeAction)
+	fa.ExecuteStub = func(context.Context) error {
+		t.called = append(t.called, name)
+		return nil
+	}
+	return fa
 }

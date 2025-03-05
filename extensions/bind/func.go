@@ -199,7 +199,7 @@ func initializers(binders ...any) cli.Action {
 	}
 	return cli.Setup{
 		Optional: true,
-		Uses:     cli.Pipeline().Append(result...),
+		Uses:     cli.ActionPipeline(result),
 	}
 }
 

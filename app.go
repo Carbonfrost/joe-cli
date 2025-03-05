@@ -183,8 +183,8 @@ func (a *App) RunContext(c context.Context, args []string) error {
 }
 
 // Use appends actions to Uses pipeline
-func (a *App) Use(actions ...Action) *App {
-	a.Uses = Pipeline(a.Uses).Append(actions...)
+func (a *App) Use(action Action) *App {
+	a.Uses = Pipeline(a.Uses).Append(action)
 	return a
 }
 

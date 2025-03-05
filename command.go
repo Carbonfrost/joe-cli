@@ -323,8 +323,8 @@ func (c *Command) Names() []string {
 }
 
 // Use appends actions to Uses pipeline
-func (c *Command) Use(actions ...Action) *Command {
-	c.Uses = Pipeline(c.Uses).Append(actions...)
+func (c *Command) Use(action Action) *Command {
+	c.Uses = Pipeline(c.Uses).Append(action)
 	return c
 }
 
