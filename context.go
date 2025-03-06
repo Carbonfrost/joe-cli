@@ -1117,25 +1117,25 @@ func (c *Context) logicalArg(index int) *Arg {
 // AddFlag provides a convenience method that adds a flag to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddFlag(f *Flag) error {
-	return c.Use(ActionOf(func() {
-		c.Command().Flags = append(c.Command().Flags, f)
-	}))
+	return c.updateFlags(func(flags []*Flag) []*Flag {
+		return append(flags, f)
+	})
 }
 
 // AddCommand provides a convenience method that adds a Command to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddCommand(v *Command) error {
-	return c.Use(ActionOf(func() {
-		c.Command().Subcommands = append(c.Command().Subcommands, v)
-	}))
+	return c.updateSubcommands(func(cmds []*Command) []*Command {
+		return append(cmds, v)
+	})
 }
 
 // AddArg provides a convenience method that adds an Arg to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 func (c *Context) AddArg(v *Arg) error {
-	return c.Use(ActionOf(func() {
-		c.Command().Args = append(c.Command().Args, v)
-	}))
+	return c.updateArgs(func(args []*Arg) []*Arg {
+		return append(args, v)
+	})
 }
 
 // RemoveArg provides a convenience method that removes an Arg from the current command or app.
@@ -1144,14 +1144,12 @@ func (c *Context) AddArg(v *Arg) error {
 // If the arg does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
 func (c *Context) RemoveArg(name interface{}) error {
-	return c.Use(ActionOf(func() {
-		args := c.Command().Args
-		_, index, ok := findArgByName(args, name)
-		if ok {
-			args = append(args[0:index], args[index+1:]...)
-			c.Command().Args = args
+	return c.updateArgs(func(args []*Arg) []*Arg {
+		if _, index, ok := findArgByName(args, name); ok {
+			return append(args[0:index], args[index+1:]...)
 		}
-	}))
+		return args
+	})
 }
 
 // RemoveCommand provides a convenience method that removes a command from the current command or app.
@@ -1160,14 +1158,12 @@ func (c *Context) RemoveArg(name interface{}) error {
 // If the Command does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
 func (c *Context) RemoveCommand(name interface{}) error {
-	return c.Use(ActionOf(func() {
-		cmds := c.Command().Subcommands
-		_, index, ok := findCommandByName(cmds, name)
-		if ok {
-			cmds = append(cmds[0:index], cmds[index+1:]...)
-			c.Command().Subcommands = cmds
+	return c.updateSubcommands(func(cmds []*Command) []*Command {
+		if _, index, ok := findCommandByName(cmds, name); ok {
+			return slices.Delete(cmds, index, index+1)
 		}
-	}))
+		return cmds
+	})
 }
 
 // RemoveFlag provides a convenience method that removes a Flag from the current command or app.
@@ -1175,15 +1171,13 @@ func (c *Context) RemoveCommand(name interface{}) error {
 // is only valid during the initialization phase.  An error is returned for other timings.
 // If the flag does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
-func (c *Context) RemoveFlag(name interface{}) error {
-	return c.Use(ActionOf(func() {
-		flags := c.Command().Flags
-		_, index, ok := findFlagByName(flags, name)
-		if ok {
-			flags = append(flags[0:index], flags[index+1:]...)
-			c.Command().Flags = flags
+func (c *Context) RemoveFlag(name any) error {
+	return c.updateFlags(func(flags []*Flag) []*Flag {
+		if _, index, ok := findFlagByName(flags, name); ok {
+			return slices.Delete(flags, index, index+1)
 		}
-	}))
+		return flags
+	})
 }
 
 // AddFlags provides a convenience method for adding flags to the current command or app.
@@ -1214,6 +1208,36 @@ func (c *Context) AddArgs(args ...*Arg) (err error) {
 		}
 	}
 	return
+}
+
+func (c *Context) updateFlags(fn func([]*Flag) []*Flag) error {
+	err := c.requireInit()
+	if err != nil {
+		return err
+	}
+	cmd := c.Command()
+	cmd.Flags = fn(cmd.Flags)
+	return nil
+}
+
+func (c *Context) updateArgs(fn func([]*Arg) []*Arg) error {
+	err := c.requireInit()
+	if err != nil {
+		return err
+	}
+	cmd := c.Command()
+	cmd.Args = fn(cmd.Args)
+	return nil
+}
+
+func (c *Context) updateSubcommands(fn func([]*Command) []*Command) error {
+	err := c.requireInit()
+	if err != nil {
+		return err
+	}
+	cmd := c.Command()
+	cmd.Subcommands = fn(cmd.Subcommands)
+	return nil
 }
 
 // SkipImplicitSetup gets whether implicit setup steps should be skipped
