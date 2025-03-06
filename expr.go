@@ -336,8 +336,8 @@ func EvaluatorOf(v interface{}) Evaluator {
 // Predicate provides a simple predicate which filters values.  The filter function
 // takes the prior operand and returns true or false depending upon whether the
 // operand should be yielded to the next step in the expression pipeline.
-func Predicate(filter func(v interface{}) bool) Evaluator {
-	return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+func Predicate(filter func(v any) bool) Evaluator {
+	return EvaluatorFunc(func(_ *Context, v any, y func(any) error) error {
 		if ok := filter(v); ok {
 			return y(v)
 		}

@@ -412,7 +412,7 @@ func (f *Flag) Occurrences() int {
 	return f.internalOption.Occurrences()
 }
 
-// Short gets the short name for the flag including the leading dash.  This is
+// ShortName gets the short name for the flag including the leading dash.  This is
 // the Name of the flag if it contains exactly one character, or this is the
 // first alias which contains exactly one character.  This is the empty string
 // if the name and all aliases are long names.  The result starts with a dash.
@@ -428,7 +428,7 @@ func (f *Flag) ShortName() string {
 	return ""
 }
 
-// Long gets the long name for the flag including the leading dashes.
+// LongName gets the long name for the flag including the leading dashes.
 // This is the Name of the flag if it contains more than one character, or this
 // is the first alias which contains more than one character.  If the Name and
 // all Aliases have exactly one character, then the value of Name is returned even

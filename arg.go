@@ -499,7 +499,7 @@ func (o *optionContext) Name() string {
 	return o.option.contextName()
 }
 
-func (d *discreteCounter) Take(arg string, possibleFlag bool) error {
+func (d *discreteCounter) Take(_ string, _ bool) error {
 	if d.count == 0 {
 		return EndOfArguments
 	}
@@ -514,7 +514,11 @@ func (d *discreteCounter) Done() error {
 	return nil
 }
 
-func (d *defaultCounter) Take(arg string, possibleFlag bool) error {
+func (d *discreteCounter) Usage() (optional, multi bool) {
+	return false, d.count > 1
+}
+
+func (d *defaultCounter) Take(_ string, _ bool) error {
 	if d.seen {
 		return EndOfArguments
 	}
@@ -529,6 +533,10 @@ func (d *defaultCounter) Done() error {
 	return nil
 }
 
+func (d *defaultCounter) Usage() (optional, multi bool) {
+	return !d.requireSeen, false
+}
+
 func (v *varArgsCounter) Take(arg string, possibleFlag bool) error {
 	if v.stopOnFlags && allowFlag(arg, possibleFlag) {
 		if v.intersperse {
@@ -541,6 +549,10 @@ func (v *varArgsCounter) Take(arg string, possibleFlag bool) error {
 
 func (*varArgsCounter) Done() error {
 	return nil
+}
+
+func (*varArgsCounter) Usage() (optional, multi bool) {
+	return true, true
 }
 
 func (o *matchesArgsCounter) Take(arg string, possibleFlag bool) error {
@@ -593,15 +605,3 @@ var (
 	_ argCounterUsage = (*defaultCounter)(nil)
 	_ argCounterUsage = (*discreteCounter)(nil)
 )
-
-func (c *varArgsCounter) Usage() (optional, multi bool) {
-	return true, true
-}
-
-func (c *defaultCounter) Usage() (optional, multi bool) {
-	return !c.requireSeen, false
-}
-
-func (c *discreteCounter) Usage() (optional, multi bool) {
-	return false, c.count > 1
-}

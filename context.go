@@ -1905,7 +1905,7 @@ func (*valueTarget) options() *Option {
 	return nil
 }
 
-func (*valueTarget) pipeline(t Timing) interface{} {
+func (*valueTarget) pipeline(Timing) interface{} {
 	return nil
 }
 

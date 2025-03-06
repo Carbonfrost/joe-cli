@@ -351,10 +351,10 @@ func (w *wrapper) Write(b []byte) (int, error) {
 		// lengths are based on printable rune widths
 		lineLen int
 
-		tryWrite = func(from *bytes.Buffer, len int) (res bool) {
-			res = lineLen+len < w.Limit
+		tryWrite = func(from *bytes.Buffer, length int) (res bool) {
+			res = lineLen+length < w.Limit
 			if res {
-				lineLen += len
+				lineLen += length
 				from.WriteTo(w.Writer)
 				from.Reset()
 			}
@@ -504,18 +504,18 @@ func (w *stringHelper) SetColorCapable(value bool) {
 	w.Writer.SetColorCapable(value)
 }
 
-func (s *stringHelper) Underline(v ...any) (int, error) {
-	return s.Styled(Underline, v...)
+func (w *stringHelper) Underline(v ...any) (int, error) {
+	return w.Styled(Underline, v...)
 }
 
-func (s *stringHelper) Bold(v ...any) (int, error) {
-	return s.Styled(Bold, v...)
+func (w *stringHelper) Bold(v ...any) (int, error) {
+	return w.Styled(Bold, v...)
 }
 
-func (s *stringHelper) Styled(style Style, v ...any) (int, error) {
-	s.SetStyle(style)
-	n, err := fmt.Fprint(s, v...)
-	s.Reset()
+func (w *stringHelper) Styled(style Style, v ...any) (int, error) {
+	w.SetStyle(style)
+	n, err := fmt.Fprint(w, v...)
+	w.Reset()
 	return n, err
 }
 

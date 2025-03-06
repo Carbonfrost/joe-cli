@@ -69,7 +69,7 @@ func (l *ArgList) UsePlaceholder() bool {
 	return d == "+"
 }
 
-func (ok *counter) Take(a string, possibleFlag bool) error {
+func (ok *counter) Take(a string, _ bool) error {
 	if ok.seen {
 		return cli.EndOfArguments
 	}
