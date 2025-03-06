@@ -10,11 +10,12 @@ import (
 	"maps"
 	"os"
 	"os/signal"
-	"reflect"
 	"regexp"
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // ActionFunc provides the basic function for an Action
@@ -241,7 +242,6 @@ const (
 
 var (
 	emptyAction Action = ActionFunc(emptyActionImpl)
-	valueType          = reflect.TypeFor[Value]()
 	patFlagName        = regexp.MustCompile(`{}`)
 
 	actualBeforeIndex = map[Timing]int{
@@ -651,7 +651,7 @@ func BindContext[T, V any](value func(context.Context) *T, bind func(*T, V) erro
 // The name parameter specifies the name of the flag or arg that is affected.  The
 // bind function is the function to set the value, and valopt is optional, and if specified,
 // indicates the value to set; otherwise, the value is read from the flag.
-func BindIndirect[T, V any](name string, bind func(*T, V) error, valopt ...V) Action {
+func BindIndirect[T, V any](name any, bind func(*T, V) error, valopt ...V) Action {
 	return bindThunk(func(c context.Context) *T {
 		return FromContext(c).Value(name).(*T)
 	}, bind, valopt...)
@@ -660,7 +660,7 @@ func BindIndirect[T, V any](name string, bind func(*T, V) error, valopt ...V) Ac
 func bindThunk[T, V any](thunk func(context.Context) *T, bind func(*T, V) error, valopt ...V) Action {
 	switch len(valopt) {
 	case 0:
-		proto := &Prototype{Value: bindSupportedValue(new(V))}
+		proto := &Prototype{Value: support.BindSupportedValue(new(V))}
 		return Pipeline(proto, bindTiming(func(c context.Context) error {
 			return bind(thunk(c), c.Value("").(V))
 		}))
@@ -678,24 +678,6 @@ func bindThunk[T, V any](thunk func(context.Context) *T, bind func(*T, V) error,
 
 func bindTiming(a actionFunc) Action {
 	return At(ActionTiming, a)
-}
-
-func bindSupportedValue(v interface{}) interface{} {
-	// Bind functions will either use *V or V depending upon what
-	// supports the built-in convention values or implements Value.
-	// Any built-in primitive will work as is.  However, if v is actually
-	// *V but V is **W and W is a Value implementation, then unwrap this
-	// so we end up with *W.  For example, instead of **FileSet, just use *FileSet.
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr && val.Elem().Kind() == reflect.Ptr {
-		pointsToValue := val.Elem().Type()
-		if pointsToValue.Implements(valueType) {
-			return reflect.New(pointsToValue.Elem()).Interface()
-		}
-	}
-
-	// Primitives and other values
-	return v
 }
 
 // Accessory provides an action which sets up an accessory flag for the current flag or argument.

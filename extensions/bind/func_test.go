@@ -15,6 +15,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("Action", func() {
@@ -608,6 +609,48 @@ var _ = Describe("Indirect", func() {
 		_ = app.RunContext(context.TODO(), args)
 		Expect(act.ExecuteCallCount()).To(Equal(1), "action should still be called")
 		Expect(calledWith).To(Equal("YES"))
+	})
+})
+
+var _ = Describe("Redirect", func() {
+
+	It("copies the implied value of the function", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "t",
+				},
+				{
+					Name: "u",
+					Uses: bind.Redirect[uint64]("t"),
+				},
+			},
+		}
+		app.Initialize(context.Background())
+		Expect(app.Flags[0].Value).To(Equal(new(uint64)))
+		Expect(app.Flags[1].Value).To(Equal(new(uint64)))
+	})
+
+	It("invokes bind func with static value", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "t",
+
+					// TODO Bug: This panics if "t" is not set with a Value
+					Value: cli.Uint64(),
+				},
+				{
+					Name: "u",
+					Uses: bind.Redirect[uint64]("t", 420),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -u")
+		_ = app.RunContext(context.TODO(), args)
+		Expect(app.Flags[0].Value).To(PointTo(Equal(uint64(420))))
+		Expect(app.Flags[1].Value).To(PointTo(Equal(true)))
 	})
 })
 

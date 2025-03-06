@@ -61,11 +61,11 @@ import (
 	"math/big"
 	"net"
 	"net/url"
-	"reflect"
 	"regexp"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // Binder provides a strategy for obtaining a value from the context
@@ -126,10 +126,6 @@ type binder[V any] struct {
 	lookupValue func(*cli.Context, any) V
 }
 
-var (
-	valueType = reflect.TypeFor[cli.Value]()
-)
-
 func (b *binderSupport[_]) SetName(name any) {
 	if b.impliedName == nil {
 		b.impliedName = name
@@ -142,7 +138,7 @@ func (b *binderSupport[V]) Initializer() cli.Action {
 		if ctx == nil {
 			return nil
 		}
-		return ctx.Do(&cli.Prototype{Value: bindSupportedValue(new(V))})
+		return ctx.Do(&cli.Prototype{Value: support.BindSupportedValue(new(V))})
 	})
 }
 
@@ -566,24 +562,6 @@ func bind3[T, U, V any](c context.Context, t Binder[T], u Binder[U], v Binder[V]
 
 	a2, err = v.Bind(c)
 	return
-}
-
-func bindSupportedValue(v interface{}) interface{} {
-	// Bind functions will either use *V or V depending upon what
-	// supports the built-in convention values or implements Value.
-	// Any built-in primitive will work as is.  However, if v is actually
-	// *V but V is **W and W is a Value implementation, then unwrap this
-	// so we end up with *W.  For example, instead of **FileSet, just use *FileSet.
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr && val.Elem().Kind() == reflect.Ptr {
-		pointsToValue := val.Elem().Type()
-		if pointsToValue.Implements(valueType) {
-			return reflect.New(pointsToValue.Elem()).Interface()
-		}
-	}
-
-	// Primitives and other values
-	return v
 }
 
 var (

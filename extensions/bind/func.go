@@ -172,8 +172,47 @@ func Evaluator3[T, U, V any](eval func(T, U, V) cli.Evaluator, t Binder[T], u Bi
 // The name parameter specifies the name of the flag or arg that is affected.  The
 // bind function is the function to set the value, and valopt is optional, and if specified,
 // indicates the value to set; otherwise, the value is read from the flag.
-func Indirect[T, V any](name string, call func(T, V) error, valopt ...V) cli.Action {
+func Indirect[T, V any](name any, call func(T, V) error, valopt ...V) cli.Action {
 	return Call2(call, Value[T](name), Exact(valopt...))
+}
+
+// Redirect binds a value to the specified option.
+// A common use case for this action is to manually create aliases for
+// other flags. For example, say you have a flag --proto= and a flag --tls1.2.
+// You could use Redirect to support it.
+//
+//	&cli.Flag{
+//	    Name: "proto",
+//	}
+//	&cli.Flag{
+//	    Name: "tls1.2",
+//	    HelpText: "Use TLS 1.2 connections",
+//	    Action: bind.Redirect("proto", "tls1.2"),
+//	}
+//	&cli.Flag{
+//	    Name: "tls1.3",
+//	    HelpText: "Use TLS 1.3 connections",
+//	    Action: bind.Redirect("proto", "tls1.3"),
+//	}
+//
+// The name parameter specifies the name of the flag or arg that is affected.  The
+// valopt is optional, and if specified, indicates the value to set; otherwise,
+// the value is read from the flag.
+func Redirect[V any](name any, valopt ...V) cli.Action {
+	call := func(c *cli.Context, val V, _ V) error {
+		return c.ContextOf(name).SetValue(val)
+	}
+
+	switch len(valopt) {
+	case 0:
+		return Call3(call, Context(), Value[V](""), Value[V](name))
+
+	case 1:
+		return Call3(call, Context(), Exact(valopt[0]), Value[V](name))
+
+	default:
+		panic("expected 0 or 1 args for valopt")
+	}
 }
 
 func newEvaluator(initz cli.Action, evaluator evaluatorFunc) *evaluatorInit {
