@@ -344,6 +344,7 @@ var (
 			actionFunc(setupValueInitializer),
 			actionFunc(setupOptionFromEnv),
 			ActionFunc(initializeValueTargets),
+			ActionFunc(checkForSupportedFlagType),
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
 		),
 		Before: beforePipeline{

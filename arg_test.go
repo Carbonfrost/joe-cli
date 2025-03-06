@@ -135,6 +135,22 @@ var _ = Describe("Arg", func() {
 			Entry("list when -2", -2, cli.List()),
 		)
 
+		It("generates an internal error if the value is not supported", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						Name:  "f",
+						Value: "not supported value",
+					},
+				},
+				Action: act,
+			}
+
+			_, err := app.Initialize(context.TODO())
+			Expect(err).To(MatchError(`internal error, at "app <f>" (initial timing): unsupported flag type: string`))
+		})
 	})
 
 	Describe("NArg", func() {

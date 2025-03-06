@@ -173,6 +173,26 @@ var _ = Describe("Flag", func() {
 		})
 	})
 
+	Describe("Value", func() {
+
+		It("generates an internal error if the value is not supported", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: "not supported value",
+					},
+				},
+				Action: act,
+			}
+
+			_, err := app.Initialize(context.TODO())
+			Expect(err).To(MatchError(`internal error, at "app -f" (initial timing): unsupported flag type: string`))
+		})
+	})
+
 	It("can set and define name and value by initializer", func() {
 		act := new(joeclifakes.FakeAction)
 		app := &cli.App{

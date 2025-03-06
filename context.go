@@ -2050,6 +2050,13 @@ func checkForRequiredOption(c *Context) error {
 	return nil
 }
 
+func checkForSupportedFlagType(c *Context) error {
+	if err := checkSupportedFlagType(c.option().value()); err != nil {
+		return c.internalError(err)
+	}
+	return nil
+}
+
 func executeOptionPipeline(ctx context.Context) error {
 	target := FromContext(ctx).target()
 	return Do(ctx, Pipeline(target.uses().pipeline(ActionTiming), target.pipeline(ActionTiming)))
