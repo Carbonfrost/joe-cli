@@ -496,9 +496,6 @@ var _ = Describe("Evaluator", func() {
 				Flags: []*cli.Flag{
 					{
 						Name: "flag",
-						// TODO Bug: If this is not set, then the use of
-						// bind.String("flag") in the test below will not pass.
-						Value: new(string),
 					},
 				},
 				Args: []*cli.Arg{
@@ -636,9 +633,6 @@ var _ = Describe("Redirect", func() {
 			Flags: []*cli.Flag{
 				{
 					Name: "t",
-
-					// TODO Bug: This panics if "t" is not set with a Value
-					Value: cli.Uint64(),
 				},
 				{
 					Name: "u",
