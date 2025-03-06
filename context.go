@@ -82,7 +82,8 @@ type parentLookup struct {
 type valueTarget struct {
 	pipelinesSupport
 
-	v interface{}
+	v    any
+	name string
 }
 
 // ContextPath provides a list of strings that name each one of the parent components
@@ -142,9 +143,10 @@ func newContextPathPattern(pat string) contextPathPattern {
 	return contextPathPattern{strings.Fields(pat)}
 }
 
-func newValueTarget(v any, action Action) *valueTarget {
+func newValueTarget(v any, name string, action Action) *valueTarget {
 	return &valueTarget{
-		v: v,
+		v:    v,
+		name: name,
 		pipelinesSupport: pipelinesSupport{
 			actionPipelines{
 				Initializers: action,
@@ -406,7 +408,7 @@ func (c *Context) ValueContextOf(name string, v any) *Context {
 	case *Arg, *Flag, *Command, *App:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
-	return c.valueContext(newValueTarget(v, nil), name)
+	return c.valueContext(newValueTarget(v, name, nil))
 }
 
 // ContextOf creates a context for use with the given target, which must
@@ -1285,21 +1287,14 @@ func (c *Context) Trigger() error {
 // If the value has local args (a method LocalArgs() []*Arg), then their
 // pipelines are triggered.
 func (c *Context) ProvideValueInitializer(v any, name string, actionopt ...Action) error {
-	adapter := newValueTarget(v, ActionPipeline(actionopt))
-	return Do(c, Setup{
-		Uses: func(c1 *Context) error {
-			return c1.valueContext(adapter, name).initialize()
-		},
-		Before: func(c1 *Context) error {
-			return c1.valueContext(adapter, name).executeBefore()
-		},
-		After: func(c1 *Context) error {
-			return c1.valueContext(adapter, name).executeAfter()
-		},
-		Action: func(c1 *Context) error {
-			return c1.valueContext(adapter, name).executeSelf()
-		},
-	})
+	h, ok := c.hookable()
+	if !ok {
+		return c.internalError(errCantHook)
+	}
+
+	adapter := newValueTarget(v, name, ActionPipeline(actionopt))
+	h.addValueTarget(adapter)
+	return nil
 }
 
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
@@ -1520,10 +1515,9 @@ func (c *Context) optionContext(opt option) *Context {
 	})
 }
 
-func (c *Context) valueContext(adapter *valueTarget, name string) *Context {
+func (c *Context) valueContext(adapter *valueTarget) *Context {
 	return c.copy(&valueContext{
 		v:      adapter,
-		name:   name,
 		lookup: adapter.lookup(),
 	})
 }
@@ -1550,6 +1544,20 @@ func triggerOptionsHO(t Timing, on func(*Context) error) ActionFunc {
 
 		for _, f := range ctx.LocalArgs() {
 			err := on(ctx.optionContext(f).setTiming(t))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func triggerValueTargetsHO(t Timing, on func(*Context) error) ActionFunc {
+	return func(ctx *Context) error {
+		me, _ := ctx.hookable()
+		for _, sub := range me.valueTargets() {
+			err := on(ctx.valueContext(sub).setTiming(t))
 			if err != nil {
 				return err
 			}

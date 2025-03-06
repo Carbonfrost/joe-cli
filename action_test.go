@@ -2078,6 +2078,56 @@ var _ = Describe("HookBefore", func() {
 		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
 	})
 
+	It("flag can hook a contained value initializer", func() {
+		valueInit := &haveArgs{
+			Args: cli.Args("z", new(int)),
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "f",
+					Value: valueInit,
+					Uses: cli.Pipeline(
+						cli.ProvideValueInitializer(valueInit, "value", nil),
+						cli.HookBefore("<-value>", cli.Data("ok", "4")),
+					),
+				},
+			},
+		}
+		err := app.RunContext(context.Background(), []string{"app", "-f", "_"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Flags[0].Value.(*haveArgs).Data).To(HaveKeyWithValue("ok", "4"))
+	})
+
+	Describe("flag can hook contained arg", func() {
+
+		DescribeTable("examples", func(pattern string) {
+			valueInit := &haveArgs{
+				Args: cli.Args("z", new(int)),
+			}
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: valueInit,
+						Uses: cli.Pipeline(
+							cli.ProvideValueInitializer(valueInit, "value", nil),
+							cli.HookBefore(pattern, cli.Data("ok", "4")),
+						),
+					},
+				},
+			}
+
+			_ = app.RunContext(context.Background(), []string{"app", "-f", "_"})
+			Expect(app.Flags[0].Value.(*haveArgs).LocalArgs()[0].Data).To(HaveKeyWithValue("ok", "4"))
+		},
+			Entry("direct name", "<z>"),
+			Entry("flag name", "-f <-value> <z>"),
+			Entry("full name", "* -f <-value> <z>"),
+			Entry("value initializer name", "<-value> <z>"),
+		)
+	})
+
 	DescribeTable("errors",
 		func(a *cli.App) {
 			err := a.RunContext(context.Background(), []string{"app", "-f", "_"})

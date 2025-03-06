@@ -132,7 +132,6 @@ type BindingLookup interface {
 
 type valueContext struct {
 	v      *valueTarget
-	name   string
 	lookup BindingLookup
 }
 
@@ -915,7 +914,7 @@ func (v *valueContext) lookupValue(name string) (interface{}, bool) {
 }
 
 func (v *valueContext) Name() string {
-	return "<-" + v.name + ">"
+	return "<-" + v.v.name + ">"
 }
 
 func checkSupportedFlagType(v any) error {

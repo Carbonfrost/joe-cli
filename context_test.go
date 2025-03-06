@@ -1265,10 +1265,18 @@ func parseBigFloat(s string) *big.Float {
 
 type haveArgs struct {
 	Args []*cli.Arg
+	Data map[string]any
 }
 
 func (a *haveArgs) LocalArgs() []*cli.Arg {
 	return a.Args
+}
+
+func (a *haveArgs) SetData(k string, v any) {
+	if a.Data == nil {
+		a.Data = map[string]any{}
+	}
+	a.Data[k] = v
 }
 
 func (*haveArgs) Set(string) error {

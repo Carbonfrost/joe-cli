@@ -33,6 +33,7 @@ import (
 // global behavior with the DisableAutoVisibility option.
 type Flag struct {
 	pipelinesSupport
+	hooksSupport
 
 	// Name provides the name of the flag. This value must be set, and it is used to access
 	// the flag's value via the context
@@ -157,6 +158,7 @@ type flagCategory struct {
 type option interface {
 	BindingState
 	target
+	hookable
 	Occurrences() int
 	Seen() bool
 	Set(any) error

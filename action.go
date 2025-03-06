@@ -123,6 +123,11 @@ type TransformFunc func(rawOccurrences []string) (interface{}, error)
 
 type hookable interface {
 	hook(at Timing, handler Action) error
+	executeInitializeHooks(context.Context) error
+	executeBeforeHooks(context.Context) error
+	executeAfterHooks(context.Context) error
+	valueTargets() []*valueTarget
+	addValueTarget(*valueTarget)
 }
 
 type target interface {
@@ -152,7 +157,8 @@ type target interface {
 }
 
 type hooksSupport struct {
-	hooks actionPipelines
+	hooks  actionPipelines
+	values []*valueTarget
 }
 
 type pipelinesSupport struct {
@@ -248,6 +254,11 @@ var (
 	triggerBeforeOptions = triggerOptionsHO(BeforeTiming, (*Context).executeBefore)
 	triggerAfterOptions  = triggerOptionsHO(AfterTiming, (*Context).executeAfter)
 
+	triggerBeforeValueTargets = triggerValueTargetsHO(BeforeTiming, (*Context).executeBefore)
+	triggerAfterValueTargets  = triggerValueTargetsHO(AfterTiming, (*Context).executeAfter)
+	triggerValueTargets       = triggerValueTargetsHO(ActionTiming, (*Context).executeSelf)
+	initializeValueTargets    = triggerValueTargetsHO(InitialTiming, (*Context).initialize)
+
 	// defaultCommand defines the flow for how a command is executed during the
 	// initialization and other pipeline stages.  (See also defaultOption.)
 	//
@@ -286,10 +297,12 @@ var (
 			actionFunc(ensureSubcommands),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
+			ActionFunc(initializeValueTargets),
 			ActionFunc(copyContextToParent),
 		),
 		Action: actions(
 			ActionFunc(triggerOptions),
+			ActionFunc(triggerValueTargets),
 			IfMatch(subcommandDidNotExecute,
 				actions(
 					executeDeferredPipeline(ActionTiming),
@@ -304,6 +317,7 @@ var (
 				executeDeferredPipeline(BeforeTiming),
 				executeUserPipeline(BeforeTiming),
 				ActionFunc(triggerBeforeOptions),
+				ActionFunc(triggerBeforeValueTargets),
 			),
 			nil,
 		},
@@ -311,6 +325,7 @@ var (
 			executeDeferredPipeline(AfterTiming),
 			executeUserPipeline(AfterTiming),
 			ActionFunc(triggerAfterOptions),
+			ActionFunc(triggerAfterValueTargets),
 			ActionFunc(failWithContextError),
 		),
 	}
@@ -326,12 +341,14 @@ var (
 			actionFunc(setupValueInitializer),
 			actionFunc(setupOptionFromEnv),
 			ActionFunc(fixupOptionInternals),
+			ActionFunc(initializeValueTargets),
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
 		),
 		Before: beforePipeline{
 			actualBeforeIndexBeforeTiming: actions(
 				executeDeferredPipeline(BeforeTiming),
 				executeUserPipeline(BeforeTiming),
+				ActionFunc(triggerBeforeValueTargets),
 			),
 			actualBeforeIndexJustBeforeTiming: actions(
 				ActionFunc(checkForRequiredOption),
@@ -339,10 +356,12 @@ var (
 		},
 		Action: actions(
 			actionFunc(executeOptionPipeline),
+			ActionFunc(triggerValueTargets),
 		),
 		After: actions(
 			executeDeferredPipeline(AfterTiming),
 			executeUserPipeline(AfterTiming),
+			ActionFunc(triggerAfterValueTargets),
 		),
 	}
 
@@ -1691,6 +1710,14 @@ func (i *hooksSupport) executeAfterHooks(target context.Context) error {
 
 func (i *hooksSupport) executeInitializeHooks(target context.Context) error {
 	return Do(target, i.hooks.Initializers)
+}
+
+func (i *hooksSupport) valueTargets() []*valueTarget {
+	return i.values
+}
+
+func (i *hooksSupport) addValueTarget(v *valueTarget) {
+	i.values = append(i.values, v)
 }
 
 func (s *pipelinesSupport) uses() *actionPipelines {

@@ -12,6 +12,7 @@ import (
 // Arg provides the representation of a positional argument.
 type Arg struct {
 	pipelinesSupport
+	hooksSupport
 
 	// Name provides the name of the argument. This value must be set, and it is used to access
 	// the argument's value via the context
@@ -469,9 +470,18 @@ func (o *optionContext) executeBefore(ctx context.Context) error {
 	return execute(ctx, defaultOption.Before)
 }
 
-func (o *optionContext) initializeDescendent(context.Context) error    { return nil }
-func (o *optionContext) executeBeforeDescendent(context.Context) error { return nil }
-func (o *optionContext) executeAfterDescendent(context.Context) error  { return nil }
+func (o *optionContext) initializeDescendent(ctx context.Context) error {
+	return o.option.executeInitializeHooks(ctx)
+}
+
+func (o *optionContext) executeBeforeDescendent(ctx context.Context) error {
+	return o.option.executeBeforeHooks(ctx)
+}
+
+func (o *optionContext) executeAfterDescendent(ctx context.Context) error {
+	return o.option.executeAfterHooks(ctx)
+}
+
 func (o *optionContext) executeAfter(ctx context.Context) error {
 	return execute(ctx, defaultOption.After)
 }
