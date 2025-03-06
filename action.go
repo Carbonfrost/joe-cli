@@ -166,6 +166,10 @@ type pipelinesSupport struct {
 	p actionPipelines
 }
 
+type internalFlagsSupport struct {
+	flags internalFlags
+}
+
 type actionPipelines struct {
 	Initializers Action // Must be strictly initializers (no automatic regrouping)
 	Before       beforePipeline
@@ -332,7 +336,6 @@ var (
 
 	defaultOption = actionPipelines{
 		Initializers: actions(
-			ActionFunc(setupInternalOption),
 			actionFunc(preventSetupIfPresent),
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
@@ -340,7 +343,6 @@ var (
 			ActionFunc(applyImplicitVisibility),
 			actionFunc(setupValueInitializer),
 			actionFunc(setupOptionFromEnv),
-			ActionFunc(fixupOptionInternals),
 			ActionFunc(initializeValueTargets),
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
 		),
@@ -1708,6 +1710,18 @@ func (s *pipelinesSupport) uses() *actionPipelines {
 
 func (s *pipelinesSupport) appendAction(t Timing, ah Action) {
 	s.p.add(t, ah)
+}
+
+func (i *internalFlagsSupport) setInternalFlags(f internalFlags, v bool) {
+	if v {
+		i.flags |= f
+	} else {
+		i.flags &= ^f
+	}
+}
+
+func (i *internalFlagsSupport) internalFlags() internalFlags {
+	return i.flags
 }
 
 func (m middlewareFunc) Execute(c context.Context) error {

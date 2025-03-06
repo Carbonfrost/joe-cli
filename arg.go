@@ -13,6 +13,7 @@ import (
 type Arg struct {
 	pipelinesSupport
 	hooksSupport
+	internalFlagsSupport
 
 	// Name provides the name of the argument. This value must be set, and it is used to access
 	// the argument's value via the context
@@ -117,7 +118,7 @@ type Arg struct {
 	// overview in cli.Transform for information.
 	Transform TransformFunc
 
-	internalOption
+	count int
 }
 
 //counterfeiter:generate . ArgCounter
@@ -281,27 +282,39 @@ func OptionalArg(fn func(string) bool) ArgCounter {
 
 // Occurrences counts the number of times that the argument has occurred on the command line
 func (a *Arg) Occurrences() int {
-	return a.internalOption.Occurrences()
+	return a.count
 }
 
 // Seen reports true if the argument is used at least once.
 func (a *Arg) Seen() bool {
-	return a.internalOption.Seen()
+	return a.count > 0
 }
 
 // Set will set the value of the argument
-func (a *Arg) Set(arg any) error {
-	return a.internalOption.Set(arg)
+func (a *Arg) Set(v any) error {
+	if arg, ok := v.(string); ok {
+		return setCore(a.Value, a.flags.disableSplitting(), arg)
+	}
+
+	return setDirect(a.Value, v)
 }
 
 // SetOccurrence will update the value of the arg
 func (a *Arg) SetOccurrence(values ...string) error {
-	return a.internalOption.SetOccurrence(values...)
+	return optionSetOccurrence(a, values...)
 }
 
 // SetOccurrenceData will update the value of the arg
 func (a *Arg) SetOccurrenceData(v any) error {
-	return a.internalOption.SetOccurrenceData(v)
+	a.nextOccur()
+	return SetData(a.Value, v)
+}
+
+func (a Arg) actualArgCounter() ArgCounter {
+	if a.NArg != nil {
+		return ArgCount(a.NArg)
+	}
+	return argCounterImpliedFromValue(a.Value, false)
 }
 
 // SetHidden causes the argument to be hidden from the help screen
@@ -348,7 +361,15 @@ func (a *Arg) category() string {
 
 func (a *Arg) value() interface{} {
 	_, multi := synopsis.ArgCounter(a.NArg)
-	a.Value = ensureDestination(a.Value, multi)
+	var created bool
+	a.Value, created = ensureDestination(a.Value, multi)
+	if created {
+		a.setInternalFlags(internalFlagDestinationImplicitlyCreated, true)
+	}
+
+	if _, ok := a.Value.(*string); ok {
+		a.setInternalFlags(internalFlagMerge, true)
+	}
 	return a.Value
 }
 
@@ -431,18 +452,6 @@ func (a *Arg) contextName() string {
 	return fmt.Sprintf("<%s>", a.Name)
 }
 
-func (a *Arg) ensureInternalOpt() {
-	var flags internalFlags
-	if a.Value == nil {
-		flags = internalFlagDestinationImplicitlyCreated
-	}
-	a.internalOption = internalOption{
-		narg:  a.NArg,
-		flags: flags,
-	}
-	a.internalOption.setValue(a.value())
-}
-
 func (a *Arg) setTransform(fn TransformFunc) {
 	a.Transform = fn
 }
@@ -460,6 +469,19 @@ func (a *Arg) completion() Completion {
 	}
 
 	return nil
+}
+
+func (a *Arg) cloneZero() {
+	a.Value = valueCloneZero(a.Value)
+}
+
+func (a *Arg) nextOccur() {
+	a.count++
+	optionApplyValueConventions(a.Value, a.flags, a.count == 1)
+}
+
+func (a *Arg) reset() {
+	optionReset(a.Value, a.internalFlags())
 }
 
 func (o *optionContext) initialize(c context.Context) error {
@@ -576,6 +598,16 @@ func (o *matchesArgsCounter) Take(arg string, possibleFlag bool) error {
 
 func (*matchesArgsCounter) Done() error {
 	return nil
+}
+
+func argCounterImpliedFromValue(value any, requireSeen bool) ArgCounter {
+	switch value := value.(type) {
+	case *[]string:
+		return ArgCount(TakeUntilNextFlag)
+	case valueProvidesCounter:
+		return value.NewCounter()
+	}
+	return &defaultCounter{requireSeen: requireSeen}
 }
 
 func findArgByName(items []*Arg, v interface{}) (*Arg, int, bool) {

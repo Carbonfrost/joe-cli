@@ -34,6 +34,7 @@ import (
 type Flag struct {
 	pipelinesSupport
 	hooksSupport
+	internalFlagsSupport
 
 	// Name provides the name of the flag. This value must be set, and it is used to access
 	// the flag's value via the context
@@ -145,7 +146,8 @@ type Flag struct {
 	// overview in cli.Transform for information.
 	Transform TransformFunc
 
-	internalOption
+	count         int
+	optionalValue interface{} // set when blank and optional
 }
 
 type flagsByCategory []*flagCategory
@@ -167,13 +169,14 @@ type option interface {
 	reset()
 	actualArgCounter() ArgCounter
 	transformFunc() TransformFunc
-	ensureInternalOpt()
 	contextName() string
 	value() interface{}
 	name() string
 	envVars() []string
 	filePath() string
 	setTransform(fn TransformFunc)
+	cloneZero()
+	nextOccur()
 }
 
 type wrapOccurrenceContext struct {
@@ -290,25 +293,12 @@ func (f *Flag) manualText() string {
 }
 
 func (f *Flag) setOptional() {
-	f.setOptionalValue(f.internalOption.smartOptionalDefault())
+	f.setOptionalValue(valueSmartOptionalDefault(f.Value))
 }
 
 func (f *Flag) setOptionalValue(v interface{}) {
 	f.setInternalFlags(internalFlagOptional, true)
-	f.internalOption.optionalValue = v
-}
-
-func (f *Flag) ensureInternalOpt() {
-	flags := internalFlagIsFlag
-	if f.Value == nil {
-		flags |= internalFlagDestinationImplicitlyCreated
-	}
-
-	p := f.value()
-	f.internalOption = internalOption{
-		flags: flags | isFlagType(p),
-	}
-	f.internalOption.setValue(f.value())
+	f.optionalValue = v
 }
 
 func (f *Flag) pipeline(t Timing) interface{} {
@@ -356,6 +346,21 @@ func (f *Flag) completion() Completion {
 	return nil
 }
 
+func (f *Flag) cloneZero() {
+	f.Value = valueCloneZero(f.Value)
+}
+
+func (f *Flag) reset() {
+	optionReset(f.Value, f.internalFlags())
+}
+
+func (f Flag) actualArgCounter() ArgCounter {
+	if f.flags.flagOnly() {
+		return NoArgs()
+	}
+	return argCounterImpliedFromValue(f.Value, !f.flags.optional())
+}
+
 func (c *wrapOccurrenceContext) rawOccurrences() [][]string {
 	return c.parentLookup.set().Bindings(c.option.name())
 }
@@ -390,12 +395,17 @@ func (c *wrapOccurrenceContext) lookupValue(name string) (interface{}, bool) {
 
 // Seen returns true if the flag was used on the command line at least once
 func (f *Flag) Seen() bool {
-	return f.internalOption.Seen()
+	return f.count > 0
 }
 
 // Occurrences returns the number of times the flag was specified on the command line
 func (f *Flag) Occurrences() int {
-	return f.internalOption.Occurrences()
+	return f.count
+}
+
+func (f *Flag) nextOccur() {
+	f.count++
+	optionApplyValueConventions(f.Value, f.flags, f.count == 1)
 }
 
 // ShortName gets the short name for the flag including the leading dash.  This is
@@ -446,17 +456,28 @@ func (f *Flag) Names() []string {
 
 // Set will update the value of the flag
 func (f *Flag) Set(arg any) error {
-	return f.internalOption.Set(arg)
+	if arg, ok := arg.(string); ok {
+		if trySetOptional(f.Value, func() (interface{}, bool) {
+			return f.optionalValue, (arg == "" && f.flags.optional())
+		}) {
+			return nil
+		}
+
+		return setCore(f.Value, f.flags.disableSplitting(), arg)
+	}
+
+	return setDirect(f.Value, arg)
 }
 
 // SetOccurrence will update the value of the flag
 func (f *Flag) SetOccurrence(values ...string) error {
-	return f.internalOption.SetOccurrence(values...)
+	return optionSetOccurrence(f, values...)
 }
 
 // SetOccurrenceData will update the value of the flag
 func (f *Flag) SetOccurrenceData(v any) error {
-	return f.internalOption.SetOccurrenceData(v)
+	f.nextOccur()
+	return SetData(f.Value, v)
 }
 
 func canonicalNames(name string, aliases []string) (long []string, short []rune) {
@@ -497,7 +518,12 @@ func (f *Flag) filePath() string {
 }
 
 func (f *Flag) value() interface{} {
-	f.Value = ensureDestination(f.Value, false)
+	var created bool
+	f.Value, created = ensureDestination(f.Value, false)
+	if created {
+		f.setInternalFlags(internalFlagDestinationImplicitlyCreated, true)
+	}
+	f.setInternalFlags(isFlagType(f.Value), true)
 	return f.Value
 }
 
@@ -554,14 +580,14 @@ func impliesValueFlagOnly(p interface{}) bool {
 	return false
 }
 
-func ensureDestination(dest any, multi bool) any {
+func ensureDestination(dest any, multi bool) (newValue any, created bool) {
 	if dest == nil {
 		if !multi {
-			return String()
+			return String(), true
 		}
-		return List()
+		return List(), true
 	}
-	return dest
+	return dest, false
 }
 
 func findFlagByName(items []*Flag, v any) (*Flag, int, bool) {

@@ -1960,11 +1960,6 @@ func applyImplicitVisibility(c *Context) error {
 	return nil
 }
 
-func setupInternalOption(c *Context) error {
-	c.option().ensureInternalOpt()
-	return nil
-}
-
 func preventSetupIfPresent(c context.Context) error {
 	// PreventSetup if specified must be handled before all other options
 	opts := FromContext(c).target().options()
@@ -2034,35 +2029,6 @@ func reverse(arr []string) []string {
 func setupValueInitializer(c context.Context) error {
 	if v, ok := FromContext(c).option().value().(valueInitializer); ok {
 		return Do(c, v.Initializer())
-	}
-	return nil
-}
-
-func fixupOptionInternals(c *Context) error {
-	// Because Uses pipeline could have changed Flag, copy flag internals again
-	switch o := c.target().(type) {
-	case *Flag:
-		p := o.value()
-		if o.Value != nil && p != o.internalOption.p {
-			o.setValue(p)
-			o.setInternalFlags(isFlagType(p), true)
-		}
-	case *Arg:
-		if o.internalOption.narg != o.NArg {
-			if o.internalFlags().destinationImplicitlyCreated() {
-				o.Value = nil
-			}
-			o.internalOption.narg = o.NArg
-		}
-
-		p := o.value()
-		if o.Value != nil && p != o.internalOption.p {
-			o.setValue(p)
-		}
-
-		if _, ok := o.Value.(*string); ok {
-			o.setInternalFlags(internalFlagMerge, true)
-		}
 	}
 	return nil
 }

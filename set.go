@@ -29,14 +29,6 @@ type argBinding struct {
 
 type argList []string
 
-type internalOption struct {
-	p             any
-	count         int
-	narg          interface{}
-	optionalValue interface{} // set when blank and optional
-	flags         internalFlags
-}
-
 type argCountError int
 type parserState int
 
@@ -692,82 +684,6 @@ func allowFlag(arg string, possibleFlag bool) bool {
 		return false
 	}
 	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
-}
-
-func (o *internalOption) Seen() bool {
-	return o.count > 0
-}
-
-func (o *internalOption) Set(v any) error {
-	if arg, ok := v.(string); ok {
-		if trySetOptional(o.p, func() (interface{}, bool) {
-			return o.optionalValue, (arg == "" && o.flags.optional())
-		}) {
-			return nil
-		}
-
-		return setCore(o.p, o.flags.disableSplitting(), arg)
-	}
-
-	return setDirect(o.p, v)
-}
-
-func (o *internalOption) SetOccurrenceData(v any) error {
-	o.nextOccur()
-	return SetData(o.p, v)
-}
-
-func (o *internalOption) SetOccurrence(values ...string) error {
-	o.nextOccur()
-	for _, arg := range values {
-		err := o.Set(arg)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (o *internalOption) nextOccur() {
-	o.count++
-	o.applyValueConventions(o.flags, o.count == 1)
-}
-
-func (o *internalOption) Occurrences() int {
-	return o.count
-}
-
-func (o internalOption) internalFlags() internalFlags {
-	return o.flags
-}
-
-func (o *internalOption) setInternalFlags(i internalFlags, v bool) {
-	if v {
-		o.flags |= i
-	} else {
-		o.flags &= ^i
-	}
-}
-
-func (o internalOption) actualArgCounter() ArgCounter {
-	if o.flags.flagOnly() {
-		return NoArgs()
-	}
-	if o.narg == nil {
-		if o.p != nil {
-			switch value := o.p.(type) {
-			case *[]string:
-				return ArgCount(TakeUntilNextFlag)
-			case valueProvidesCounter:
-				return value.NewCounter()
-			}
-		}
-
-		return &defaultCounter{
-			requireSeen: o.flags.isFlag() && !o.flags.optional(),
-		}
-	}
-	return ArgCount(o.narg)
 }
 
 var _ lookupCore = (*set)(nil)

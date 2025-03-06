@@ -782,92 +782,6 @@ func (v *valuePairCounter) Take(arg string, _ bool) error {
 	return errors.New("too many arguments to filter")
 }
 
-func (o *internalOption) reset() {
-	// Unless merge was explicitly requested, resetting the option does not apply merge rules
-	flags := o.internalFlags()
-	if !flags.mergeExplicitlyRequested() {
-		flags &^= internalFlagMerge
-	}
-	o.applyValueConventions(flags, true)
-}
-
-func (o *internalOption) applyValueConventions(flags internalFlags, firstOccur bool) {
-	resetOnFirstOccur := !flags.merge()
-	if !firstOccur {
-		// string will reset on every occurrence unless Merge is turned on
-		if resetOnFirstOccur {
-			switch p := o.p.(type) {
-			case *string:
-				*p = ""
-			case valueResetOrMerge:
-				p.Reset()
-			}
-		}
-		return
-	}
-
-	if flags.disableSplitting() {
-		if i, ok := o.p.(valueDisableSplitting); ok {
-			i.DisableSplitting()
-		}
-	}
-
-	if resetOnFirstOccur {
-		switch p := o.p.(type) {
-		case valueResetOrMerge:
-			p.Reset()
-
-		case *string:
-			*p = ""
-
-		case *[]string:
-			*p = nil
-
-		case *[]*NameValue:
-			*p = []*NameValue{}
-
-		case *map[string]string:
-			*p = map[string]string{}
-		}
-	}
-}
-
-func (o *internalOption) smartOptionalDefault() interface{} {
-	switch o.p.(type) {
-	case *bool:
-		return true
-	case *int:
-		return int(1)
-	case *int8:
-		return int8(1)
-	case *int16:
-		return int16(1)
-	case *int32:
-		return int32(1)
-	case *int64:
-		return int64(1)
-	case *uint:
-		return uint(1)
-	case *uint8:
-		return uint8(1)
-	case *uint16:
-		return uint16(1)
-	case *uint32:
-		return uint32(1)
-	case *uint64:
-		return uint64(1)
-	case *float32:
-		return float32(1)
-	case *float64:
-		return float64(1)
-	case *time.Duration:
-		return time.Second
-	case *net.IP:
-		return net.ParseIP("127.0.0.1")
-	}
-	return nil
-}
-
 func (*valueContext) initialize(c context.Context) error {
 	return execute(c, defaultValue.Initializers)
 }
@@ -955,78 +869,6 @@ func checkSupportedFlagType(v any) error {
 	return fmt.Errorf("unsupported flag type: %T", v)
 }
 
-func (o *internalOption) setValue(v any) any {
-	if err := checkSupportedFlagType(v); err != nil {
-		panic(err)
-	}
-	o.p = v
-	return v
-}
-
-// cloneZero creates a clone with the same type
-func (o *internalOption) cloneZero() any {
-	return o.setValue(func() interface{} {
-		switch val := o.p.(type) {
-		case *bool:
-			return Bool()
-		case *string:
-			return String()
-		case *[]string:
-			return List()
-		case *int:
-			return Int()
-		case *int8:
-			return Int8()
-		case *int16:
-			return Int16()
-		case *int32:
-			return Int32()
-		case *int64:
-			return Int64()
-		case *uint:
-			return Uint()
-		case *uint8:
-			return Uint8()
-		case *uint16:
-			return Uint16()
-		case *uint32:
-			return Uint32()
-		case *uint64:
-			return Uint64()
-		case *float32:
-			return Float32()
-		case *float64:
-			return Float64()
-		case *time.Duration:
-			return Duration()
-		case *map[string]string:
-			return Map()
-		case *[]*NameValue:
-			return NameValues()
-		case **url.URL:
-			return URL()
-		case *net.IP:
-			return IP()
-		case **regexp.Regexp:
-			return Regexp()
-		case **big.Int:
-			return BigInt()
-		case **big.Float:
-			return BigFloat()
-		case *[]byte:
-			return Bytes()
-		case valueResetOrMerge:
-			r := reflect.ValueOf(val).MethodByName("Copy")
-			if r.IsValid() {
-				res := r.Call(nil)[0].Interface()
-				res.(valueResetOrMerge).Reset()
-				return res
-			}
-		}
-		panic(fmt.Sprintf("unsupported flag type for copying: %T", o.p))
-	}())
-}
-
 func dereference(v any) any {
 	if _, ok := v.(Value); ok {
 		if d, ok := v.(valueDereference); ok {
@@ -1068,6 +910,164 @@ func splitValuePair(arg string) (k, v string, hasValue bool) {
 		return a[0], "true", false
 	}
 	return a[0], a[1], true
+}
+
+func optionReset(p any, flags internalFlags) {
+	// Unless merge was explicitly requested, resetting the option does not apply merge rules
+	if !flags.mergeExplicitlyRequested() {
+		flags &^= internalFlagMerge
+	}
+	optionApplyValueConventions(p, flags, true)
+}
+
+func optionApplyValueConventions(p any, flags internalFlags, firstOccur bool) {
+	resetOnFirstOccur := !flags.merge()
+	if !firstOccur {
+		// string will reset on every occurrence unless Merge is turned on
+		if resetOnFirstOccur {
+			switch p := p.(type) {
+			case *string:
+				*p = ""
+			case valueResetOrMerge:
+				p.Reset()
+			}
+		}
+		return
+	}
+
+	if flags.disableSplitting() {
+		if i, ok := p.(valueDisableSplitting); ok {
+			i.DisableSplitting()
+		}
+	}
+
+	if resetOnFirstOccur {
+		switch p := p.(type) {
+		case valueResetOrMerge:
+			p.Reset()
+
+		case *string:
+			*p = ""
+
+		case *[]string:
+			*p = nil
+
+		case *[]*NameValue:
+			*p = []*NameValue{}
+
+		case *map[string]string:
+			*p = map[string]string{}
+		}
+	}
+}
+
+func optionSetOccurrence(o option, values ...string) error {
+	o.nextOccur()
+	for _, arg := range values {
+		err := o.Set(arg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// valueCloneZero creates a clone with the same type
+func valueCloneZero(p any) any {
+	switch val := p.(type) {
+	case *bool:
+		return Bool()
+	case *string:
+		return String()
+	case *[]string:
+		return List()
+	case *int:
+		return Int()
+	case *int8:
+		return Int8()
+	case *int16:
+		return Int16()
+	case *int32:
+		return Int32()
+	case *int64:
+		return Int64()
+	case *uint:
+		return Uint()
+	case *uint8:
+		return Uint8()
+	case *uint16:
+		return Uint16()
+	case *uint32:
+		return Uint32()
+	case *uint64:
+		return Uint64()
+	case *float32:
+		return Float32()
+	case *float64:
+		return Float64()
+	case *time.Duration:
+		return Duration()
+	case *map[string]string:
+		return Map()
+	case *[]*NameValue:
+		return NameValues()
+	case **url.URL:
+		return URL()
+	case *net.IP:
+		return IP()
+	case **regexp.Regexp:
+		return Regexp()
+	case **big.Int:
+		return BigInt()
+	case **big.Float:
+		return BigFloat()
+	case *[]byte:
+		return Bytes()
+	case valueResetOrMerge:
+		r := reflect.ValueOf(val).MethodByName("Copy")
+		if r.IsValid() {
+			res := r.Call(nil)[0].Interface()
+			res.(valueResetOrMerge).Reset()
+			return res
+		}
+	}
+	panic(fmt.Sprintf("unsupported flag type for copying: %T", p))
+}
+
+func valueSmartOptionalDefault(v any) any {
+	switch v.(type) {
+	case *bool:
+		return true
+	case *int:
+		return int(1)
+	case *int8:
+		return int8(1)
+	case *int16:
+		return int16(1)
+	case *int32:
+		return int32(1)
+	case *int64:
+		return int64(1)
+	case *uint:
+		return uint(1)
+	case *uint8:
+		return uint8(1)
+	case *uint16:
+		return uint16(1)
+	case *uint32:
+		return uint32(1)
+	case *uint64:
+		return uint64(1)
+	case *float32:
+		return float32(1)
+	case *float64:
+		return float64(1)
+	case *time.Duration:
+		return time.Second
+	case *net.IP:
+		return net.ParseIP("127.0.0.1")
+	}
+	return nil
 }
 
 var (

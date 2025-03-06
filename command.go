@@ -18,6 +18,7 @@ import (
 type Command struct {
 	hooksSupport
 	pipelinesSupport
+	internalFlagsSupport
 
 	// Name of the command
 	Name string
@@ -87,7 +88,6 @@ type Command struct {
 	// the completion present there
 	Completion Completion
 
-	flags   internalFlags
 	fromApp *App
 	ifRoot  *rootCommandData
 }
@@ -563,18 +563,6 @@ func (c *Command) category() string {
 
 func (c *Command) data() map[string]any {
 	return c.Data
-}
-
-func (c *Command) setInternalFlags(f internalFlags, v bool) {
-	if v {
-		c.flags |= f
-	} else {
-		c.flags &= ^f
-	}
-}
-
-func (c *Command) internalFlags() internalFlags {
-	return c.flags
 }
 
 func (c *Command) rootData() *rootCommandData {

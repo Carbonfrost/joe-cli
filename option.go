@@ -206,7 +206,6 @@ const (
 	internalFlagMerge
 	internalFlagMergeExplicitlyRequested // only set when the user sets Options: cli.Merge explicitly
 	internalFlagRightToLeft
-	internalFlagIsFlag     // true when a flag (rather than an argument)
 	internalFlagFlagOnly   // true for Flag without an argument
 	internalFlagOptional   // true if value is optional
 	internalFlagPersistent // true when the option is a clone of a persistent parent flag
@@ -375,10 +374,6 @@ func (f internalFlags) rightToLeft() bool {
 
 func (f internalFlags) flagOnly() bool {
 	return f&internalFlagFlagOnly == internalFlagFlagOnly
-}
-
-func (f internalFlags) isFlag() bool {
-	return f&internalFlagIsFlag == internalFlagIsFlag
 }
 
 func (f internalFlags) optional() bool {
@@ -559,15 +554,6 @@ func noOption(c *Context) error {
 func eachOccurrenceOpt(c1 *Context) error {
 	return c1.At(ActionTiming, middlewareFunc(func(c *Context, next Action) error {
 		opt := c.option()
-		internal := func() *internalOption {
-			switch o := c.option().(type) {
-			case *Flag:
-				return &o.internalOption
-			case *Arg:
-				return &o.internalOption
-			}
-			return nil
-		}()
 		mini := &wrapOccurrenceContext{
 			optionContext: c.internal.(*optionContext),
 		}
@@ -575,13 +561,13 @@ func eachOccurrenceOpt(c1 *Context) error {
 		scope := c.copy(mini)
 
 		// Obtain either the zero value or Reset() the value
-		resetOnFirstOccur := !c.option().internalFlags().merge()
+		resetOnFirstOccur := !opt.internalFlags().merge()
 		for i := 0; i < mini.numOccurs(); i++ {
 
 			// Create a copy of the value on each occurrence (unless merge semantics
 			// are in place)
 			if i == 0 || resetOnFirstOccur {
-				internal.cloneZero()
+				opt.cloneZero()
 			}
 
 			mini.index = i
@@ -602,7 +588,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 					return err
 				}
 			}
-			mini.val = internal.p
+			mini.val = c.option().value()
 
 			if err := next.Execute(scope); err != nil {
 				return err
