@@ -42,6 +42,7 @@ var _ = Describe("Option", func() {
 			Entry("ImpliedAction", cli.ImpliedAction, "IMPLIED_ACTION"),
 			Entry("Visible", cli.Visible, "VISIBLE"),
 			Entry("DisableAutoVisibility", cli.DisableAutoVisibility, "DISABLE_AUTO_VISIBILITY"),
+			Entry("Trigger", cli.Trigger, "TRIGGER"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 

@@ -180,6 +180,12 @@ const (
 	// used on commands to prevent the behavior for sub-commands and flags.
 	DisableAutoVisibility
 
+	// Trigger marks a flag or arg action to be triggered. Generally,
+	// a flag or arg Action is only triggered if it is set or if it or its
+	// parent command is marked with ImpliedAction. To mark the Action to be triggered for some
+	// other reason, you can use this action.
+	Trigger
+
 	maxOption
 
 	// None represents no options
@@ -215,6 +221,7 @@ const (
 	internalFlagTaintSetup
 	internalFlagDisableAutoVisibility
 	internalFlagVisibleExplicitlyRequested
+	internalFlagTriggerRequested
 )
 
 var (
@@ -242,6 +249,7 @@ var (
 		SortedCommands:         Before(ActionFunc(sortedCommandsOpt)),
 		SortedExprs:            Before(ActionFunc(sortedExprsOpt)),
 		ImpliedAction:          setInternalFlag(internalFlagImpliedAction),
+		Trigger:                setInternalFlag(internalFlagTriggerRequested),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -268,6 +276,7 @@ var (
 		ImpliedAction:          "IMPLIED_ACTION",
 		Visible:                "VISIBLE",
 		DisableAutoVisibility:  "DISABLE_AUTO_VISIBILITY",
+		Trigger:                "TRIGGER",
 	}
 )
 
@@ -418,6 +427,10 @@ func (f internalFlags) disableAutoVisibility() bool {
 
 func (f internalFlags) visibleExplicitlyRequested() bool {
 	return f&internalFlagVisibleExplicitlyRequested == internalFlagVisibleExplicitlyRequested
+}
+
+func (f internalFlags) triggerRequested() bool {
+	return f&internalFlagTriggerRequested == internalFlagTriggerRequested
 }
 
 func (f internalFlags) toRaw() RawParseFlag {

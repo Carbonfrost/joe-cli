@@ -857,6 +857,26 @@ var _ = Describe("Required", func() {
 	})
 })
 
+var _ = Describe("Trigger", func() {
+
+	It("invokes the action regardless of not being used", func() {
+		fakeAct := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Value:   new(string),
+					Options: cli.Trigger,
+					Action:  fakeAct,
+				},
+			},
+			Action: func() {},
+		}
+		_ = app.RunContext(context.TODO(), []string{"app"})
+		Expect(fakeAct.ExecuteCallCount()).To(Equal(1))
+	})
+})
+
 var _ = Describe("ValidatorFunc", func() {
 	It("invokes the function", func() {
 		e := fmt.Errorf("validator err")

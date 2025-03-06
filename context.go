@@ -1265,6 +1265,14 @@ func (c *Context) AutodetectColor() {
 	c.Stdout.ResetColorCapable()
 }
 
+// Trigger marks a flag or arg action to be triggered. Generally,
+// a flag or arg Action is only triggered if it is set or if it or its
+// parent command is marked with ImpliedAction. To mark the Action to be triggered for some
+// other reason, you can use this action.
+func (c *Context) Trigger() error {
+	return Do(c, Trigger)
+}
+
 // ProvideValueInitializer causes an additional child context to be created
 // which is used to initialize an arbitrary value.  Typically, the value is
 // the value of the flag or arg.  Indeed, a pattern is to expose this action as
@@ -2007,6 +2015,9 @@ func triggerOption(ctx *Context, f option) error {
 }
 
 func hasSeenImplied(f option, parent target) bool {
+	if f.internalFlags().triggerRequested() {
+		return true
+	}
 	if f.internalFlags().seenImplied() {
 		return f.internalFlags().impliedAction() || parent.internalFlags().impliedAction()
 	}
