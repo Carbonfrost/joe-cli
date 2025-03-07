@@ -385,33 +385,7 @@ func (s *set) BindingNames() []string {
 }
 
 func rawApply(bindings BindingMap, binding Binding) error {
-	for name, v := range bindings {
-		transform, _, value, ok := binding.LookupOption(name)
-		if !ok {
-			continue
-		}
-
-		if transform != nil {
-			for _, values := range v {
-				d, err := transform(values)
-				if err != nil {
-					return err
-				}
-				if err := value.SetOccurrenceData(d); err != nil {
-					return err
-				}
-			}
-			continue
-		}
-
-		for _, values := range v {
-			err := value.SetOccurrence(values[1:]...)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return bindings.ApplyTo(binding)
 }
 
 func (s *set) parseBindings(args argList, flags RawParseFlag) error {
@@ -532,12 +506,48 @@ func (m BindingMap) lookup(name string, occurs bool) []string {
 	return res
 }
 
+// Raw obtains values which were specified for a flag or arg
+// including the flag or arg name
 func (m BindingMap) Raw(name string) []string {
 	return m.lookup(name, false)
 }
 
+// RawOccurrences obtains values which were specified for a flag or arg
+// but not including the flag or arg name
 func (m BindingMap) RawOccurrences(name string) []string {
 	return m.lookup(name, true)
+}
+
+// ApplyTo uses the given binding to apply the values in the
+// map
+func (m BindingMap) ApplyTo(b Binding) error {
+	for name, v := range m {
+		transform, _, value, ok := b.LookupOption(name)
+		if !ok {
+			continue
+		}
+
+		if transform != nil {
+			for _, values := range v {
+				d, err := transform(values)
+				if err != nil {
+					return err
+				}
+				if err := value.SetOccurrenceData(d); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+
+		for _, values := range v {
+			err := value.SetOccurrence(values[1:]...)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (a *argList) next() bool {
