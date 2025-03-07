@@ -689,7 +689,7 @@ func (c *commandContext) execute(ctx context.Context) error {
 }
 
 func (c *commandContext) lookupBinding(name string, occurs bool) []string {
-	return c.flagSet.bindings.lookup(name, occurs)
+	return c.flagSet.BindingMap.lookup(name, occurs)
 }
 func (c *commandContext) set() BindingLookup {
 	return c.flagSet

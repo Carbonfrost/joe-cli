@@ -183,7 +183,7 @@ func (c *Context) parse(args []string) *robustParseResult {
 
 	flags := root.internalFlags().toRaw() | RawSkipProgramName
 	err := set.parse(args, flags)
-	return &robustParseResult{bindings: set.bindings, err: err}
+	return &robustParseResult{bindings: set.BindingMap, err: err}
 }
 
 func (c *Context) Deadline() (deadline time.Time, ok bool) {

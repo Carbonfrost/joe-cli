@@ -11,7 +11,7 @@ type BindingMap map[string][][]string
 type set struct {
 	*lookupSupport
 	*bindingImpl
-	bindings BindingMap
+	BindingMap
 }
 
 type bindingImpl struct {
@@ -82,7 +82,7 @@ func newSet() *set {
 
 			positionalOptions: []string{},
 		},
-		bindings: BindingMap{},
+		BindingMap: BindingMap{},
 	}
 	result.lookupSupport = &lookupSupport{result}
 	return result
@@ -358,30 +358,7 @@ func (s *set) parse(args argList, flags RawParseFlag) error {
 	if err != nil {
 		return err
 	}
-	return rawApply(s.bindings, s)
-}
-
-func (s *set) Raw(name string) []string {
-	return s.bindings.Raw(name)
-}
-
-func (s *set) RawOccurrences(name string) []string {
-	return s.bindings.RawOccurrences(name)
-}
-
-func (s *set) Bindings(name string) [][]string {
-	return s.bindings[name]
-}
-
-func (s *set) BindingNames() []string {
-	keys := make([]string, 0, len(s.bindings))
-	for k := range s.bindings {
-		if k == "" {
-			continue
-		}
-		keys = append(keys, k)
-	}
-	return keys
+	return s.BindingMap.ApplyTo(s)
 }
 
 func rawApply(bindings BindingMap, binding Binding) error {
@@ -390,7 +367,7 @@ func rawApply(bindings BindingMap, binding Binding) error {
 
 func (s *set) parseBindings(args argList, flags RawParseFlag) error {
 	bindings, err := RawParse(args, s.bindingImpl, flags)
-	s.bindings = bindings
+	s.BindingMap = bindings
 	return err
 }
 
@@ -532,6 +509,25 @@ func (m BindingMap) ApplyTo(b Binding) error {
 		}
 	}
 	return nil
+}
+
+// Bindings obtains values which were specified for a flag or arg
+// including the flag or arg name and grouped into occurrences.
+func (m BindingMap) Bindings(name string) [][]string {
+	return m[name]
+}
+
+// BindingNames obtains the names of the flags/args which are available.
+// Even if it is available, the empty string "" is not returned from this list.
+func (m BindingMap) BindingNames() []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		if k == "" {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func rawApplyToOption(v [][]string, transform TransformFunc, value BindingState) error {

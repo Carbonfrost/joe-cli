@@ -501,7 +501,7 @@ func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) er
 		a.reset()
 	}
 
-	err := rawApply(b.set.bindings, b.set)
+	err := rawApply(b.set.BindingMap, b.set)
 	if err != nil {
 		return err
 	}
@@ -611,7 +611,7 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, error
 		boundExpr := newBoundExpr(expr)
 		results = append(results, boundExpr)
 		bin, err := RawParse(args, boundExpr.set, boundExpr.expr.internalFlags().toRaw())
-		boundExpr.set.bindings = bin
+		boundExpr.set.BindingMap = bin
 
 		var pe *ParseError
 		if err != nil {
