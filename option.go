@@ -562,7 +562,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 
 		// Obtain either the zero value or Reset() the value
 		resetOnFirstOccur := !opt.internalFlags().merge()
-		for i := 0; i < mini.numOccurs(); i++ {
+		for i := range mini.numOccurs() {
 
 			// Create a copy of the value on each occurrence (unless merge semantics
 			// are in place)
@@ -575,19 +575,14 @@ func eachOccurrenceOpt(c1 *Context) error {
 			// Pretend this is the first occurrence
 			opt.reset()
 
-			if opt.transformFunc() != nil {
-				d, err := opt.transformFunc()(mini.lookupBinding("", false))
-				if err != nil {
-					return err
-				}
-				if err := opt.SetOccurrenceData(d); err != nil {
-					return err
-				}
-			} else {
-				if err := opt.SetOccurrence(mini.current()...); err != nil {
-					return err
-				}
+			if err := rawApplyToOption(
+				[][]string{mini.lookupBinding("", false)},
+				opt.transformFunc(),
+				opt,
+			); err != nil {
+				return err
 			}
+
 			mini.val = c.option().value()
 
 			if err := next.Execute(scope); err != nil {

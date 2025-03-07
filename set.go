@@ -526,25 +526,32 @@ func (m BindingMap) ApplyTo(b Binding) error {
 		if !ok {
 			continue
 		}
-
-		if transform != nil {
-			for _, values := range v {
-				d, err := transform(values)
-				if err != nil {
-					return err
-				}
-				if err := value.SetOccurrenceData(d); err != nil {
-					return err
-				}
-			}
-			continue
+		err := rawApplyToOption(v, transform, value)
+		if err != nil {
+			return err
 		}
+	}
+	return nil
+}
 
+func rawApplyToOption(v [][]string, transform TransformFunc, value BindingState) error {
+	if transform != nil {
 		for _, values := range v {
-			err := value.SetOccurrence(values[1:]...)
+			d, err := transform(values)
 			if err != nil {
 				return err
 			}
+			if err := value.SetOccurrenceData(d); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, values := range v {
+		err := value.SetOccurrence(values[1:]...)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

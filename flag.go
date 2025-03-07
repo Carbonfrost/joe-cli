@@ -365,10 +365,6 @@ func (c *wrapOccurrenceContext) rawOccurrences() [][]string {
 	return c.parentLookup.set().Bindings(c.option.name())
 }
 
-func (c *wrapOccurrenceContext) current() []string {
-	return c.lookupBinding("", true)
-}
-
 func (c *wrapOccurrenceContext) numOccurs() int {
 	return len(c.rawOccurrences())
 }
