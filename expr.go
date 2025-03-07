@@ -97,9 +97,8 @@ type Expr struct {
 // Expression provides the parsed result of the expression that can be evaluated
 // with the given inputs.
 type Expression struct {
-	boundContext *Context // where the expr pipeline was bound (should be "<expression>" argument)
-	items        []ExprBinding
-	args         []string
+	items []ExprBinding
+	args  []string
 
 	// Exprs identifies the expression operators that are allowed
 	Exprs []*Expr
@@ -129,10 +128,6 @@ type exprFlags int
 // Yielder provides the signature of the function used to yield
 // values to the expression pipeline
 type Yielder func(interface{}) error
-
-type exprPipelineFactory struct {
-	exprs map[string]*Expr
-}
 
 type boundExpr struct {
 	*set
@@ -164,33 +159,27 @@ func newBoundExpr(e *Expr) *boundExpr {
 // argument is used to determine which expressions to used.  If nil, the default behavior
 // is used which is to lookup Command.Exprs from the context
 func (e *Expression) Initializer() Action {
-	return ActionOf(func(c *Context) error {
-		arg := c.Arg()
-		if arg.Name == "" {
-			arg.Name = "expression"
-		}
-		arg.UsageText = "<expression>"
-		arg.NArg = -1
-		arg.Action = Pipeline(arg.Action, func(c *Context) error {
-			pipe := c.Value("").(*Expression)
-			fac := newExprPipelineFactory(e.Exprs)
-			return pipe.applyFactory(fac)
-		})
-		arg.Description = c.Template("Expressions").BindFunc(e.descriptionData)
-		e.boundContext = c
+	return Pipeline(&Prototype{
+		Name:      "expression",
+		UsageText: "<expression>",
+		NArg:      TakeRemaining,
+	}, func(c *Context) error {
+		return c.SetDescription(c.Template("Expressions").BindFunc(e.descriptionData))
 
+	}, func(c *Context) error {
 		for _, sub := range e.Exprs {
-			err := c.ProvideValueInitializer(sub, sub.Name, Setup{
+			_ = c.ProvideValueInitializer(sub, sub.Name, Setup{
 				Uses:   sub.Uses,
 				Before: sub.Before,
 				After:  sub.After,
 			})
-			if err != nil {
-				return err
-			}
 		}
 		return nil
-	})
+
+	}, At(ActionTiming, ActionFunc(func(c *Context) (err error) {
+		e.items, err = parseExpressions(e.Exprs, e.args)
+		return
+	})))
 }
 
 func (e *Expression) descriptionData() interface{} {
@@ -362,19 +351,6 @@ func groupExprsByCategory(exprs []*Expr) exprsByCategory {
 		cc.Exprs = append(cc.Exprs, e)
 	}
 	sort.Sort(res)
-	return res
-}
-
-func newExprPipelineFactory(exprs []*Expr) *exprPipelineFactory {
-	res := &exprPipelineFactory{
-		exprs: map[string]*Expr{},
-	}
-	for _, e := range exprs {
-		res.exprs[e.Name] = e
-		for _, alias := range e.Aliases {
-			res.exprs[alias] = e
-		}
-	}
 	return res
 }
 
@@ -612,13 +588,21 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func (e *exprPipelineFactory) parse(args []string) ([]ExprBinding, error) {
+func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, error) {
+	exprs := map[string]*Expr{}
+	for _, e := range exprOperands {
+		exprs[e.Name] = e
+		for _, alias := range e.Aliases {
+			exprs[alias] = e
+		}
+	}
+
 	results := make([]ExprBinding, 0)
 	for len(args) > 0 {
 		arg := args[0]
 		args = args[1:]
 
-		expr, ok := e.exprs[arg[1:]]
+		expr, ok := exprs[arg[1:]]
 		if !ok {
 			return nil, unknownExpr(arg)
 		}
@@ -648,12 +632,6 @@ func (e *exprPipelineFactory) parse(args []string) ([]ExprBinding, error) {
 		}
 	}
 	return results, nil
-}
-
-func (e *Expression) applyFactory(fac *exprPipelineFactory) error {
-	exprs, err := fac.parse(e.args)
-	e.items = exprs
-	return err
 }
 
 func (b *exprBinding) Expr() *Expr {
