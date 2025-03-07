@@ -796,4 +796,3 @@ func triggerRobustParsingAndCompletion(ctx context.Context) error {
 
 var _ target = (*Command)(nil)
 var _ hookable = (*Command)(nil)
-var _ internalCommandContext = (*commandContext)(nil)

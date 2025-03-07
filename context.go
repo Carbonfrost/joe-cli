@@ -66,12 +66,8 @@ type internalContext interface {
 	executeAfterDescendent(context.Context) error
 	execute(context.Context) error
 	target() target // *Command, *Arg, *Flag, or *Expr
-	Name() string
-}
-
-type internalCommandContext interface {
-	internalContext
 	set() BindingLookup
+	Name() string
 }
 
 type parentLookup struct {
@@ -678,10 +674,7 @@ func (c *Context) BindingLookup() BindingLookup {
 	if c == nil {
 		return nil
 	}
-	if cc, ok := c.internal.(internalCommandContext); ok {
-		return cc.set()
-	}
-	return c.Parent().BindingLookup()
+	return c.internal.set()
 }
 
 // LookupData gets the data matching the key, including recursive traversal
@@ -1511,7 +1504,7 @@ func (c *Context) commandContext(cmd *Command) *Context {
 func (c *Context) optionContext(opt option) *Context {
 	return c.copy(&optionContext{
 		option:       opt,
-		parentLookup: c.internal.(internalCommandContext),
+		parentLookup: c.internal,
 	})
 }
 

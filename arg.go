@@ -156,7 +156,7 @@ type argCounterUsage interface {
 
 type optionContext struct {
 	option       option
-	parentLookup internalCommandContext
+	parentLookup internalContext
 }
 
 type discreteCounter struct {
@@ -518,6 +518,9 @@ func (o *optionContext) lookupBinding(name string, occurs bool) []string {
 		return o.parentLookup.set().RawOccurrences(o.option.name())
 	}
 	return o.parentLookup.lookupBinding(o.option.name(), occurs)
+}
+func (o *optionContext) set() BindingLookup {
+	return o.parentLookup.set()
 }
 
 func (o *optionContext) target() target { return o.option }

@@ -1071,7 +1071,7 @@ func valueSmartOptionalDefault(v any) any {
 }
 
 var (
-	_ internalCommandContext   = (*valueContext)(nil)
+	_ internalContext          = (*valueContext)(nil)
 	_ encoding.TextUnmarshaler = (*Octal)(nil)
 	_ encoding.TextUnmarshaler = (*Hex)(nil)
 	_ ValueReader              = (*jsonValue)(nil)
