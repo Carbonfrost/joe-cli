@@ -103,16 +103,91 @@ var _ = Describe("Expr", func() {
 		args, _ := cli.Split("app -- -expr true")
 		err := app.RunContext(context.TODO(), args)
 		Expect(err).NotTo(HaveOccurred())
-
-		captured := cli.FromContext(appAct.ExecuteArgsForCall(0))
-		captured.Expression("expression").Evaluate(captured, 0)
-
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
-		captured = cli.FromContext(act.ExecuteArgsForCall(0))
+		captured := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(captured.Value("")).To(Equal(true))
 		Expect(captured.Command().Name).To(Equal("app"))
-		Expect(captured.Path().String()).To(Equal("app <-expr> <a>"))
+		Expect(captured.Path().String()).To(Equal("app <expression> <-expr> <a>"))
+	})
+
+	It("the action on the arg can resolve peer values", func() {
+		act := new(joeclifakes.FakeAction)
+		appAct := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Value: &cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name: "expr",
+								Args: []*cli.Arg{
+									{
+										Name:   "a",
+										Value:  cli.Bool(),
+										Action: act,
+									},
+									{
+										Name:  "b",
+										Value: cli.String(),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Action: appAct,
+		}
+		args, _ := cli.Split("app -- -expr true blood")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+
+		captured := cli.FromContext(act.ExecuteArgsForCall(0))
+		Expect(captured.Value("b")).To(Equal("blood"))
+	})
+
+	It("invokes the action on the arg on each occurrence", func() {
+		act := new(joeclifakes.FakeAction)
+		data := []int{}
+		act.ExecuteCalls(func(ctx context.Context) error {
+			c := cli.FromContext(ctx)
+			data = append(data, c.Int(""))
+			return nil
+		})
+		appAct := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Value: &cli.Expression{
+						Exprs: []*cli.Expr{
+							{
+								Name: "expr",
+								Args: []*cli.Arg{
+									{
+										Name:    "a",
+										Value:   cli.Int(),
+										Action:  act,
+										Options: cli.EachOccurrence,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Action: appAct,
+		}
+
+		args, _ := cli.Split("app -- -expr 1 -expr 2 -expr 3")
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(act.ExecuteCallCount()).To(Equal(3))
+		Expect(data).To(Equal([]int{1, 2, 3}))
 	})
 
 	Describe("arg events are invoked", func() {

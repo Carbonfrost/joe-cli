@@ -842,6 +842,75 @@ var _ = Describe("ProvideValueInitializer", func() {
 
 		Expect(cli.FromContext(setup.Uses.(*joeclifakes.FakeAction).ExecuteArgsForCall(0)).Name()).To(Equal("<-myname>"))
 	})
+
+	It("invokes a context scope on nested arguments", func() {
+		setup := cli.Setup{
+			Uses:   new(joeclifakes.FakeAction),
+			Before: new(joeclifakes.FakeAction),
+			Action: new(joeclifakes.FakeAction),
+			After:  new(joeclifakes.FakeAction),
+		}
+
+		// Using Trigger to ensure that the arguments within
+		// run their actions
+		valueInit := &haveArgs{
+			Args: []*cli.Arg{
+				{Name: "_1", Uses: setup, Options: cli.Trigger},
+			},
+		}
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "r",
+					Uses: cli.ProvideValueInitializer(valueInit, "myname"),
+				},
+			},
+		}
+		args, _ := cli.Split("app 0")
+		_ = app.RunContext(context.TODO(), args)
+
+		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.Before.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.After.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.Action.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+	})
+
+	It("invokes a context scope on values within nested arguments", func() {
+		setup := cli.Setup{
+			Uses:   new(joeclifakes.FakeAction),
+			Before: new(joeclifakes.FakeAction),
+			Action: new(joeclifakes.FakeAction),
+			After:  new(joeclifakes.FakeAction),
+		}
+
+		// Using Trigger to ensure that the arguments within
+		// run their actions
+		valueInit := &haveArgs{
+			Args: []*cli.Arg{
+				{
+					Value: &customValue{
+						init: cli.ProvideValueInitializer(nil, "n", setup),
+					},
+					Uses: cli.Trigger,
+				},
+			},
+		}
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "r",
+					Uses: cli.ProvideValueInitializer(valueInit, "myname"),
+				},
+			},
+		}
+		args, _ := cli.Split("app 0")
+		_ = app.RunContext(context.TODO(), args)
+
+		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.Before.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.After.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+		Expect(setup.Action.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
+	})
 })
 
 var _ = Describe("Required", func() {

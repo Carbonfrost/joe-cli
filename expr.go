@@ -92,6 +92,7 @@ type Expr struct {
 	Options Option
 
 	flags exprFlags
+	*exprSet
 }
 
 // Expression provides the parsed result of the expression that can be evaluated
@@ -105,7 +106,9 @@ type Expression struct {
 }
 
 // ExprBinding provides the relationship between an evaluator and the evaluation
-// context.  Optionally, the original Expr is made available
+// context.  Optionally, the original Expr is made available.
+// A binding can support being reset if it exposes a method Reset(). Resetting
+// a binding occurs when an expression is evaluated multiple times.
 type ExprBinding interface {
 	Evaluator
 	Lookup
@@ -130,7 +133,7 @@ type exprFlags int
 type Yielder func(interface{}) error
 
 type boundExpr struct {
-	*set
+	*exprSet
 	expr *Expr
 }
 
@@ -140,18 +143,33 @@ type exprBinding struct {
 	expr *Expr
 }
 
+type exprSet struct {
+	*lookupSupport
+	*bindingImpl
+	BindingMap
+}
+
 const (
 	exprFlagHidden = exprFlags(1 << iota)
 	exprFlagRightToLeft
 )
 
 func newBoundExpr(e *Expr) *boundExpr {
-	set := newSet()
+	set := newExprSet(nil)
 	set.withArgs(e.Args)
 	return &boundExpr{
-		expr: e,
-		set:  set,
+		expr:    e,
+		exprSet: set,
 	}
+}
+
+func newExprSet(all BindingMap) *exprSet {
+	result := &exprSet{
+		BindingMap:  all,
+		bindingImpl: newBindingImpl(),
+	}
+	result.lookupSupport = &lookupSupport{result}
+	return result
 }
 
 // Initializer is an action that binds expression handling to an argument.  This
@@ -177,7 +195,33 @@ func (e *Expression) Initializer() Action {
 		return nil
 
 	}, At(ActionTiming, ActionFunc(func(c *Context) (err error) {
-		e.items, err = parseExpressions(e.Exprs, e.args)
+		var all BindingMap
+		e.items, all, err = parseExpressions(e.Exprs, e.args)
+		if err != nil {
+			return
+		}
+
+		for _, sub := range e.Exprs {
+			// Provide a view of the binding map that is global
+			// to each of the Exprs
+			es := newExprSet(all)
+			es.withArgs(sub.Args)
+			sub.exprSet = es
+		}
+
+		for _, eb := range e.items {
+			// For the expression bindings participating in the
+			// pipeline, apply the binding result data. These
+			tryResetIfSupported(eb)
+
+			if known, ok := eb.(*boundExpr); ok {
+				err = known.BindingMap().ApplyTo(known.exprSet)
+				if err != nil {
+					return
+				}
+			}
+		}
+
 		return
 	})))
 }
@@ -495,24 +539,32 @@ func (b *boundExpr) LocalArgs() []*Arg {
 	return b.expr.Args
 }
 
-func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) error {
-	ctx := FromContext(c).ValueContextOf(b.expr.Name, b).setTiming(ActionTiming)
-	for _, a := range b.set.names {
+func (b *boundExpr) BindingMap() BindingMap {
+	return b.exprSet.BindingMap
+}
+
+func (b *boundExpr) Reset() {
+	for _, a := range b.exprSet.names {
 		a.reset()
 	}
+}
 
-	err := rawApply(b.set.BindingMap, b.set)
+func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) error {
+	ctx := FromContext(c).ValueContextOf(b.Expr().Name, b)
+	tryResetIfSupported(b)
+
+	err := b.BindingMap().ApplyTo(b.exprSet)
 	if err != nil {
 		return err
 	}
 
-	for _, a := range b.set.names {
-		err := triggerOption(ctx, a)
-		if err != nil {
-			return err
-		}
-	}
 	return EvaluatorOf(b.expr.Evaluate).Evaluate(ctx, v, yield)
+}
+
+func tryResetIfSupported(v any) {
+	if r, ok := v.(interface{ Reset() }); ok {
+		r.Reset()
+	}
 }
 
 func (e *Expression) Set(arg string) error {
@@ -588,7 +640,7 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, error) {
+func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, BindingMap, error) {
 	exprs := map[string]*Expr{}
 	for _, e := range exprOperands {
 		exprs[e.Name] = e
@@ -598,20 +650,21 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, error
 	}
 
 	results := make([]ExprBinding, 0)
+	all := BindingMap{}
 	for len(args) > 0 {
 		arg := args[0]
 		args = args[1:]
 
 		expr, ok := exprs[arg[1:]]
 		if !ok {
-			return nil, unknownExpr(arg)
+			return nil, nil, unknownExpr(arg)
 		}
 
-		// Copy the expression in order to providing instancing
+		// Copy to a "bound expression" to create instancing for the
+		// use of the expression operator.
 		boundExpr := newBoundExpr(expr)
 		results = append(results, boundExpr)
-		bin, err := RawParse(args, boundExpr.set, boundExpr.expr.internalFlags().toRaw())
-		boundExpr.set.BindingMap = bin
+		bin, err := RawParse(args, boundExpr.exprSet, boundExpr.expr.internalFlags().toRaw())
 
 		var pe *ParseError
 		if err != nil {
@@ -620,10 +673,17 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, error
 
 			switch pe.Code {
 			case UnexpectedArgument:
-				return nil, argsMustPrecedeExprs(args[0])
+				return nil, nil, argsMustPrecedeExprs(args[0])
 			case ExpectedArgument:
-				return nil, pe
+				return nil, nil, pe
 			}
+		}
+
+		// Update the bound expression with the data which was copied,
+		// and collect it within a global view across the whole pipeline
+		boundExpr.exprSet.BindingMap = bin
+		for k, v := range bin {
+			all[k] = append(all[k], v...)
 		}
 
 		// If the parse completed successfully, there is nothing else to do
@@ -631,11 +691,18 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, error
 			break
 		}
 	}
-	return results, nil
+	return results, all, nil
 }
 
 func (b *exprBinding) Expr() *Expr {
 	return b.expr
+}
+
+func (s *exprSet) lookupValue(name string) (interface{}, bool) {
+	if g, ok := s.names[name]; ok {
+		return g.value(), true
+	}
+	return nil, false
 }
 
 func emptyYielder(interface{}) error {
@@ -649,5 +716,6 @@ func exprsByNameOrder(x *Expr, y *Expr) int {
 var (
 	_ Value         = (*Expression)(nil)
 	_ BindingLookup = (*boundExpr)(nil)
+	_ BindingLookup = (*Expr)(nil)
 	_ Binding       = (*boundExpr)(nil)
 )

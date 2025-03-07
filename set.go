@@ -75,17 +75,21 @@ const (
 
 func newSet() *set {
 	result := &set{
-		bindingImpl: &bindingImpl{
-			names:        map[string]option{},
-			shortOptions: map[string]string{},
-			longOptions:  map[string]string{},
-
-			positionalOptions: []string{},
-		},
-		BindingMap: BindingMap{},
+		bindingImpl: newBindingImpl(),
+		BindingMap:  BindingMap{},
 	}
 	result.lookupSupport = &lookupSupport{result}
 	return result
+}
+
+func newBindingImpl() *bindingImpl {
+	return &bindingImpl{
+		names:        map[string]option{},
+		shortOptions: map[string]string{},
+		longOptions:  map[string]string{},
+
+		positionalOptions: []string{},
+	}
 }
 
 func newArgBinding(bind Binding) *argBinding {
@@ -359,10 +363,6 @@ func (s *set) parse(args argList, flags RawParseFlag) error {
 		return err
 	}
 	return s.BindingMap.ApplyTo(s)
-}
-
-func rawApply(bindings BindingMap, binding Binding) error {
-	return bindings.ApplyTo(binding)
 }
 
 func (s *set) parseBindings(args argList, flags RawParseFlag) error {
