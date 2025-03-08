@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -126,6 +128,11 @@ type exprCategory struct {
 
 type exprFlags int
 
+type expressionDescription struct {
+	exp   *Expression
+	templ *Template
+}
+
 //counterfeiter:generate . Yielder
 
 // Yielder provides the signature of the function used to yield
@@ -182,7 +189,10 @@ func (e *Expression) Initializer() Action {
 		UsageText: "<expression>",
 		NArg:      TakeRemaining,
 	}, func(c *Context) error {
-		return c.SetDescription(c.Template("Expressions").BindFunc(e.descriptionData))
+		return c.SetDescription(&expressionDescription{
+			exp:   e,
+			templ: c.Template("Expressions"),
+		})
 
 	}, func(c *Context) error {
 		for _, sub := range e.Exprs {
@@ -226,12 +236,22 @@ func (e *Expression) Initializer() Action {
 	})))
 }
 
-func (e *Expression) descriptionData() interface{} {
-	return struct {
+func (e *expressionDescription) SortUsage() {
+	slices.SortFunc(e.exp.Exprs, exprsByNameOrder)
+}
+
+func (e *expressionDescription) String() string {
+	var buf bytes.Buffer
+	data := struct {
 		Description *exprDescriptionData
 	}{
-		Description: exprDescription(e),
+		Description: exprDescription(e.exp),
 	}
+	err := e.templ.Execute(&buf, data)
+	if err != nil {
+		return err.Error()
+	}
+	return buf.String()
 }
 
 // NewExprBinding creates an expression binding.  The ev parameter is how

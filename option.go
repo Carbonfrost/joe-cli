@@ -160,7 +160,8 @@ const (
 	// SortedCommands causes sub-commands to be sorted on the help screen generated for the command or app.
 	SortedCommands
 
-	// SortedExprs causes exprs to be sorted on the help screen generated for the command or app.
+	// SortedExprs causes the expression listing to be sorted on the help screen generated for
+	// the command or app.
 	SortedExprs
 
 	// ImpliedAction causes the Action for a flag or arg to be run if it was implicitly
@@ -614,16 +615,11 @@ func sortedCommandsOpt(c *Context) error {
 }
 
 func sortedExprsOpt(c *Context) error {
-	opt, ok := c.target().(option)
+	exp, ok := c.target().description().(interface{ SortUsage() })
 	if !ok {
 		return nil
 	}
-	exp, ok := opt.value().(*Expression)
-	if !ok {
-		return nil
-	}
-
-	slices.SortFunc(exp.Exprs, exprsByNameOrder)
+	exp.SortUsage()
 	return nil
 }
 

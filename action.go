@@ -846,7 +846,10 @@ func Alias(a ...string) Action {
 // set up inside a Uses pipeline.  The type should be string or fmt.Stringer
 // Consider implementing a custom Stringer value that defers calculation of the description if the
 // description is expensive to calculate.  One convenient implementation is from Template.Bind or
-// Template.BindFunc.
+// Template.BindFunc. The implementation can also provide:
+//
+//   - SortUsage()        called when the option [SortedExprs] was used, which generally
+//     indicates that any expressions or other sub-details should be sorted.
 func Description(v any) Action {
 	return actionThunk1((*Context).SetDescription, v)
 }
