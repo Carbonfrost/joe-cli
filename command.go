@@ -3,7 +3,10 @@ package cli
 import (
 	"cmp"
 	"context"
+	"errors"
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -15,6 +18,11 @@ import (
 // By default, if a command name starts with an underscore, it
 // is hidden.  To stop this, either set Visible option explicitly or disable
 // global behavior with the DisableAutoVisibility option.
+//
+// Within a command, all args and flags must have unique names. The behavior is
+// not defined if a flag alias is duplicative, but no flag can have the same name
+// as one of the aliases. If a flag name is blank, this is an error; however, if
+// an arg name is blank, it is implicitly given a name using its index.
 type Command struct {
 	hooksSupport
 	pipelinesSupport
@@ -660,6 +668,40 @@ func copyContextToParent(ctx *Context) error {
 	p := ctx.Parent()
 	if p != nil {
 		p.ref = ctx.ref
+	}
+	return nil
+}
+
+func finalizeArgsAndFlags(c *Context) error {
+	// Set up default names for args; generate an error for unnamed flags; generate
+	// an error for duplicative names
+	names := map[string]bool{}
+	var errs []error
+
+	for i, a := range c.LocalArgs() {
+		if a.Name == "" {
+			a.Name = "_" + strconv.Itoa(1+i)
+			continue
+		}
+		if names[a.Name] {
+			errs = append(errs, fmt.Errorf("duplicate name used: %q", a.Name))
+		}
+		names[a.Name] = true
+	}
+
+	for i, f := range c.LocalFlags() {
+		if f.Name == "" {
+			errs = append(errs, fmt.Errorf("flag at index #%d must have a name", i))
+			continue
+		}
+		if names[f.Name] {
+			errs = append(errs, fmt.Errorf("duplicate name used: %q", f.Name))
+		}
+		names[f.Name] = true
+	}
+
+	if len(errs) > 0 {
+		return c.internalError(fmt.Errorf("errors initializing command: %w", errors.Join(errs...)))
 	}
 	return nil
 }

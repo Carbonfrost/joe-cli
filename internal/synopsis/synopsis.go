@@ -141,8 +141,10 @@ func NewArg(usage string, narg any) *Arg {
 	}
 }
 
-func NewFlag(long []string, short []rune, helpText, usageString string, v any, group OptionGroup) *Flag {
+func NewFlag(primary string, aliases []string, helpText, usageString string, v any, group OptionGroup) *Flag {
 	sep := "="
+
+	long, short := canonicalNames(primary, aliases)
 
 	if len(long) == 0 {
 		sep = " "
@@ -159,7 +161,8 @@ func NewFlag(long []string, short []rune, helpText, usageString string, v any, g
 	}).withLongAndShort(long, short)
 }
 
-func NewExpr(long []string, short []rune, usage *Usage, args []*Arg) *Expr {
+func NewExpr(primary string, aliases []string, usage *Usage, args []*Arg) *Expr {
+	long, short := canonicalNames(primary, aliases)
 	names := func() []string {
 		if len(long) == 0 {
 			return []string{fmt.Sprintf("-%s", string(short[0]))}
@@ -420,6 +423,21 @@ func sortedByName(flags []*Flag) {
 	sort.Slice(flags, func(i, j int) bool {
 		return flags[i].Short < flags[j].Short
 	})
+}
+
+func canonicalNames(name string, aliases []string) (long []string, short []rune) {
+	long = make([]string, 0, len(aliases))
+	short = make([]rune, 0, len(aliases))
+	names := append([]string{name}, aliases...)
+
+	for _, nom := range names {
+		if len(nom) == 1 {
+			short = append(short, ([]rune(nom))[0])
+		} else {
+			long = append(long, nom)
+		}
+	}
+	return
 }
 
 var (

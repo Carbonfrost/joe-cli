@@ -302,6 +302,7 @@ var (
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
 			ActionFunc(initializeValueTargets),
+			ActionFunc(finalizeArgsAndFlags),
 			ActionFunc(copyContextToParent),
 		),
 		Action: actions(
@@ -373,6 +374,7 @@ var (
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
 			ActionFunc(initializeFlagsArgs),
+			ActionFunc(finalizeArgsAndFlags),
 		),
 		Before: beforePipeline{
 			nil,
@@ -1824,6 +1826,7 @@ func doThenExit(a Action) Action {
 
 func defaultVersionFlag() *Flag {
 	return &Flag{
+		Name: "version",
 		Uses: PrintVersion(),
 	}
 }

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -108,7 +107,7 @@ func NewBinding(flags []*Flag, args []*Arg, parent interface{ Flags() []*Flag })
 	}
 
 	for _, a := range args {
-		a.Name = b.defineArg(a)
+		b.defineArg(a)
 	}
 	return b
 }
@@ -438,27 +437,20 @@ func (b *bindingImpl) defineFlag(f *Flag) {
 	if len(name) == 0 {
 		return
 	}
-	longs, shorts := canonicalNames(name, f.Aliases)
 
-	for _, short := range shorts {
-		b.shortOptions[string(short)] = name
+	for _, alias := range f.Aliases {
+		if len(alias) == 1 {
+			b.shortOptions[alias] = name
+		} else {
+			b.longOptions[alias] = name
+		}
 	}
-	for _, long := range longs {
-		b.longOptions[long] = name
-	}
-
 	b.names[name] = f
 }
 
-func (b *bindingImpl) defineArg(a *Arg) string {
-	uname := a.Name
-	if uname == "" {
-		uname = fmt.Sprintf("_%d", len(b.positionalOptions)+1)
-	}
-
-	b.names[uname] = a
-	b.positionalOptions = append(b.positionalOptions, uname)
-	return uname
+func (b *bindingImpl) defineArg(a *Arg) {
+	b.names[a.Name] = a
+	b.positionalOptions = append(b.positionalOptions, a.Name)
 }
 
 func (s *set) lookupValue(name string) (any, bool) {

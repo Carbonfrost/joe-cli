@@ -505,6 +505,77 @@ var _ = Describe("Command", func() {
 		)
 
 	})
+
+	Describe("naming", func() {
+
+		It("implicitly names args", func() {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{},
+				},
+			}
+
+			_, _ = app.Initialize(context.TODO())
+			Expect(app.Args[0].Name).To(Equal("_1"))
+		})
+
+		var addFlagOrArg = func(option any) cli.Action {
+			if flag, ok := option.(*cli.Flag); ok {
+				return cli.AddFlag(flag)
+			}
+			return cli.AddArg(option.(*cli.Arg))
+		}
+
+		DescribeTable("undefined behavior", func(option any) {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{Name: "inuse", Aliases: []string{"alsoinuse"}},
+				},
+				Uses: addFlagOrArg(option),
+			}
+
+			_, err := app.Initialize(context.TODO())
+			Expect(err).NotTo(HaveOccurred())
+		},
+			Entry(
+				"arg duplicates flag alias", &cli.Arg{Name: "alsoinuse"}),
+			Entry(
+				"flag duplicates flag alias", &cli.Flag{Name: "alsoinuse"}),
+		)
+
+		DescribeTable("errors", func(option any, expected types.GomegaMatcher) {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{Name: "inuse", Aliases: []string{"alsoinuse"}},
+				},
+				Args: []*cli.Arg{
+					{Name: "arg"},
+				},
+				Uses: addFlagOrArg(option),
+			}
+
+			_, err := app.Initialize(context.TODO())
+			Expect(err).To(MatchError(expected))
+		},
+			Entry(
+				"no name",
+				&cli.Flag{},
+				ContainSubstring("flag at index #1 must have a name")),
+			Entry(
+				"duplicate flag name",
+				&cli.Flag{Name: "inuse"},
+				ContainSubstring(`duplicate name used: "inuse"`)),
+			Entry(
+				"duplicate arg name",
+				&cli.Arg{Name: "arg"},
+				ContainSubstring(`duplicate name used: "arg"`)),
+			Entry(
+				"arg duplicates flag name",
+				&cli.Arg{Name: "inuse"},
+				ContainSubstring(`duplicate name used: "inuse"`)),
+		)
+	})
+
 })
 
 var _ = Describe("HandleCommandNotFound", func() {

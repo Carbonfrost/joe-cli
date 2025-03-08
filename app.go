@@ -440,9 +440,15 @@ func optionalCommand(name string, cmd func() *Command) ActionFunc {
 
 func optionalFlag(name string, f func() *Flag) ActionFunc {
 	return func(c *Context) error {
+		// Don't create optional flags if setup has been tainted
+		// or if a flag with the same name exists
+		if c.SkipImplicitSetup() {
+			return nil
+		}
+
 		app := c.Command()
 		if _, ok := app.Flag(name); !ok {
-			app.Flags = append(app.Flags, f())
+			return c.AddFlag(f())
 		}
 		return nil
 	}

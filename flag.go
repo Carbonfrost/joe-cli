@@ -232,8 +232,7 @@ func (f *Flag) synopsis() *synopsis.Flag {
 }
 
 func (f *Flag) newSynopsis() *synopsis.Flag {
-	long, short := canonicalNames(f.Name, f.Aliases)
-	return synopsis.NewFlag(long, short, f.HelpText, f.UsageText, f.value(), getGroup(f))
+	return synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
 }
 
 // SetData sets the specified metadata on the flag.  When v is nil, the corresponding
@@ -474,21 +473,6 @@ func (f *Flag) SetOccurrence(values ...string) error {
 func (f *Flag) SetOccurrenceData(v any) error {
 	f.nextOccur()
 	return SetData(f.Value, v)
-}
-
-func canonicalNames(name string, aliases []string) (long []string, short []rune) {
-	long = make([]string, 0, len(aliases))
-	short = make([]rune, 0, len(aliases))
-	names := append([]string{name}, aliases...)
-
-	for _, nom := range names {
-		if len(nom) == 1 {
-			short = append(short, ([]rune(nom))[0])
-		} else {
-			long = append(long, nom)
-		}
-	}
-	return
 }
 
 // SetHidden causes the flag to be hidden

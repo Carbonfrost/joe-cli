@@ -2012,6 +2012,19 @@ var _ = Describe("PreventSetup", func() {
 		}
 	)
 
+	It("when used, it skips built-in flags", func() {
+		// Ordinarily, the flags --help, --version,
+		// and the completion flags get defined. When PreventSetup
+		// is present on the app, these are skipped
+		app := &cli.App{
+			Options: cli.PreventSetup,
+		}
+
+		_, _ = app.Initialize(context.TODO())
+		cmd, _ := app.Command("")
+		Expect(cmd.Flags).To(BeEmpty())
+	})
+
 	DescribeTable("entry", func(create func(func()) *cli.App) {
 		thunk := func() {
 			Fail("should not call setup method")
@@ -2027,6 +2040,7 @@ var _ = Describe("PreventSetup", func() {
 			return &cli.App{
 				Flags: []*cli.Flag{
 					{
+						Name:    "f",
 						Options: cli.PreventSetup,
 						Uses:    flagSetup(t),
 					},
@@ -2060,6 +2074,7 @@ var _ = Describe("PreventSetup", func() {
 				Options: cli.PreventSetup,
 				Flags: []*cli.Flag{
 					{
+						Name: "f",
 						Uses: flagSetup(t),
 					},
 				},
@@ -2073,6 +2088,7 @@ var _ = Describe("PreventSetup", func() {
 					{
 						Flags: []*cli.Flag{
 							{
+								Name: "f",
 								Uses: flagSetup(t),
 							},
 						},
@@ -2386,7 +2402,7 @@ var _ = Describe("Customize", func() {
 		app := &cli.App{
 			Uses: cli.Pipeline(
 				cli.Customize("-", cli.Description("description")),
-				cli.AddFlag(&cli.Flag{}),
+				cli.AddFlag(&cli.Flag{Name: "f"}),
 			),
 		}
 

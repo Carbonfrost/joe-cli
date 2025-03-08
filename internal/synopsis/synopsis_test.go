@@ -32,23 +32,23 @@ var _ = Describe("String", func() {
 		Entry("action flags",
 			synopsis.NewCommand("c",
 				[]*synopsis.Flag{
-					synopsis.NewFlag([]string{"help"}, nil, "", "", "", synopsis.ActionGroup),
-					synopsis.NewFlag([]string{"version"}, nil, "", "", "", synopsis.ActionGroup),
+					synopsis.NewFlag("help", nil, "", "", "", synopsis.ActionGroup),
+					synopsis.NewFlag("version", nil, "", "", "", synopsis.ActionGroup),
 				}, nil, false),
 			ContainSubstring("{**--help**=_VALUE_ | **--version**=_VALUE_}")),
 
 		Entry("inline optional flags",
 			synopsis.NewCommand("c",
 				[]*synopsis.Flag{
-					synopsis.NewFlag(nil, []rune{'a'}, "", "", "", synopsis.OnlyShortNoValueOptional),
-					synopsis.NewFlag(nil, []rune{'b'}, "", "", "", synopsis.OnlyShortNoValueOptional),
+					synopsis.NewFlag("a", nil, "", "", "", synopsis.OnlyShortNoValueOptional),
+					synopsis.NewFlag("b", nil, "", "", "", synopsis.OnlyShortNoValueOptional),
 				}, nil, false),
 			ContainSubstring("[-ab]")),
 
 		Entry("other flags",
 			synopsis.NewCommand("c",
 				[]*synopsis.Flag{
-					synopsis.NewFlag([]string{"normal"}, nil, "", "", "", synopsis.Other),
+					synopsis.NewFlag("normal", nil, "", "", "", synopsis.Other),
 				}, nil, false),
 			ContainSubstring("--normal")),
 

@@ -446,8 +446,7 @@ func (e *Expr) newSynopsis() *synopsis.Expr {
 		}
 	}
 
-	long, short := canonicalNames(e.Name, e.Aliases)
-	return synopsis.NewExpr(long, short, usage, args)
+	return synopsis.NewExpr(e.Name, e.Aliases, usage, args)
 }
 
 func (e *Expr) LocalArgs() []*Arg {
