@@ -330,13 +330,9 @@ func (c *Command) Use(action Action) *Command {
 }
 
 func (c *Command) buildSet(ctx *Context) *set {
-	set := ctx.internal.(*commandContext).flagSet
-	set.withFlags(c.Flags)
-
-	if ctx.Parent() != nil {
-		set.withParentFlags(ctx.Parent().Flags())
-	}
-	set.withArgs(c.Args)
+	binding := NewBinding(c.Flags, c.Args, ctx.Parent())
+	set := newSet(binding)
+	ctx.internal.(*commandContext).flagSet = set
 	return set
 }
 

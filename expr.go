@@ -152,7 +152,7 @@ type exprBinding struct {
 
 type exprSet struct {
 	Lookup
-	*bindingImpl
+	Binding
 	BindingMap
 }
 
@@ -162,18 +162,17 @@ const (
 )
 
 func newBoundExpr(e *Expr) *boundExpr {
-	set := newExprSet(nil)
-	set.withArgs(e.Args)
+	set := newExprSet(NewBinding(nil, e.Args, nil), nil)
 	return &boundExpr{
 		expr:    e,
 		exprSet: set,
 	}
 }
 
-func newExprSet(all BindingMap) *exprSet {
+func newExprSet(b Binding, all BindingMap) *exprSet {
 	result := &exprSet{
-		BindingMap:  all,
-		bindingImpl: newBindingImpl(),
+		BindingMap: all,
+		Binding:    b,
 	}
 	result.Lookup = LookupFunc(result.lookupValue)
 	return result
@@ -214,8 +213,7 @@ func (e *Expression) Initializer() Action {
 		for _, sub := range e.Exprs {
 			// Provide a view of the binding map that is global
 			// to each of the Exprs
-			es := newExprSet(all)
-			es.withArgs(sub.Args)
+			es := newExprSet(NewBinding(nil, sub.Args, nil), all)
 			sub.exprSet = es
 		}
 
@@ -564,9 +562,7 @@ func (b *boundExpr) BindingMap() BindingMap {
 }
 
 func (b *boundExpr) Reset() {
-	for _, a := range b.exprSet.names {
-		a.reset()
-	}
+	b.exprSet.Binding.Reset()
 }
 
 func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) error {
@@ -719,8 +715,8 @@ func (b *exprBinding) Expr() *Expr {
 }
 
 func (s *exprSet) lookupValue(name string) (interface{}, bool) {
-	if g, ok := s.names[name]; ok {
-		return g.value(), true
+	if _, _, g, ok := s.Binding.LookupOption(name); ok {
+		return g.(option).value(), true
 	}
 	return nil, false
 }

@@ -10,7 +10,7 @@ type BindingMap map[string][][]string
 
 type set struct {
 	Lookup
-	*bindingImpl
+	Binding
 	BindingMap
 }
 
@@ -42,6 +42,7 @@ type Binding interface {
 	ResolveAlias(name string) (string, bool)
 	PositionalArgNames() []string
 	BehaviorFlags(name string) (optional bool)
+	Reset()
 }
 
 // BindingState defines the state of the binding operation.  This is generally *Arg or *Flag
@@ -73,23 +74,43 @@ const (
 	argsOnly
 )
 
-func newSet() *set {
+func newSet(b Binding) *set {
 	result := &set{
-		bindingImpl: newBindingImpl(),
-		BindingMap:  BindingMap{},
+		Binding:    b,
+		BindingMap: BindingMap{},
 	}
 	result.Lookup = LookupFunc(result.lookupValue)
 	return result
 }
 
-func newBindingImpl() *bindingImpl {
-	return &bindingImpl{
+// NewBinding creates a binding. This expert API is to provide a representation
+// of the naming and parsing rules for flags, args, and the parent
+func NewBinding(flags []*Flag, args []*Arg, parent interface{ Flags() []*Flag }) Binding {
+	b := &bindingImpl{
 		names:        map[string]option{},
 		shortOptions: map[string]string{},
 		longOptions:  map[string]string{},
 
 		positionalOptions: []string{},
 	}
+	for _, f := range flags {
+		b.defineFlag(f)
+	}
+
+	if parent != nil {
+		for _, f := range parent.Flags() {
+			if f.internalFlags().nonPersistent() {
+				continue
+			}
+			b.defineFlag(f)
+			f.setInternalFlags(internalFlagPersistent, true)
+		}
+	}
+
+	for _, a := range args {
+		a.Name = b.defineArg(a)
+	}
+	return b
 }
 
 func newArgBinding(bind Binding) *argBinding {
@@ -366,9 +387,15 @@ func (s *set) parse(args argList, flags RawParseFlag) error {
 }
 
 func (s *set) parseBindings(args argList, flags RawParseFlag) error {
-	bindings, err := RawParse(args, s.bindingImpl, flags)
+	bindings, err := RawParse(args, s.Binding, flags)
 	s.BindingMap = bindings
 	return err
+}
+
+func (b *bindingImpl) Reset() {
+	for _, a := range b.names {
+		a.reset()
+	}
 }
 
 func (b *bindingImpl) LookupOption(name string) (TransformFunc, ArgCounter, BindingState, bool) {
@@ -406,28 +433,6 @@ func (b *bindingImpl) PositionalArgNames() []string {
 	return b.positionalOptions
 }
 
-func (b *bindingImpl) withArgs(args []*Arg) {
-	for _, a := range args {
-		a.Name = b.defineArg(a)
-	}
-}
-
-func (b *bindingImpl) withFlags(flags []*Flag) {
-	for _, f := range flags {
-		b.defineFlag(f)
-	}
-}
-
-func (b *bindingImpl) withParentFlags(flags []*Flag) {
-	for _, f := range flags {
-		if f.internalFlags().nonPersistent() {
-			continue
-		}
-		b.defineFlag(f)
-		f.setInternalFlags(internalFlagPersistent, true)
-	}
-}
-
 func (b *bindingImpl) defineFlag(f *Flag) {
 	name := f.Name
 	if len(name) == 0 {
@@ -456,9 +461,12 @@ func (b *bindingImpl) defineArg(a *Arg) string {
 	return uname
 }
 
-func (s *set) lookupValue(name string) (interface{}, bool) {
-	if g, ok := s.names[name]; ok {
-		return g.value(), true
+func (s *set) lookupValue(name string) (any, bool) {
+	if s.Binding == nil {
+		return nil, false
+	}
+	if _, _, g, ok := s.Binding.LookupOption(name); ok {
+		return g.(option).value(), true
 	}
 	return nil, false
 }

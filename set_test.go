@@ -223,6 +223,9 @@ func (t *testFlagSet) BehaviorFlags(name string) (optional bool) {
 	return false
 }
 
+func (t *testFlagSet) Reset() {
+}
+
 func (t *testFlagSet) LookupOption(name string) (cli.TransformFunc, cli.ArgCounter, cli.BindingState, bool) {
 	c, ok := t.counters[name]
 	return nil, c, nil, ok

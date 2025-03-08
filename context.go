@@ -1477,7 +1477,7 @@ func matchFlag(field string) bool {
 func rootContext(cctx context.Context, app *App) *Context {
 	internal := &commandContext{
 		cmd:     app.createRoot(),
-		flagSet: newSet(),
+		flagSet: newSet(nil), // See comment in commandContext below
 	}
 	return &Context{
 		ref:        cctx,
@@ -1496,8 +1496,13 @@ func newLookupCore(t internalContext, parent lookupCore) lookupCore {
 
 func (c *Context) commandContext(cmd *Command) *Context {
 	return c.copy(&commandContext{
-		cmd:     cmd,
-		flagSet: newSet(),
+		cmd: cmd,
+
+		// This set doesn't have a binding yet mainly to
+		// allow command contexts to be used within
+		// initialization. Some tests depend upon this being
+		// non-nil early on
+		flagSet: newSet(nil),
 	})
 }
 
