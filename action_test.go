@@ -2133,6 +2133,16 @@ var _ = Describe("HookAfter", func() {
 				},
 			}),
 		Entry(
+			"implies self using empty string",
+			&cli.App{
+				Action: cli.HookAfter("", cli.Data("f", "set")),
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+					},
+				},
+			}),
+		Entry(
 			"in flag action delegating to parent command",
 			&cli.App{
 				Flags: []*cli.Flag{

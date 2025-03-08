@@ -711,11 +711,11 @@ func (c *commandContext) executeBeforeDescendent(ctx context.Context) error {
 }
 
 func (c *commandContext) executeBefore(ctx context.Context) error {
-	return execute(ctx, Pipeline(c.cmd.executeBeforeHooks, defaultCommand.Before))
+	return execute(ctx, defaultCommand.Before)
 }
 
 func (c *commandContext) executeAfter(ctx context.Context) error {
-	return execute(ctx, Pipeline(c.cmd.executeAfterHooks, defaultCommand.After))
+	return execute(ctx, defaultCommand.After)
 }
 
 func (c *commandContext) executeAfterDescendent(ctx context.Context) error {

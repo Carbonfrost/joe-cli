@@ -1969,6 +1969,16 @@ func applyUserOptions(c context.Context) error {
 	return execute(c, opts)
 }
 
+func executeBeforeHooks(c context.Context) error {
+	h, _ := FromContext(c).hookable()
+	return execute(c, actionFunc(h.executeBeforeHooks))
+}
+
+func executeAfterHooks(c context.Context) error {
+	h, _ := FromContext(c).hookable()
+	return execute(c, actionFunc(h.executeAfterHooks))
+}
+
 func executeDeferredPipeline(at Timing) actionFunc {
 	return func(c context.Context) error {
 		return execute(c, FromContext(c).target().uses().pipeline(at))

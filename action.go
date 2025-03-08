@@ -319,6 +319,7 @@ var (
 		Before: beforePipeline{
 			nil,
 			actions(
+				actionFunc(executeBeforeHooks),
 				executeDeferredPipeline(BeforeTiming),
 				executeUserPipeline(BeforeTiming),
 				ActionFunc(triggerBeforeOptions),
@@ -327,6 +328,7 @@ var (
 			nil,
 		},
 		After: actions(
+			actionFunc(executeAfterHooks),
 			executeDeferredPipeline(AfterTiming),
 			executeUserPipeline(AfterTiming),
 			ActionFunc(triggerAfterOptions),
