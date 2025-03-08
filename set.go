@@ -9,7 +9,7 @@ import (
 type BindingMap map[string][][]string
 
 type set struct {
-	*lookupSupport
+	Lookup
 	*bindingImpl
 	BindingMap
 }
@@ -78,7 +78,7 @@ func newSet() *set {
 		bindingImpl: newBindingImpl(),
 		BindingMap:  BindingMap{},
 	}
-	result.lookupSupport = &lookupSupport{result}
+	result.Lookup = LookupFunc(result.lookupValue)
 	return result
 }
 

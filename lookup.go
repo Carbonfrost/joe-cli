@@ -78,10 +78,9 @@ type Lookup interface {
 // LookupValues provides a Lookup backed by a map
 type LookupValues map[string]interface{}
 
-// lookupSupport provides a wrapper to typed lookups
-type lookupSupport struct {
-	lookupCore
-}
+// LookupFunc provides a Lookup that converts from a name
+// to a value.
+type LookupFunc func(string) (any, bool)
 
 type lookupCore interface {
 	// lookupValue, no need to dereference
@@ -250,124 +249,124 @@ func (c LookupValues) Interface(name interface{}) (interface{}, bool) {
 	return c.try(name, false)
 }
 
-func (c *lookupSupport) Bool(name interface{}) bool {
+func (c LookupFunc) Bool(name any) bool {
 	return lookupBool(c, name)
 }
 
-func (c *lookupSupport) String(name interface{}) string {
+func (c LookupFunc) String(name any) string {
 	return lookupString(c, name)
 }
 
-func (c *lookupSupport) List(name interface{}) []string {
+func (c LookupFunc) List(name any) []string {
 	return lookupList(c, name)
 }
 
-func (c *lookupSupport) Int(name interface{}) int {
+func (c LookupFunc) Int(name any) int {
 	return lookupInt(c, name)
 }
 
-func (c *lookupSupport) Int8(name interface{}) int8 {
+func (c LookupFunc) Int8(name any) int8 {
 	return lookupInt8(c, name)
 }
 
-func (c *lookupSupport) Int16(name interface{}) int16 {
+func (c LookupFunc) Int16(name any) int16 {
 	return lookupInt16(c, name)
 }
 
-func (c *lookupSupport) Int32(name interface{}) int32 {
+func (c LookupFunc) Int32(name any) int32 {
 	return lookupInt32(c, name)
 }
 
-func (c *lookupSupport) Int64(name interface{}) int64 {
+func (c LookupFunc) Int64(name any) int64 {
 	return lookupInt64(c, name)
 }
 
-func (c *lookupSupport) Uint(name interface{}) uint {
+func (c LookupFunc) Uint(name any) uint {
 	return lookupUint(c, name)
 }
 
-func (c *lookupSupport) Uint8(name interface{}) uint8 {
+func (c LookupFunc) Uint8(name any) uint8 {
 	return lookupUint8(c, name)
 }
 
-func (c *lookupSupport) Uint16(name interface{}) uint16 {
+func (c LookupFunc) Uint16(name any) uint16 {
 	return lookupUint16(c, name)
 }
 
-func (c *lookupSupport) Uint32(name interface{}) uint32 {
+func (c LookupFunc) Uint32(name any) uint32 {
 	return lookupUint32(c, name)
 }
 
-func (c *lookupSupport) Uint64(name interface{}) uint64 {
+func (c LookupFunc) Uint64(name any) uint64 {
 	return lookupUint64(c, name)
 }
 
-func (c *lookupSupport) Float32(name interface{}) float32 {
+func (c LookupFunc) Float32(name any) float32 {
 	return lookupFloat32(c, name)
 }
 
-func (c *lookupSupport) Float64(name interface{}) float64 {
+func (c LookupFunc) Float64(name any) float64 {
 	return lookupFloat64(c, name)
 }
 
-func (c *lookupSupport) Duration(name interface{}) time.Duration {
+func (c LookupFunc) Duration(name any) time.Duration {
 	return lookupDuration(c, name)
 }
 
-func (c *lookupSupport) File(name interface{}) *File {
+func (c LookupFunc) File(name any) *File {
 	return lookupFile(c, name)
 }
 
-func (c *lookupSupport) FileSet(name interface{}) *FileSet {
+func (c LookupFunc) FileSet(name any) *FileSet {
 	return lookupFileSet(c, name)
 }
 
-func (c *lookupSupport) Map(name interface{}) map[string]string {
+func (c LookupFunc) Map(name any) map[string]string {
 	return lookupMap(c, name)
 }
 
-func (c *lookupSupport) NameValue(name interface{}) *NameValue {
+func (c LookupFunc) NameValue(name any) *NameValue {
 	return lookupNameValue(c, name)
 }
 
-func (c *lookupSupport) NameValues(name interface{}) []*NameValue {
+func (c LookupFunc) NameValues(name any) []*NameValue {
 	return lookupNameValues(c, name)
 }
 
-func (c *lookupSupport) URL(name interface{}) *url.URL {
+func (c LookupFunc) URL(name any) *url.URL {
 	return lookupURL(c, name)
 }
 
-func (c *lookupSupport) Regexp(name interface{}) *regexp.Regexp {
+func (c LookupFunc) Regexp(name any) *regexp.Regexp {
 	return lookupRegexp(c, name)
 }
 
-func (c *lookupSupport) IP(name interface{}) net.IP {
+func (c LookupFunc) IP(name any) net.IP {
 	return lookupIP(c, name)
 }
 
-func (c *lookupSupport) BigInt(name interface{}) *big.Int {
+func (c LookupFunc) BigInt(name any) *big.Int {
 	return lookupBigInt(c, name)
 }
 
-func (c *lookupSupport) BigFloat(name interface{}) *big.Float {
+func (c LookupFunc) BigFloat(name any) *big.Float {
 	return lookupBigFloat(c, name)
 }
 
-func (c *lookupSupport) Bytes(name interface{}) []byte {
+func (c LookupFunc) Bytes(name any) []byte {
 	return lookupBytes(c, name)
 }
 
-func (c *lookupSupport) Interface(name interface{}) (interface{}, bool) {
+func (c LookupFunc) Interface(name any) (any, bool) {
 	return c.try(name, false)
 }
 
-func (c *lookupSupport) Value(name interface{}) interface{} {
+func (c LookupFunc) Value(name any) any {
 	r, _ := c.try(name, true)
 	return r
 }
 
-func (c *lookupSupport) try(n interface{}, deref bool) (interface{}, bool) {
+func (c LookupFunc) try(n any, deref bool) (any, bool) {
 	return tryLookup(c, n, deref)
 }
 
@@ -394,6 +393,13 @@ func (p *parentLookup) lookupValue(name string) (interface{}, bool) {
 	}
 
 	return p.parent.lookupValue(name)
+}
+
+func (f LookupFunc) lookupValue(name string) (any, bool) {
+	if f == nil {
+		return nil, false
+	}
+	return f(name)
 }
 
 func nameToString(name interface{}) string {
@@ -659,4 +665,4 @@ func lookupBytes(c Lookup, name interface{}) (res []byte) {
 	return
 }
 
-var _ Lookup = (*lookupSupport)(nil)
+var _ Lookup = (LookupFunc)(nil)

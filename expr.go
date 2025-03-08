@@ -151,7 +151,7 @@ type exprBinding struct {
 }
 
 type exprSet struct {
-	*lookupSupport
+	Lookup
 	*bindingImpl
 	BindingMap
 }
@@ -175,7 +175,7 @@ func newExprSet(all BindingMap) *exprSet {
 		BindingMap:  all,
 		bindingImpl: newBindingImpl(),
 	}
-	result.lookupSupport = &lookupSupport{result}
+	result.Lookup = LookupFunc(result.lookupValue)
 	return result
 }
 
