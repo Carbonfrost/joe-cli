@@ -608,13 +608,19 @@ func SetContext(ctx context.Context) Action {
 
 // Timeout provides an action which adds a timeout to the context.
 func Timeout(timeout time.Duration) Action {
-	return Before(actionFunc(func(c context.Context) error {
-		ctx, cancel := context.WithTimeout(c, timeout)
-		return Do(c, Pipeline(
+	return Before(ActionFunc(func(c1 *Context) error {
+		// TODO Refer to comments in HandleSignal
+		ctx, cancel := context.WithTimeout(c1.Context(), timeout)
+		return Do(c1, Pipeline(
 			SetContext(ctx),
-			After(ActionOf((func())(cancel))),
+			cancelAfter(cancel),
 		))
 	}))
+}
+
+func cancelAfter(fn context.CancelFunc) Action {
+	var f func() = fn
+	return After(ActionOf(f))
 }
 
 // SetValue provides an action which sets the value of the flag or argument.
@@ -916,11 +922,15 @@ func HookAfter(pattern string, handler Action) Action {
 // is therefore to place cleanup into After and consider using a timeout.
 // The process will be terminated when the user presses ^C for the second time:
 func HandleSignal(s ...os.Signal) Action {
-	return Before(actionFunc(func(c context.Context) error {
-		ctx, stop := signal.NotifyContext(c, s...)
-		return Do(c, Pipeline(
+	// TODO $gzma: The direct use of *Context (i.e., what if
+	// you change c1.Context() to c1 below, or what if you inline
+	// this as actionFunc?) will cause a stack overflow if any further
+	// part of the pipeline tries to use Value.
+	return Before(ActionFunc(func(c1 *Context) error {
+		ctx, stop := signal.NotifyContext(c1.Context(), s...)
+		return Do(c1, Pipeline(
 			SetContext(ctx),
-			After(ActionOf((func())(stop))),
+			cancelAfter(stop),
 		))
 	}))
 }
