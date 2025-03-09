@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"net"
 	"net/url"
@@ -641,6 +642,10 @@ var _ = Describe("Context", func() {
 								actualID = a.Data["id"]
 							case *cli.Command:
 								actualID = a.Data["id"]
+							case *cli.Expr:
+								actualID = a.Data["id"]
+							default:
+								Fail(fmt.Sprintf("unexpected type %T", a))
 							}
 						}
 					},
@@ -655,6 +660,17 @@ var _ = Describe("Context", func() {
 								{
 									Name: "arg2",
 									Uses: cli.Data("id", "3"),
+								},
+								{
+									Name: "arg3",
+									Value: &cli.Expression{
+										Exprs: []*cli.Expr{
+											{
+												Name: "expr",
+												Uses: cli.Data("id", "4"),
+											},
+										},
+									},
 								},
 							},
 							Uses: cli.Data("id", "1"),
@@ -677,6 +693,7 @@ var _ = Describe("Context", func() {
 			Entry("app name", []string{"app"}, "0"),
 			Entry("sub-command", []string{"app", "sub"}, "1"),
 			Entry("arg", []string{"app", "sub", "<arg>"}, "2"),
+			Entry("expr", []string{"app", "sub", "<arg3>", "<-expr>"}, "4"),
 		)
 	})
 
@@ -987,6 +1004,29 @@ var _ = Describe("Context", func() {
 			Expect(actual).To(BeNil())
 			Expect(ok).To(BeFalse())
 		})
+	})
+
+	Describe("LookupValueTarget", func() {
+
+		var myValue = new(struct{})
+
+		DescribeTable("examples", func(v string, expected types.GomegaMatcher) {
+			var actual any
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Uses: cli.ProvideValueInitializer(myValue, "name"),
+						Action: func(c *cli.Context) {
+							actual, _ = c.LookupValueTarget(v)
+						},
+					},
+				},
+			}
+			_ = app.RunContext(context.TODO(), []string{"app", "_"})
+			Expect(actual).To(expected)
+		},
+			Entry("name", "name", BeIdenticalTo(myValue)),
+		)
 	})
 
 	Describe("LookupCommand", func() {

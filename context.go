@@ -525,6 +525,37 @@ func (c *Context) LookupArg(name interface{}) (*Arg, bool) {
 	return c.Parent().LookupArg(name)
 }
 
+// LookupValueTarget finds the value formerly provided to a value initializer
+// by name.
+func (c *Context) LookupValueTarget(name string) (any, bool) {
+	if c == nil {
+		return nil, false
+	}
+
+	// Dereference the internal *valueTarget in this context
+	v, ok := c.lookupValueTarget(name)
+	if ok {
+		return v.v, ok
+	}
+	return nil, false
+}
+
+func (c *Context) lookupValueTarget(name string) (*valueTarget, bool) {
+	if c == nil {
+		return nil, false
+	}
+	if name == "" {
+		if t, ok := c.target().(*valueTarget); ok {
+			return t, true
+		}
+		name = c.Name()
+	}
+	if h, ok := c.hookable(); ok {
+		return findValueTargetByName(h.valueTargets(), name)
+	}
+	return nil, false
+}
+
 // FindTarget finds the given target corresponding to the context path.
 func (c *Context) FindTarget(path ContextPath) (res *Context, ok bool) {
 	res = c
@@ -555,6 +586,10 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 	case matchArg(name):
 		if a, ok := c.LookupArg(name); ok {
 			return c.optionContext(a), true
+		}
+	case matchExpr(name):
+		if a, ok := c.lookupValueTarget(name); ok {
+			return c.valueContext(a), true
 		}
 	default:
 		if m, ok := c.LookupCommand(name); ok {
@@ -2068,6 +2103,17 @@ func checkForSupportedFlagType(c *Context) error {
 func executeOptionPipeline(ctx context.Context) error {
 	target := FromContext(ctx).target()
 	return Do(ctx, Pipeline(target.uses().pipeline(ActionTiming), target.pipeline(ActionTiming)))
+}
+
+func findValueTargetByName(items []*valueTarget, name string) (*valueTarget, bool) {
+	name = strings.TrimPrefix(name, "<-")
+	name = strings.TrimSuffix(name, ">")
+	for _, sub := range items {
+		if sub.name == name {
+			return sub, true
+		}
+	}
+	return nil, false
 }
 
 var (
