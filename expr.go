@@ -196,7 +196,7 @@ func (e *Expression) Initializer() Action {
 	}, func(c *Context) error {
 		for _, sub := range e.Exprs {
 			_ = c.ProvideValueInitializer(sub, sub.Name, Setup{
-				Uses:   sub.Uses,
+				Uses:   Pipeline(sub.Uses, sub.Options),
 				Before: sub.Before,
 				After:  sub.After,
 			})
@@ -484,8 +484,20 @@ func (e *Expr) SetDescription(value string) {
 	e.Description = value
 }
 
+func (e *Expr) SetHidden(value bool) {
+	e.setInternalFlags(exprFlagHidden, value)
+}
+
 func (e *Expr) internalFlags() exprFlags {
 	return e.flags
+}
+
+func (e *Expr) setInternalFlags(f exprFlags, v bool) {
+	if v {
+		e.flags |= f
+	} else {
+		e.flags &= ^f
+	}
 }
 
 // Evaluate provides the evaluation of the function and implements the Evaluator interface

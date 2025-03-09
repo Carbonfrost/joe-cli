@@ -16,6 +16,9 @@ func SetOSExit(fn func(int)) {
 }
 
 func IsVisible(t any) bool {
+	if exp, ok := t.(*Expr); ok {
+		return !exp.internalFlags().hidden()
+	}
 	return !t.(target).internalFlags().hidden()
 }
 

@@ -77,6 +77,7 @@ type parentLookup struct {
 
 type valueTarget struct {
 	pipelinesSupport
+	internalFlagsSupport
 
 	v    any
 	name string
@@ -1907,6 +1908,10 @@ func (v *valueTarget) setCompletion(c Completion) {
 	}
 }
 
+func (v *valueTarget) SetHidden(c bool) {
+	v.setInternalFlags(internalFlagHidden, c)
+}
+
 func (v *valueTarget) description() any {
 	return nil
 }
@@ -1929,15 +1934,6 @@ func (v *valueTarget) category() string {
 
 func (v *valueTarget) data() map[string]any {
 	return nil
-}
-
-func (*valueTarget) SetHidden(bool) {
-}
-
-func (*valueTarget) setInternalFlags(internalFlags, bool) {}
-
-func (*valueTarget) internalFlags() internalFlags {
-	return 0
 }
 
 func (v *valueTarget) SetData(name string, val interface{}) {
@@ -1979,8 +1975,18 @@ func (v *valueTarget) lookup() BindingLookup {
 	return b
 }
 
+func copyFlagsFromValueTarget(c *Context) error {
+	v := c.target().(*valueTarget)
+
+	if val, ok := v.v.(interface{ SetHidden(bool) }); ok {
+		val.SetHidden(v.internalFlags().hidden())
+	}
+
+	return nil
+}
+
 func applyImplicitVisibility(c *Context) error {
-	if strings.HasPrefix(strings.TrimLeft(c.Name(), "-"), "_") {
+	if strings.HasPrefix(strings.TrimLeft(c.Name(), "<-"), "_") {
 		if c.target().internalFlags().visibleExplicitlyRequested() {
 			return nil
 		}

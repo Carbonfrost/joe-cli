@@ -320,6 +320,25 @@ var _ = Describe("DisplayHelpScreen", func() {
 				ContainSubstring("-cname"),
 				ContainSubstring("Gets the cname value"),
 			)),
+
+		Entry("hide expr",
+			&cli.App{
+				Args: cli.Args(
+					"expr",
+					&cli.Expression{
+						Exprs: []*cli.Expr{
+							{Name: "hidden", Options: cli.Hidden},
+							{Name: "visible"},
+						},
+					},
+				),
+			},
+			And(
+				ContainSubstring("Expressions:"),
+				ContainSubstring("-visible"),
+				Not(ContainSubstring("-hidden")),
+			)),
+
 		Entry("display arg description",
 			&cli.App{
 				Args: []*cli.Arg{

@@ -375,8 +375,10 @@ var (
 		Initializers: actions(
 			executeDeferredPipeline(InitialTiming),
 			executeUserPipeline(InitialTiming),
+			ActionFunc(applyImplicitVisibility),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(finalizeArgsAndFlags),
+			ActionFunc(copyFlagsFromValueTarget),
 		),
 		Before: beforePipeline{
 			nil,

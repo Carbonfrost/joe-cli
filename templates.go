@@ -362,7 +362,7 @@ func exprAdapter(val *Expr) *exprData {
 }
 
 func exprDescription(e *Expression) *exprDescriptionData {
-	exprs := e.Exprs
+	exprs := e.VisibleExprs()
 	var (
 		visibleExprs = func(items []*Expr) []*exprData {
 			res := make([]*exprData, 0, len(items))

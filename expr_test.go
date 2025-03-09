@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -648,6 +649,36 @@ var _ = Describe("Expr", func() {
 				"arg -offset",
 				Equal(`expected argument`),
 			),
+		)
+	})
+
+	Describe("visibility", func() {
+		DescribeTable("examples", func(expr *cli.Expr, finder string, visibleExpected bool) {
+			var found *cli.Expr
+			app := &cli.App{
+				Args: cli.Args(
+					"expr",
+					&cli.Expression{
+						Exprs: []*cli.Expr{expr},
+					},
+				),
+				Action: func(c *cli.Context) {
+					parent, _ := c.FindTarget(strings.Fields("app <expr> " + finder))
+					found = parent.Target().(*cli.Expr)
+				},
+				Name: "app",
+			}
+			args, _ := cli.Split("app")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cli.IsVisible(found)).To(Equal(visibleExpected))
+		},
+			Entry("nominal", &cli.Expr{Name: "visible"}, "<-visible>", true),
+			Entry("visible", &cli.Expr{Name: "visible", Options: cli.Visible}, "<-visible>", true),
+			Entry("implicitly hidden by name", &cli.Expr{Name: "_hidden"}, "<-_hidden>", false),
+			Entry("disable implicitly hidden behavior (self)", &cli.Expr{Name: "_hidden", Options: cli.DisableAutoVisibility}, "<-_hidden>", true),
+			Entry("explicitly made visible implicitly hidden behavior", &cli.Expr{Name: "_hidden", Options: cli.Visible}, "<-_hidden>", true),
+			Entry("hidden wins over visible", &cli.Expr{Name: "hidden", Options: cli.Visible | cli.Hidden}, "<-hidden>", false),
 		)
 	})
 

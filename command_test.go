@@ -205,6 +205,16 @@ var _ = Describe("Command", func() {
 					{Name: "_hidden"},
 				},
 			}, "parent -_hidden", true),
+			Entry("disable implicitly hidden behavior of a expr (parent)", &cli.Command{
+				Name:    "parent",
+				Options: cli.DisableAutoVisibility,
+				Args: cli.Args("expr", &cli.Expression{
+					Exprs: []*cli.Expr{
+						{Name: "_hidden"},
+					},
+				},
+				),
+			}, "parent <expr> <-_hidden>", true),
 			Entry("explicitly made visible implicitly hidden behavior", &cli.Command{Name: "_hidden", Options: cli.Visible}, "_hidden", true),
 			Entry("hidden wins over visible", &cli.Command{Name: "hidden", Options: cli.Hidden | cli.Visible}, "hidden", false),
 		)
