@@ -2,12 +2,12 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"text/template"
 	"unicode"
@@ -180,60 +180,99 @@ func AutodetectColor() Action {
 // DisplayHelpScreen displays the help screen for the specified command.  If the command
 // is nested, each sub-command is named.
 func DisplayHelpScreen(command ...string) Action {
-	return ActionFunc(func(c *Context) error {
-		current := c.Root().Command()
-
-		var appName string
-		if current.fromApp != nil {
-			appName = current.fromApp.Name
-		}
-
-		persistentFlags := make([]*Flag, 0)
-
-		// Find command and accumulate persistent flags
-		for i, c := range command {
-			if i < len(command) {
-				persistentFlags = append(persistentFlags, current.VisibleFlags()...)
+	return Pipeline(
+		&Prototype{
+			Name:     "help",
+			Aliases:  []string{"h"},
+			Options:  Exits,
+			HelpText: "Display this help screen then exit",
+			Value:    new(bool),
+			Setup: Setup{
+				Optional: true,
+				Uses: IfMatch(AnyCommand, Pipeline(
+					HelpText("Display help for a command"),
+					AddArg(&Arg{
+						Name:  "command",
+						Value: List(),
+						NArg:  -1,
+					}),
+				)),
+			},
+		},
+		At(ActionTiming, ActionFunc(func(c *Context) error {
+			ctxt, path, err := findCommandToDisplayHelpFor(c, command)
+			if err != nil {
+				return err
 			}
 
-			var ok bool
-			current, ok = current.Command(c)
-			if !ok {
-				return commandMissing(c)
+			tpl := c.Template("Help")
+			if tpl == nil {
+				panic("help template not registered")
 			}
-		}
 
-		tpl := c.Template("Help")
-		if tpl == nil {
-			panic("help template not registered")
-		}
-		lineage := ""
+			current := ctxt.Command()
+			persistentFlags := ctxt.PersistentFlags()
 
-		if len(command) > 0 {
-			all := make([]string, 0)
-			if len(appName) > 0 {
-				all = append(all, appName)
+			if len(path) > 0 {
+				path = path[0 : len(path)-1]
 			}
-			all = append(all, command[0:len(command)-1]...)
-			lineage = strings.Join(all, " ")
+			lineage := strings.Join(path, " ")
+			data := struct {
+				SelectedCommand *commandData
+				App             *App
+				Debug           bool
+			}{
+				SelectedCommand: commandAdapter(current).withLineage(lineage, persistentFlags),
+				App:             c.App(),
+				Debug:           tpl.Debug,
+			}
+
+			w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
+
+			_ = tpl.Execute(w, data)
+			_ = w.Flush()
+			return nil
+		}),
+		))
+}
+
+func findCommandToDisplayHelpFor(c *Context, command []string) (*Context, ContextPath, error) {
+	if len(command) == 0 {
+		// Showing help for command where the option is used,
+		// or for commands, show it for the command that was named.
+		if c.isOption() {
+
+			// When the switch is interspersed with the name
+			// of commands, we try to infer what the user meant
+			// by removing flag names and treating full thing as
+			// a path
+			command = slices.DeleteFunc(c.Parent().Raw(""), func(t string) bool {
+				return strings.HasPrefix(t, "-")
+			})
+
+			// Use either the parent path or this inferred command,
+			// whicever is longer and therefore more specific.
+			if len(c.Parent().Path()) >= len(command) {
+				return c.Parent(), c.Parent().Path(), nil
+			}
+
+		} else {
+			list, _ := c.Value("command").([]string)
+			command = append(c.Parent().Path(), list...)
 		}
+	}
 
-		data := struct {
-			SelectedCommand *commandData
-			App             *App
-			Debug           bool
-		}{
-			SelectedCommand: commandAdapter(current).withLineage(lineage, persistentFlags),
-			App:             c.App(),
-			Debug:           tpl.Debug,
-		}
-
-		w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
-
-		_ = tpl.Execute(w, data)
-		_ = w.Flush()
-		return nil
-	})
+	// App name might be automatic or contain paths, so find target
+	// can find anything at the app level
+	command2 := slices.Clone(command)
+	if len(command2) > 0 {
+		command2[0] = "*"
+		command[0] = c.Root().Name()
+	}
+	if cmd, ok := c.Root().FindTarget(ContextPath(command2)); ok {
+		return cmd, command, nil
+	}
+	return nil, nil, commandMissing(command[len(command)-1])
 }
 
 // PrintVersion displays the version string.  The VersionTemplate provides the Go template
@@ -551,17 +590,4 @@ func sprintSynopsis(s synopsis.Stringer) string {
 	buf.SetColorCapable(false)
 	s.WriteTo(buf)
 	return buf.String()
-}
-
-func displayHelp(c context.Context) error {
-	command := make([]string, 0)
-
-	// Ignore any flags that were detected in this context
-	for _, c := range FromContext(c).List("command") {
-		if c[0] == '-' {
-			continue
-		}
-		command = append(command, c)
-	}
-	return Do(c, DisplayHelpScreen(command...))
 }

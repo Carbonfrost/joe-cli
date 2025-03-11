@@ -1868,30 +1868,17 @@ func defaultVersionFlag() *Flag {
 
 func defaultHelpFlag() *Flag {
 	return &Flag{
-		Name:     "help",
-		Aliases:  []string{"h"},
-		HelpText: "Display this help screen then exit",
-		Value:    Bool(),
-		Options:  Exits,
-		Action:   displayHelp,
+		Name: "help",
+		Uses: DisplayHelpScreen(),
 	}
 }
 
 func defaultHelpCommand() *Command {
 	return &Command{
-		Name:     "help",
-		Aliases:  []string{"h"},
-		HelpText: "Display help for a command",
-		Args: []*Arg{
-			{
-				Name:  "command",
-				Value: List(),
-				NArg:  -1,
-			},
-		},
-		Action: displayHelp,
+		Uses: DisplayHelpScreen(),
 	}
 }
+
 func defaultVersionCommand() *Command {
 	return &Command{
 		Uses: PrintVersion(),

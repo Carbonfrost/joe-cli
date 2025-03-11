@@ -736,6 +736,11 @@ var _ = Describe("Context", func() {
 			)
 		})
 
+		It("is nil for nil context", func() {
+			actual := (*cli.Context)(nil).Path()
+			Expect(actual).To(BeNil())
+		})
+
 		Context("when the app is unnamed", func() {
 
 			var nameComesFromProcess = func() string {

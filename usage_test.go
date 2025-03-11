@@ -412,7 +412,7 @@ var _ = Describe("DisplayHelpScreen", func() {
 		func(app *cli.App, args string, expected types.GomegaMatcher) {
 			Expect(renderScreen(app, args)).To(expected)
 		},
-		Entry("shows sub-command using help switch",
+		Entry("shows sub-command using help switch interspersed",
 			&cli.App{
 				Name: "app",
 				Commands: []*cli.Command{
@@ -455,6 +455,32 @@ var _ = Describe("DisplayHelpScreen", func() {
 			},
 			"app help sub",
 			ContainSubstring("<expression>...")),
+		Entry("shows sub-command using help switch after it",
+			&cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+					},
+				},
+			},
+			"app sub --help",
+			ContainSubstring("usage: app sub")),
+		Entry("shows sub-command with sub-commands using help switch",
+			&cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+						Subcommands: []*cli.Command{
+							{Name: "bar"},
+							{Name: "baz"},
+						},
+					},
+				},
+			},
+			"app sub --help",
+			ContainSubstring("usage: app sub")),
 	)
 
 })
