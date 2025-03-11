@@ -354,11 +354,11 @@ var _ = Describe("DisplayHelpScreen", func() {
 			&cli.App{
 				Options: cli.SortedFlags,
 				Flags: []*cli.Flag{
-					{Name: "z,"},
-					{Name: "d,"},
+					{Name: "zoo"},
+					{Name: "due"},
 				},
 			},
-			MatchRegexp(`(?s)-d,.+-z,`)),
+			MatchRegexp(`(?s)--due.+--zoo`)),
 
 		Entry("display sorted commands",
 			&cli.App{

@@ -536,6 +536,10 @@ var _ = Describe("Command", func() {
 			return cli.AddArg(option.(*cli.Arg))
 		}
 
+		var (
+			beInvalid = MatchError(ContainSubstring("not a valid name"))
+		)
+
 		DescribeTable("undefined behavior", func(option any) {
 			app := &cli.App{
 				Flags: []*cli.Flag{
@@ -565,24 +569,35 @@ var _ = Describe("Command", func() {
 			}
 
 			_, err := app.Initialize(context.TODO())
-			Expect(err).To(MatchError(expected))
+			Expect(err).To(expected)
 		},
 			Entry(
 				"no name",
 				&cli.Flag{},
-				ContainSubstring("flag at index #1 must have a name")),
+				MatchError(ContainSubstring("flag at index #1 must have a name"))),
 			Entry(
 				"duplicate flag name",
 				&cli.Flag{Name: "inuse"},
-				ContainSubstring(`duplicate name used: "inuse"`)),
+				MatchError(ContainSubstring(`duplicate name used: "inuse"`))),
 			Entry(
 				"duplicate arg name",
 				&cli.Arg{Name: "arg"},
-				ContainSubstring(`duplicate name used: "arg"`)),
+				MatchError(ContainSubstring(`duplicate name used: "arg"`))),
 			Entry(
 				"arg duplicates flag name",
 				&cli.Arg{Name: "inuse"},
-				ContainSubstring(`duplicate name used: "inuse"`)),
+				MatchError(ContainSubstring(`duplicate name used: "inuse"`))),
+
+			Entry("flag with dashes", &cli.Flag{Name: "flag-dash"}, Succeed()),
+			Entry("flag with underscores", &cli.Flag{Name: "flag_under"}, Succeed()),
+			Entry("flag with numeric", &cli.Flag{Name: "123"}, Succeed()),
+			Entry("flag with special char @", &cli.Flag{Name: "@"}, Succeed()),
+			Entry("flag with special char #", &cli.Flag{Name: "#"}, Succeed()),
+			Entry("flag with special char *", &cli.Flag{Name: "*"}, Succeed()),
+			Entry("flag with special char +", &cli.Flag{Name: "+"}, Succeed()),
+			Entry("flag with special char :", &cli.Flag{Name: ":"}, Succeed()),
+			Entry("flag with spaces", &cli.Flag{Name: "flag name with spaces"}, beInvalid),
+			Entry("flag with invalid cahr", &cli.Flag{Name: "flag&flag"}, beInvalid),
 		)
 	})
 

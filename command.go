@@ -694,7 +694,9 @@ func finalizeArgsAndFlags(c *Context) error {
 			errs = append(errs, fmt.Errorf("flag at index #%d must have a name", i))
 			continue
 		}
-		if names[f.Name] {
+		if err := checkValidIdentifier(f.Name); err != nil {
+			errs = append(errs, err)
+		} else if names[f.Name] {
 			errs = append(errs, fmt.Errorf("duplicate name used: %q", f.Name))
 		}
 		names[f.Name] = true

@@ -139,6 +139,8 @@ type jsonValue struct {
 	V any
 }
 
+var validIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9@#+\._\*:-]+$`)
+
 // Bool creates a bool value.  This is for convenience to obtain the right pointer.
 func Bool() *bool {
 	return new(bool)
@@ -829,6 +831,13 @@ func (v *valueContext) lookupValue(name string) (interface{}, bool) {
 
 func (v *valueContext) Name() string {
 	return "<-" + v.v.name + ">"
+}
+
+func checkValidIdentifier(name string) error {
+	if !validIdentifierPattern.MatchString(name) {
+		return fmt.Errorf("not a valid name")
+	}
+	return nil
 }
 
 func checkSupportedFlagType(v any) error {
