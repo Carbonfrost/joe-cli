@@ -118,7 +118,7 @@ type commandCategory struct {
 type commandsByCategory []*commandCategory
 
 type commandContext struct {
-	flagSet *set
+	*set
 }
 
 const (
@@ -339,7 +339,7 @@ func (c *Command) Use(action Action) *Command {
 func (c *Command) buildSet(ctx *Context) *set {
 	binding := NewBinding(c.Flags, c.Args, ctx.Parent())
 	set := newSet(binding)
-	ctx.internal.(*commandContext).flagSet = set
+	ctx.internal.(*commandContext).set = set
 	return set
 }
 
@@ -701,18 +701,6 @@ func finalizeArgsAndFlags(c *Context) error {
 		return c.internalError(fmt.Errorf("errors initializing command: %w", errors.Join(errs...)))
 	}
 	return nil
-}
-
-func (c *commandContext) lookupBinding(name string, occurs bool) []string {
-	return c.flagSet.BindingMap.lookup(name, occurs)
-}
-
-func (c *commandContext) set() BindingLookup {
-	return c.flagSet
-}
-
-func (c *commandContext) lookupValue(name string) (interface{}, bool) {
-	return c.flagSet.lookupValue(name)
 }
 
 func getGroup(f *Flag) synopsis.OptionGroup {

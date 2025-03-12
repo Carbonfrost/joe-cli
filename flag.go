@@ -360,25 +360,38 @@ func (f Flag) actualArgCounter() ArgCounter {
 	return argCounterImpliedFromValue(f.Value, !f.flags.optional())
 }
 
+func (c *wrapOccurrenceContext) Bindings(name string) [][]string {
+	return c.parentLookup.Bindings(name)
+}
+
+func (c *wrapOccurrenceContext) BindingNames() []string {
+	return c.parentLookup.BindingNames()
+}
+
 func (c *wrapOccurrenceContext) rawOccurrences() [][]string {
-	return c.parentLookup.set().Bindings(c.option.name())
+	return c.parentLookup.Bindings(c.option.name())
 }
 
 func (c *wrapOccurrenceContext) numOccurs() int {
 	return len(c.rawOccurrences())
 }
 
-func (c *wrapOccurrenceContext) lookupBinding(name string, occurs bool) []string {
+func (c *wrapOccurrenceContext) Raw(name string) []string {
 	if name == "" {
-		var index int
-		if occurs {
-			index = 1
-		}
 		v := c.rawOccurrences()[c.index]
-		return v[index:]
+		return v
 	}
 
-	return c.optionContext.lookupBinding(name, occurs)
+	return c.optionContext.Raw(name)
+}
+
+func (c *wrapOccurrenceContext) RawOccurrences(name string) []string {
+	if name == "" {
+		v := c.rawOccurrences()[c.index]
+		return v[1:]
+	}
+
+	return c.optionContext.RawOccurrences(name)
 }
 
 func (c *wrapOccurrenceContext) lookupValue(name string) (interface{}, bool) {

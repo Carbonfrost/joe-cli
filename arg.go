@@ -483,16 +483,34 @@ func (a *Arg) reset() {
 	optionReset(a.Value, a.internalFlags())
 }
 
-func (o *optionContext) lookupBinding(name string, occurs bool) []string {
+func (o *optionContext) argHandling() ([]string, bool) {
 	if _, isArg := o.option.(*Arg); isArg {
 		// Don't specify the argument name when obtaining current binding
-		return o.parentLookup.set().RawOccurrences(o.option.name())
+		return o.parentLookup.RawOccurrences(o.option.name()), true
 	}
-	return o.parentLookup.lookupBinding(o.option.name(), occurs)
+	return nil, false
 }
 
-func (o *optionContext) set() BindingLookup {
-	return o.parentLookup.set()
+func (o *optionContext) Raw(name string) []string {
+	if arg, ok := o.argHandling(); ok {
+		return arg
+	}
+	return o.parentLookup.Raw(o.option.name())
+}
+
+func (o *optionContext) RawOccurrences(name string) []string {
+	if arg, ok := o.argHandling(); ok {
+		return arg
+	}
+	return o.parentLookup.RawOccurrences(o.option.name())
+}
+
+func (o *optionContext) Bindings(name string) [][]string {
+	return o.parentLookup.Bindings(name)
+}
+
+func (o *optionContext) BindingNames() []string {
+	return o.parentLookup.BindingNames()
 }
 
 func (o *optionContext) lookupValue(name string) (interface{}, bool) {

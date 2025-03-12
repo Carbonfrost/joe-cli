@@ -56,10 +56,20 @@ type Context struct {
 // WalkFunc provides the callback for the Walk function
 type WalkFunc func(cmd *Context) error
 
+// internalContext provides the context-specific mechanism
+// for resolving bindings and values for the command or option.
+// This is used as a BindingLookup when wrapped by newBindingLookup
 type internalContext interface {
 	lookupCore
-	lookupBinding(name string, occurs bool) []string
-	set() BindingLookup
+	Raw(name string) []string
+	RawOccurrences(name string) []string
+	Bindings(name string) [][]string
+	BindingNames() []string
+}
+
+type bindingLookupWrapper struct {
+	internalContext
+	Lookup
 }
 
 type parentLookup struct {
@@ -141,6 +151,13 @@ func newValueTarget(v any, name string, action Action) *valueTarget {
 				Initializers: action,
 			},
 		},
+	}
+}
+
+func newBindingLookup(ic internalContext) BindingLookup {
+	return &bindingLookupWrapper{
+		internalContext: ic,
+		Lookup:          LookupFunc(ic.lookupValue),
 	}
 }
 
@@ -343,7 +360,7 @@ func (c *Context) subcommandDidNotExecute() bool {
 // represent the name of the command plus the arguments passed to it.  For flags and arguments,
 // this is the value passed to them
 func (c *Context) Args() []string {
-	return c.internal.lookupBinding("", false)
+	return c.internal.Raw("")
 }
 
 // Flags obtains the flags from the command, including
@@ -669,24 +686,24 @@ func (c *Context) Value(name interface{}) interface{} {
 // the name that was used.  Value can be the empty string if no value
 // was passed
 func (c *Context) Raw(name interface{}) []string {
-	return c.rawCore(name, false)
+	return c.rawCore(name, (internalContext).Raw)
 }
 
 // RawOccurrences gets the exact value which was passed to the arg, flag
 // excluding the name that was used.  Value can be the empty string if no value
 // was passed
 func (c *Context) RawOccurrences(name interface{}) []string {
-	return c.rawCore(name, true)
+	return c.rawCore(name, (internalContext).RawOccurrences)
 }
 
-func (c *Context) rawCore(name interface{}, occurs bool) []string {
+func (c *Context) rawCore(name any, occurs func(internalContext, string) []string) []string {
 	if c == nil {
 		return []string{}
 	}
 
 	switch f := name.(type) {
 	case rune, string, nil, int, *Arg, *Flag:
-		d := c.internal.lookupBinding(c.nameToString(f), occurs)
+		d := occurs(c.internal, c.nameToString(f))
 		if f != "" && len(d) == 0 {
 			return c.Parent().rawCore(c.nameToString(f), occurs)
 		}
@@ -705,7 +722,7 @@ func (c *Context) BindingLookup() BindingLookup {
 	if c == nil {
 		return nil
 	}
-	return c.internal.set()
+	return newBindingLookup(c.internal)
 }
 
 // LookupData gets the data matching the key, including recursive traversal
@@ -1500,7 +1517,7 @@ func matchFlag(field string) bool {
 
 func rootContext(cctx context.Context, app *App) *Context {
 	internal := &commandContext{
-		flagSet: newSet(nil), // See comment in commandContext below
+		set: newSet(nil), // See comment in commandContext below
 	}
 	cmd := app.createRoot()
 	cmd.fromApp = app
@@ -1526,7 +1543,7 @@ func (c *Context) commandContext(cmd *Command) *Context {
 		// allow command contexts to be used within
 		// initialization. Some tests depend upon this being
 		// non-nil early on
-		flagSet: newSet(nil),
+		set: newSet(nil),
 	})
 }
 
@@ -2168,4 +2185,5 @@ var (
 	_ internalContext = (*commandContext)(nil)
 	_ internalContext = (*optionContext)(nil)
 	_ internalContext = (*valueContext)(nil)
+	_ BindingLookup   = (*bindingLookupWrapper)(nil)
 )

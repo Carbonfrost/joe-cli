@@ -784,18 +784,32 @@ func (v *valuePairCounter) Take(arg string, _ bool) error {
 	return errors.New("too many arguments to filter")
 }
 
-func (v *valueContext) lookupBinding(name string, occurs bool) []string {
+func (v *valueContext) Raw(name string) []string {
 	if v.lookup == nil {
 		return nil
-	}
-	if occurs {
-		return v.lookup.RawOccurrences(name)
 	}
 	return v.lookup.Raw(name)
 }
 
-func (v *valueContext) set() BindingLookup {
-	return v.lookup
+func (v *valueContext) RawOccurrences(name string) []string {
+	if v.lookup == nil {
+		return nil
+	}
+	return v.lookup.RawOccurrences(name)
+}
+
+func (v *valueContext) Bindings(name string) [][]string {
+	if v.lookup == nil {
+		return nil
+	}
+	return v.lookup.Bindings(name)
+}
+
+func (v *valueContext) BindingNames() []string {
+	if v.lookup == nil {
+		return nil
+	}
+	return v.lookup.BindingNames()
 }
 
 func (v *valueContext) lookupValue(name string) (interface{}, bool) {

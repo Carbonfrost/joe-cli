@@ -577,7 +577,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			opt.reset()
 
 			if err := rawApplyToOption(
-				[][]string{mini.lookupBinding("", false)},
+				[][]string{mini.Raw("")},
 				opt.transformFunc(),
 				opt,
 			); err != nil {
