@@ -451,13 +451,13 @@ func splitOptionsHO(opts Option, fn func(Option)) {
 }
 
 func hiddenOption(c *Context) error {
-	c.target().SetHidden(true)
+	c.target.SetHidden(true)
 	return nil
 }
 
 func visibleOption(c *Context) error {
-	c.target().setInternalFlags(internalFlagVisibleExplicitlyRequested, true)
-	c.target().setInternalFlags(internalFlagHidden, false)
+	c.target.setInternalFlags(internalFlagVisibleExplicitlyRequested, true)
+	c.target.setInternalFlags(internalFlagHidden, false)
 	return nil
 }
 
@@ -467,7 +467,7 @@ func requiredOption(c *Context) error {
 }
 
 func wrapWithExit(c *Context) error {
-	c.target().setInternalFlags(internalFlagExits, true)
+	c.target.setInternalFlags(internalFlagExits, true)
 	return c.At(ActionTiming, ActionOf(doThenExit))
 }
 
@@ -515,14 +515,14 @@ func optionalOption(c *Context) error {
 
 func setInternalFlag(f internalFlags) ActionFunc {
 	return func(c *Context) error {
-		c.target().setInternalFlags(f, true)
+		c.target.setInternalFlags(f, true)
 		return nil
 	}
 }
 
 func unsetInternalFlag(f internalFlags) ActionFunc {
 	return func(c *Context) error {
-		c.target().setInternalFlags(f, false)
+		c.target.setInternalFlags(f, false)
 		return nil
 	}
 }
@@ -559,7 +559,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			optionContext: c.internal.(*optionContext),
 		}
 
-		scope := c.copy(mini)
+		scope := c.copy(opt, mini)
 
 		// Obtain either the zero value or Reset() the value
 		resetOnFirstOccur := !opt.internalFlags().merge()
@@ -615,7 +615,7 @@ func sortedCommandsOpt(c *Context) error {
 }
 
 func sortedExprsOpt(c *Context) error {
-	exp, ok := c.target().description().(interface{ SortUsage() })
+	exp, ok := c.target.description().(interface{ SortUsage() })
 	if !ok {
 		return nil
 	}

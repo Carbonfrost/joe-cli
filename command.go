@@ -118,7 +118,6 @@ type commandCategory struct {
 type commandsByCategory []*commandCategory
 
 type commandContext struct {
-	cmd     *Command
 	flagSet *set
 }
 
@@ -160,7 +159,7 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 	if err != nil {
 		return err
 	}
-	c.Parent().target().setInternalFlags(internalFlagDidSubcommandExecute, true)
+	c.Parent().target.setInternalFlags(internalFlagDidSubcommandExecute, true)
 	newCtx := c.Parent().commandContext(cmd)
 	return newCtx.Execute(invoke)
 }
@@ -345,7 +344,7 @@ func (c *Command) buildSet(ctx *Context) *set {
 }
 
 func ensureSubcommands(ctx context.Context) error {
-	cmd := FromContext(ctx).target().(*Command)
+	cmd := FromContext(ctx).target.(*Command)
 
 	if len(cmd.Subcommands) > 0 {
 		if cmd.Action == nil {
@@ -595,12 +594,8 @@ func (c *Command) pipeline(t Timing) interface{} {
 	}
 }
 
-func (c *commandContext) initialize(ctx context.Context) error {
-	return execute(ctx, defaultCommand.Initializers)
-}
-
-func (c *commandContext) initializeDescendent(ctx context.Context) error {
-	return c.cmd.executeInitializeHooks(ctx)
+func (c *Command) contextName() string {
+	return c.Name
 }
 
 func initializeFlagsArgs(ctx *Context) error {
@@ -654,7 +649,7 @@ func initializeFlagsArgs(ctx *Context) error {
 }
 
 func initializeSubcommands(ctx *Context) error {
-	cmd := ctx.target().(*Command)
+	cmd := ctx.target.(*Command)
 	for _, sub := range cmd.Subcommands {
 		err := ctx.commandContext(sub).initialize()
 		if err != nil {
@@ -708,39 +703,16 @@ func finalizeArgsAndFlags(c *Context) error {
 	return nil
 }
 
-func (c *commandContext) executeBeforeDescendent(ctx context.Context) error {
-	return c.cmd.executeBeforeHooks(ctx)
-}
-
-func (c *commandContext) executeBefore(ctx context.Context) error {
-	return execute(ctx, defaultCommand.Before)
-}
-
-func (c *commandContext) executeAfter(ctx context.Context) error {
-	return execute(ctx, defaultCommand.After)
-}
-
-func (c *commandContext) executeAfterDescendent(ctx context.Context) error {
-	return c.cmd.executeAfterHooks(ctx)
-}
-
-func (c *commandContext) execute(ctx context.Context) error {
-	return execute(ctx, defaultCommand.Action)
-}
-
 func (c *commandContext) lookupBinding(name string, occurs bool) []string {
 	return c.flagSet.BindingMap.lookup(name, occurs)
 }
+
 func (c *commandContext) set() BindingLookup {
 	return c.flagSet
 }
-func (c *commandContext) target() target { return c.cmd }
+
 func (c *commandContext) lookupValue(name string) (interface{}, bool) {
 	return c.flagSet.lookupValue(name)
-}
-
-func (c *commandContext) Name() string {
-	return c.cmd.Name
 }
 
 func getGroup(f *Flag) synopsis.OptionGroup {
@@ -798,8 +770,8 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 		return nil, commandMissing(sub)
 	}
 
-	c.target().setInternalFlags(internalFlagSearchingAlternateCommand, true)
-	defer c.target().setInternalFlags(internalFlagSearchingAlternateCommand, false)
+	c.target.setInternalFlags(internalFlagSearchingAlternateCommand, true)
+	defer c.target.setInternalFlags(internalFlagSearchingAlternateCommand, false)
 	if interceptErr == nil {
 		if auto, ok := c.LookupData(commandNotFoundKey); ok {
 			// Invalid casts are ignored because a sentinel value can be set  to indicate that

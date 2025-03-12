@@ -155,6 +155,7 @@ type target interface {
 	internalFlags() internalFlags
 	completion() Completion
 	data() map[string]any
+	contextName() string
 }
 
 type hooksSupport struct {
@@ -242,6 +243,13 @@ const (
 	actualBeforeIndexImplicitValueTiming
 	actualBeforeIndexJustBeforeTiming
 	actualBeforeIndexMaxValue
+)
+
+const (
+	targetTypeCommand = iota
+	targetTypeOption
+	targetTypeValue
+	targetTypeMaxValue
 )
 
 var (
@@ -416,7 +424,20 @@ var (
 	// ErrImplicitValueAlreadySet occurs when the value for a flag
 	// or arg is set multiple times within the implicit timing.
 	ErrImplicitValueAlreadySet = errors.New("value already set implicitly")
+
+	// In order to break an initialization cycle, this is a value
+	// that is late initialized in init() rather than
+	// a function that directly depends upon its values.
+	flow [targetTypeMaxValue]*actionPipelines
 )
+
+func init() {
+	flow = [...]*actionPipelines{
+		targetTypeOption:  &defaultOption,
+		targetTypeCommand: &defaultCommand,
+		targetTypeValue:   &defaultValue,
+	}
+}
 
 // Execute executes the Setup, which assigns the various parts to their
 // pipelines

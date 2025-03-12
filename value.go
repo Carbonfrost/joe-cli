@@ -784,26 +784,6 @@ func (v *valuePairCounter) Take(arg string, _ bool) error {
 	return errors.New("too many arguments to filter")
 }
 
-func (*valueContext) initialize(c context.Context) error {
-	return execute(c, defaultValue.Initializers)
-}
-
-func (*valueContext) executeBefore(c context.Context) error {
-	return execute(c, defaultValue.Before)
-}
-
-func (*valueContext) executeAfter(c context.Context) error {
-	return execute(c, defaultValue.After)
-}
-
-func (*valueContext) execute(c context.Context) error {
-	return execute(c, defaultValue.Action)
-}
-
-func (*valueContext) initializeDescendent(context.Context) error    { return nil }
-func (*valueContext) executeBeforeDescendent(context.Context) error { return nil }
-func (*valueContext) executeAfterDescendent(context.Context) error  { return nil }
-
 func (v *valueContext) lookupBinding(name string, occurs bool) []string {
 	if v.lookup == nil {
 		return nil
@@ -818,19 +798,11 @@ func (v *valueContext) set() BindingLookup {
 	return v.lookup
 }
 
-func (v *valueContext) target() target {
-	return v.v
-}
-
 func (v *valueContext) lookupValue(name string) (interface{}, bool) {
 	if v.lookup == nil {
 		return nil, false
 	}
 	return v.lookup.Interface(name)
-}
-
-func (v *valueContext) Name() string {
-	return "<-" + v.v.name + ">"
 }
 
 func checkValidIdentifier(name string) error {

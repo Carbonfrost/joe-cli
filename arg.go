@@ -2,7 +2,6 @@ package cli
 
 import (
 	"cmp"
-	"context"
 	"fmt"
 	"strings"
 
@@ -484,34 +483,6 @@ func (a *Arg) reset() {
 	optionReset(a.Value, a.internalFlags())
 }
 
-func (o *optionContext) initialize(c context.Context) error {
-	return execute(c, defaultOption.Initializers)
-}
-
-func (o *optionContext) executeBefore(ctx context.Context) error {
-	return execute(ctx, defaultOption.Before)
-}
-
-func (o *optionContext) initializeDescendent(ctx context.Context) error {
-	return o.option.executeInitializeHooks(ctx)
-}
-
-func (o *optionContext) executeBeforeDescendent(ctx context.Context) error {
-	return o.option.executeBeforeHooks(ctx)
-}
-
-func (o *optionContext) executeAfterDescendent(ctx context.Context) error {
-	return o.option.executeAfterHooks(ctx)
-}
-
-func (o *optionContext) executeAfter(ctx context.Context) error {
-	return execute(ctx, defaultOption.After)
-}
-
-func (o *optionContext) execute(ctx context.Context) error {
-	return execute(ctx, defaultOption.Action)
-}
-
 func (o *optionContext) lookupBinding(name string, occurs bool) []string {
 	if _, isArg := o.option.(*Arg); isArg {
 		// Don't specify the argument name when obtaining current binding
@@ -519,19 +490,16 @@ func (o *optionContext) lookupBinding(name string, occurs bool) []string {
 	}
 	return o.parentLookup.lookupBinding(o.option.name(), occurs)
 }
+
 func (o *optionContext) set() BindingLookup {
 	return o.parentLookup.set()
 }
 
-func (o *optionContext) target() target { return o.option }
 func (o *optionContext) lookupValue(name string) (interface{}, bool) {
 	if name == "" {
 		return o.option.value(), true
 	}
 	return nil, false
-}
-func (o *optionContext) Name() string {
-	return o.option.contextName()
 }
 
 func (d *discreteCounter) Take(_ string, _ bool) error {
