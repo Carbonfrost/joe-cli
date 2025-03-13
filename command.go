@@ -160,7 +160,7 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 		return err
 	}
 	c.Parent().target.setInternalFlags(internalFlagDidSubcommandExecute, true)
-	newCtx := c.Parent().commandContext(cmd)
+	newCtx := c.Parent().newChild(cmd)
 	return newCtx.Execute(invoke)
 }
 
@@ -389,7 +389,7 @@ func completeSubCommand(c *Context) []CompletionItem {
 		return nil
 	}
 
-	newCtx := c.Parent().commandContext(cmd)
+	newCtx := c.Parent().newChild(cmd)
 	return newCtx.Complete(invoke, cc.Incomplete)
 }
 
@@ -451,7 +451,7 @@ func defaultCommandCompletion(c *Context) []CompletionItem {
 				break
 			}
 		}
-		return actualCompletion(last.completion()).Complete(c.optionContext(last))
+		return actualCompletion(last.completion()).Complete(c.newChild(last))
 	}
 
 	return items
@@ -467,7 +467,7 @@ func findSolitaryMatch(c *Context) []CompletionItem {
 	for _, f := range cmd.VisibleFlags() {
 		for _, n := range f.synopsis().Names {
 			if n == cc.Incomplete || (hasArg && strings.HasPrefix(n, flagName)) {
-				return actualCompletion(f.completion()).Complete(c.optionContext(f))
+				return actualCompletion(f.completion()).Complete(c.newChild(f))
 			}
 			if strings.HasPrefix(n, cc.Incomplete) {
 				if match != nil && match != f {
@@ -618,14 +618,14 @@ func initializeFlagsArgs(ctx *Context) error {
 			}
 
 			originalName := sub.Name
-			err := ctx.optionContext(sub).initialize()
+			err := ctx.newChild(sub).initialize()
 			if err != nil {
 				return err
 			}
 			// The name has changed, so hooks need to run again
 			// on the flag
 			if sub.Name != originalName {
-				ctx.optionContext(sub).reinitialize()
+				ctx.newChild(sub).reinitialize()
 			}
 		}
 		anyFlags = len(flags) > 0
@@ -637,7 +637,7 @@ func initializeFlagsArgs(ctx *Context) error {
 			if sub.internalFlags().initialized() {
 				continue
 			}
-			err := ctx.optionContext(sub).initialize()
+			err := ctx.newChild(sub).initialize()
 			if err != nil {
 				return err
 			}
@@ -651,7 +651,7 @@ func initializeFlagsArgs(ctx *Context) error {
 func initializeSubcommands(ctx *Context) error {
 	cmd := ctx.target.(*Command)
 	for _, sub := range cmd.Subcommands {
-		err := ctx.commandContext(sub).initialize()
+		err := ctx.newChild(sub).initialize()
 		if err != nil {
 			return err
 		}

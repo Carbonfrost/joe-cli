@@ -417,9 +417,10 @@ func (c *Context) ValueContextOf(name string, v any) *Context {
 	case *Arg, *Flag, *Command, *App:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
-	return c.valueContext(newValueTarget(v, name, nil))
+	return c.newChild(newValueTarget(v, name, nil))
 }
 
+type targetType = target
 // ContextOf creates a context for use with the given target, which must
 // be a flag, arg, or sub-command, or it must be the name of a flag or arg
 // (using the typing and rules of LookupFlag and LookupArg). This method
@@ -434,17 +435,15 @@ func (c *Context) ContextOf(target any) *Context {
 		return c.Parent().ContextOf(target)
 	}
 	switch name := target.(type) {
-	case *Arg, *Flag:
-		return c.optionContext(target.(option))
-	case *Command:
-		return c.commandContext(target.(*Command))
+	case *Arg, *Flag, *Command:
+		return c.newChild(target.(targetType))
 	case int:
 		return c.tryOptionContext(c.LookupArg(name))
 	case rune:
 		return c.tryOptionContext(c.LookupFlag(name))
 	case string:
 		if a, ok := c.LookupArg(name); ok {
-			return c.optionContext(a)
+			return c.newChild(a)
 		}
 		return c.tryOptionContext(c.LookupFlag(name))
 	default:
@@ -456,7 +455,7 @@ func (c *Context) tryOptionContext(target any, ok bool) *Context {
 	if !ok {
 		return nil
 	}
-	return c.optionContext(target.(option))
+	return c.newChild(target.(option))
 }
 
 // LookupCommand finds the command by name.  The name can be a string or *Command
@@ -594,19 +593,19 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 		return c, false
 	case matchFlag(name):
 		if f, ok := c.LookupFlag(name); ok {
-			return c.optionContext(f), true
+			return c.newChild(f), true
 		}
 	case matchArg(name):
 		if a, ok := c.LookupArg(name); ok {
-			return c.optionContext(a), true
+			return c.newChild(a), true
 		}
 	case matchExpr(name):
 		if a, ok := c.lookupValueTarget(name); ok {
-			return c.valueContext(a), true
+			return c.newChild(a), true
 		}
 	default:
 		if m, ok := c.LookupCommand(name); ok {
-			return c.commandContext(m), true
+			return c.newChild(m), true
 		}
 	}
 	return nil, false
@@ -1043,7 +1042,7 @@ func (c *Context) walkCore(fn WalkFunc) error {
 	switch err {
 	case nil:
 		for _, sub := range current.Subcommands {
-			if err := c.commandContext(sub).walkCore(fn); err != nil {
+			if err := c.newChild(sub).walkCore(fn); err != nil {
 				return err
 			}
 		}
@@ -1540,30 +1539,6 @@ func newLookupCore(t internalContext, parent lookupCore) lookupCore {
 	return &parentLookup{t, parent}
 }
 
-func (c *Context) commandContext(cmd *Command) *Context {
-	return c.copy(cmd, &commandContext{
-		// This set doesn't have a binding yet mainly to
-		// allow command contexts to be used within
-		// initialization. Some tests depend upon this being
-		// non-nil early on
-		set: newSet(nil),
-	})
-}
-
-func (c *Context) optionContext(opt option) *Context {
-	return c.copy(opt, &optionContext{
-		option:       opt,
-		parentLookup: c.internal,
-	})
-}
-
-func (c *Context) valueContext(adapter *valueTarget) *Context {
-	return c.copy(adapter, &valueContext{
-		v:      adapter,
-		lookup: adapter.lookup(),
-	})
-}
-
 func (c *Context) setTiming(t Timing) *Context {
 	c.timing = t
 	return c
@@ -1578,14 +1553,14 @@ func triggerOptionsHO(t Timing, on func(*Context) error) ActionFunc {
 				continue
 			}
 
-			err := on(ctx.optionContext(f).setTiming(t))
+			err := on(ctx.newChild(f).setTiming(t))
 			if err != nil {
 				return err
 			}
 		}
 
 		for _, f := range ctx.LocalArgs() {
-			err := on(ctx.optionContext(f).setTiming(t))
+			err := on(ctx.newChild(f).setTiming(t))
 			if err != nil {
 				return err
 			}
@@ -1599,7 +1574,7 @@ func triggerValueTargetsHO(t Timing, on func(*Context) error) ActionFunc {
 	return func(ctx *Context) error {
 		me, _ := ctx.hookable()
 		for _, sub := range me.valueTargets() {
-			err := on(ctx.valueContext(sub).setTiming(t))
+			err := on(ctx.newChild(sub).setTiming(t))
 			if err != nil {
 				return err
 			}
@@ -1660,6 +1635,35 @@ func (c *Context) copy(newTarget target, t internalContext) *Context {
 		request:    c.request,
 		lookupCore: newLookupCore(t, c),
 	}
+}
+
+func (c *Context) newChild(t target) *Context {
+	var internal internalContext
+	switch t := t.(type) {
+	case *Command:
+		internal = &commandContext{
+			// This set doesn't have a binding yet mainly to
+			// allow command contexts to be used within
+			// initialization. Some tests depend upon this being
+			// non-nil early on
+			set: newSet(nil),
+		}
+
+	case option:
+		internal = &optionContext{
+			option:       t,
+			parentLookup: c.internal,
+		}
+
+	case *valueTarget:
+		internal = &valueContext{
+			v:      t,
+			lookup: t.lookup(),
+		}
+	default:
+		panic("unreachable!")
+	}
+	return c.copy(t, internal)
 }
 
 func bubble(start *Context, self, anc func(*Context, context.Context) error) error {
@@ -2113,7 +2117,7 @@ func triggerOptions(ctx *Context) error {
 
 func triggerOption(ctx *Context, f option) error {
 	if f.Seen() || hasSeenImplied(f, ctx.target) {
-		return ctx.optionContext(f).executeSelf()
+		return ctx.newChild(f).executeSelf()
 	}
 	return nil
 }
