@@ -461,8 +461,15 @@ func argSynopsis(a *cli.Arg, name string) *synopsis.Arg {
 	return synopsis.NewArg(name, a.NArg)
 }
 
+// LocalArgs retrieves the arguments
 func (e *Expr) LocalArgs() []*cli.Arg {
 	return e.Args
+}
+
+// SetLocalArgs sets arguments
+func (e *Expr) SetLocalArgs(args []*cli.Arg) error {
+	e.Args = args
+	return nil
 }
 
 // SetData sets the specified metadata on the expression operator

@@ -85,6 +85,10 @@ type valueTarget struct {
 	name string
 }
 
+type haveLocalArgs interface {
+	LocalArgs() []*Arg
+}
+
 // ContextPath provides a list of strings that name each one of the parent components
 // in the context.  Each string follows the form:
 //
@@ -390,7 +394,7 @@ func (c *Context) LocalArgs() []*Arg {
 	if c.IsCommand() {
 		return c.Command().Args
 	}
-	if aa, ok := c.Target().(interface{ LocalArgs() []*Arg }); ok {
+	if aa, ok := c.Target().(haveLocalArgs); ok {
 		return aa.LocalArgs()
 	}
 	return nil
@@ -1166,6 +1170,8 @@ func (c *Context) AddCommand(v *Command) error {
 
 // AddArg provides a convenience method that adds an Arg to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
+// Args can also be added to a value which has been provided
+// to a value initializer (see [ProvideValueInitializer])
 func (c *Context) AddArg(v *Arg) error {
 	return c.updateArgs(func(args []*Arg) []*Arg {
 		return append(args, v)
@@ -1235,6 +1241,8 @@ func (c *Context) AddCommands(commands ...*Command) (err error) {
 }
 
 // AddArgs provides a convenience method for adding args to the current command or app.
+// Args can also be added to a value which has been provided
+// to a value initializer (see [ProvideValueInitializer])
 func (c *Context) AddArgs(args ...*Arg) (err error) {
 	for _, a := range args {
 		if err = c.AddArg(a); err != nil {
@@ -1259,6 +1267,18 @@ func (c *Context) updateArgs(fn func([]*Arg) []*Arg) error {
 	if err != nil {
 		return err
 	}
+
+	if a, ok := c.Target().(haveLocalArgs); ok {
+		switch aa := a.(type) {
+		case interface{ SetLocalArgs([]*Arg) error }:
+			return aa.SetLocalArgs(fn(a.LocalArgs()))
+
+		case interface{ SetLocalArgs([]*Arg) }:
+			aa.SetLocalArgs(fn(a.LocalArgs()))
+			return nil
+		}
+	}
+
 	cmd := c.Command()
 	cmd.Args = fn(cmd.Args)
 	return nil
@@ -1314,7 +1334,8 @@ func (c *Context) Trigger() error {
 // about methods implemented by values by convention).
 //
 // The value can also provide methods such as SetDescription(string),
-// SetHelpText(string), etc. in order to operate with actions that set these values.
+// SetHelpText(string), SetManualText(string), SetLocalArgs([]*Arg)error
+// etc. in order to operate with actions that set these values.
 //
 // If the value has local args (a method LocalArgs() []*Arg), then their
 // pipelines are triggered.
@@ -2012,7 +2033,7 @@ func (v *valueTarget) LookupData(name string) (interface{}, bool) {
 }
 
 func (v *valueTarget) LocalArgs() []*Arg {
-	if a, ok := v.v.(interface{ LocalArgs() []*Arg }); ok {
+	if a, ok := v.v.(haveLocalArgs); ok {
 		return a.LocalArgs()
 	}
 	return nil

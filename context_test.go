@@ -1195,6 +1195,24 @@ var _ = Describe("Context", func() {
 				}
 			}, "x,y,z"),
 		)
+
+		It("can add set local args via convention", func() {
+			value := &haveArgs{
+				Args: cli.Args("x", new(string), "y", new(string), "z", new(string)),
+			}
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "a",
+						Uses: cli.Pipeline(
+							cli.ProvideValueInitializer(value, "me", cli.AddArgs(cli.Args("o", new(int))...)),
+						),
+					},
+				},
+			}
+			app.Initialize(context.Background())
+			Expect(value.Args).To(HaveLen(4))
+		})
 	})
 })
 
@@ -1316,6 +1334,11 @@ type haveArgs struct {
 
 func (a *haveArgs) LocalArgs() []*cli.Arg {
 	return a.Args
+}
+
+func (a *haveArgs) SetLocalArgs(args []*cli.Arg) error {
+	a.Args = args
+	return nil
 }
 
 func (a *haveArgs) SetData(k string, v any) {

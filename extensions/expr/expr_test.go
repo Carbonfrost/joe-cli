@@ -291,6 +291,28 @@ var _ = Describe("Expr", func() {
 		Expect(app.Args[0].Name).To(Equal("expression"))
 	})
 
+	It("can add additional args dynamically", func() {
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name: "expr",
+								Args: cli.Args("a", cli.Bool()),
+								Uses: cli.AddArgs(cli.Args("o", new(int))...),
+							},
+						},
+					},
+				},
+			},
+		}
+
+		app.Initialize(context.Background())
+		expr := app.Args[0].Value.(*expr.Expression).Exprs[0]
+		Expect(expr.Args).To(HaveLen(2))
+	})
+
 	Describe("Evaluate", func() {
 		var (
 			act *exprfakes.FakeEvaluator

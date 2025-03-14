@@ -994,6 +994,8 @@ func AddCommand(c *Command) Action {
 }
 
 // AddArg provides an action which adds an arg to the command or app
+// Args can also be added to a value which has been provided
+// to a value initializer (see [ProvideValueInitializer])
 func AddArg(a *Arg) Action {
 	return actionThunk1((*Context).AddArg, a)
 }
@@ -1032,6 +1034,8 @@ func AddFlags(flags ...*Flag) Action {
 }
 
 // AddArgs provides an action which adds the specified args to the command
+// Args can also be added to a value which has been provided
+// to a value initializer (see [ProvideValueInitializer])
 func AddArgs(args ...*Arg) Action {
 	return actionThunkVar1((*Context).AddArgs, args)
 }
