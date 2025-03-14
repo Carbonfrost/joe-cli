@@ -11,6 +11,8 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/color"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
+	"github.com/Carbonfrost/joe-cli/extensions/expr/exprfakes"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -257,9 +259,9 @@ var _ = Describe("Evaluator", func() {
 
 	It("invokes the factory", func() {
 		var called bool
-		factory := func(string) cli.Evaluator {
+		factory := func(string) expr.Evaluator {
 			called = true
-			return new(joeclifakes.FakeEvaluator)
+			return new(exprfakes.FakeEvaluator)
 		}
 
 		actual := bind.Evaluator(factory, bind.String())
@@ -268,8 +270,8 @@ var _ = Describe("Evaluator", func() {
 	})
 
 	It("delegates Evaluate calls the factory-produced evaluator", func() {
-		fakeEvaluator := new(joeclifakes.FakeEvaluator)
-		factory := func(string) cli.Evaluator {
+		fakeEvaluator := new(exprfakes.FakeEvaluator)
+		factory := func(string) expr.Evaluator {
 			return fakeEvaluator
 		}
 
@@ -294,7 +296,7 @@ var _ = Describe("Evaluator", func() {
 			uint32 uint32
 			uint64 uint64
 		}
-		evaluators := []cli.Evaluator{
+		evaluators := []expr.Evaluator{
 			bind.Evaluator(evalFactory(&varNames.string), bind.String("string")),
 			bind.Evaluator(evalFactory(&varNames.bool), bind.Bool("bool")),
 			bind.Evaluator(evalFactory(&varNames.list), bind.List("list")),
@@ -372,7 +374,7 @@ var _ = Describe("Evaluator", func() {
 			bigFloat   *big.Float
 			bytes      []byte
 		}
-		evaluators := []cli.Evaluator{
+		evaluators := []expr.Evaluator{
 			bind.Evaluator(evalFactory(&varNames.float32), bind.Float32("float32")),
 			bind.Evaluator(evalFactory(&varNames.float64), bind.Float64("float64")),
 			bind.Evaluator(evalFactory(&varNames.duration), bind.Duration("duration")),
@@ -435,7 +437,7 @@ var _ = Describe("Evaluator", func() {
 			iface any
 		}
 		fakeValue := &joeclifakes.FakeValue{}
-		evaluators := []cli.Evaluator{
+		evaluators := []expr.Evaluator{
 			bind.Evaluator(evalFactory(&varNames.iface), bind.Interface("iface")),
 		}
 
@@ -459,7 +461,7 @@ var _ = Describe("Evaluator", func() {
 			value *color.Mode
 		}
 		var mode color.Mode = color.Never
-		evaluators := []cli.Evaluator{
+		evaluators := []expr.Evaluator{
 			bind.Evaluator(evalFactory(&varNames.value), bind.Value[*color.Mode]("mode")),
 		}
 
@@ -481,17 +483,17 @@ var _ = Describe("Evaluator", func() {
 	Describe("binding arguments", func() {
 		DescribeTable("examples", func(binder bind.Binder[string], expected string) {
 			var (
-				eval       = new(joeclifakes.FakeEvaluator)
+				eval       = new(exprfakes.FakeEvaluator)
 				calledWith string
 			)
 
-			factory := func(s string) cli.Evaluator {
+			factory := func(s string) expr.Evaluator {
 				calledWith = s
 				return eval
 			}
 			app := &cli.App{
 				Action: func(c *cli.Context) {
-					c.Expression("expression").Evaluate(c, 0)
+					expr.FromContext(c, "expression").Evaluate(c, 0)
 				},
 				Flags: []*cli.Flag{
 					{
@@ -505,8 +507,8 @@ var _ = Describe("Evaluator", func() {
 					},
 					{
 						Name: "expression",
-						Value: &cli.Expression{
-							Exprs: []*cli.Expr{
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
 								{
 									Name: "name",
 									Args: []*cli.Arg{
@@ -648,10 +650,10 @@ var _ = Describe("Redirect", func() {
 	})
 })
 
-func evalFactory[T any](t *T) func(T) cli.Evaluator {
-	return func(s T) cli.Evaluator {
+func evalFactory[T any](t *T) func(T) expr.Evaluator {
+	return func(s T) expr.Evaluator {
 		*t = s
-		return new(joeclifakes.FakeEvaluator)
+		return new(exprfakes.FakeEvaluator)
 	}
 }
 

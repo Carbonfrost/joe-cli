@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
 )
 
 type evaluatorFunc func(_ context.Context, v any, yield func(any) error) error
 
 type evaluatorInit struct {
-	cli.Evaluator
+	expr.Evaluator
 	cli.Action
 }
 
@@ -119,7 +120,7 @@ func Call3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U], v Bi
 }
 
 // Evaluator produces an evaluator from the bound values.
-func Evaluator[T any](factory func(T) cli.Evaluator, t Binder[T]) cli.Evaluator {
+func Evaluator[T any](factory func(T) expr.Evaluator, t Binder[T]) expr.Evaluator {
 	return newEvaluator(initializers(t),
 		func(c context.Context, v any, yield func(any) error) error {
 			a0, err := bind(c, t)
@@ -131,7 +132,7 @@ func Evaluator[T any](factory func(T) cli.Evaluator, t Binder[T]) cli.Evaluator 
 }
 
 // Evaluator2 produces an evaluator from the bound values.
-func Evaluator2[T, U any](eval func(T, U) cli.Evaluator, t Binder[T], u Binder[U]) cli.Evaluator {
+func Evaluator2[T, U any](eval func(T, U) expr.Evaluator, t Binder[T], u Binder[U]) expr.Evaluator {
 	return newEvaluator(initializers(t, u),
 		func(c context.Context, v any, yield func(any) error) error {
 			a0, a1, err := bind2(c, t, u)
@@ -143,7 +144,7 @@ func Evaluator2[T, U any](eval func(T, U) cli.Evaluator, t Binder[T], u Binder[U
 }
 
 // Evaluator3 produces an evaluator from the bound values.
-func Evaluator3[T, U, V any](eval func(T, U, V) cli.Evaluator, t Binder[T], u Binder[U], v Binder[V]) cli.Evaluator {
+func Evaluator3[T, U, V any](eval func(T, U, V) expr.Evaluator, t Binder[T], u Binder[U], v Binder[V]) expr.Evaluator {
 	return newEvaluator(initializers(t, u, v),
 		func(c context.Context, vany any, yield func(any) error) error {
 			a0, a1, a2, err := bind3(c, t, u, v)
@@ -253,9 +254,9 @@ func willSetImpliedName(b binderImpliedName, index int) cli.ActionFunc {
 	}
 }
 
-func willSetEvaluator(eval cli.Evaluator) cli.ActionFunc {
+func willSetEvaluator(eval expr.Evaluator) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		c.Target().(*cli.Expr).Evaluate = eval
+		c.Target().(*expr.Expr).Evaluate = eval
 		return nil
 	}
 }

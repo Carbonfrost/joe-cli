@@ -619,6 +619,7 @@ func sortedExprsOpt(c *Context) error {
 	if !ok {
 		return nil
 	}
+
 	exp.SortUsage()
 	return nil
 }

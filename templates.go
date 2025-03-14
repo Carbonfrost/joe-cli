@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"strings"
 	"text/template"
 
@@ -40,15 +39,6 @@ type flagData struct {
 	Data        map[string]interface{}
 }
 
-type exprData struct {
-	Name        string
-	Synopsis    *synopsisWrapper[*synopsis.Expr]
-	HelpText    string
-	ManualText  string
-	Description string
-	Data        map[string]interface{}
-}
-
 type commandDataCategory struct {
 	Category        string
 	VisibleCommands []*commandData
@@ -59,17 +49,6 @@ type flagDataCategory struct {
 	Undocumented bool
 	Category     string
 	VisibleFlags flagDataList
-}
-
-type exprDataCategory struct {
-	Undocumented bool
-	Category     string
-	VisibleExprs []*exprData
-}
-
-type exprDescriptionData struct {
-	VisibleExprs    []*exprData
-	ExprsByCategory []*exprDataCategory
 }
 
 var (
@@ -347,48 +326,5 @@ func argAdapter(val *Arg) *flagData {
 		ManualText:  val.ManualText,
 		Description: val.Description,
 		Data:        val.Data,
-	}
-}
-
-func exprAdapter(val *Expr) *exprData {
-	syn := val.newSynopsis()
-	return &exprData{
-		Name:        val.Name,
-		HelpText:    renderHelp(syn.Usage),
-		Description: fmt.Sprint(val.Description),
-		ManualText:  val.ManualText,
-		Synopsis:    wrapSynopsis(syn),
-		Data:        val.Data,
-	}
-}
-
-func exprDescription(e *Expression) *exprDescriptionData {
-	exprs := e.VisibleExprs()
-	var (
-		visibleExprs = func(items []*Expr) []*exprData {
-			res := make([]*exprData, 0, len(items))
-			for _, a := range items {
-				res = append(res, exprAdapter(a))
-			}
-			return res
-		}
-		visibleExprCategories = func(items exprsByCategory) []*exprDataCategory {
-			res := make([]*exprDataCategory, 0, len(items))
-			for _, a := range items {
-				res = append(res, &exprDataCategory{
-					Category:     a.Category,
-					Undocumented: a.Undocumented(),
-					VisibleExprs: visibleExprs(a.VisibleExprs()),
-				})
-			}
-			if len(res) == 1 && res[0].Category == "" {
-				return nil
-			}
-			return res
-		}
-	)
-	return &exprDescriptionData{
-		VisibleExprs:    visibleExprs(exprs),
-		ExprsByCategory: visibleExprCategories(groupExprsByCategory(exprs)),
 	}
 }

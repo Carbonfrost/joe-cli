@@ -421,6 +421,7 @@ func (c *Context) ValueContextOf(name string, v any) *Context {
 }
 
 type targetType = target
+
 // ContextOf creates a context for use with the given target, which must
 // be a flag, arg, or sub-command, or it must be the name of a flag or arg
 // (using the typing and rules of LookupFlag and LookupArg). This method
@@ -631,11 +632,6 @@ func (c *Context) Occurrences(name interface{}) int {
 // set.
 func (c *Context) ImplicitlySet() bool {
 	return c.target.internalFlags().seenImplied()
-}
-
-// Expression obtains the expression from the context
-func (c *Context) Expression(name string) *Expression {
-	return c.Value(name).(*Expression)
 }
 
 // NValue gets the maximum number available, exclusive, as an argument Value.

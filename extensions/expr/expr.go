@@ -1,4 +1,4 @@
-package cli
+package expr
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
@@ -23,7 +24,7 @@ type Evaluator interface {
 }
 
 // EvaluatorFunc provides the basic function for an Evaluator
-type EvaluatorFunc func(*Context, interface{}, func(interface{}) error) error
+type EvaluatorFunc func(*cli.Context, interface{}, func(interface{}) error) error
 
 // Expr represents an operator in an expression.  An expression is composed of an
 // ordered series of operators meant to describe how to process one or more values.
@@ -43,7 +44,7 @@ type Expr struct {
 
 	// Args contains each of the arguments that are processed for the expression operators.  Expression
 	// operators don't contain values directly; they process one or more arguments.
-	Args []*Arg
+	Args []*cli.Arg
 
 	// HelpText contains text which briefly describes the usage of the expression operator.
 	// For style, generally the usage text should be limited to about 40 characters.
@@ -91,7 +92,7 @@ type Expr struct {
 
 	// Options sets various options about how to treat the expression operator.  For example, options can
 	// hide the expression operator.
-	Options Option
+	Options cli.Option
 
 	flags exprFlags
 	*exprSet
@@ -100,20 +101,20 @@ type Expr struct {
 // Expression provides the parsed result of the expression that can be evaluated
 // with the given inputs.
 type Expression struct {
-	items []ExprBinding
+	items []Binding
 	args  []string
 
 	// Exprs identifies the expression operators that are allowed
 	Exprs []*Expr
 }
 
-// ExprBinding provides the relationship between an evaluator and the evaluation
+// Binding provides the relationship between an evaluator and the evaluation
 // context.  Optionally, the original Expr is made available.
 // A binding can support being reset if it exposes a method Reset(). Resetting
 // a binding occurs when an expression is evaluated multiple times.
-type ExprBinding interface {
+type Binding interface {
 	Evaluator
-	Lookup
+	cli.Lookup
 
 	// Expr retrieves the expression operator if it is available
 	Expr() *Expr
@@ -130,8 +131,10 @@ type exprFlags int
 
 type expressionDescription struct {
 	exp   *Expression
-	templ *Template
+	templ *cli.Template
 }
+
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 
 //counterfeiter:generate . Yielder
 
@@ -146,14 +149,14 @@ type boundExpr struct {
 
 type exprBinding struct {
 	Evaluator
-	Lookup
+	cli.Lookup
 	expr *Expr
 }
 
 type exprSet struct {
-	Lookup
-	Binding
-	BindingMap
+	cli.Lookup
+	cli.Binding
+	cli.BindingMap
 }
 
 const (
@@ -162,19 +165,19 @@ const (
 )
 
 func newBoundExpr(e *Expr) *boundExpr {
-	set := newExprSet(NewBinding(nil, e.Args, nil), nil)
+	set := newExprSet(cli.NewBinding(nil, e.Args, nil), nil)
 	return &boundExpr{
 		expr:    e,
 		exprSet: set,
 	}
 }
 
-func newExprSet(b Binding, all BindingMap) *exprSet {
+func newExprSet(b cli.Binding, all cli.BindingMap) *exprSet {
 	result := &exprSet{
 		BindingMap: all,
 		Binding:    b,
 	}
-	result.Lookup = LookupFunc(result.lookupValue)
+	result.Lookup = cli.LookupFunc(result.lookupValue)
 	return result
 }
 
@@ -182,29 +185,29 @@ func newExprSet(b Binding, all BindingMap) *exprSet {
 // is set up automatically when a command defines any expression operators.  The exprFunc
 // argument is used to determine which expressions to used.  If nil, the default behavior
 // is used which is to lookup Command.Exprs from the context
-func (e *Expression) Initializer() Action {
-	return Pipeline(&Prototype{
+func (e *Expression) Initializer() cli.Action {
+	return cli.Pipeline(&cli.Prototype{
 		Name:      "expression",
 		UsageText: "<expression>",
-		NArg:      TakeRemaining,
-	}, func(c *Context) error {
+		NArg:      cli.TakeRemaining,
+	}, func(c *cli.Context) error {
 		return c.SetDescription(&expressionDescription{
 			exp:   e,
 			templ: c.Template("Expressions"),
 		})
 
-	}, func(c *Context) error {
+	}, func(c *cli.Context) error {
 		for _, sub := range e.Exprs {
-			_ = c.ProvideValueInitializer(sub, sub.Name, Setup{
-				Uses:   Pipeline(sub.Uses, sub.Options),
+			_ = c.ProvideValueInitializer(sub, sub.Name, cli.Setup{
+				Uses:   cli.Pipeline(sub.Uses, sub.Options),
 				Before: sub.Before,
 				After:  sub.After,
 			})
 		}
 		return nil
 
-	}, At(ActionTiming, ActionFunc(func(c *Context) (err error) {
-		var all BindingMap
+	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) (err error) {
+		var all cli.BindingMap
 		e.items, all, err = parseExpressions(e.Exprs, e.args)
 		if err != nil {
 			return
@@ -213,7 +216,7 @@ func (e *Expression) Initializer() Action {
 		for _, sub := range e.Exprs {
 			// Provide a view of the binding map that is global
 			// to each of the Exprs
-			es := newExprSet(NewBinding(nil, sub.Args, nil), all)
+			es := newExprSet(cli.NewBinding(nil, sub.Args, nil), all)
 			sub.exprSet = es
 		}
 
@@ -252,19 +255,19 @@ func (e *expressionDescription) String() string {
 	return buf.String()
 }
 
-// NewExprBinding creates an expression binding.  The ev parameter is how
+// NewBinding creates an expression binding.  The ev parameter is how
 // the expression is evaluated.  The remaining arguments specify the *Expr
 // expression operator to use and optionally a Lookup.   The main use case
 // for this function is to create a custom evaluation step that is appended to
 // the expression pipeline
-func NewExprBinding(ev Evaluator, exprlookup ...interface{}) ExprBinding {
+func NewBinding(ev Evaluator, exprlookup ...interface{}) Binding {
 	var (
 		expr   *Expr
-		lookup Lookup = LookupValues{}
+		lookup cli.Lookup = cli.LookupValues{}
 	)
 	switch len(exprlookup) {
 	case 2:
-		lookup = exprlookup[1].(Lookup)
+		lookup = exprlookup[1].(cli.Lookup)
 		fallthrough
 	case 1:
 		expr = exprlookup[0].(*Expr)
@@ -285,10 +288,10 @@ func NewExprBinding(ev Evaluator, exprlookup ...interface{}) ExprBinding {
 // You can also use bool as a return type as in the same signature used by
 // Predicate.  These are valid signatures:
 //
-//   - func(*Context, interface{}, func(interface{})error) error
-//   - func(*Context, interface{}) error
-//   - func(*Context, interface{}) bool
-//   - func(*Context, interface{})
+//   - func(*cli.Context, interface{}, func(interface{})error) error
+//   - func(*cli.Context, interface{}) error
+//   - func(*cli.Context, interface{}) bool
+//   - func(*cli.Context, interface{})
 //   - func(context.Context, interface{}, func(interface{})error) error
 //   - func(context.Context, interface{}) error
 //   - func(context.Context, interface{}) bool
@@ -303,34 +306,34 @@ func EvaluatorOf(v interface{}) Evaluator {
 		return EvaluatorOf(true)
 	case Evaluator:
 		return a
-	case func(*Context, interface{}, func(interface{}) error) error:
+	case func(*cli.Context, interface{}, func(interface{}) error) error:
 		return EvaluatorFunc(a)
-	case func(*Context, interface{}) error:
-		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+	case func(*cli.Context, interface{}) error:
+		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
 			err := a(c, v)
 			if err == nil {
 				return y(v)
 			}
 			return err
 		})
-	case func(*Context, interface{}) bool:
-		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+	case func(*cli.Context, interface{}) bool:
+		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
 			if a(c, v) {
 				return y(v)
 			}
 			return nil
 		})
-	case func(*Context, interface{}):
-		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+	case func(*cli.Context, interface{}):
+		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
 			a(c, v)
 			return y(v)
 		})
 	case func(context.Context, interface{}, func(interface{}) error) error:
-		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
 			return a(c, v, y)
 		})
 	case func(context.Context, interface{}) error:
-		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
 			err := a(c, v)
 			if err == nil {
 				return y(v)
@@ -338,23 +341,23 @@ func EvaluatorOf(v interface{}) Evaluator {
 			return err
 		})
 	case func(context.Context, interface{}) bool:
-		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
 			if a(c, v) {
 				return y(v)
 			}
 			return nil
 		})
 	case func(context.Context, interface{}):
-		return EvaluatorFunc(func(c *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
 			a(c, v)
 			return y(v)
 		})
 	case func(interface{}, func(interface{}) error) error:
-		return EvaluatorFunc(func(_ *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
 			return a(v, y)
 		})
 	case func(interface{}) error:
-		return EvaluatorFunc(func(_ *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
 			err := a(v)
 			if err == nil {
 				return y(v)
@@ -362,19 +365,19 @@ func EvaluatorOf(v interface{}) Evaluator {
 			return err
 		})
 	case func(interface{}) bool:
-		return EvaluatorFunc(func(_ *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
 			if a(v) {
 				return y(v)
 			}
 			return nil
 		})
 	case func(interface{}):
-		return EvaluatorFunc(func(_ *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
 			a(v)
 			return y(v)
 		})
 	case bool:
-		return EvaluatorFunc(func(_ *Context, v interface{}, y func(interface{}) error) error {
+		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
 			if a {
 				return y(v)
 			}
@@ -387,8 +390,8 @@ func EvaluatorOf(v interface{}) Evaluator {
 // Predicate provides a simple predicate which filters values.  The filter function
 // takes the prior operand and returns true or false depending upon whether the
 // operand should be yielded to the next step in the expression pipeline.
-func Predicate(filter func(v any) bool) Evaluator {
-	return EvaluatorFunc(func(_ *Context, v any, y func(any) error) error {
+func Predicate(filter func(v interface{}) bool) Evaluator {
+	return EvaluatorFunc(func(_ *cli.Context, v any, y func(any) error) error {
 		if ok := filter(v); ok {
 			return y(v)
 		}
@@ -423,13 +426,18 @@ func (e *Expr) Names() []string {
 
 // Synopsis retrieves the synopsis for the expression operator.
 func (e *Expr) Synopsis() string {
-	return sprintSynopsis(e.newSynopsis())
+	buf := cli.NewBuffer()
+	buf.SetColorCapable(false)
+	e.newSynopsis().WriteTo(buf)
+	return buf.String()
 }
 
 // Arg gets the expression operator by name
-func (e *Expr) Arg(name interface{}) (*Arg, bool) {
-	a, _, ok := findArgByName(e.Args, name)
-	return a, ok
+func (e *Expr) Arg(name any) (*cli.Arg, bool) {
+	// Somewhat hackish to use the command for this but this
+	// spares having to make the API exported
+	cmd := &cli.Command{Args: e.Args}
+	return cmd.Arg(name)
 }
 
 func (e *Expr) newSynopsis() *synopsis.Expr {
@@ -439,17 +447,21 @@ func (e *Expr) newSynopsis() *synopsis.Expr {
 
 	for i, a := range e.LocalArgs() {
 		if i < len(pp) {
-			args[i] = a.newSynopsis().WithUsage(pp[i])
+			args[i] = argSynopsis(a, pp[i])
 		} else {
 			// Use a simpler default name with less noise from angle brackets
-			args[i] = a.newSynopsis().WithUsage(strings.ToUpper(a.Name))
+			args[i] = argSynopsis(a, strings.ToUpper(a.Name))
 		}
 	}
 
 	return synopsis.NewExpr(e.Name, e.Aliases, usage, args)
 }
 
-func (e *Expr) LocalArgs() []*Arg {
+func argSynopsis(a *cli.Arg, name string) *synopsis.Arg {
+	return synopsis.NewArg(name, a.NArg)
+}
+
+func (e *Expr) LocalArgs() []*cli.Arg {
 	return e.Args
 }
 
@@ -505,7 +517,7 @@ func (e EvaluatorFunc) Evaluate(c context.Context, v interface{}, yield func(int
 	if e == nil {
 		return nil
 	}
-	return e(FromContext(c), v, yield)
+	return e(cli.FromContext(c), v, yield)
 }
 
 func (f exprFlags) hidden() bool {
@@ -516,10 +528,10 @@ func (f exprFlags) rightToLeft() bool {
 	return f&exprFlagRightToLeft == exprFlagRightToLeft
 }
 
-func (f exprFlags) toRaw() RawParseFlag {
-	var flags RawParseFlag
+func (f exprFlags) toRaw() cli.RawParseFlag {
+	var flags cli.RawParseFlag
 	if f.rightToLeft() {
-		flags |= RawRTL
+		flags |= cli.RawRTL
 	}
 	return flags
 }
@@ -564,11 +576,11 @@ func (b *boundExpr) Expr() *Expr {
 	return b.expr
 }
 
-func (b *boundExpr) LocalArgs() []*Arg {
+func (b *boundExpr) LocalArgs() []*cli.Arg {
 	return b.expr.Args
 }
 
-func (b *boundExpr) BindingMap() BindingMap {
+func (b *boundExpr) BindingMap() cli.BindingMap {
 	return b.exprSet.BindingMap
 }
 
@@ -577,7 +589,7 @@ func (b *boundExpr) Reset() {
 }
 
 func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) error {
-	ctx := FromContext(c).ValueContextOf(b.Expr().Name, b)
+	ctx := cli.FromContext(c).ValueContextOf(b.Expr().Name, b)
 	tryResetIfSupported(b)
 
 	err := b.BindingMap().ApplyTo(b.exprSet)
@@ -634,7 +646,7 @@ func (e *Expression) evaluateCore(ctx context.Context, items ...interface{}) err
 	return nil
 }
 
-func (e *Expression) Walk(fn func(ExprBinding) error) error {
+func (e *Expression) Walk(fn func(Binding) error) error {
 	if fn == nil {
 		return nil
 	}
@@ -647,11 +659,11 @@ func (e *Expression) Walk(fn func(ExprBinding) error) error {
 	return nil
 }
 
-func (e *Expression) Prepend(expr ExprBinding) {
-	e.items = append([]ExprBinding{expr}, e.items...)
+func (e *Expression) Prepend(expr Binding) {
+	e.items = append([]Binding{expr}, e.items...)
 }
 
-func (e *Expression) Append(expr ExprBinding) {
+func (e *Expression) Append(expr Binding) {
 	e.items = append(e.items, expr)
 }
 
@@ -667,7 +679,7 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, BindingMap, error) {
+func parseExpressions(exprOperands []*Expr, args []string) ([]Binding, cli.BindingMap, error) {
 	exprs := map[string]*Expr{}
 	for _, e := range exprOperands {
 		exprs[e.Name] = e
@@ -676,8 +688,8 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, Bindi
 		}
 	}
 
-	results := make([]ExprBinding, 0)
-	all := BindingMap{}
+	results := make([]Binding, 0)
+	all := cli.BindingMap{}
 	for len(args) > 0 {
 		arg := args[0]
 		args = args[1:]
@@ -691,17 +703,17 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]ExprBinding, Bindi
 		// use of the expression operator.
 		boundExpr := newBoundExpr(expr)
 		results = append(results, boundExpr)
-		bin, err := RawParse(args, boundExpr.exprSet, boundExpr.expr.internalFlags().toRaw())
+		bin, err := cli.RawParse(args, boundExpr.exprSet, boundExpr.expr.internalFlags().toRaw())
 
-		var pe *ParseError
+		var pe *cli.ParseError
 		if err != nil {
-			pe = err.(*ParseError)
+			pe = err.(*cli.ParseError)
 			args = pe.Remaining
 
 			switch pe.Code {
-			case UnexpectedArgument:
+			case cli.UnexpectedArgument:
 				return nil, nil, argsMustPrecedeExprs(args[0])
-			case ExpectedArgument:
+			case cli.ExpectedArgument:
 				return nil, nil, pe
 			}
 		}
@@ -727,7 +739,7 @@ func (b *exprBinding) Expr() *Expr {
 
 func (s *exprSet) lookupValue(name string) (interface{}, bool) {
 	if _, _, g, ok := s.Binding.LookupOption(name); ok {
-		return g.(option).value(), true
+		return g.(*cli.Arg).Value, true
 	}
 	return nil, false
 }
@@ -740,9 +752,46 @@ func exprsByNameOrder(x *Expr, y *Expr) int {
 	return cmp.Compare(x.Name, y.Name)
 }
 
+func unknownExpr(name string) error {
+	return &cli.ParseError{
+		Code: cli.UnknownExpr,
+		Name: name,
+		Err:  fmt.Errorf("unknown expression: %s", name),
+	}
+}
+
+func argsMustPrecedeExprs(arg string) error {
+	return &cli.ParseError{
+		Code:  cli.ArgsMustPrecedeExprs,
+		Value: arg,
+		Err:   fmt.Errorf("arguments must precede expressions: %q", arg),
+	}
+}
+
+// FIXME Code clones
+func renderHelp(us *synopsis.Usage) string {
+	sb := cli.NewBuffer()
+	us.HelpText(sb)
+	return sb.String()
+}
+
+func setData(data map[string]interface{}, name string, v interface{}) map[string]interface{} {
+	if v == nil {
+		delete(data, name)
+		return data
+	}
+	if data == nil {
+		return map[string]interface{}{
+			name: v,
+		}
+	}
+	data[name] = v
+	return data
+}
+
 var (
-	_ Value         = (*Expression)(nil)
-	_ BindingLookup = (*boundExpr)(nil)
-	_ BindingLookup = (*Expr)(nil)
-	_ Binding       = (*boundExpr)(nil)
+	_ cli.Value         = (*Expression)(nil)
+	_ cli.BindingLookup = (*boundExpr)(nil)
+	_ cli.BindingLookup = (*Expr)(nil)
+	_ cli.Binding       = (*boundExpr)(nil)
 )

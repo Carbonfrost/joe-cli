@@ -311,22 +311,6 @@ func argTakerError(name string, value string, err error, remaining []string) err
 	}
 }
 
-func unknownExpr(name string) error {
-	return &ParseError{
-		Code: UnknownExpr,
-		Name: name,
-		Err:  fmt.Errorf("unknown expression: %s", name),
-	}
-}
-
-func argsMustPrecedeExprs(arg string) error {
-	return &ParseError{
-		Code:  ArgsMustPrecedeExprs,
-		Value: arg,
-		Err:   fmt.Errorf("arguments must precede expressions: %q", arg),
-	}
-}
-
 func formatStrconvError(err error, value string) error {
 	if e, ok := err.(*strconv.NumError); ok {
 		switch e.Err {

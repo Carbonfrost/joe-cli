@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -642,7 +643,7 @@ var _ = Describe("Context", func() {
 								actualID = a.Data["id"]
 							case *cli.Command:
 								actualID = a.Data["id"]
-							case *cli.Expr:
+							case *expr.Expr:
 								actualID = a.Data["id"]
 							default:
 								Fail(fmt.Sprintf("unexpected type %T", a))
@@ -663,8 +664,8 @@ var _ = Describe("Context", func() {
 								},
 								{
 									Name: "arg3",
-									Value: &cli.Expression{
-										Exprs: []*cli.Expr{
+									Value: &expr.Expression{
+										Exprs: []*expr.Expr{
 											{
 												Name: "expr",
 												Uses: cli.Data("id", "4"),
@@ -898,8 +899,8 @@ var _ = Describe("Context", func() {
 					},
 					{
 						Name: "expression",
-						Value: &cli.Expression{
-							Exprs: []*cli.Expr{
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
 								{
 									Name: "e",
 									Uses: func(c *cli.Context) {
@@ -924,7 +925,7 @@ var _ = Describe("Context", func() {
 			Expect(actualFlag).To(Equal(app.Flags[0]))
 			Expect(actualCommand).To(Equal(app.Commands[0]))
 			Expect(actualArg).To(Equal(app.Args[0]))
-			Expect(actualExpr).To(Equal(app.Args[1].Value.(*cli.Expression).Exprs[0]))
+			Expect(actualExpr).To(Equal(app.Args[1].Value.(*expr.Expression).Exprs[0]))
 		})
 
 		DescribeTable("examples", func(name any, expected types.GomegaMatcher) {

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -278,15 +279,15 @@ var _ = Describe("DisplayHelpScreen", func() {
 			ContainSubstring("description text")),
 		Entry("display expression",
 			&cli.App{
-				Args: cli.Args("expression", &cli.Expression{}),
+				Args: cli.Args("expression", &expr.Expression{}),
 			},
 			ContainSubstring("<expression>...")),
 		Entry("display expression description",
 			&cli.App{
 				Args: cli.Args(
 					"expr",
-					&cli.Expression{
-						Exprs: []*cli.Expr{
+					&expr.Expression{
+						Exprs: []*expr.Expr{
 							{
 								Name:     "cname",
 								HelpText: "Gets the cname value",
@@ -304,14 +305,14 @@ var _ = Describe("DisplayHelpScreen", func() {
 			&cli.App{
 				Args: cli.Args(
 					"expr",
-					&cli.Expression{
-						Exprs: []*cli.Expr{},
+					&expr.Expression{
+						Exprs: []*expr.Expr{},
 					},
 				),
 				Before: func(c *cli.Context) error {
 					arg, _ := c.LookupArg("expr")
-					exprs := arg.Value.(*cli.Expression).Exprs
-					arg.Value.(*cli.Expression).Exprs = append(exprs, &cli.Expr{Name: "cname", HelpText: "Gets the cname value"})
+					exprs := arg.Value.(*expr.Expression).Exprs
+					arg.Value.(*expr.Expression).Exprs = append(exprs, &expr.Expr{Name: "cname", HelpText: "Gets the cname value"})
 					return nil
 				},
 			},
@@ -325,8 +326,8 @@ var _ = Describe("DisplayHelpScreen", func() {
 			&cli.App{
 				Args: cli.Args(
 					"expr",
-					&cli.Expression{
-						Exprs: []*cli.Expr{
+					&expr.Expression{
+						Exprs: []*expr.Expr{
 							{Name: "hidden", Options: cli.Hidden},
 							{Name: "visible"},
 						},
@@ -375,8 +376,8 @@ var _ = Describe("DisplayHelpScreen", func() {
 				Args: []*cli.Arg{
 					{
 						Options: cli.SortedExprs,
-						Value: &cli.Expression{
-							Exprs: []*cli.Expr{
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
 								{Name: "z,"},
 								{Name: "d,"},
 							},
@@ -441,8 +442,8 @@ var _ = Describe("DisplayHelpScreen", func() {
 						Name: "sub",
 						Args: []*cli.Arg{
 							{
-								Value: &cli.Expression{
-									Exprs: []*cli.Expr{
+								Value: &expr.Expression{
+									Exprs: []*expr.Expr{
 										{
 											Name: "expr",
 										},
