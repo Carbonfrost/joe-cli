@@ -218,7 +218,7 @@ func Redirect[V any](name any, valopt ...V) cli.Action {
 
 func newEvaluator(initz cli.Action, evaluator evaluatorFunc) *evaluatorInit {
 	return &evaluatorInit{
-		Action:    cli.Pipeline(initz, willSetEvaluator(evaluator)),
+		Action:    cli.Pipeline(initz, expr.SetEvaluator(evaluator)),
 		Evaluator: evaluator,
 	}
 }
@@ -250,13 +250,6 @@ func willSetImpliedName(b binderImpliedName, index int) cli.ActionFunc {
 		} else {
 			b.SetName(index)
 		}
-		return nil
-	}
-}
-
-func willSetEvaluator(eval expr.Evaluator) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		c.Target().(*expr.Expr).Evaluate = eval
 		return nil
 	}
 }

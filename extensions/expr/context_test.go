@@ -1,0 +1,39 @@
+package expr_test
+
+import (
+	"context"
+
+	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
+	"github.com/Carbonfrost/joe-cli/extensions/expr/exprfakes"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+var _ = Describe("SetEvaluator", func() {
+
+	It("sets the evaluator", func() {
+		ev := new(exprfakes.FakeEvaluator)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "e",
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name: "expr",
+								Args: cli.Args("a", cli.Bool()),
+								Uses: expr.SetEvaluator(ev),
+							},
+						},
+					},
+				},
+			},
+		}
+
+		_, _ = app.Initialize(context.Background())
+
+		expression := app.Args[0].Value.(*expr.Expression)
+		Expect(expression.Exprs[0].Evaluate).To(BeIdenticalTo(ev))
+	})
+})
