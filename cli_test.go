@@ -12,6 +12,7 @@ import (
 	"time"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/value"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -55,7 +56,7 @@ var _ = Describe("Quote", func() {
 		Entry("uint64", uint64(19), "19"),
 		Entry("uint8", uint8(19), "19"),
 		Entry("bytes", []byte{0xCE, 0xC3}, "cec3"),
-		Entry("Value", cli.Octal(0o20), "0o20"),
+		Entry("Value", value.Octal(0o20), "0o20"),
 		Entry("NameValues", cli.NameValues("key", "on"), "key=on"),
 		Entry("Duration", 250*time.Second, "4m10s"),
 		Entry("URL", unwrap(url.Parse("https://localhost")), "https://localhost"),
