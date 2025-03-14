@@ -395,11 +395,11 @@ func (p *parentLookup) lookupValue(name string) (interface{}, bool) {
 	return p.parent.lookupValue(name)
 }
 
-func (f LookupFunc) lookupValue(name string) (any, bool) {
-	if f == nil {
+func (c LookupFunc) lookupValue(name string) (any, bool) {
+	if c == nil {
 		return nil, false
 	}
-	return f(name)
+	return c(name)
 }
 
 func nameToString(name interface{}) string {

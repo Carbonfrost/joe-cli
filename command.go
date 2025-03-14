@@ -134,7 +134,7 @@ const (
 // should return a command to execute in lieu of returning the error.  If the interceptErr
 // command is nil, it is interpreted as the command not existing and the app will exit with a generic "command
 // not found error" message.  If it returns an error, then executing the sub-command fails with the error.
-// However, if SkipCommand is returned, then no command is executed, and no error is generated.
+// However, if ErrSkipCommand is returned, then no command is executed, and no error is generated.
 // It is uncommon to use this action because this action is implicitly bound to a synthetic argument when a
 // command defines any sub-commands.
 func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Action {
@@ -153,7 +153,7 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 
 func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, error) (*Command, error)) error {
 	cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], interceptErr)
-	if err == SkipCommand {
+	if err == ErrSkipCommand {
 		return nil
 	}
 	if err != nil {
@@ -212,7 +212,7 @@ func ImplicitCommand(name string) Action {
 			return nil, err
 		}
 
-		return nil, SkipCommand
+		return nil, ErrSkipCommand
 	})
 }
 

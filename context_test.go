@@ -604,13 +604,13 @@ var _ = Describe("Context", func() {
 
 		})
 
-		Context("when SkipCommand", func() {
+		Context("when ErrSkipCommand", func() {
 
 			BeforeEach(func() {
 				walker = func(cmd *cli.Context) error {
 					walkHelper(cmd)
 					if cmd.Name() == "c" {
-						return cli.SkipCommand
+						return cli.ErrSkipCommand
 					}
 					return nil
 				}

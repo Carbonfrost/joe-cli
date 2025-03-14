@@ -109,10 +109,10 @@ const (
 )
 
 var (
-	// SkipCommand is used as a return value from WalkFunc to indicate that the command in the call is to be skipped.
+	// ErrSkipCommand is used as a return value from WalkFunc to indicate that the command in the call is to be skipped.
 	// This is also used to by ExecuteSubcommand (or HandleCommandNotFound) to indicate that no command should
 	// be executed.
-	SkipCommand = errors.New("skip this command")
+	ErrSkipCommand = errors.New("skip this command")
 
 	// ErrTimingTooLate occurs when attempting to run an action in a pipeline
 	// when the pipeline is later than requested by the action.
@@ -1047,7 +1047,7 @@ func (c *Context) walkCore(fn WalkFunc) error {
 			}
 		}
 		return nil
-	case SkipCommand:
+	case ErrSkipCommand:
 		return nil
 	default:
 		return err
