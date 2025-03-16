@@ -358,6 +358,10 @@ func (a *Arg) category() string {
 	return a.Category
 }
 
+func (a *Arg) defaultText() string {
+	return a.DefaultText
+}
+
 func (a *Arg) value() interface{} {
 	_, multi := synopsis.ArgCounter(a.NArg)
 	var created bool
@@ -386,6 +390,10 @@ func (a *Arg) LookupData(name string) (interface{}, bool) {
 
 func (a *Arg) setCategory(name string) {
 	a.Category = name
+}
+
+func (a *Arg) setDefaultText(name string) {
+	a.DefaultText = name
 }
 
 func (a *Arg) setDescription(value any) {

@@ -12,6 +12,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
@@ -45,6 +46,79 @@ var _ = Describe("Expr", func() {
 
 		captured := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(captured.Value("e")).NotTo(BeNil())
+	})
+
+	Describe("prototype support", func() {
+
+		DescribeTable("examples", func(proto cli.Prototype, expected Fields) {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "start",
+						NArg: -2,
+					},
+					{
+						Name: "e",
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{
+									Name: "expr",
+									Args: cli.Args("a", cli.Bool()),
+									Uses: proto,
+									Data: map[string]interface{}{"A": 1},
+								},
+							},
+						},
+					},
+				},
+			}
+			args, _ := cli.Split("app x -expr true")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+
+			_ = app.RunContext(context.Background(), []string{"app"})
+			expr := app.Args[1].Value.(*expr.Expression).Exprs[0]
+			Expect(expr).To(PointTo(MatchFields(IgnoreExtras, expected)))
+		},
+			Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
+			Entry("Category", cli.Prototype{Category: "f"}, Fields{"Category": Equal("f")}),
+			Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
+			Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
+			Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
+			Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
+			Entry("Aliases", cli.Prototype{Aliases: []string{"e", "f"}}, Fields{"Aliases": Equal([]string{"e", "f"})}),
+		)
+
+		It("copies Options from prototype", func() {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "start",
+						NArg: -2,
+					},
+					{
+						Name: "e",
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{
+									Name: "expr",
+									Args: cli.Args("a", cli.Bool()),
+									Uses: cli.Prototype{Options: cli.Hidden},
+									Data: map[string]interface{}{"A": 1},
+								},
+							},
+						},
+					},
+				},
+			}
+			args, _ := cli.Split("app x -expr true")
+			err := app.RunContext(context.TODO(), args)
+			Expect(err).NotTo(HaveOccurred())
+
+			_ = app.RunContext(context.Background(), []string{"app"})
+			myExpr := app.Args[1].Value.(*expr.Expression).Exprs[0]
+			Expect(expr.IsVisible(myExpr)).To(BeFalse())
+		})
 	})
 
 	It("does instance expressions", func() {
@@ -236,39 +310,6 @@ var _ = Describe("Expr", func() {
 			Entry("before", cli.Before),
 			Entry("after", cli.After),
 		)
-	})
-
-	It("marks the arg with expressions as initialized", func() {
-		act := new(joeclifakes.FakeAction)
-		appAct := new(joeclifakes.FakeAction)
-		app := &cli.App{
-			Name: "app",
-			Args: []*cli.Arg{
-				{
-					Value: &expr.Expression{
-						Exprs: []*expr.Expr{
-							{
-								Name: "expr",
-								Args: []*cli.Arg{
-									{
-										Name:   "a",
-										Action: act,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			Action: appAct,
-		}
-		// args, _ := cli.Split("app -- -expr true")
-		_, _ = app.Initialize(context.TODO())
-
-		// FIXME Asserts
-		// myArg := app.Args[0].Value.(*expr.Expression).Exprs[0].Args[0]
-		// Expect(cli.IsInitialized(myArg)).To(BeTrue())
-		// Expect(cli.IsDestinationImplicitlyCreated(myArg)).To(BeTrue())
 	})
 
 	It("names it expression by default", func() {

@@ -267,6 +267,10 @@ func (f *Flag) setCategory(name string) {
 	f.Category = name
 }
 
+func (f *Flag) setDefaultText(name string) {
+	f.DefaultText = name
+}
+
 func (f *Flag) setCompletion(c Completion) {
 	f.Completion = c
 }
@@ -522,6 +526,10 @@ func (f *Flag) value() interface{} {
 
 func (f *Flag) category() string {
 	return f.Category
+}
+
+func (f *Flag) defaultText() string {
+	return f.DefaultText
 }
 
 // VisibleFlags filters all flags in the flag category by whether they are not hidden

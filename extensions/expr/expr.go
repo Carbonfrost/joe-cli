@@ -495,6 +495,10 @@ func (e *Expr) SetHelpText(name string) {
 	e.HelpText = name
 }
 
+func (e *Expr) SetUsageText(value string) {
+	e.UsageText = value
+}
+
 func (e *Expr) SetManualText(name string) {
 	e.ManualText = name
 }
@@ -505,6 +509,10 @@ func (e *Expr) SetDescription(value string) {
 
 func (e *Expr) SetHidden(value bool) {
 	e.setInternalFlags(exprFlagHidden, value)
+}
+
+func (e *Expr) SetAliases(a []string) {
+	e.Aliases = append(e.Aliases, a...)
 }
 
 func (e *Expr) internalFlags() exprFlags {
@@ -775,7 +783,6 @@ func argsMustPrecedeExprs(arg string) error {
 	}
 }
 
-// FIXME Code clones
 func renderHelp(us *synopsis.Usage) string {
 	sb := cli.NewBuffer()
 	us.HelpText(sb)

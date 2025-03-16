@@ -524,6 +524,9 @@ func (c *Command) setCategory(name string) {
 	c.Category = name
 }
 
+func (c *Command) setDefaultText(name string) {
+}
+
 func (c *Command) setManualText(name string) {
 	c.ManualText = name
 }
@@ -562,6 +565,10 @@ func (c *Command) manualText() string {
 
 func (c *Command) category() string {
 	return c.Category
+}
+
+func (c *Command) defaultText() string {
+	return ""
 }
 
 func (c *Command) data() map[string]any {

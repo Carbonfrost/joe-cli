@@ -1334,8 +1334,8 @@ func (c *Context) Trigger() error {
 // about methods implemented by values by convention).
 //
 // The value can also provide methods such as SetDescription(string),
-// SetHelpText(string), SetManualText(string), SetLocalArgs([]*Arg)error
-// etc. in order to operate with actions that set these values.
+// SetHelpText(string), SetManualText(string), SetLocalArgs([]*Arg)error,
+// SetAliases([]string), etc. in order to operate with actions that set these values.
 //
 // If the value has local args (a method LocalArgs() []*Arg), then their
 // pipelines are triggered.
@@ -1959,6 +1959,19 @@ func (v *valueTarget) setDescription(arg interface{}) {
 	}
 }
 
+func (v *valueTarget) setAliases(arg []string) {
+	switch val := v.v.(type) {
+	case interface{ SetAliases([]string) }:
+		val.SetAliases(arg)
+	}
+}
+
+func (v *valueTarget) setDefaultText(arg string) {
+	if val, ok := v.v.(interface{ SetDefaultText(string) }); ok {
+		val.SetDefaultText(arg)
+	}
+}
+
 func (v *valueTarget) setHelpText(arg string) {
 	if val, ok := v.v.(interface{ SetHelpText(string) }); ok {
 		val.SetHelpText(arg)
@@ -2010,6 +2023,10 @@ func (v *valueTarget) manualText() string {
 }
 
 func (v *valueTarget) category() string {
+	return ""
+}
+
+func (v *valueTarget) defaultText() string {
 	return ""
 }
 

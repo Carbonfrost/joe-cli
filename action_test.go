@@ -1804,7 +1804,56 @@ var _ = Describe("Prototype", func() {
 			})))
 		})
 	})
+
+	DescribeTable("value target examples", func(proto cli.Prototype, expected Fields) {
+		value := new(protoValue)
+		app := &cli.App{
+			Name: "any",
+			Args: []*cli.Arg{
+				{
+					Uses: cli.ProvideValueInitializer(value, "v", proto),
+				},
+			},
+		}
+
+		_ = app.RunContext(context.Background(), []string{"app"})
+		Expect(value).To(PointTo(MatchFields(IgnoreExtras, expected)))
+	},
+		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
+		Entry("Category", cli.Prototype{Category: "f"}, Fields{"Category": Equal("f")}),
+		Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
+		Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
+		Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
+		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Hidden": BeTrue()}),
+		Entry("Data", cli.Prototype{Data: map[string]any{"B": 3}}, Fields{"Data": Equal(map[string]any{"B": 3})}),
+		Entry("Aliases", cli.Prototype{Aliases: []string{"B"}}, Fields{"Aliases": Equal([]string{"B"})}),
+	)
 })
+
+type protoValue struct {
+	Category    string
+	HelpText    string
+	ManualText  string
+	UsageText   string
+	Aliases     []string
+	Description string
+	Data        map[string]any
+	Hidden      bool
+}
+
+func (p *protoValue) SetCategory(v string)    { p.Category = v }
+func (p *protoValue) SetHidden(v bool)        { p.Hidden = v }
+func (p *protoValue) SetHelpText(v string)    { p.HelpText = v }
+func (p *protoValue) SetManualText(v string)  { p.ManualText = v }
+func (p *protoValue) SetUsageText(v string)   { p.UsageText = v }
+func (p *protoValue) SetDescription(v string) { p.Description = v }
+func (p *protoValue) SetAliases(v []string)   { p.Aliases = v }
+func (p *protoValue) SetData(k string, v any) {
+	if p.Data == nil {
+		p.Data = map[string]any{}
+	}
+	p.Data[k] = v
+}
 
 var _ = Describe("Setup", func() {
 	var (

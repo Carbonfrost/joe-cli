@@ -145,12 +145,14 @@ type target interface {
 	setUsageText(string)
 	setManualText(string)
 	setCategory(name string)
+	setDefaultText(string)
 	setCompletion(Completion)
 	description() any
 	helpText() string
 	usageText() string
 	manualText() string
 	category() string
+	defaultText() string
 	setInternalFlags(internalFlags, bool)
 	internalFlags() internalFlags
 	completion() Completion
@@ -1467,7 +1469,15 @@ func (t Timing) Describe() string {
 }
 
 func (p Prototype) Execute(ctx context.Context) error {
-	return Do(ctx, Pipeline(FlagSetup(p.copyToFlag), ArgSetup(p.copyToArg), commandSetupCore(true, p.copyToCommand), p.Setup))
+	return Do(ctx,
+		Pipeline(
+			p.copyCommonToTarget,
+			p.copyToFlag,
+			p.copyToArg,
+			p.copyToValue,
+			commandSetupCore(true, p.copyToCommand),
+			p.Setup,
+		))
 }
 
 func (p Prototype) Use(action Action) Prototype {
@@ -1475,61 +1485,52 @@ func (p Prototype) Use(action Action) Prototype {
 	return p
 }
 
+func (p *Prototype) copyCommonToTarget(c *Context) error {
+	o := c.target
+	if o.category() == "" {
+		o.setCategory(p.Category)
+	}
+	if o.helpText() == "" {
+		o.setHelpText(p.HelpText)
+	}
+	if o.manualText() == "" {
+		o.setManualText(p.ManualText)
+	}
+	if o.usageText() == "" {
+		o.setUsageText(p.UsageText)
+	}
+	if o.description() == "" || o.description() == nil {
+		o.setDescription(p.Description)
+	}
+	if o.defaultText() == "" {
+		o.setDefaultText(p.DefaultText)
+	}
+	return nil
+}
+
 func (p *Prototype) copyToCommand(o *Command) {
 	if o.Name == "" {
 		o.Name = p.Name
 	}
-	if o.Category == "" {
-		o.Category = p.Category
-	}
-	if o.HelpText == "" {
-		o.HelpText = p.HelpText
-	}
-	if o.ManualText == "" {
-		o.ManualText = p.ManualText
-	}
-	if o.UsageText == "" {
-		o.UsageText = p.UsageText
-	}
-	if o.Description == "" || o.Description == nil {
-		o.Description = p.Description
-	}
-	if o.Completion == nil {
-		o.Completion = p.Completion
-	}
 
 	o.Options |= p.Options
 	maps.Copy(o.Data, p.Data)
+	if o.Completion == nil {
+		o.Completion = p.Completion
+	}
 	o.Aliases = append(o.Aliases, p.Aliases...)
 }
 
-func (p *Prototype) copyToArg(o *Arg) {
+func (p *Prototype) copyToArg(c *Context) {
+	o, ok := c.Target().(*Arg)
+	if !ok {
+		return
+	}
 	if o.Name == "" {
 		o.Name = p.Name
 	}
-	if o.Category == "" {
-		o.Category = p.Category
-	}
-	if o.HelpText == "" {
-		o.HelpText = p.HelpText
-	}
-	if o.ManualText == "" {
-		o.ManualText = p.ManualText
-	}
-	if o.UsageText == "" {
-		o.UsageText = p.UsageText
-	}
-	if o.Description == "" || o.Description == nil {
-		o.Description = p.Description
-	}
 	if o.FilePath == "" {
 		o.FilePath = p.FilePath
-	}
-	if o.DefaultText == "" {
-		o.DefaultText = p.DefaultText
-	}
-	if o.Completion == nil {
-		o.Completion = p.Completion
 	}
 	if o.NArg == nil {
 		o.NArg = p.NArg
@@ -1538,49 +1539,68 @@ func (p *Prototype) copyToArg(o *Arg) {
 		o.Value = p.Value
 		o.setInternalFlags(internalFlagDestinationImplicitlyCreated, false)
 	}
+	if o.Completion == nil {
+		o.Completion = p.Completion
+	}
 
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
 	o.Options |= p.Options
 	maps.Copy(o.Data, p.Data)
 }
 
-func (p *Prototype) copyToFlag(o *Flag) {
+func (p *Prototype) copyToFlag(c *Context) {
+	o, ok := c.Target().(*Flag)
+	if !ok {
+		return
+	}
+
 	if o.Name == "" {
 		o.Name = p.Name
-	}
-	if o.Category == "" {
-		o.Category = p.Category
-	}
-	if o.HelpText == "" {
-		o.HelpText = p.HelpText
-	}
-	if o.ManualText == "" {
-		o.ManualText = p.ManualText
-	}
-	if o.UsageText == "" {
-		o.UsageText = p.UsageText
-	}
-	if o.Description == "" || o.Description == nil {
-		o.Description = p.Description
 	}
 	if o.FilePath == "" {
 		o.FilePath = p.FilePath
 	}
-	if o.DefaultText == "" {
-		o.DefaultText = p.DefaultText
-	}
-	if o.Completion == nil {
-		o.Completion = p.Completion
-	}
 	if p.Value != nil && (o.internalFlags().destinationImplicitlyCreated() || o.Value == nil) {
 		o.Value = p.Value
 		o.setInternalFlags(internalFlagDestinationImplicitlyCreated, false)
+	}
+	if o.Completion == nil {
+		o.Completion = p.Completion
 	}
 
 	o.Aliases = append(o.Aliases, p.Aliases...)
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
 	o.Options |= p.Options
 	maps.Copy(o.Data, p.Data)
+}
+
+func (p *Prototype) copyToValue(c *Context) error {
+	o, ok := c.target.(*valueTarget)
+	if !ok {
+		return nil
+	}
+
+	if o.category() == "" {
+		o.setCategory(p.Category)
+	}
+	if o.helpText() == "" {
+		o.setHelpText(p.HelpText)
+	}
+	if o.manualText() == "" {
+		o.setManualText(p.ManualText)
+	}
+	if o.usageText() == "" {
+		o.setUsageText(p.UsageText)
+	}
+	if o.description() == "" || o.description() == nil {
+		o.setDescription(p.Description)
+	}
+	for k, v := range p.Data {
+		o.SetData(k, v)
+	}
+	o.setAliases(p.Aliases)
+	p.Options.Execute(c)
+	return nil
 }
 
 // Execute the action by calling the function
