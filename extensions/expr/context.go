@@ -17,3 +17,41 @@ func SetEvaluator(e Evaluator) cli.Action {
 		return nil
 	})
 }
+
+// AddExpr will add an expression operator to the containing Expression
+func AddExpr(e *Expr) cli.Action {
+	return cli.ActionFunc(func(c *cli.Context) error {
+		return updateExprs(c, func(ee []*Expr) []*Expr {
+			return append(ee, e)
+		})
+	})
+}
+
+// AddExprs will add multiple expression operators to the containing Expression
+func AddExprs(exprs ...*Expr) cli.Action {
+	return cli.ActionFunc(func(c *cli.Context) error {
+		return updateExprs(c, func(ee []*Expr) []*Expr {
+			return append(ee, exprs...)
+		})
+	})
+}
+
+func updateExprs(c *cli.Context, fn func([]*Expr) []*Expr) error {
+	if err := requireInit(c); err != nil {
+		return err
+	}
+	exp := c.Arg().Value.(*Expression)
+	exp.Exprs = fn(exp.Exprs)
+	return nil
+}
+
+func requireInit(c *cli.Context) error {
+	if !c.IsInitializing() {
+		return newInternalError(c, cli.ErrTimingTooLate)
+	}
+	return nil
+}
+
+func newInternalError(c *cli.Context, err error) error {
+	return &cli.InternalError{Path: c.Path(), Timing: c.Timing(), Err: err}
+}

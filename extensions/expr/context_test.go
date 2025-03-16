@@ -37,3 +37,41 @@ var _ = Describe("SetEvaluator", func() {
 		Expect(expression.Exprs[0].Evaluate).To(BeIdenticalTo(ev))
 	})
 })
+
+var _ = Describe("AddExpr", func() {
+
+	It("inserts the expr on arg Uses pipeline", func() {
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Value: &expr.Expression{},
+					Uses:  expr.AddExpr(&expr.Expr{Name: "expr"}),
+				},
+			},
+		}
+
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Args[0].Value.(*expr.Expression).Exprs).To(HaveLen(1))
+	})
+
+	It("inserts the expr on expr Uses pipeline", func() {
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name: "expr1",
+								Uses: expr.AddExpr(&expr.Expr{Name: "expr2"}),
+							},
+						},
+					},
+				},
+			},
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Args[0].Value.(*expr.Expression).Exprs).To(HaveLen(2))
+	})
+})
