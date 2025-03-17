@@ -198,8 +198,16 @@ func (e *Expression) Initializer() cli.Action {
 
 	}, func(c *cli.Context) error {
 		for _, sub := range e.Exprs {
+			// As a special case, the evaluator can implement Action
+			// and be treated as part of the initialization pipeline.
+			// (One case of this is in bind.Evaluator)
+			var evalAsAction cli.Action
+			if e, ok := sub.Evaluate.(cli.Action); ok {
+				evalAsAction = e
+			}
+
 			_ = c.ProvideValueInitializer(sub, sub.Name, cli.Setup{
-				Uses:   cli.Pipeline(sub.Uses, sub.Options),
+				Uses:   cli.Pipeline(sub.Uses, evalAsAction, sub.Options),
 				Before: sub.Before,
 				After:  sub.After,
 			})

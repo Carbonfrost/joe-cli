@@ -228,19 +228,20 @@ func (e evaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error)
 }
 
 func initializers(binders ...any) cli.Action {
-	var result []cli.Action
+	var uses, setters []cli.Action
 	for index, binder := range binders {
 		if b, ok := binder.(binderImpliedName); ok {
-			result = append(result, willSetImpliedName(b, index))
+			setters = append(setters, willSetImpliedName(b, index))
 		}
 		if b, ok := binder.(binderInit); ok {
-			result = append(result, b.Initializer())
+			uses = append(uses, b.Initializer())
 		}
 	}
-	return cli.Setup{
+
+	return cli.ActionPipeline(setters).Append(cli.Setup{
 		Optional: true,
-		Uses:     cli.ActionPipeline(result),
-	}
+		Uses:     cli.ActionPipeline(uses),
+	})
 }
 
 func willSetImpliedName(b binderImpliedName, index int) cli.ActionFunc {

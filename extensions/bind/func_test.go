@@ -79,6 +79,30 @@ var _ = Describe("Action", func() {
 		Expect(action.ExecuteCallCount()).To(Equal(1))
 		Expect(calledWith.Int64()).To(Equal(int64(8000)))
 	})
+
+	It("can bind implicit names in Action pipeline", func() {
+		var (
+			action     = new(joeclifakes.FakeAction)
+			calledWith string
+		)
+		factory := func(c string) cli.Action {
+			calledWith = c
+			return action
+		}
+
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{Name: "arg"},
+			},
+			Action: bind.Action(factory, bind.String()),
+		}
+
+		args, _ := cli.Split("app arg_value")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(action.ExecuteCallCount()).To(Equal(1))
+		Expect(calledWith).To(Equal("arg_value"))
+	})
 })
 
 var _ = Describe("Action2", func() {
@@ -533,6 +557,44 @@ var _ = Describe("Evaluator", func() {
 			Entry("implicit name", bind.String(), "a_value"),
 			Entry("flag name", bind.String("flag"), "f_value"),
 		)
+	})
+
+	It("can bind implicit names in Evaluate", func() {
+		var (
+			eval       = new(exprfakes.FakeEvaluator)
+			calledWith string
+		)
+
+		factory := func(s string) expr.Evaluator {
+			calledWith = s
+			return eval
+		}
+		app := &cli.App{
+			Action: func(c *cli.Context) {
+				expr.FromContext(c, "expression").Evaluate(c, 0)
+			},
+			Args: []*cli.Arg{{Name: "start", NArg: -2},
+				{
+					Name: "expression",
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name:     "name",
+								Args:     cli.Args("a", new(string)),
+								Evaluate: bind.Evaluator(factory, bind.String()),
+							},
+						},
+					},
+				},
+			},
+		}
+
+		args, _ := cli.Split("app . -name a_value")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(eval.EvaluateCallCount()).To(Equal(1))
+		Expect(calledWith).To(Equal("a_value"))
 	})
 })
 

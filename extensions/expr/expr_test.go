@@ -354,6 +354,40 @@ var _ = Describe("Expr", func() {
 		Expect(expr.Args).To(HaveLen(2))
 	})
 
+	It("is treats evaluator as Action if it implements it", func() {
+		evaluatorWithAction := new(struct {
+			cli.Action
+			expr.Evaluator
+		})
+		act := new(joeclifakes.FakeAction)
+		evaluatorWithAction.Action = act
+
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Name: "f",
+					NArg: 0,
+				},
+				{
+					Name: "expression",
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name:     "expr",
+								Args:     cli.Args("f", new(bool)),
+								Evaluate: evaluatorWithAction,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		_, _ = app.Initialize(context.TODO())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+	})
+
 	Describe("Evaluate", func() {
 		var (
 			act *exprfakes.FakeEvaluator
