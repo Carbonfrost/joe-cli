@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"sort"
 	"strings"
@@ -162,6 +164,10 @@ type exprSet struct {
 const (
 	exprFlagHidden = exprFlags(1 << iota)
 	exprFlagRightToLeft
+)
+
+var (
+	errStopWalk = errors.New("stop walking")
 )
 
 func newBoundExpr(e *Expr) *boundExpr {
@@ -667,6 +673,18 @@ func (e *Expression) evaluateCore(ctx context.Context, items ...interface{}) err
 		}
 	}
 	return nil
+}
+
+// Bindings enumerates all the bindings on the expression
+func (e *Expression) Bindings() iter.Seq[Binding] {
+	return func(yield func(Binding) bool) {
+		e.Walk(func(f Binding) error {
+			if !yield(f) {
+				return errStopWalk
+			}
+			return nil
+		})
+	}
 }
 
 func (e *Expression) Walk(fn func(Binding) error) error {
