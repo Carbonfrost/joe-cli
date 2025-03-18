@@ -122,6 +122,21 @@ type Binding interface {
 	Expr() *Expr
 }
 
+// Predicate provides a simple predicate which filters values.  The function
+// takes the prior operand and returns true or false depending upon whether the
+// operand should be yielded to the next step in the expression pipeline.
+type Predicate func(v any) bool
+
+// Invariant provides an evaluator which either always or never yields
+// the input value
+type Invariant bool
+
+// Always or never yield the input value
+const (
+	AlwaysTrue  = Invariant(true)
+	AlwaysFalse = Invariant(false)
+)
+
 type exprsByCategory []*exprCategory
 
 type exprCategory struct {
@@ -378,39 +393,33 @@ func EvaluatorOf(v interface{}) Evaluator {
 			}
 			return err
 		})
-	case func(interface{}) bool:
-		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
-			if a(v) {
-				return y(v)
-			}
-			return nil
-		})
-	case func(interface{}):
-		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
+	case func(any) bool:
+		return Predicate(a)
+
+	case func(any):
+		return Predicate(func(v any) bool {
 			a(v)
-			return y(v)
+			return true
 		})
 	case bool:
-		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
-			if a {
-				return y(v)
-			}
-			return nil
-		})
+		return Invariant(a)
 	}
 	panic(fmt.Sprintf("unexpected type: %T", v))
 }
 
-// Predicate provides a simple predicate which filters values.  The filter function
-// takes the prior operand and returns true or false depending upon whether the
-// operand should be yielded to the next step in the expression pipeline.
-func Predicate(filter func(v interface{}) bool) Evaluator {
-	return EvaluatorFunc(func(_ *cli.Context, v any, y func(any) error) error {
-		if ok := filter(v); ok {
-			return y(v)
-		}
-		return nil
-	})
+// Evaluate implements the Evaluator interface for Predicate
+func (p Predicate) Evaluate(c context.Context, v any, yield func(any) error) error {
+	if ok := p(v); ok {
+		return yield(v)
+	}
+	return nil
+}
+
+func (i Invariant) Evaluate(_ context.Context, v any, y func(any) error) error {
+	if i {
+		return y(v)
+	}
+	return nil
 }
 
 func groupExprsByCategory(exprs []*Expr) exprsByCategory {
