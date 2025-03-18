@@ -137,6 +137,19 @@ var _ = Describe("RawParse", func() {
 			}),
 		),
 
+		Entry("stop on unknown positional arg", "app 1 2 3 unknown rest of args", 3,
+			Equal(map[string][]string{
+				"arg": {"<arg> 1", "<arg> 2", "<arg> 3"},
+			}),
+			Equal(&cli.ParseError{
+				Code:      cli.UnexpectedArgument,
+				Name:      "",
+				Err:       errors.New("unexpected argument \"unknown\""),
+				Value:     "unknown",
+				Remaining: []string{"unknown", "rest", "of", "args"},
+			}),
+		),
+
 		Entry("stop on unknown short flag run-in", "app -tuvwx another", cli.TakeUntilNextFlag,
 			Equal(map[string][]string{
 				"boolt": {"-t "}, // {"-t", ""}
@@ -198,12 +211,11 @@ var _ = Describe("RawParse", func() {
 				"short": {"-s a"},
 			}),
 			Equal(&cli.ParseError{
-				Code:  cli.UnexpectedArgument,
-				Name:  "",
-				Err:   errors.New(`unexpected argument "other"`),
-				Value: "other",
-				// TODO This should also include args []string{"other", "args"}
-				Remaining: []string{"other"},
+				Code:      cli.UnexpectedArgument,
+				Name:      "",
+				Err:       errors.New(`unexpected argument "other"`),
+				Value:     "other",
+				Remaining: []string{"other", "args"},
 			}),
 		),
 	)

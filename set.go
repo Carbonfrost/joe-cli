@@ -231,7 +231,7 @@ Parsing:
 					continue Parsing
 				}
 
-				err = positionalOpts.SetArg(arg, state == flagsOrArgs)
+				err = positionalOpts.SetArg(arg, args, state == flagsOrArgs)
 				if err != nil {
 					// Not accepted as an argument, possibly a flag per usual out of
 					// order
@@ -282,7 +282,7 @@ Parsing:
 			flag, ok := b.ResolveAlias(arg[2:])
 
 			if !ok {
-				err = unknownOption(arg[2:], append([]string{optionName(arg[2:])}, args...))
+				err = unknownOption(arg[2:], prepend(optionName(arg[2:]), args...))
 				return
 			}
 
@@ -296,12 +296,12 @@ Parsing:
 			_, opt, _, _ := b.LookupOption(flag)
 			if e < 0 {
 				var outputs []string
-				var oldArgs = append([]string{optionName(arg[2:])}, args...)
+				var oldArgs = prepend(optionName(arg[2:]), args...)
 				if outputs, err = args.take(flag, opt); err != nil {
 					err = argTakerError(optionName(arg[2:]), "", err, oldArgs)
 					return
 				}
-				appendOutput(flag, append([]string{optionName(arg[2:])}, outputs...))
+				appendOutput(flag, prepend(optionName(arg[2:]), outputs...))
 
 				continue Parsing
 			}
@@ -321,7 +321,7 @@ Parsing:
 			short := "-" + string(c)
 			flag, ok := b.ResolveAlias(string(c))
 			if !ok {
-				err = unknownOption(c, append([]string{"-" + arg[i:]}, args...))
+				err = unknownOption(c, prepend("-"+arg[i:], args...))
 				return
 			}
 
@@ -339,7 +339,7 @@ Parsing:
 				// which implies trying to set a value.  Include the = in
 				// the binding
 				if value[0] == '=' {
-					var oldArgs = append([]string{short + value}, args...)
+					var oldArgs = prepend(short+value, args...)
 					err = flagUnexpectedArgument(short, value, oldArgs)
 					return
 				}
@@ -363,13 +363,13 @@ Parsing:
 			}
 
 			var outputs []string
-			var oldArgs = append([]string{short}, args...)
+			var oldArgs = prepend(short, args...)
 			if outputs, err = args.take(flag, opt); err != nil {
 				err = argTakerError(optionName(flag), value, err, oldArgs)
 				return
 			}
 
-			appendOutput(flag, append([]string{short}, outputs...))
+			appendOutput(flag, prepend(short, outputs...))
 		}
 	}
 
@@ -586,7 +586,7 @@ func (a *argList) take(name string, opt ArgCounter) (output []string, err error)
 	const possibleFlag = true
 	for !a.empty() {
 		arg := a.current()
-		err = bind.SetArg(arg, possibleFlag)
+		err = bind.SetArg(arg, *a, possibleFlag)
 		if err != nil {
 			// Not accepted as an argument, possibly a flag per usual out of
 			// order
@@ -641,11 +641,11 @@ func (a *argBinding) Done() error {
 	return nil
 }
 
-func (a *argBinding) SetArg(arg string, possibleFlag bool) error {
+func (a *argBinding) SetArg(arg string, remainder []string, possibleFlag bool) error {
 	for {
 		t := a.current()
 		if t == nil {
-			return unexpectedArgument(arg, []string{arg})
+			return unexpectedArgument(arg, prepend(arg, remainder...))
 		}
 
 		err := t.Take(arg, possibleFlag)
@@ -697,6 +697,10 @@ func allowFlag(arg string, possibleFlag bool) bool {
 		return false
 	}
 	return len(arg) > 0 && (possibleFlag && arg[0] == '-')
+}
+
+func prepend(arg string, args ...string) []string {
+	return append([]string{arg}, args...)
 }
 
 var _ lookupCore = (*set)(nil)
