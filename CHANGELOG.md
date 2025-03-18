@@ -1,5 +1,66 @@
 # Changelog
 
+## v0.9.0 (March 17, 2025)
+
+### New Features
+
+* Introduces new APIs:
+    * `InternalError` (d4254ed)
+    * `Bindings` method on `Expression` (4751ed8)
+    * `AddExpr`, `AddExprs` (43a49cd)
+    * `SetEvaluator` (9a0c926)
+    * `Trigger` (d950146)
+    * `LookupValueTarget` (153f4a6)
+    * `LookupFunc` (e7b2716)
+    * Introduce `BindingMap.Apply` as API (d79a1f4)
+    * Bind extension: `Redirect` (b12e771)
+* Allow setting local args by convention (df0b5ed)
+* Breaking changes:
+    * Relocate expressions into own extension, `extensions/expr` (7a8a67f)
+    * Relocate specialized value types into own package `value` (fd20f64)
+    * Improve API consistency in use of `Action` and pipelines (2c20a0a)
+
+### Bug fixes and improvements
+
+* Bug fix: ensure `Customize` works with built-in version, help flags (4b2b3e5)
+* Bug fix: `No` flag double invocation of before, after pipelines (11249b7)
+* Bug: Fix cycles in context signals/channels leading to stackoverflow (a5f887d)
+* Support visibility of expressions (ee4fc44)
+* Detect internal errors:
+    * Check valid identifiers in flag names (cdae336)
+    * Detect duplicate names within args, flags, exprs (30b28e7)
+    * Adds defense for invalid types for values (0d14827)
+* Update `Fprint` methods to support `nil` with special semantics (2fe2e11)
+* Add support for `Prototype` to value initializers (9747a08)
+* Enable hook support on flags and args (8a8b162)
+* Improvements to usage template (16832f2, b212b02, 596c077, 956d73d)
+* Refactor to `DisplayHelpScreen`; bug fixes (4a675fb)
+* Bind extension:
+    * Allow more general naming of arguments (b12e771)
+    * Allow later pipelines to use implicit name binds (3d567bf)
+* Various generalizations, which are enablers for `expr` extension:
+    * Generalization of expression bindings, binding map (0a6663f)
+    * Generalization of sorted usage for expressions (6e4e87f)
+    * Generalize set to handle Binding as API (c4e8114)
+* Various cleanups and simplifications of internal implementation:
+    * Terser implementation of Expression (9170b4d)
+    * Refactor code clones: `EachOccurrence`, bind extension (3529317, b12e771)
+    * Remove `internalCommandContext` (07a22f2)
+    * Remove internal option (e54f867, a9908e0)
+    * Rework updating args, flags, commands methods (1b80778)
+    * Cleanup internal context lookup API (a5b64ae)
+    * Move hooks actions into default command action pipelines (4a99dfc)
+    * Push up methods on BindingMap from set (3a554da)
+    * Remove `FromContext` calls where not necessary (387cdf6)
+    * Remove internal context event methods (3c4ea11)
+    * Unify methods that create child contexts (c593fcf)
+* Chores:
+    * Use base library `fstest` where possible (90b418a)
+    * Addresses some linter errors (10dbd50)
+    * Lint; modern configuration for tools (9d0aeb0)
+    * Addresses documentation and lint errors (e0b284a)
+
+
 ## v0.8.0 (March 1, 2025)
 
 ### New Features
