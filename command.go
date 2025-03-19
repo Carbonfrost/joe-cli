@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -303,14 +304,16 @@ func (c *Command) VisibleArgs() []*Arg {
 
 // VisibleFlags filters all flags in the command by whether they are not hidden
 func (c *Command) VisibleFlags() []*Flag {
-	res := make([]*Flag, 0, len(c.Flags))
-	for _, o := range c.Flags {
-		if o.internalFlags().hidden() {
-			continue
-		}
-		res = append(res, o)
-	}
-	return res
+	return filterInVisibleFlags(c.Flags)
+}
+
+func filterInVisibleFlags(flags []*Flag) []*Flag {
+	return slices.DeleteFunc(
+		slices.Clone(flags),
+		func(f *Flag) bool {
+			return f.internalFlags().hidden()
+		},
+	)
 }
 
 // VisibleSubcommands filters all sub-commands in the command by whether they are not hidden

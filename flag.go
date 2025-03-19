@@ -534,14 +534,7 @@ func (f *Flag) defaultText() string {
 
 // VisibleFlags filters all flags in the flag category by whether they are not hidden
 func (f *flagCategory) VisibleFlags() []*Flag {
-	res := make([]*Flag, 0, len(f.Flags))
-	for _, o := range f.Flags {
-		if o.internalFlags().hidden() {
-			continue
-		}
-		res = append(res, o)
-	}
-	return res
+	return filterInVisibleFlags(f.Flags)
 }
 
 // Undocumented determines whether the category is undocumented (i.e. has no HelpText set

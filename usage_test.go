@@ -482,6 +482,39 @@ var _ = Describe("DisplayHelpScreen", func() {
 			},
 			"app sub --help",
 			ContainSubstring("usage: app sub")),
+		Entry("does not show hidden flags on sub-command",
+			&cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name:     "global",
+						HelpText: "hidden persistent flag",
+						Options:  cli.Hidden | cli.Exits,
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+						Flags: []*cli.Flag{
+							{
+								Name:     "h",
+								HelpText: "hidden flag",
+								Options:  cli.Hidden | cli.Exits,
+							},
+							{
+								Name:     "v",
+								HelpText: "visible flag",
+							},
+						},
+					},
+				},
+			},
+			"app sub --help",
+			And(
+				Not(ContainSubstring("hidden flag")),
+				Not(ContainSubstring("hidden persistent flag")),
+				ContainSubstring("visible flag"),
+			)),
 	)
 
 })

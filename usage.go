@@ -211,7 +211,7 @@ func DisplayHelpScreen(command ...string) Action {
 			}
 
 			current := ctxt.Command()
-			persistentFlags := ctxt.PersistentFlags()
+			persistentFlags := filterInVisibleFlags(ctxt.PersistentFlags())
 
 			if len(path) > 0 {
 				path = path[0 : len(path)-1]
