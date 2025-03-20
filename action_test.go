@@ -2364,6 +2364,14 @@ var _ = Describe("Customize", func() {
 				Expect(root.VisibleSubcommands()).To(HaveLen(1 + 2)) // Includes "help" and "version"
 			}),
 
+		Entry("customizes a command that was renamed",
+			cli.Customize("sub", cli.Named("par")),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				cmd, _ := root.Command("par")
+				Expect(cmd).NotTo(BeNil())
+			}),
+
 		Entry("customizes an arg",
 			cli.Customize("<arg>", cli.Named("renamed")),
 			func(app *cli.App) {
@@ -2394,6 +2402,22 @@ var _ = Describe("Customize", func() {
 				root, _ := app.Command("")
 				flag, _ := root.Flag("help")
 				Expect(flag.Aliases).To(ContainElement("?"))
+			}),
+
+		Entry("customizes the built-in version command",
+			cli.Customize("version", cli.AddAlias("V")),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				cmd, _ := root.Command("version")
+				Expect(cmd.Aliases).To(ContainElement("V"))
+			}),
+
+		Entry("customizes the built-in help command",
+			cli.Customize("help", cli.AddAlias("?")),
+			func(app *cli.App) {
+				root, _ := app.Command("")
+				cmd, _ := root.Command("help")
+				Expect(cmd.Aliases).To(ContainElement("?"))
 			}),
 	)
 
@@ -2469,6 +2493,20 @@ var _ = Describe("Customize", func() {
 		root, _ := app.Command("")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(root.Flags[0].Description).To(Equal("description"))
+	})
+
+	It("runs customizations on commands that were created", func() {
+		app := &cli.App{
+			Uses: cli.Pipeline(
+				cli.Customize("*", cli.Description("description")),
+				cli.AddCommand(&cli.Command{Name: "f"}),
+			),
+		}
+
+		_, err := app.Initialize(context.Background())
+		root, _ := app.Command("")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(root.Subcommands[0].Description).To(Equal("description"))
 	})
 })
 

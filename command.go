@@ -661,9 +661,20 @@ func initializeFlagsArgs(ctx *Context) error {
 func initializeSubcommands(ctx *Context) error {
 	cmd := ctx.target.(*Command)
 	for _, sub := range cmd.Subcommands {
+		if sub.internalFlags().initialized() {
+			continue
+		}
+
+		originalName := sub.Name
 		err := ctx.newChild(sub).initialize()
 		if err != nil {
 			return err
+		}
+
+		// The name has changed, so hooks need to run again
+		// on the flag
+		if sub.Name != originalName {
+			ctx.newChild(sub).reinitialize()
 		}
 	}
 	return nil
