@@ -378,7 +378,7 @@ func (f *FileSet) setupOptionRequireFS(c *Context) error {
 }
 
 func (d defaultFS) Open(name string) (fs.File, error) {
-	return d.OpenContext(context.TODO(), name)
+	return d.OpenContext(context.Background(), name)
 }
 
 // Force consolidation of Create via OpenFile (can't use the embedded value

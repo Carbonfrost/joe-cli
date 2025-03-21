@@ -135,7 +135,7 @@ var _ = Describe("RunContext", func() {
 				Stderr: io.Discard,
 			}
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(global).To(expectedGlobal)
@@ -210,7 +210,7 @@ var _ = Describe("RunContext", func() {
 				},
 			}
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(expected)
@@ -300,7 +300,7 @@ var _ = Describe("RunContext", func() {
 	DescribeTable("bind args and flags errors",
 		func(app *cli.App, arguments string, expected types.GomegaMatcher) {
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(expected))

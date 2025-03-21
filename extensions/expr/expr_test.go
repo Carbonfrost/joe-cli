@@ -42,7 +42,7 @@ var _ = Describe("Expr", func() {
 			},
 		}
 		args, _ := cli.Split("app x -expr true")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 
 		captured := cli.FromContext(act.ExecuteArgsForCall(0))
@@ -74,7 +74,7 @@ var _ = Describe("Expr", func() {
 				},
 			}
 			args, _ := cli.Split("app x -expr true")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 
 			_ = app.RunContext(context.Background(), []string{"app"})
@@ -113,7 +113,7 @@ var _ = Describe("Expr", func() {
 				},
 			}
 			args, _ := cli.Split("app x -expr true")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 
 			_ = app.RunContext(context.Background(), []string{"app"})
@@ -144,7 +144,7 @@ var _ = Describe("Expr", func() {
 			Action: act,
 		}
 		args, _ := cli.Split("app -- -more 1 -more 2 -more 3")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 
 		captured := cli.FromContext(act.ExecuteArgsForCall(0))
@@ -179,7 +179,7 @@ var _ = Describe("Expr", func() {
 			Action: appAct,
 		}
 		args, _ := cli.Split("app -- -expr true")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
@@ -219,7 +219,7 @@ var _ = Describe("Expr", func() {
 			Action: appAct,
 		}
 		args, _ := cli.Split("app -- -expr true blood")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
@@ -261,7 +261,7 @@ var _ = Describe("Expr", func() {
 		}
 
 		args, _ := cli.Split("app -- -expr 1 -expr 2 -expr 3")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(act.ExecuteCallCount()).To(Equal(3))
@@ -296,7 +296,7 @@ var _ = Describe("Expr", func() {
 				Action: appAct,
 			}
 			args, _ := cli.Split("app -- -expr true")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 
 			captured := cli.FromContext(appAct.ExecuteArgsForCall(0))
@@ -328,7 +328,7 @@ var _ = Describe("Expr", func() {
 				},
 			},
 		}
-		err := app.RunContext(context.TODO(), []string{"app"})
+		err := app.RunContext(context.Background(), []string{"app"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(app.Args[0].Name).To(Equal("expression"))
 	})
@@ -385,7 +385,7 @@ var _ = Describe("Expr", func() {
 			},
 		}
 
-		_, _ = app.Initialize(context.TODO())
+		_, _ = app.Initialize(context.Background())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 
@@ -447,7 +447,7 @@ var _ = Describe("Expr", func() {
 
 		JustBeforeEach(func() {
 			args, _ := cli.Split("app --flag 9 arg -expr true 1 2 a b c")
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 		})
 
 		It("executes action on setting Arg", func() {
@@ -530,7 +530,7 @@ var _ = Describe("Expr", func() {
 
 		JustBeforeEach(func() {
 			args, _ := cli.Split("app arg -expr true")
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 		})
 
 		It("executes before", func() {
@@ -590,7 +590,7 @@ var _ = Describe("Expr", func() {
 
 		JustBeforeEach(func() {
 			args, _ := cli.Split("app arg -expr true")
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 		})
 
 		It("executes before", func() {
@@ -701,7 +701,7 @@ var _ = Describe("Expr", func() {
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.Background(), args)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(captured.String()).To(match)
@@ -747,7 +747,7 @@ var _ = Describe("Expr", func() {
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.Background(), args)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(match))
@@ -786,7 +786,7 @@ var _ = Describe("Expr", func() {
 				Name: "app",
 			}
 			args, _ := cli.Split("app")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(expr.IsVisible(found)).To(BeTrue())
 		})
@@ -807,7 +807,7 @@ var _ = Describe("Expr", func() {
 				Name: "app",
 			}
 			args, _ := cli.Split("app")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(expr.IsVisible(found)).To(Equal(visibleExpected))
 		},
@@ -864,7 +864,7 @@ var _ = Describe("Expr", func() {
 				Stdout: &captured,
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

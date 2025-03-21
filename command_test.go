@@ -28,7 +28,7 @@ var _ = Describe("Command", func() {
 			},
 		}
 		args, _ := cli.Split("app sub t,a,b u")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 		Expect(t).To(Equal("t,a,b"))
 		Expect(u).To(Equal("u"))
 	})
@@ -53,7 +53,7 @@ var _ = Describe("Command", func() {
 			},
 		}
 		args, _ := cli.Split("app https://example.com sub t")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(t).To(Equal("t"))
@@ -91,7 +91,7 @@ var _ = Describe("Command", func() {
 			}
 
 			args, _ := cli.Split("app c args args")
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 		})
 
 		It("executes action on executing sub-command", func() {
@@ -133,7 +133,7 @@ var _ = Describe("Command", func() {
 		}
 
 		args, _ := cli.Split("app c args args")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		cmd, ok := app.Command("c")
 		Expect(ok).To(BeTrue())
@@ -183,7 +183,7 @@ var _ = Describe("Command", func() {
 				Name: "app",
 			}
 			args, _ := cli.Split("app")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cli.IsVisible(found)).To(Equal(visibleExpected))
 		},
@@ -226,7 +226,7 @@ var _ = Describe("Command", func() {
 				},
 			}
 
-			err := app.RunContext(context.TODO(), []string{"app", "-a", "-b"})
+			err := app.RunContext(context.Background(), []string{"app", "-a", "-b"})
 			Expect(err).NotTo(HaveOccurred())
 			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 
@@ -253,7 +253,7 @@ var _ = Describe("Command", func() {
 				Options: cli.DisallowFlagsAfterArgs,
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(MatchRegexp("can't use -.+ after arguments")))
 		},
@@ -283,7 +283,7 @@ var _ = Describe("Command", func() {
 			}
 
 			args, _ := cli.Split("app one")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("done error"))
 			Expect(counter.DoneCallCount()).To(Equal(1))
@@ -299,7 +299,7 @@ var _ = Describe("Command", func() {
 			}
 
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 
@@ -515,7 +515,7 @@ var _ = Describe("Command", func() {
 				},
 			}
 
-			_, _ = app.Initialize(context.TODO())
+			_, _ = app.Initialize(context.Background())
 			Expect(app.Args[0].Name).To(Equal("_1"))
 		})
 
@@ -538,7 +538,7 @@ var _ = Describe("Command", func() {
 				Uses: addFlagOrArg(option),
 			}
 
-			_, err := app.Initialize(context.TODO())
+			_, err := app.Initialize(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 		},
 			Entry(
@@ -558,7 +558,7 @@ var _ = Describe("Command", func() {
 				Uses: addFlagOrArg(option),
 			}
 
-			_, err := app.Initialize(context.TODO())
+			_, err := app.Initialize(context.Background())
 			Expect(err).To(expected)
 		},
 			Entry(
@@ -629,7 +629,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			err = app.RunContext(context.TODO(), args)
+			err = app.RunContext(context.Background(), args)
 		})
 
 		Context("when func specifies an existing command", func() {
@@ -677,7 +677,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app unknown")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 		Expect(fn1Called).To(BeTrue())
 		Expect(fn2Called).To(BeTrue())
 	})
@@ -705,7 +705,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app sub unknown")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).To(HaveOccurred())
 		Expect(inheritedCalled).To(BeTrue())
 	})
@@ -731,7 +731,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app rex")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).To(HaveOccurred())
 		Expect(fnCalled).To(BeFalse())
 	})
@@ -762,7 +762,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app sub unknown")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).To(HaveOccurred())
 		Expect(inheritedCalled).To(BeFalse())
 		Expect(err).To(MatchError(`"unknown" is not a command`))
@@ -803,7 +803,7 @@ var _ = Describe("ImplicitCommand", func() {
 		}
 
 		args, _ := cli.Split("app tail /var/output/logs -f")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 

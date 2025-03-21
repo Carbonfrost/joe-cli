@@ -13,7 +13,7 @@ import (
 var _ = Describe("Assert", func() {
 	DescribeTable("examples", func(app *cli.App, expected types.GomegaMatcher) {
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(expected)
@@ -103,7 +103,7 @@ var _ = Describe("IfMatch", func() {
 		arguments, app := createApp(m)
 
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(expected)

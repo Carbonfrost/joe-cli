@@ -34,7 +34,7 @@ var _ = Describe("Arg", func() {
 				},
 			},
 		}
-		app.RunContext(context.TODO(), []string{"app", "a"})
+		app.RunContext(context.Background(), []string{"app", "a"})
 
 		Expect(app.Args[0].Name).To(Equal("_1"))
 		Expect(called).To(BeTrue())
@@ -65,7 +65,7 @@ var _ = Describe("Arg", func() {
 
 		JustBeforeEach(func() {
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 		})
 
 		It("executes action on setting Arg", func() {
@@ -122,7 +122,7 @@ var _ = Describe("Arg", func() {
 					arguments = strings.Repeat(" g", count)
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.Background(), args)
 				Expect(err).NotTo(HaveOccurred())
 
 				captured := cli.FromContext(cli.FromContext(act.ExecuteArgsForCall(0)))
@@ -148,7 +148,7 @@ var _ = Describe("Arg", func() {
 				Action: act,
 			}
 
-			_, err := app.Initialize(context.TODO())
+			_, err := app.Initialize(context.Background())
 			Expect(err).To(MatchError(`internal error, at "app <f>" (initial timing): unsupported flag type: string`))
 		})
 	})
@@ -170,7 +170,7 @@ var _ = Describe("Arg", func() {
 					Action: act,
 				}
 				args, _ := cli.Split("app " + validArgs)
-				err := app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.Background(), args)
 				Expect(err).NotTo(HaveOccurred())
 
 				captured := cli.FromContext(act.ExecuteArgsForCall(0))
@@ -205,7 +205,7 @@ var _ = Describe("Arg", func() {
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.Background(), args)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(items).To(match)
 			},
@@ -229,7 +229,7 @@ var _ = Describe("Arg", func() {
 					},
 				}
 				args, _ := cli.Split("app " + arguments)
-				err := app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.Background(), args)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(match))
 			},
@@ -288,7 +288,7 @@ var _ = Describe("Arg", func() {
 			}
 
 			args, _ := cli.Split("app")
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 			Expect(cli.FromContext(act.ExecuteArgsForCall(0)).String("f")).To(Equal("another_one"))
 		})
 	})
@@ -316,7 +316,7 @@ var _ = Describe("Arg", func() {
 			}
 
 			args, _ := cli.Split("app")
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 
 			Expect(actual).To(Equal("b contents"))
 			Expect(impliedAct.ExecuteCallCount()).To(Equal(1))
@@ -356,7 +356,7 @@ var _ = Describe("Arg", func() {
 
 			os.Setenv("_GOCLI_F", "environment value")
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 		})
 
 		Context("when ImpliedAction is set", func() {
@@ -409,7 +409,7 @@ var _ = Describe("Arg", func() {
 			},
 		}
 		args, _ := cli.Split("app -- arg1 -- arg2 -- arg3")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 
 		// These should accumulate single values rather than lists
 		Expect(*arg1).To(Equal([]string{"arg1"}))
@@ -433,7 +433,7 @@ var _ = Describe("Arg", func() {
 			},
 		}
 
-		err := app.RunContext(context.TODO(), []string{"app", "true"})
+		err := app.RunContext(context.Background(), []string{"app", "true"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
@@ -459,7 +459,7 @@ var _ = Describe("Arg", func() {
 			},
 		}
 
-		err := app.RunContext(context.TODO(), []string{"app", "true"})
+		err := app.RunContext(context.Background(), []string{"app", "true"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
@@ -487,7 +487,7 @@ var _ = Describe("Arg", func() {
 			},
 		}
 
-		err := app.RunContext(context.TODO(), []string{"app", "1", "2", "3", "4", "5", "1", "2", "3", "4", "5"})
+		err := app.RunContext(context.Background(), []string{"app", "1", "2", "3", "4", "5", "1", "2", "3", "4", "5"})
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(app.Args[0].Value).To(PointTo(Equal([]string{"1", "2", "3", "4", "5"})))
@@ -506,7 +506,7 @@ var _ = Describe("Arg", func() {
 		}
 
 		args, _ := cli.Split("app s")
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		cmd, _ := app.Command("")
 		Expect(cmd.Args[0]).To(PointTo(expected))
@@ -600,7 +600,7 @@ var _ = Describe("OptionalArg", func() {
 		}
 
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))

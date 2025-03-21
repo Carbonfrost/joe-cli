@@ -638,7 +638,7 @@ var _ = Describe("Indirect", func() {
 			},
 		}
 		args, _ := cli.Split("app --no-recursive .")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 		Expect(fs.Recursive).To(BeFalse())
 	})
 
@@ -667,7 +667,7 @@ var _ = Describe("Indirect", func() {
 			},
 		}
 		args, _ := cli.Split("app --recursive YES .")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 		Expect(act.ExecuteCallCount()).To(Equal(1), "action should still be called")
 		Expect(calledWith).To(Equal("YES"))
 	})
@@ -706,7 +706,7 @@ var _ = Describe("Redirect", func() {
 		}
 
 		args, _ := cli.Split("app -u")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 		Expect(app.Flags[0].Value).To(PointTo(Equal(uint64(420))))
 		Expect(app.Flags[1].Value).To(PointTo(Equal(true)))
 	})

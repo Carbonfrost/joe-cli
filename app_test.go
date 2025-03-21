@@ -49,7 +49,7 @@ var _ = Describe("App", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.TODO(), args)
+			app.RunContext(context.Background(), args)
 		})
 
 		Context("when executing itself", func() {
@@ -107,7 +107,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.TODO(), []string{"app"})
+			app.RunContext(context.Background(), []string{"app"})
 			Expect(help).ToNot(BeNil())
 		})
 
@@ -121,7 +121,7 @@ var _ = Describe("App", func() {
 				Stderr: &capture,
 			}
 
-			_ = app.RunContext(context.TODO(), []string{"app", "--help"})
+			_ = app.RunContext(context.Background(), []string{"app", "--help"})
 			Expect(capture.String()).To(HavePrefix("usage: hunter "))
 		})
 	})
@@ -137,7 +137,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.TODO(), []string{"app"})
+			app.RunContext(context.Background(), []string{"app"})
 			Expect(version).ToNot(BeNil())
 		})
 
@@ -151,7 +151,7 @@ var _ = Describe("App", func() {
 				Stdout:  &capture, // Python 2 -> 3 changed from stderr to stdout
 			}
 
-			_ = app.RunContext(context.TODO(), []string{"app", "--version"})
+			_ = app.RunContext(context.Background(), []string{"app", "--version"})
 			Expect(capture.String()).To(HavePrefix("hunter, version 1.619"))
 		})
 	})
@@ -169,7 +169,7 @@ var _ = Describe("App", func() {
 				},
 			})
 
-			err := app.RunContext(context.TODO(), []string{"app"})
+			err := app.RunContext(context.Background(), []string{"app"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(version).ToNot(BeNil())
 		})
@@ -189,7 +189,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.TODO(), []string{"app"})
+			app.RunContext(context.Background(), []string{"app"})
 
 			Expect(in).To(Equal(os.Stdin))
 			Expect(out).To(Equal(cli.NewWriter(os.Stdout)))
@@ -204,7 +204,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.TODO(), []string{"app"})
+			app.RunContext(context.Background(), []string{"app"})
 			Expect(f).To(Equal(cli.DefaultFS()))
 		})
 
@@ -225,7 +225,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.TODO(), []string{"app", "s"})
+			app.RunContext(context.Background(), []string{"app", "s"})
 
 			Expect(in).To(Equal(os.Stdin))
 			Expect(out).To(Equal(cli.NewWriter(os.Stdout)))
@@ -245,7 +245,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.TODO(), []string{"app", "s"})
+			app.RunContext(context.Background(), []string{"app", "s"})
 			Expect(f).To(Equal(cli.DefaultFS()))
 		})
 	})
@@ -258,7 +258,7 @@ var _ = Describe("App", func() {
 					what = cli.CurrentApp()
 				},
 			}
-			app.RunContext(context.TODO(), []string{"app"})
+			app.RunContext(context.Background(), []string{"app"})
 			Expect(what).To(BeIdenticalTo(app))
 		})
 
@@ -266,7 +266,7 @@ var _ = Describe("App", func() {
 			app := &cli.App{
 				Action: func() {},
 			}
-			app.RunContext(context.TODO(), []string{"app"})
+			app.RunContext(context.Background(), []string{"app"})
 			Expect(cli.CurrentApp()).To(BeNil())
 		})
 	})

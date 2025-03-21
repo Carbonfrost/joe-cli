@@ -35,7 +35,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app -f")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal(true))
@@ -59,7 +59,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app -f dom sub")
-			err := app.RunContext(context.TODO(), args)
+			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
@@ -80,7 +80,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app --alias")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal(true))
@@ -100,7 +100,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app s r o")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal([]string{"s", "r", "o"}))
@@ -123,7 +123,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app -f 60 s")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal(60))
@@ -148,7 +148,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app s")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.BindingLookup().BindingNames()).To(Equal([]string{"a"}))
@@ -169,7 +169,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app -f")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"-f", ""}))
@@ -193,7 +193,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app -f dom sub")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"-f", "dom"}))
@@ -213,7 +213,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app -f sub")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("")).To(Equal([]string{"-f", "sub"}))
@@ -235,7 +235,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("")).To(Equal([]string{}))
@@ -253,7 +253,7 @@ var _ = Describe("Context", func() {
 				}
 
 				args, _ := cli.Split(arguments)
-				_ = app.RunContext(context.TODO(), args)
+				_ = app.RunContext(context.Background(), args)
 
 				capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(capturedContext.Raw("f")).To(Equal(raw))
@@ -352,7 +352,7 @@ var _ = Describe("Context", func() {
 			}
 
 			args, _ := cli.Split("app s r o")
-			_ = app.RunContext(context.TODO(), args)
+			_ = app.RunContext(context.Background(), args)
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Raw("f")).To(Equal([]string{"<f>", "s", "<f>", "r", "<f>", "o"}))
@@ -374,7 +374,7 @@ var _ = Describe("Context", func() {
 					},
 				},
 			}
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(app.Flags[0].Value).To(PointTo(Equal(v)))
 		},
 			Entry("bool", cli.Bool(), true),
@@ -414,7 +414,7 @@ var _ = Describe("Context", func() {
 					},
 				},
 			}
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 		},
 			Entry("not supported TextMarshaler", new(textMarshaler), textMarshaler("")),
 			Entry("not supported Value", new(customValue), &customValue{}),
@@ -438,7 +438,7 @@ var _ = Describe("Context", func() {
 				},
 			}
 
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(act.ExecuteCallCount()).To(Equal(1))
 		})
 
@@ -484,7 +484,7 @@ var _ = Describe("Context", func() {
 				},
 			}
 
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(act.ExecuteCallCount()).To(Equal(1))
 		})
 
@@ -508,7 +508,7 @@ var _ = Describe("Context", func() {
 					Before: act,
 				}
 
-				err := app.RunContext(context.TODO(), []string{"app"})
+				err := app.RunContext(context.Background(), []string{"app"})
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(cli.ErrTimingTooLate))
 			},
@@ -581,7 +581,7 @@ var _ = Describe("Context", func() {
 				},
 			}
 
-			_ = app.RunContext(context.TODO(), nil)
+			_ = app.RunContext(context.Background(), nil)
 		})
 
 		It("provides the expected traversal", func() {
@@ -687,7 +687,7 @@ var _ = Describe("Context", func() {
 					Name: "app",
 				}
 
-				_ = app.RunContext(context.TODO(), []string{"app"})
+				_ = app.RunContext(context.Background(), []string{"app"})
 				Expect(actualID).To(Equal(id))
 			},
 			Entry("empty self", []string{}, "0"),
@@ -728,7 +728,7 @@ var _ = Describe("Context", func() {
 				}
 
 				// It's not relevant what the name of the app was in the Execute args
-				_ = app.RunContext(context.TODO(), []string{"app"})
+				_ = app.RunContext(context.Background(), []string{"app"})
 				Expect(actual).To(PointTo(MatchFields(IgnoreExtras, v)))
 			},
 				Entry("app", Fields{"App": Equal("myname")}),
@@ -771,7 +771,7 @@ var _ = Describe("Context", func() {
 				}
 
 				// It's not relevant what the name of the app was in the Execute args
-				_ = app.RunContext(context.TODO(), []string{"called"})
+				_ = app.RunContext(context.Background(), []string{"called"})
 				Expect(actual).To(PointTo(MatchFields(IgnoreExtras, v)))
 			},
 				Entry("Before", Fields{"Before": Equal(nameComesFromProcess)}),
@@ -807,7 +807,7 @@ var _ = Describe("Context", func() {
 				},
 			}
 
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(actualFlag.Target()).To(Equal(app.Flags[0]))
 			Expect(actualCommand.Target()).To(Equal(app.Commands[0]))
 			Expect(actualArg.Target()).To(Equal(app.Args[0]))
@@ -829,7 +829,7 @@ var _ = Describe("Context", func() {
 						{Name: "a"},
 					},
 				}
-				_ = app.RunContext(context.TODO(), []string{"app"})
+				_ = app.RunContext(context.Background(), []string{"app"})
 				Expect(actual).To(expected)
 			},
 				Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
@@ -860,7 +860,7 @@ var _ = Describe("Context", func() {
 						{Name: "a"},
 					},
 				}
-				_ = app.RunContext(context.TODO(), []string{"app", "--self", "v"})
+				_ = app.RunContext(context.Background(), []string{"app", "--self", "v"})
 				Expect(actual).To(expected)
 			},
 				Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
@@ -921,7 +921,7 @@ var _ = Describe("Context", func() {
 				},
 			}
 
-			_ = app.RunContext(context.TODO(), []string{"app", "c"})
+			_ = app.RunContext(context.Background(), []string{"app", "c"})
 			Expect(actualFlag).To(Equal(app.Flags[0]))
 			Expect(actualCommand).To(Equal(app.Commands[0]))
 			Expect(actualArg).To(Equal(app.Args[0]))
@@ -942,7 +942,7 @@ var _ = Describe("Context", func() {
 					{Name: "a"},
 				},
 			}
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(actual).To(expected)
 		},
 			Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
@@ -965,7 +965,7 @@ var _ = Describe("Context", func() {
 					{Name: "g"},
 				},
 			}
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(actual).To(expected)
 		},
 			Entry("name", "flag", WithTransform(flagName, Equal("flag"))),
@@ -987,7 +987,7 @@ var _ = Describe("Context", func() {
 					{Name: "arg"},
 				},
 			}
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(actual).To(expected)
 		},
 			Entry("name", "arg", WithTransform(argName, Equal("arg"))),
@@ -1006,7 +1006,7 @@ var _ = Describe("Context", func() {
 					actual, ok = c.(*cli.Context).LookupArg(0)
 				},
 			}
-			_, _ = app.Initialize(context.TODO())
+			_, _ = app.Initialize(context.Background())
 			Expect(actual).To(BeNil())
 			Expect(ok).To(BeFalse())
 		})
@@ -1028,7 +1028,7 @@ var _ = Describe("Context", func() {
 					},
 				},
 			}
-			_ = app.RunContext(context.TODO(), []string{"app", "_"})
+			_ = app.RunContext(context.Background(), []string{"app", "_"})
 			Expect(actual).To(expected)
 		},
 			Entry("name", "name", BeIdenticalTo(myValue)),
@@ -1047,7 +1047,7 @@ var _ = Describe("Context", func() {
 					{Name: "cmd"},
 				},
 			}
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(actual).To(expected)
 		},
 			Entry("name", "cmd", WithTransform(commandName, Equal("cmd"))),
@@ -1256,7 +1256,7 @@ var _ = Describe("FromContext", func() {
 		Entry(
 			"panic if missing",
 			func() error {
-				Expect(func() { cli.FromContext(context.TODO()) }).To(Panic())
+				Expect(func() { cli.FromContext(context.Background()) }).To(Panic())
 				pass()
 				return nil
 			},

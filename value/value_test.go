@@ -29,7 +29,7 @@ var _ = Describe("Value", func() {
 				}
 
 				args, _ := cli.Split(arguments)
-				err := app.RunContext(context.TODO(), args)
+				err := app.RunContext(context.Background(), args)
 				Expect(err).NotTo(HaveOccurred())
 				captured := cli.FromContext(cli.FromContext(act.ExecuteArgsForCall(0)))
 				Expect(captured.Value("o")).To(expected)

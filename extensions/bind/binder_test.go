@@ -157,7 +157,7 @@ var _ = Describe("Exact", func() {
 			},
 		}
 		args, _ := cli.Split("app --memory 33")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 		Expect(value).To(Equal(33))
 	})
 
@@ -177,7 +177,7 @@ var _ = Describe("Exact", func() {
 			},
 		}
 		args, _ := cli.Split("app --max-memory")
-		_ = app.RunContext(context.TODO(), args)
+		_ = app.RunContext(context.Background(), args)
 		Expect(value).To(Equal(1024))
 		Expect(app.Flags[0].Value).To(PointTo(BeTrue()))
 	})

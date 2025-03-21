@@ -40,7 +40,7 @@ var _ = Describe("Complete", func() {
 		}
 
 		args, _ := cli.Split(arguments)
-		ctx, err := app.Initialize(context.TODO())
+		ctx, err := app.Initialize(context.Background())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cli.FromContext(ctx).Complete(args, incomplete)).To(expected)
 	},
@@ -106,7 +106,7 @@ var _ = Describe("Complete", func() {
 		}
 
 		args, _ := cli.Split(arguments)
-		ctx, err := app.Initialize(context.TODO())
+		ctx, err := app.Initialize(context.Background())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cli.FromContext(ctx).Complete(args, incomplete)).To(expected)
 	},

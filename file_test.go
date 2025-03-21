@@ -37,7 +37,7 @@ var _ = Describe("File", func() {
 			Action: act,
 		}
 		tmpFileLocation, _ := os.CreateTemp("", "example.*.txt")
-		_ = app.RunContext(context.TODO(), []string{"app", tmpFileLocation.Name()})
+		_ = app.RunContext(context.Background(), []string{"app", tmpFileLocation.Name()})
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.File("f")).NotTo(BeNil())
@@ -55,7 +55,7 @@ var _ = Describe("File", func() {
 				},
 			},
 		}
-		err := app.RunContext(context.TODO(), []string{"app", "-f", "--other"})
+		err := app.RunContext(context.Background(), []string{"app", "-f", "--other"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(file.Name).To(Equal("--other"))
 	})
@@ -80,7 +80,7 @@ var _ = Describe("File", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			err = app.RunContext(context.TODO(), args)
+			err = app.RunContext(context.Background(), args)
 		})
 
 		Context("when the file does not exist", func() {
@@ -153,7 +153,7 @@ var _ = Describe("File", func() {
 			Stdout: &buf,
 			Action: act,
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "-"})
+		_ = app.RunContext(context.Background(), []string{"app", "-"})
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 
 		f, err := context.File("f").Open()
@@ -185,7 +185,7 @@ var _ = Describe("File", func() {
 				FS: globalFS,
 			}
 
-			_ = app.RunContext(context.TODO(), []string{"app"})
+			_ = app.RunContext(context.Background(), []string{"app"})
 			Expect(actual.FS).To(BeIdenticalTo(globalFS))
 		})
 
@@ -286,7 +286,7 @@ var _ = Describe("File", func() {
 				actual, _ = io.ReadAll(f)
 			},
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "-"})
+		_ = app.RunContext(context.Background(), []string{"app", "-"})
 		Expect(string(actual)).To(Equal("hello\n"))
 	})
 
@@ -352,7 +352,7 @@ var _ = Describe("FileReference", func() {
 			FS:     testFileSystem,
 			Action: act,
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "d/b.bin"})
+		_ = app.RunContext(context.Background(), []string{"app", "d/b.bin"})
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.Bytes("b")).NotTo(BeNil())
@@ -378,7 +378,7 @@ var _ = Describe("FileReference", func() {
 			FS:     testFileSystem,
 			Action: act,
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "d/b.bin"})
+		_ = app.RunContext(context.Background(), []string{"app", "@d/b.bin", "d/b.bin"})
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.String("b")).To(Equal("facade"))
@@ -398,7 +398,7 @@ var _ = Describe("FileReference", func() {
 			FS:     testFileSystem,
 			Action: act,
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "@d/b.bin"})
+		_ = app.RunContext(context.Background(), []string{"app", "@d/b.bin", "@d/b.bin"})
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.List("b")).To(Equal([]string{"facade", "facade"}))
@@ -418,7 +418,7 @@ var _ = Describe("FileReference", func() {
 			FS:     testFileSystem,
 			Action: act,
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "@d/b.bin", "@d/b.bin"})
+		_ = app.RunContext(context.Background(), []string{"app", "@d/b.bin", "@d/b.bin"})
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.String("b")).To(Equal("facade facade"))
@@ -438,7 +438,7 @@ var _ = Describe("FileSet", func() {
 			},
 			Action: act,
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "fiche"})
+		_ = app.RunContext(context.Background(), []string{"app", "fiche"})
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.FileSet("f")).NotTo(BeNil())
@@ -480,7 +480,7 @@ var _ = Describe("FileSet", func() {
 				})
 			},
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "--", "-"})
+		_ = app.RunContext(context.Background(), []string{"app", "--", "-"})
 		Expect(string(actual)).To(Equal("hello\n"))
 	})
 

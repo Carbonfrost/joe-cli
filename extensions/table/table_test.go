@@ -50,7 +50,7 @@ var _ = Describe("template functions", func() {
 			Stderr: io.Discard,
 			Stdout: io.Discard,
 		}
-		err := app.RunContext(context.TODO(), []string{"app"})
+		err := app.RunContext(context.Background(), []string{"app"})
 		Expect(err).To(expected)
 	},
 		Entry("panics on Table with args", `{{ Table "a" "b" }}`, MatchError(ContainSubstring(`expects 0 or 1 arguments`))),
@@ -64,7 +64,7 @@ func renderScreen(app *cli.App, args string) string {
 	var buffer bytes.Buffer
 	app.Stderr = &buffer
 	app.Stdout = &buffer
-	err := app.RunContext(context.TODO(), arguments)
+	err := app.RunContext(context.Background(), arguments)
 	Expect(err).NotTo(HaveOccurred())
 	return buffer.String()
 }
