@@ -151,6 +151,8 @@ type expressionDescription struct {
 	templ *cli.Template
 }
 
+type evaluatorFunc func(context.Context, any, func(any) error) error
+
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 
 //counterfeiter:generate . Yielder
@@ -358,11 +360,11 @@ func EvaluatorOf(v interface{}) Evaluator {
 			return y(v)
 		})
 	case func(context.Context, interface{}, func(interface{}) error) error:
-		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
+		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
 			return a(c, v, y)
 		})
 	case func(context.Context, interface{}) error:
-		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
+		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
 			err := a(c, v)
 			if err == nil {
 				return y(v)
@@ -370,23 +372,23 @@ func EvaluatorOf(v interface{}) Evaluator {
 			return err
 		})
 	case func(context.Context, interface{}) bool:
-		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
+		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
 			if a(c, v) {
 				return y(v)
 			}
 			return nil
 		})
 	case func(context.Context, interface{}):
-		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
+		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
 			a(c, v)
 			return y(v)
 		})
 	case func(interface{}, func(interface{}) error) error:
-		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
+		return evaluatorFunc(func(_ context.Context, v interface{}, y func(interface{}) error) error {
 			return a(v, y)
 		})
 	case func(interface{}) error:
-		return EvaluatorFunc(func(_ *cli.Context, v interface{}, y func(interface{}) error) error {
+		return evaluatorFunc(func(_ context.Context, v interface{}, y func(interface{}) error) error {
 			err := a(v)
 			if err == nil {
 				return y(v)
@@ -556,6 +558,13 @@ func (e EvaluatorFunc) Evaluate(c context.Context, v interface{}, yield func(int
 		return nil
 	}
 	return e(cli.FromContext(c), v, yield)
+}
+
+func (e evaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error) error {
+	if e == nil {
+		return nil
+	}
+	return e(c, v, yield)
 }
 
 func (f exprFlags) hidden() bool {

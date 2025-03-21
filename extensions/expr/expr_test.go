@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -476,6 +477,14 @@ var _ = Describe("Expr", func() {
 		It("provides values from flags", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
 			Expect(cli.FromContext(captured).Int("flag")).To(Equal(9))
+		})
+
+		It("provides bindings that were selected", func() {
+			captured, _, _ := act.EvaluateArgsForCall(0)
+			exp := expr.FromContext(cli.FromContext(captured), "e")
+			b := slices.Collect(exp.Bindings())
+			Expect(b).To(HaveLen(1))
+			Expect(b[0].Expr().Name).To(Equal("expr"))
 		})
 	})
 
