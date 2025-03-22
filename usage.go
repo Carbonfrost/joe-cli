@@ -20,6 +20,7 @@ import (
 
 var (
 	controlCodes = regexp.MustCompile("\u001B\\[\\d+m")
+	usageColor = false
 )
 
 // Template provides a wrapper around text templates to support some additional configuration
@@ -209,6 +210,11 @@ func DisplayHelpScreen(command ...string) Action {
 			if tpl == nil {
 				panic("help template not registered")
 			}
+
+			// HACK Using global state to set up the usage screen rather
+			// than propagating it (quite a distance) through to synopsis
+			// wrapper
+			usageColor = c.Stdout.ColorCapable()
 
 			current := ctxt.Command()
 			persistentFlags := filterInVisibleFlags(ctxt.PersistentFlags())
@@ -564,6 +570,7 @@ func wrapSynopsis[T synopsis.Stringer](s T) *synopsisWrapper[T] {
 
 func (s *synopsisWrapper[T]) String() string {
 	buf := NewBuffer()
+	buf.SetColorCapable(usageColor)
 	s.s.WriteTo(buf)
 	return buf.String()
 }
