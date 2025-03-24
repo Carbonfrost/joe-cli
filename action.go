@@ -65,10 +65,10 @@ type ActionPipeline []Action
 // will add the specified actions to the Before, main, and After action and run
 // the Uses action immediately.
 type Setup struct {
-	Uses   interface{}
-	Before interface{}
-	Action interface{}
-	After  interface{}
+	Uses   any
+	Before any
+	Action any
+	After  any
 
 	// Optional causes setup to ignore timing errors.  By default, Setup depends upon the
 	// timing, which means that an error will occur if Setup is used within a timing context
@@ -98,9 +98,9 @@ type Setup struct {
 type Prototype struct {
 	Aliases     []string
 	Category    string
-	Data        map[string]interface{}
+	Data        map[string]any
 	DefaultText string
-	Description interface{}
+	Description any
 	EnvVars     []string
 	FilePath    string
 	HelpText    string
@@ -108,10 +108,10 @@ type Prototype struct {
 	Name        string
 	Options     Option
 	UsageText   string
-	Value       interface{}
+	Value       any
 	Setup       Setup
 	Completion  Completion
-	NArg        interface{}
+	NArg        any
 }
 
 // ValidatorFunc defines an Action that applies a validation rule to
@@ -120,7 +120,7 @@ type ValidatorFunc func(s []string) error
 
 // TransformFunc implements a transformation from raw occurrences, which customizes
 // the behavior of parsing. The function can return string, []byte, or io.Reader.
-type TransformFunc func(rawOccurrences []string) (interface{}, error)
+type TransformFunc func(rawOccurrences []string) (any, error)
 
 type hookable interface {
 	hook(at Timing, handler Action) error
@@ -133,12 +133,12 @@ type hookable interface {
 
 type target interface {
 	SetHidden(bool)
-	SetData(name string, v interface{})
-	LookupData(name string) (interface{}, bool)
+	SetData(name string, v any)
+	LookupData(name string) (any, bool)
 
 	uses() *actionPipelines
 	options() *Option
-	pipeline(Timing) interface{}
+	pipeline(Timing) any
 	appendAction(Timing, Action)
 	setDescription(any)
 	setHelpText(string)
@@ -472,7 +472,7 @@ func (s Setup) Use(action Action) Setup {
 // Pipeline combines various actions into a single action.  Compared to using
 // ActionPipeline directly, the actions are flattened if any nested pipelines are
 // present.
-func Pipeline(actions ...interface{}) ActionPipeline {
+func Pipeline(actions ...any) ActionPipeline {
 	myActions := make([]Action, 0, len(actions))
 	for _, a := range actions {
 		if pipe, ok := a.(ActionPipeline); ok {
@@ -577,7 +577,7 @@ func At(t Timing, a Action) Action {
 // using a nil next action.
 //
 // Any other type causes a panic.
-func ActionOf(item interface{}) Action {
+func ActionOf(item any) Action {
 	switch a := item.(type) {
 	case nil:
 		return emptyAction
@@ -1215,7 +1215,7 @@ func Transform(fn TransformFunc) Action {
 // as the delimiter between the name and value (as with any of the types just mentioned).
 // The value portion is transformed using the logic of the transform function.
 func ValueTransform(valueFn TransformFunc) Action {
-	return Transform(func(raw []string) (interface{}, error) {
+	return Transform(func(raw []string) (any, error) {
 		name, value, hasValue := splitValuePair(raw[1])
 		if hasValue {
 			values := append([]string{name, value}, raw[2:]...)
@@ -1235,7 +1235,7 @@ func ValueTransform(valueFn TransformFunc) Action {
 	})
 }
 
-func transformOutputToString(v interface{}) (string, error) {
+func transformOutputToString(v any) (string, error) {
 	switch val := v.(type) {
 	case string:
 		return val, nil
@@ -1255,7 +1255,7 @@ func transformOutputToString(v interface{}) (string, error) {
 // prefix @ is required.
 func TransformFileReference(f fs.FS, usingAtSyntax bool) TransformFunc {
 	if usingAtSyntax {
-		return func(raw []string) (interface{}, error) {
+		return func(raw []string) (any, error) {
 			readers := make([]io.Reader, len(raw)-1)
 			for i, s := range raw[1:] {
 				if strings.HasPrefix(s, "@") {
@@ -1272,7 +1272,7 @@ func TransformFileReference(f fs.FS, usingAtSyntax bool) TransformFunc {
 		}
 	}
 
-	return func(raw []string) (interface{}, error) {
+	return func(raw []string) (any, error) {
 		readers := make([]io.Reader, len(raw)-1)
 		for i, s := range raw[1:] {
 			f, err := f.Open(s)
@@ -1817,13 +1817,13 @@ func (w legacyActionWrapper) Execute(ctx context.Context) error {
 	return w.a.Execute(FromContext(ctx))
 }
 
-func setData(data map[string]interface{}, name string, v interface{}) map[string]interface{} {
+func setData(data map[string]any, name string, v any) map[string]any {
 	if v == nil {
 		delete(data, name)
 		return data
 	}
 	if data == nil {
-		return map[string]interface{}{
+		return map[string]any{
 			name: v,
 		}
 	}

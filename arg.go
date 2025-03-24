@@ -38,7 +38,7 @@ type Arg struct {
 	// Description provides a long description for the flag.  The long description is
 	// not used in any templates by default.  The type of Description should be string or
 	// fmt.Stringer.  Refer to func Description for details.
-	Description interface{}
+	Description any
 
 	// Category specifies the arg category.  Categories are not used by the help screen.
 	Category string
@@ -75,7 +75,7 @@ type Arg struct {
 	// If unspecified, the value will depend upon NArg if it is a number, in which case either
 	// a pointer to a string or a string slice will be used depending upon the semantics of the
 	// ArgCount function.  For more information about Values, see the Value type
-	Value interface{}
+	Value any
 
 	// DefaultText provides a description of the default value for the argument.  This is displayed
 	// on help screens but is otherwise unused
@@ -84,30 +84,30 @@ type Arg struct {
 	// NArg describes how many values are passed to the argument.  For a description, see
 	// ArgCount function. By convention, if the flag Value provides the method NewCounter() ArgCounter,
 	// this method is consulted to obtain the arg counter.
-	NArg interface{}
+	NArg any
 
 	// Options sets various options about how to treat the argument.
 	Options Option
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
-	Before interface{}
+	Before any
 
 	// Action executes if the argument was set.  Refer to cli.Action about the correct
 	// function signature to use.
-	Action interface{}
+	Action any
 
 	// After executes after the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
-	After interface{}
+	After any
 
 	// Uses provides an action handler that is always executed during the initialization phase
 	// of the app.  Typically, hooks and other configuration actions are added to this handler.
-	Uses interface{}
+	Uses any
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
-	Data map[string]interface{}
+	Data map[string]any
 
 	// Completion specifies a callback function that determines the auto-complete results
 	Completion Completion
@@ -202,7 +202,7 @@ const (
 // in order to this function.    It generates the corresponding list of required positional arguments.
 // A panic occurs when this function is not called properly: when names and values
 // are not arranged in pairs or when an unsupported type of value is used.
-func Args(namevalue ...interface{}) []*Arg {
+func Args(namevalue ...any) []*Arg {
 	if len(namevalue)%2 != 0 {
 		panic("unexpected number of arguments")
 	}
@@ -234,7 +234,7 @@ func Args(namevalue ...interface{}) []*Arg {
 // As a special case, if v is an initialized *Arg or *Flag, it obtains the actual arg counter which will be
 // used for it, or if v is nil, this is the same as [TakeUnlessFlag].  If the value
 // is already ArgCounter, it is returned as-is.
-func ArgCount(v interface{}) ArgCounter {
+func ArgCount(v any) ArgCounter {
 	switch count := v.(type) {
 	case ArgCounter:
 		return count
@@ -362,7 +362,7 @@ func (a *Arg) defaultText() string {
 	return a.DefaultText
 }
 
-func (a *Arg) value() interface{} {
+func (a *Arg) value() any {
 	_, multi := synopsis.ArgCounter(a.NArg)
 	var created bool
 	a.Value, created = ensureDestination(a.Value, multi)
@@ -378,12 +378,12 @@ func (a *Arg) value() interface{} {
 
 // SetData sets the specified metadata on the arg.  When v is nil, the corresponding
 // metadata is deleted
-func (a *Arg) SetData(name string, v interface{}) {
+func (a *Arg) SetData(name string, v any) {
 	a.Data = setData(a.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
-func (a *Arg) LookupData(name string) (interface{}, bool) {
+func (a *Arg) LookupData(name string) (any, bool) {
 	v, ok := a.Data[name]
 	return v, ok
 }
@@ -436,7 +436,7 @@ func (a *Arg) manualText() string {
 	return a.ManualText
 }
 
-func (a *Arg) pipeline(t Timing) interface{} {
+func (a *Arg) pipeline(t Timing) any {
 	switch t {
 	case AfterTiming:
 		return a.After
@@ -521,7 +521,7 @@ func (o *optionContext) BindingNames() []string {
 	return o.parentLookup.BindingNames()
 }
 
-func (o *optionContext) lookupValue(name string) (interface{}, bool) {
+func (o *optionContext) lookupValue(name string) (any, bool) {
 	if name == "" {
 		return o.option.value(), true
 	}
@@ -607,7 +607,7 @@ func argCounterImpliedFromValue(value any, requireSeen bool) ArgCounter {
 	return &defaultCounter{requireSeen: requireSeen}
 }
 
-func findArgByName(items []*Arg, v interface{}) (*Arg, int, bool) {
+func findArgByName(items []*Arg, v any) (*Arg, int, bool) {
 	switch name := v.(type) {
 	case int:
 		if name < 0 {

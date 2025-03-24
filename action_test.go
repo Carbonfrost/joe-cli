@@ -689,7 +689,7 @@ var _ = Describe("Uses", func() {
 
 		Describe("RemoveArg", func() {
 
-			DescribeTable("examples", func(name interface{}, expected []string) {
+			DescribeTable("examples", func(name any, expected []string) {
 				var actual []string
 				app := &cli.App{
 					Args: []*cli.Arg{
@@ -723,7 +723,7 @@ var _ = Describe("Uses", func() {
 
 		Describe("RemoveFlag", func() {
 
-			DescribeTable("examples", func(name interface{}, expected []string) {
+			DescribeTable("examples", func(name any, expected []string) {
 				var actual []string
 				app := &cli.App{
 					Flags: []*cli.Flag{
@@ -1156,7 +1156,7 @@ var _ = Describe("ActionOf", func() {
 	act := func() { called = true }
 
 	DescribeTable("examples",
-		func(thunk interface{}) {
+		func(thunk any) {
 			var handler cli.Action
 			Expect(func() {
 				handler = cli.ActionOf(thunk)
@@ -1203,7 +1203,7 @@ var _ = Describe("ActionOf", func() {
 	})
 
 	DescribeTable("errors",
-		func(thunk interface{}) {
+		func(thunk any) {
 			called = false
 
 			Expect(func() { cli.ActionOf(thunk) }).To(Panic())
@@ -1597,7 +1597,7 @@ var _ = Describe("Prototype", func() {
 					Uses:    proto,
 					Options: cli.Required,
 					EnvVars: []string{"V"},
-					Data:    map[string]interface{}{"A": 1},
+					Data:    map[string]any{"A": 1},
 				},
 			},
 			Args: []*cli.Arg{
@@ -1605,7 +1605,7 @@ var _ = Describe("Prototype", func() {
 					Uses:    proto,
 					Options: cli.Required,
 					EnvVars: []string{"V"},
-					Data:    map[string]interface{}{"A": 1},
+					Data:    map[string]any{"A": 1},
 				},
 			},
 		}
@@ -1624,7 +1624,7 @@ var _ = Describe("Prototype", func() {
 		Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
 		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Options": Equal(cli.Hidden | cli.Required)}),
 		Entry("EnvVars", cli.Prototype{EnvVars: []string{"A"}}, Fields{"EnvVars": Equal([]string{"V", "A"})}),
-		Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
+		Entry("Data", cli.Prototype{Data: map[string]any{"B": 3}}, Fields{"Data": Equal(map[string]any{"A": 1, "B": 3})}),
 		Entry("Value", cli.Prototype{Value: new(time.Duration)}, Fields{"Value": Equal(new(time.Duration))}),
 		Entry("Completion", cli.Prototype{
 			Completion: cli.CompletionFunc(func(*cli.Context) []cli.CompletionItem {
@@ -1640,7 +1640,7 @@ var _ = Describe("Prototype", func() {
 			Commands: []*cli.Command{
 				{
 					Uses:    proto,
-					Data:    map[string]interface{}{"A": 1},
+					Data:    map[string]any{"A": 1},
 					Options: cli.RightToLeft,
 				},
 			},
@@ -1656,7 +1656,7 @@ var _ = Describe("Prototype", func() {
 		Entry("Name", cli.Prototype{Name: "nom"}, Fields{"Name": Equal("nom")}),
 		Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
 		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Options": Equal(cli.Hidden | cli.RightToLeft)}),
-		Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
+		Entry("Data", cli.Prototype{Data: map[string]any{"B": 3}}, Fields{"Data": Equal(map[string]any{"A": 1, "B": 3})}),
 		Entry("Completion", cli.Prototype{
 			Completion: cli.CompletionFunc(func(*cli.Context) []cli.CompletionItem {
 				return nil
@@ -2679,7 +2679,7 @@ var _ = Describe("Bind", func() {
 	})
 
 	DescribeTable("generics",
-		func(uses cli.Action, expected interface{}) {
+		func(uses cli.Action, expected any) {
 			act := new(joeclifakes.FakeAction)
 			app := &cli.App{
 				Flags: []*cli.Flag{
@@ -2897,7 +2897,7 @@ var _ = Describe("EachOccurrence", func() {
 		Expect(*ptr).To(Equal(uint64(1044)))
 	})
 
-	DescribeTable("examples", func(flag *cli.Flag, arguments string, expected []interface{}) {
+	DescribeTable("examples", func(flag *cli.Flag, arguments string, expected []any) {
 		act := new(joeclifakes.FakeAction)
 		var callIndex int // keep track of which index is called
 		act.ExecuteCalls(func(ctx context.Context) error {
@@ -2926,7 +2926,7 @@ var _ = Describe("EachOccurrence", func() {
 				Value: new(string),
 			},
 			"app -f h -f u -f g",
-			[]interface{}{"h", "u", "g"},
+			[]any{"h", "u", "g"},
 		),
 		Entry("string merged",
 			&cli.Flag{
@@ -2935,7 +2935,7 @@ var _ = Describe("EachOccurrence", func() {
 				Options: cli.Merge,
 			},
 			"app -f h -f u -f g",
-			[]interface{}{"h", "h u", "h u g"},
+			[]any{"h", "h u", "h u g"},
 		),
 		Entry("string initial value",
 			&cli.Flag{
@@ -2946,7 +2946,7 @@ var _ = Describe("EachOccurrence", func() {
 				}(),
 			},
 			"app -f world -f earth",
-			[]interface{}{"world", "earth"},
+			[]any{"world", "earth"},
 		),
 		Entry("int",
 			&cli.Flag{
@@ -2954,7 +2954,7 @@ var _ = Describe("EachOccurrence", func() {
 				Value: new(int),
 			},
 			"app -f 1 -f 2",
-			[]interface{}{1, 2},
+			[]any{1, 2},
 		),
 		Entry("bool",
 			&cli.Flag{
@@ -2962,7 +2962,7 @@ var _ = Describe("EachOccurrence", func() {
 				Value: new(bool),
 			},
 			"app -f -f -f",
-			[]interface{}{true, true, true},
+			[]any{true, true, true},
 		),
 		Entry("NameValue",
 			&cli.Flag{
@@ -2970,7 +2970,7 @@ var _ = Describe("EachOccurrence", func() {
 				Value: new(cli.NameValue),
 			},
 			"app -f a=b -f d=e -f j=k",
-			[]interface{}{&cli.NameValue{Name: "a", Value: "b"}, &cli.NameValue{Name: "d", Value: "e"}, &cli.NameValue{Name: "j", Value: "k"}},
+			[]any{&cli.NameValue{Name: "a", Value: "b"}, &cli.NameValue{Name: "d", Value: "e"}, &cli.NameValue{Name: "j", Value: "k"}},
 		),
 	)
 })
@@ -3150,7 +3150,7 @@ var _ = Describe("ValueTransform", func() {
 		"plan":  {Data: []byte("b")},
 	}
 
-	DescribeTable("examples", func(arguments string, value interface{}, expected types.GomegaMatcher) {
+	DescribeTable("examples", func(arguments string, value any, expected types.GomegaMatcher) {
 		app := &cli.App{
 			Name: "app",
 			Flags: []*cli.Flag{

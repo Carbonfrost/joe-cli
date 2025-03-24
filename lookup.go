@@ -16,67 +16,67 @@ import (
 // corresponding to the name of the argument or flag.
 type Lookup interface {
 	// Bool obtains the value and converts it to a bool
-	Bool(name interface{}) bool
+	Bool(name any) bool
 	// File obtains the value and converts it to a File
-	File(name interface{}) *File
+	File(name any) *File
 	// FileSet obtains the value and converts it to a FileSet
-	FileSet(name interface{}) *FileSet
+	FileSet(name any) *FileSet
 	// Float32 obtains the value and converts it to a float32
-	Float32(name interface{}) float32
+	Float32(name any) float32
 	// Float64 obtains the value and converts it to a float64
-	Float64(name interface{}) float64
+	Float64(name any) float64
 	// Int obtains the value and converts it to a int
-	Int(name interface{}) int
+	Int(name any) int
 	// Int16 obtains the value and converts it to a int16
-	Int16(name interface{}) int16
+	Int16(name any) int16
 	// Int32 obtains the value and converts it to a int32
-	Int32(name interface{}) int32
+	Int32(name any) int32
 	// Int64 obtains the value and converts it to a int64
-	Int64(name interface{}) int64
+	Int64(name any) int64
 	// Int8 obtains the value and converts it to a int8
-	Int8(name interface{}) int8
+	Int8(name any) int8
 	// Duration obtains the value and converts it to a Duration
-	Duration(name interface{}) time.Duration
+	Duration(name any) time.Duration
 	// List obtains the value and converts it to a slice of strings
-	List(name interface{}) []string
+	List(name any) []string
 	// Map obtains the value and converts it to a map
-	Map(name interface{}) map[string]string
+	Map(name any) map[string]string
 	// NameValue obtains the value and converts it to a name-value pair
-	NameValue(name interface{}) *NameValue
+	NameValue(name any) *NameValue
 	// NameValues obtains the value and converts it to a list of name-value pairs
-	NameValues(name interface{}) []*NameValue
+	NameValues(name any) []*NameValue
 	// String obtains the value and converts it to a string
-	String(name interface{}) string
+	String(name any) string
 	// Uint obtains the value and converts it to a uint
-	Uint(name interface{}) uint
+	Uint(name any) uint
 	// Uint16 obtains the value and converts it to a uint16
-	Uint16(name interface{}) uint16
+	Uint16(name any) uint16
 	// Uint32 obtains the value and converts it to a uint32
-	Uint32(name interface{}) uint32
+	Uint32(name any) uint32
 	// Uint64 obtains the value and converts it to a uint64
-	Uint64(name interface{}) uint64
+	Uint64(name any) uint64
 	// Uint8 obtains the value and converts it to a uint8
-	Uint8(name interface{}) uint8
+	Uint8(name any) uint8
 	// Value obtains the value and converts it to Value
-	Value(name interface{}) interface{}
+	Value(name any) any
 	// URL obtains the value and converts it to a URL
-	URL(name interface{}) *url.URL
+	URL(name any) *url.URL
 	// Regexp obtains the value and converts it to a Regexp
-	Regexp(name interface{}) *regexp.Regexp
+	Regexp(name any) *regexp.Regexp
 	// IP obtains the value and converts it to a IP
-	IP(name interface{}) net.IP
+	IP(name any) net.IP
 	// BigInt obtains the value and converts it to a BigInt
-	BigInt(name interface{}) *big.Int
+	BigInt(name any) *big.Int
 	// BigFloat obtains the value and converts it to a BigFloat
-	BigFloat(name interface{}) *big.Float
+	BigFloat(name any) *big.Float
 	// Bytes obtains the value and converts it to a slice of bytes
-	Bytes(name interface{}) []byte
+	Bytes(name any) []byte
 	// Interface returns the raw value without dereferencing and whether it exists
-	Interface(name interface{}) (interface{}, bool)
+	Interface(name any) (any, bool)
 }
 
 // LookupValues provides a Lookup backed by a map
-type LookupValues map[string]interface{}
+type LookupValues map[string]any
 
 // LookupFunc provides a Lookup that converts from a name
 // to a value.
@@ -84,16 +84,16 @@ type LookupFunc func(string) (any, bool)
 
 type lookupCore interface {
 	// lookupValue, no need to dereference
-	lookupValue(name string) (interface{}, bool)
+	lookupValue(name string) (any, bool)
 }
 
 // Value obtains the value and converts it to Value
-func (c LookupValues) Value(name interface{}) interface{} {
+func (c LookupValues) Value(name any) any {
 	r, _ := c.try(name, true)
 	return r
 }
 
-func (c LookupValues) try(name interface{}, deref bool) (interface{}, bool) {
+func (c LookupValues) try(name any, deref bool) (any, bool) {
 	if c == nil {
 		return nil, false
 	}
@@ -110,142 +110,142 @@ func (c LookupValues) try(name interface{}, deref bool) (interface{}, bool) {
 }
 
 // Bool obtains the value and converts it to a bool
-func (c LookupValues) Bool(name interface{}) bool {
+func (c LookupValues) Bool(name any) bool {
 	return lookupBool(c, name)
 }
 
 // String obtains the value and converts it to a string
-func (c LookupValues) String(name interface{}) string {
+func (c LookupValues) String(name any) string {
 	return lookupString(c, name)
 }
 
 // List obtains the value and converts it to a string slice
-func (c LookupValues) List(name interface{}) []string {
+func (c LookupValues) List(name any) []string {
 	return lookupList(c, name)
 }
 
 // Int obtains the int for the specified name
-func (c LookupValues) Int(name interface{}) int {
+func (c LookupValues) Int(name any) int {
 	return lookupInt(c, name)
 }
 
 // Int8 obtains the int8 for the specified name
-func (c LookupValues) Int8(name interface{}) int8 {
+func (c LookupValues) Int8(name any) int8 {
 	return lookupInt8(c, name)
 }
 
 // Int16 obtains the int16 for the specified name
-func (c LookupValues) Int16(name interface{}) int16 {
+func (c LookupValues) Int16(name any) int16 {
 	return lookupInt16(c, name)
 }
 
 // Int32 obtains the int32 for the specified name
-func (c LookupValues) Int32(name interface{}) int32 {
+func (c LookupValues) Int32(name any) int32 {
 	return lookupInt32(c, name)
 }
 
 // Int64 obtains the int64 for the specified name
-func (c LookupValues) Int64(name interface{}) int64 {
+func (c LookupValues) Int64(name any) int64 {
 	return lookupInt64(c, name)
 }
 
 // Uint obtains the uint for the specified name
-func (c LookupValues) Uint(name interface{}) uint {
+func (c LookupValues) Uint(name any) uint {
 	return lookupUint(c, name)
 }
 
 // Uint8 obtains the uint8 for the specified name
-func (c LookupValues) Uint8(name interface{}) uint8 {
+func (c LookupValues) Uint8(name any) uint8 {
 	return lookupUint8(c, name)
 }
 
 // Uint16 obtains the uint16 for the specified name
-func (c LookupValues) Uint16(name interface{}) uint16 {
+func (c LookupValues) Uint16(name any) uint16 {
 	return lookupUint16(c, name)
 }
 
 // Uint32 obtains the uint32 for the specified name
-func (c LookupValues) Uint32(name interface{}) uint32 {
+func (c LookupValues) Uint32(name any) uint32 {
 	return lookupUint32(c, name)
 }
 
 // Uint64 obtains the uint64 for the specified name
-func (c LookupValues) Uint64(name interface{}) uint64 {
+func (c LookupValues) Uint64(name any) uint64 {
 	return lookupUint64(c, name)
 }
 
 // Float32 obtains the float32 for the specified name
-func (c LookupValues) Float32(name interface{}) float32 {
+func (c LookupValues) Float32(name any) float32 {
 	return lookupFloat32(c, name)
 }
 
 // Float64 obtains the float64 for the specified name
-func (c LookupValues) Float64(name interface{}) float64 {
+func (c LookupValues) Float64(name any) float64 {
 	return lookupFloat64(c, name)
 }
 
 // Duration obtains the Duration for the specified name
-func (c LookupValues) Duration(name interface{}) time.Duration {
+func (c LookupValues) Duration(name any) time.Duration {
 	return lookupDuration(c, name)
 }
 
 // File obtains the File for the specified name
-func (c LookupValues) File(name interface{}) *File {
+func (c LookupValues) File(name any) *File {
 	return lookupFile(c, name)
 }
 
 // FileSet obtains the FileSet for the specified name
-func (c LookupValues) FileSet(name interface{}) *FileSet {
+func (c LookupValues) FileSet(name any) *FileSet {
 	return lookupFileSet(c, name)
 }
 
 // Map obtains the map for the specified name
-func (c LookupValues) Map(name interface{}) map[string]string {
+func (c LookupValues) Map(name any) map[string]string {
 	return lookupMap(c, name)
 }
 
 // NameValue obtains the value and converts it to a name-value pair
-func (c LookupValues) NameValue(name interface{}) *NameValue {
+func (c LookupValues) NameValue(name any) *NameValue {
 	return lookupNameValue(c, name)
 }
 
 // NameValues obtains the value and converts it to a list of name-value pairs
-func (c LookupValues) NameValues(name interface{}) []*NameValue {
+func (c LookupValues) NameValues(name any) []*NameValue {
 	return lookupNameValues(c, name)
 }
 
 // URL obtains the URL for the specified name
-func (c LookupValues) URL(name interface{}) *url.URL {
+func (c LookupValues) URL(name any) *url.URL {
 	return lookupURL(c, name)
 }
 
 // Regexp obtains the Regexp for the specified name
-func (c LookupValues) Regexp(name interface{}) *regexp.Regexp {
+func (c LookupValues) Regexp(name any) *regexp.Regexp {
 	return lookupRegexp(c, name)
 }
 
 // IP obtains the IP for the specified name
-func (c LookupValues) IP(name interface{}) net.IP {
+func (c LookupValues) IP(name any) net.IP {
 	return lookupIP(c, name)
 }
 
 // BigInt obtains the BigInt for the specified name
-func (c LookupValues) BigInt(name interface{}) *big.Int {
+func (c LookupValues) BigInt(name any) *big.Int {
 	return lookupBigInt(c, name)
 }
 
 // BigFloat obtains the BigFloat for the specified name
-func (c LookupValues) BigFloat(name interface{}) *big.Float {
+func (c LookupValues) BigFloat(name any) *big.Float {
 	return lookupBigFloat(c, name)
 }
 
 // Bytes obtains the bytes for the specified name
-func (c LookupValues) Bytes(name interface{}) []byte {
+func (c LookupValues) Bytes(name any) []byte {
 	return lookupBytes(c, name)
 }
 
 // Interface obtains the raw value without dereferencing
-func (c LookupValues) Interface(name interface{}) (interface{}, bool) {
+func (c LookupValues) Interface(name any) (any, bool) {
 	return c.try(name, false)
 }
 
@@ -387,7 +387,7 @@ func tryLookup(c lookupCore, n any, deref bool) (any, bool) {
 	return nil, false
 }
 
-func (p *parentLookup) lookupValue(name string) (interface{}, bool) {
+func (p *parentLookup) lookupValue(name string) (any, bool) {
 	if v, ok := p.lookupCore.lookupValue(name); ok {
 		return v, true
 	}
@@ -402,7 +402,7 @@ func (c LookupFunc) lookupValue(name string) (any, bool) {
 	return c(name)
 }
 
-func nameToString(name interface{}) string {
+func nameToString(name any) string {
 	switch v := name.(type) {
 	case rune:
 		return string(v)
@@ -423,7 +423,7 @@ func withoutDecorators(name string) string {
 	return strings.Trim(name, "-<>")
 }
 
-func lookupBool(c Lookup, name interface{}) (res bool) {
+func lookupBool(c Lookup, name any) (res bool) {
 	val := c.Value(name)
 	if i, ok := val.(bool); ok {
 		res = i
@@ -433,7 +433,7 @@ func lookupBool(c Lookup, name interface{}) (res bool) {
 	return
 }
 
-func lookupString(c Lookup, name interface{}) (res string) {
+func lookupString(c Lookup, name any) (res string) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(string)
@@ -441,7 +441,7 @@ func lookupString(c Lookup, name interface{}) (res string) {
 	return
 }
 
-func lookupList(c Lookup, name interface{}) (res []string) {
+func lookupList(c Lookup, name any) (res []string) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.([]string)
@@ -449,7 +449,7 @@ func lookupList(c Lookup, name interface{}) (res []string) {
 	return
 }
 
-func lookupInt(c Lookup, name interface{}) (res int) {
+func lookupInt(c Lookup, name any) (res int) {
 	val := c.Value(name)
 	if i, ok := val.(int); ok {
 		res = i
@@ -459,7 +459,7 @@ func lookupInt(c Lookup, name interface{}) (res int) {
 	return
 }
 
-func lookupInt8(c Lookup, name interface{}) (res int8) {
+func lookupInt8(c Lookup, name any) (res int8) {
 	val := c.Value(name)
 	if i, ok := val.(int8); ok {
 		res = i
@@ -469,7 +469,7 @@ func lookupInt8(c Lookup, name interface{}) (res int8) {
 	return
 }
 
-func lookupInt16(c Lookup, name interface{}) (res int16) {
+func lookupInt16(c Lookup, name any) (res int16) {
 	val := c.Value(name)
 	if i, ok := val.(int16); ok {
 		res = i
@@ -479,7 +479,7 @@ func lookupInt16(c Lookup, name interface{}) (res int16) {
 	return
 }
 
-func lookupInt32(c Lookup, name interface{}) (res int32) {
+func lookupInt32(c Lookup, name any) (res int32) {
 	val := c.Value(name)
 	if i, ok := val.(int32); ok {
 		res = i
@@ -489,7 +489,7 @@ func lookupInt32(c Lookup, name interface{}) (res int32) {
 	return
 }
 
-func lookupInt64(c Lookup, name interface{}) (res int64) {
+func lookupInt64(c Lookup, name any) (res int64) {
 	val := c.Value(name)
 	if i, ok := val.(int64); ok {
 		res = i
@@ -499,7 +499,7 @@ func lookupInt64(c Lookup, name interface{}) (res int64) {
 	return
 }
 
-func lookupUint(c Lookup, name interface{}) (res uint) {
+func lookupUint(c Lookup, name any) (res uint) {
 	val := c.Value(name)
 	if i, ok := val.(uint); ok {
 		res = i
@@ -509,7 +509,7 @@ func lookupUint(c Lookup, name interface{}) (res uint) {
 	return
 }
 
-func lookupUint8(c Lookup, name interface{}) (res uint8) {
+func lookupUint8(c Lookup, name any) (res uint8) {
 	val := c.Value(name)
 	if i, ok := val.(uint8); ok {
 		res = i
@@ -519,7 +519,7 @@ func lookupUint8(c Lookup, name interface{}) (res uint8) {
 	return
 }
 
-func lookupUint16(c Lookup, name interface{}) (res uint16) {
+func lookupUint16(c Lookup, name any) (res uint16) {
 	val := c.Value(name)
 	if i, ok := val.(uint16); ok {
 		res = i
@@ -529,7 +529,7 @@ func lookupUint16(c Lookup, name interface{}) (res uint16) {
 	return
 }
 
-func lookupUint32(c Lookup, name interface{}) (res uint32) {
+func lookupUint32(c Lookup, name any) (res uint32) {
 	val := c.Value(name)
 	if i, ok := val.(uint32); ok {
 		res = i
@@ -539,7 +539,7 @@ func lookupUint32(c Lookup, name interface{}) (res uint32) {
 	return
 }
 
-func lookupUint64(c Lookup, name interface{}) (res uint64) {
+func lookupUint64(c Lookup, name any) (res uint64) {
 	val := c.Value(name)
 	if i, ok := val.(uint64); ok {
 		res = i
@@ -549,7 +549,7 @@ func lookupUint64(c Lookup, name interface{}) (res uint64) {
 	return
 }
 
-func lookupFloat32(c Lookup, name interface{}) (res float32) {
+func lookupFloat32(c Lookup, name any) (res float32) {
 	val := c.Value(name)
 	if i, ok := val.(float32); ok {
 		res = i
@@ -559,7 +559,7 @@ func lookupFloat32(c Lookup, name interface{}) (res float32) {
 	return
 }
 
-func lookupFloat64(c Lookup, name interface{}) (res float64) {
+func lookupFloat64(c Lookup, name any) (res float64) {
 	val := c.Value(name)
 	if i, ok := val.(float64); ok {
 		res = i
@@ -569,7 +569,7 @@ func lookupFloat64(c Lookup, name interface{}) (res float64) {
 	return
 }
 
-func lookupDuration(c Lookup, name interface{}) (res time.Duration) {
+func lookupDuration(c Lookup, name any) (res time.Duration) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(time.Duration)
@@ -577,7 +577,7 @@ func lookupDuration(c Lookup, name interface{}) (res time.Duration) {
 	return
 }
 
-func lookupFile(c Lookup, name interface{}) (res *File) {
+func lookupFile(c Lookup, name any) (res *File) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*File)
@@ -585,7 +585,7 @@ func lookupFile(c Lookup, name interface{}) (res *File) {
 	return
 }
 
-func lookupFileSet(c Lookup, name interface{}) (res *FileSet) {
+func lookupFileSet(c Lookup, name any) (res *FileSet) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*FileSet)
@@ -593,7 +593,7 @@ func lookupFileSet(c Lookup, name interface{}) (res *FileSet) {
 	return
 }
 
-func lookupMap(c Lookup, name interface{}) (res map[string]string) {
+func lookupMap(c Lookup, name any) (res map[string]string) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(map[string]string)
@@ -601,7 +601,7 @@ func lookupMap(c Lookup, name interface{}) (res map[string]string) {
 	return
 }
 
-func lookupNameValue(c Lookup, name interface{}) (res *NameValue) {
+func lookupNameValue(c Lookup, name any) (res *NameValue) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*NameValue)
@@ -609,7 +609,7 @@ func lookupNameValue(c Lookup, name interface{}) (res *NameValue) {
 	return
 }
 
-func lookupNameValues(c Lookup, name interface{}) (res []*NameValue) {
+func lookupNameValues(c Lookup, name any) (res []*NameValue) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.([]*NameValue)
@@ -617,7 +617,7 @@ func lookupNameValues(c Lookup, name interface{}) (res []*NameValue) {
 	return
 }
 
-func lookupURL(c Lookup, name interface{}) (res *url.URL) {
+func lookupURL(c Lookup, name any) (res *url.URL) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*url.URL)
@@ -625,7 +625,7 @@ func lookupURL(c Lookup, name interface{}) (res *url.URL) {
 	return
 }
 
-func lookupRegexp(c Lookup, name interface{}) (res *regexp.Regexp) {
+func lookupRegexp(c Lookup, name any) (res *regexp.Regexp) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*regexp.Regexp)
@@ -633,7 +633,7 @@ func lookupRegexp(c Lookup, name interface{}) (res *regexp.Regexp) {
 	return
 }
 
-func lookupIP(c Lookup, name interface{}) (res net.IP) {
+func lookupIP(c Lookup, name any) (res net.IP) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(net.IP)
@@ -641,7 +641,7 @@ func lookupIP(c Lookup, name interface{}) (res net.IP) {
 	return
 }
 
-func lookupBigInt(c Lookup, name interface{}) (res *big.Int) {
+func lookupBigInt(c Lookup, name any) (res *big.Int) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*big.Int)
@@ -649,7 +649,7 @@ func lookupBigInt(c Lookup, name interface{}) (res *big.Int) {
 	return
 }
 
-func lookupBigFloat(c Lookup, name interface{}) (res *big.Float) {
+func lookupBigFloat(c Lookup, name any) (res *big.Float) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.(*big.Float)
@@ -657,7 +657,7 @@ func lookupBigFloat(c Lookup, name interface{}) (res *big.Float) {
 	return
 }
 
-func lookupBytes(c Lookup, name interface{}) (res []byte) {
+func lookupBytes(c Lookup, name any) (res []byte) {
 	val := c.Value(name)
 	if val != nil {
 		res = val.([]byte)

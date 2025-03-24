@@ -342,8 +342,8 @@ var _ = Describe("Flag", func() {
 	})
 
 	Context("when the value is Optional", func() {
-		DescribeTable("examples", func(flag interface{}, args string, expected interface{}) {
-			var actual interface{}
+		DescribeTable("examples", func(flag any, args string, expected any) {
+			var actual any
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -387,8 +387,8 @@ var _ = Describe("Flag", func() {
 			Entry("long Duration", cli.Duration(), "app --show", time.Second),
 		)
 
-		DescribeTable("OptionalValue examples", func(flag interface{}, args string, expected interface{}) {
-			var actual interface{}
+		DescribeTable("OptionalValue examples", func(flag any, args string, expected any) {
+			var actual any
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -418,7 +418,7 @@ var _ = Describe("Flag", func() {
 		)
 
 		It("following is treated as argument", func() {
-			var actual, args interface{}
+			var actual, args any
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -446,7 +446,7 @@ var _ = Describe("Flag", func() {
 		})
 
 		It("run-in is treated as argument on short option", func() {
-			var actual interface{}
+			var actual any
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -472,7 +472,7 @@ var _ = Describe("Flag", func() {
 		})
 
 		It("equals is treated as argument on long option", func() {
-			var actual interface{}
+			var actual any
 			app := &cli.App{
 				Flags: []*cli.Flag{
 					{
@@ -686,7 +686,7 @@ var _ = Describe("Flag", func() {
 				"Synopsis data",
 				&cli.Flag{
 					Name: "reason",
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"_Synopsis": &synopsis.Flag{
 							Long:    "[no-]reason",
 							Primary: "[no-]reason",

@@ -53,7 +53,7 @@ type ExitCoder interface {
 }
 
 type exitError struct {
-	message  interface{}
+	message  any
 	exitCode int
 }
 
@@ -105,7 +105,7 @@ const (
 // and joined together.  Spaces are added between operands when neither is a string.
 // If the last argument is an integer, it is interpreted as the exit code that will
 // be generated when the program exits.  If no integer is present, the value 1 is used.
-func Exit(message ...interface{}) ExitCoder {
+func Exit(message ...any) ExitCoder {
 	switch len(message) {
 	case 0:
 		return exitCore("", 1)
@@ -276,7 +276,7 @@ func expectedArgument(count int) *ParseError {
 	}
 }
 
-func unknownOption(name interface{}, remaining []string) error {
+func unknownOption(name any, remaining []string) error {
 	nameStr := optionName(name)
 	return &ParseError{
 		Code:      UnknownOption,
@@ -286,7 +286,7 @@ func unknownOption(name interface{}, remaining []string) error {
 	}
 }
 
-func flagAfterArgError(name interface{}) error {
+func flagAfterArgError(name any) error {
 	nameStr := optionName(name)
 	return &ParseError{
 		Code: FlagUsedAfterArgs,
@@ -327,7 +327,7 @@ func formatStrconvError(err error, value string) error {
 	return err
 }
 
-func optionName(name interface{}) string {
+func optionName(name any) string {
 	switch n := name.(type) {
 	case rune:
 		if n == '-' {

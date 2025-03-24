@@ -10,7 +10,7 @@ import (
 type commandData struct {
 	Name               string
 	Names              []string
-	Description        interface{}
+	Description        any
 	HelpText           string
 	ManualText         string
 	Synopsis           *synopsisWrapper[*synopsis.Command]
@@ -21,7 +21,7 @@ type commandData struct {
 	Persistent         *persistentCommandData
 	CommandsByCategory []*commandDataCategory
 	FlagsByCategory    []*flagDataCategory
-	Data               map[string]interface{}
+	Data               map[string]any
 	HangingIndent      int
 }
 
@@ -35,8 +35,8 @@ type flagData struct {
 	Synopsis    *synopsisWrapper[*synopsis.Flag]
 	HelpText    string
 	ManualText  string
-	Description interface{}
-	Data        map[string]interface{}
+	Description any
+	Data        map[string]any
 }
 
 type commandDataCategory struct {

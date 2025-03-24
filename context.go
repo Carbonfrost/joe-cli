@@ -464,7 +464,7 @@ func (c *Context) tryOptionContext(target any, ok bool) *Context {
 }
 
 // LookupCommand finds the command by name.  The name can be a string or *Command
-func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
+func (c *Context) LookupCommand(name any) (*Command, bool) {
 	if c == nil {
 		return nil, false
 	}
@@ -488,7 +488,7 @@ func (c *Context) LookupCommand(name interface{}) (*Command, bool) {
 }
 
 // LookupFlag finds the flag by name.  The name can be a string, rune, or *Flag
-func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
+func (c *Context) LookupFlag(name any) (*Flag, bool) {
 	if c == nil {
 		return nil, false
 	}
@@ -517,7 +517,7 @@ func (c *Context) LookupFlag(name interface{}) (*Flag, bool) {
 }
 
 // LookupArg finds the arg by name.  The name can be a string, rune, or *Arg
-func (c *Context) LookupArg(name interface{}) (*Arg, bool) {
+func (c *Context) LookupArg(name any) (*Arg, bool) {
 	if c == nil {
 		return nil, false
 	}
@@ -618,14 +618,14 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 
 // Seen returns true if the specified flag or argument has been used at least once.
 // This is false in the context of commands.
-func (c *Context) Seen(name interface{}) bool {
+func (c *Context) Seen(name any) bool {
 	f, ok := c.lookupOption(name)
 	return ok && f.Seen()
 }
 
 // Occurrences returns the number of times the specified flag or argument has been used
 // This is -1 in the context of commands.
-func (c *Context) Occurrences(name interface{}) int {
+func (c *Context) Occurrences(name any) int {
 	if f, ok := c.lookupOption(name); ok {
 		return f.Occurrences()
 	}
@@ -644,9 +644,9 @@ func (c *Context) NValue() int {
 }
 
 // Values gets all the values from the context .
-func (c *Context) Values() []interface{} {
-	res := make([]interface{}, c.NValue())
-	for i := 0; i < len(res); i++ {
+func (c *Context) Values() []any {
+	res := make([]any, c.NValue())
+	for i := range res {
 		res[i] = c.Value(i)
 	}
 	return res
@@ -665,7 +665,7 @@ func (c *Context) Values() []interface{} {
 // use your own (usually unexported) hashable type when setting up keys in the
 // context.Context.  (This is the recommended practice in any case, but it is made explicit
 // by how this method works.)
-func (c *Context) Value(name interface{}) interface{} {
+func (c *Context) Value(name any) any {
 	if c == nil {
 		return nil
 	}
@@ -684,14 +684,14 @@ func (c *Context) Value(name interface{}) interface{} {
 // Raw gets the exact value which was passed to the arg, flag including
 // the name that was used.  Value can be the empty string if no value
 // was passed
-func (c *Context) Raw(name interface{}) []string {
+func (c *Context) Raw(name any) []string {
 	return c.rawCore(name, (internalContext).Raw)
 }
 
 // RawOccurrences gets the exact value which was passed to the arg, flag
 // excluding the name that was used.  Value can be the empty string if no value
 // was passed
-func (c *Context) RawOccurrences(name interface{}) []string {
+func (c *Context) RawOccurrences(name any) []string {
 	return c.rawCore(name, (internalContext).RawOccurrences)
 }
 
@@ -726,7 +726,7 @@ func (c *Context) BindingLookup() BindingLookup {
 
 // LookupData gets the data matching the key, including recursive traversal
 // up the lineage contexts
-func (c *Context) LookupData(name string) (interface{}, bool) {
+func (c *Context) LookupData(name string) (any, bool) {
 	if c == nil || c.target == nil {
 		return nil, false
 	}
@@ -834,12 +834,12 @@ func (c *Context) Completion() Completion {
 
 // SetData sets data on the current target.  Despite the return value,
 // this method never returns an error.
-func (c *Context) SetData(name string, v interface{}) error {
+func (c *Context) SetData(name string, v any) error {
 	c.target.SetData(name, v)
 	return nil
 }
 
-func (c *Context) nameToString(name interface{}) string {
+func (c *Context) nameToString(name any) string {
 	switch v := name.(type) {
 	case rune, string, nil, *Arg, *Flag:
 		return nameToString(name)
@@ -882,7 +882,7 @@ func (c *Context) SetCategory(name string) error {
 }
 
 // SetDescription sets the description on the current target
-func (c *Context) SetDescription(v interface{}) error {
+func (c *Context) SetDescription(v any) error {
 	c.target.setDescription(v)
 	return nil
 }
@@ -958,7 +958,7 @@ func (c *Context) Use(action Action) error {
 	return c.At(InitialTiming, action)
 }
 
-func (c *Context) act(v interface{}, desired Timing, optional bool) error {
+func (c *Context) act(v any, desired Timing, optional bool) error {
 	// For the purposes of determining whether we can run this action,
 	// remove synthetic timing
 	actual := desired
@@ -1075,7 +1075,7 @@ func (c *Context) Template(name string) *Template {
 func withExecute(funcMap template.FuncMap, self *template.Template) template.FuncMap {
 	// Execute function needs a closure containing the template itself, so is
 	// added afterwards
-	funcMap["Execute"] = func(name string, data interface{}) (string, error) {
+	funcMap["Execute"] = func(name string, data any) (string, error) {
 		buf := bytes.NewBuffer(nil)
 		if err := self.ExecuteTemplate(buf, name, data); err != nil {
 			return "", err
@@ -1183,7 +1183,7 @@ func (c *Context) AddArg(v *Arg) error {
 // is only valid during the initialization phase.  An error is returned for other timings.
 // If the arg does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
-func (c *Context) RemoveArg(name interface{}) error {
+func (c *Context) RemoveArg(name any) error {
 	return c.updateArgs(func(args []*Arg) []*Arg {
 		if _, index, ok := findArgByName(args, name); ok {
 			return append(args[0:index], args[index+1:]...)
@@ -1197,7 +1197,7 @@ func (c *Context) RemoveArg(name interface{}) error {
 // is only valid during the initialization phase.  An error is returned for other timings.
 // If the Command does not exist, if the name or index is out of bounds, the operation
 // will still succeed.
-func (c *Context) RemoveCommand(name interface{}) error {
+func (c *Context) RemoveCommand(name any) error {
 	return c.updateSubcommands(func(cmds []*Command) []*Command {
 		if _, index, ok := findCommandByName(cmds, name); ok {
 			return slices.Delete(cmds, index, index+1)
@@ -1784,7 +1784,7 @@ func (c *Context) flow() *actionPipelines {
 	}
 }
 
-func (c *Context) lookupOption(name interface{}) (option, bool) {
+func (c *Context) lookupOption(name any) (option, bool) {
 	if name == "" {
 		o, ok := c.target.(option)
 		return o, ok
@@ -1950,11 +1950,11 @@ func (v *valueTarget) contextName() string {
 	return "<-" + v.name + ">"
 }
 
-func (v *valueTarget) setDescription(arg interface{}) {
+func (v *valueTarget) setDescription(arg any) {
 	switch val := v.v.(type) {
 	case interface{ SetDescription(string) }:
 		val.SetDescription(fmt.Sprint(arg))
-	case interface{ SetDescription(interface{}) }:
+	case interface{ SetDescription(any) }:
 		val.SetDescription(arg)
 	}
 }
@@ -2034,15 +2034,15 @@ func (v *valueTarget) data() map[string]any {
 	return nil
 }
 
-func (v *valueTarget) SetData(name string, val interface{}) {
-	if t, ok := v.v.(interface{ SetData(string, interface{}) }); ok {
+func (v *valueTarget) SetData(name string, val any) {
+	if t, ok := v.v.(interface{ SetData(string, any) }); ok {
 		t.SetData(name, val)
 	}
 }
 
-func (v *valueTarget) LookupData(name string) (interface{}, bool) {
+func (v *valueTarget) LookupData(name string) (any, bool) {
 	if t, ok := v.v.(interface {
-		LookupData(string) (interface{}, bool)
+		LookupData(string) (any, bool)
 	}); ok {
 		return t.LookupData(name)
 	}
@@ -2064,7 +2064,7 @@ func (*valueTarget) options() *Option {
 	return nil
 }
 
-func (*valueTarget) pipeline(Timing) interface{} {
+func (*valueTarget) pipeline(Timing) any {
 	return nil
 }
 

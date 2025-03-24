@@ -132,7 +132,7 @@ var _ = Describe("Complete", func() {
 	)
 })
 
-func ignoringDefaults(v interface{}) interface{} {
+func ignoringDefaults(v any) any {
 	// Remove --help and --version to simplify test
 	c := v.([]cli.CompletionItem)
 	res := make([]cli.CompletionItem, 0, len(c))

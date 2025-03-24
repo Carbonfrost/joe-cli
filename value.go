@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"math/big"
 	"net"
 	"net/url"
@@ -88,7 +89,7 @@ type valueInitializer interface {
 }
 
 type valueDereference interface {
-	Value() interface{}
+	Value() any
 }
 
 type valueCompleter interface {
@@ -261,7 +262,7 @@ func NameValues(namevalue ...string) *[]*NameValue {
 // Set will set the destination value if supported.  If the destination value is not supported,
 // this panics.  See the overview for Value for which destination types are supported.
 // No additional splitting is performed on arguments.
-func Set(dest interface{}, args ...string) error {
+func Set(dest any, args ...string) error {
 	for _, arg := range args {
 		err := setCore(dest, true, arg)
 		if err != nil {
@@ -323,7 +324,7 @@ func SetData(dest any, arg any) error {
 	panic(fmt.Sprintf("unexpected argument type %T", arg))
 }
 
-func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool)) bool {
+func trySetOptional(dest any, trySetOptional func() (any, bool)) bool {
 	if _, ok := dest.(Value); ok {
 		return false
 	}
@@ -335,7 +336,7 @@ func trySetOptional(dest interface{}, trySetOptional func() (interface{}, bool))
 }
 
 // setCore sets the variable; no additional splitting is applied
-func setCore(dest interface{}, disableSplitting bool, value string) error {
+func setCore(dest any, disableSplitting bool, value string) error {
 	strconvErr := func(err error) error {
 		return formatStrconvError(err, value)
 	}
@@ -378,9 +379,7 @@ func setCore(dest interface{}, disableSplitting bool, value string) error {
 			m = map[string]string{}
 			*p = m
 		}
-		for k, v := range support.ParseMap(values()) {
-			m[k] = v
-		}
+		maps.Copy(m, support.ParseMap(values()))
 
 		return nil
 	case *[]*NameValue:
@@ -680,7 +679,7 @@ func (v *valueContext) BindingNames() []string {
 	return v.lookup.BindingNames()
 }
 
-func (v *valueContext) lookupValue(name string) (interface{}, bool) {
+func (v *valueContext) lookupValue(name string) (any, bool) {
 	if v.lookup == nil {
 		return nil, false
 	}

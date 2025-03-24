@@ -65,7 +65,7 @@ var _ = Describe("File", func() {
 		var (
 			arguments string
 			err       error
-			value     interface{}
+			value     any
 		)
 
 		JustBeforeEach(func() {
@@ -191,7 +191,7 @@ var _ = Describe("File", func() {
 
 		DescribeTable("delegates examples", func(
 			f func(*cli.File),
-			argsForCall interface{}, // should be one of the ArgsForCall methods
+			argsForCall any, // should be one of the ArgsForCall methods
 			expected types.GomegaMatcher) {
 
 			globalFS := new(joeclifakes.FakeFS)
@@ -209,7 +209,7 @@ var _ = Describe("File", func() {
 			}
 
 			_ = app.RunContext(context.Background(), []string{"app", "-f", "filename"})
-			actual := make([]interface{}, 0)
+			actual := make([]any, 0)
 			callArgs := []reflect.Value{reflect.ValueOf(globalFS), reflect.ValueOf(0)}
 			for _, a := range reflect.ValueOf(argsForCall).Call(callArgs) {
 				actual = append(actual, a.Interface())
@@ -219,52 +219,52 @@ var _ = Describe("File", func() {
 			Entry("Create",
 				func(f *cli.File) { f.Create() },
 				(*joeclifakes.FakeFS).CreateArgsForCall,
-				Equal([]interface{}{"filename"}),
+				Equal([]any{"filename"}),
 			),
 			Entry("OpenFile",
 				func(f *cli.File) { f.OpenFile(2, 4) },
 				(*joeclifakes.FakeFS).OpenFileArgsForCall,
-				Equal([]interface{}{"filename", 2, fs.FileMode(4)}),
+				Equal([]any{"filename", 2, fs.FileMode(4)}),
 			),
 			Entry("Chmod",
 				func(f *cli.File) { f.Chmod(4) },
 				(*joeclifakes.FakeFS).ChmodArgsForCall,
-				Equal([]interface{}{"filename", fs.FileMode(4)}),
+				Equal([]any{"filename", fs.FileMode(4)}),
 			),
 			Entry("Chown",
 				func(f *cli.File) { f.Chown(1, 1) },
 				(*joeclifakes.FakeFS).ChownArgsForCall,
-				Equal([]interface{}{"filename", 1, 1}),
+				Equal([]any{"filename", 1, 1}),
 			),
 			Entry("Chtimes",
 				func(f *cli.File) { f.Chtimes(timeA, timeB) },
 				(*joeclifakes.FakeFS).ChtimesArgsForCall,
-				Equal([]interface{}{"filename", timeA, timeB}),
+				Equal([]any{"filename", timeA, timeB}),
 			),
 			Entry("Remove",
 				func(f *cli.File) { f.Remove() },
 				(*joeclifakes.FakeFS).RemoveArgsForCall,
-				Equal([]interface{}{"filename"}),
+				Equal([]any{"filename"}),
 			),
 			Entry("RemoveAll",
 				func(f *cli.File) { f.RemoveAll() },
 				(*joeclifakes.FakeFS).RemoveAllArgsForCall,
-				Equal([]interface{}{"filename"}),
+				Equal([]any{"filename"}),
 			),
 			Entry("Mkdir",
 				func(f *cli.File) { f.Mkdir(0123) },
 				(*joeclifakes.FakeFS).MkdirArgsForCall,
-				Equal([]interface{}{"filename", fs.FileMode(0123)}),
+				Equal([]any{"filename", fs.FileMode(0123)}),
 			),
 			Entry("MkdirAll",
 				func(f *cli.File) { f.MkdirAll(0123) },
 				(*joeclifakes.FakeFS).MkdirAllArgsForCall,
-				Equal([]interface{}{"filename", fs.FileMode(0123)}),
+				Equal([]any{"filename", fs.FileMode(0123)}),
 			),
 			Entry("Rename",
 				func(f *cli.File) { f.Rename("newone") },
 				(*joeclifakes.FakeFS).RenameArgsForCall,
-				Equal([]interface{}{"filename", "newone"}),
+				Equal([]any{"filename", "newone"}),
 			),
 		)
 

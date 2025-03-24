@@ -105,7 +105,7 @@ var _ = Describe("Arg", func() {
 
 		DescribeTable(
 			"inferred from NArg",
-			func(count int, expected interface{}) {
+			func(count int, expected any) {
 				act := new(joeclifakes.FakeAction)
 				app := &cli.App{
 					Name: "app",
@@ -157,7 +157,7 @@ var _ = Describe("Arg", func() {
 
 		DescribeTable(
 			"inferred from Value",
-			func(value interface{}, validArgs string, expected types.GomegaMatcher) {
+			func(value any, validArgs string, expected types.GomegaMatcher) {
 				act := new(joeclifakes.FakeAction)
 				app := &cli.App{
 					Name: "app",
@@ -561,7 +561,7 @@ var _ = Describe("Args", func() {
 })
 
 var _ = Describe("ArgCount", func() {
-	DescribeTable("examples", func(value interface{}, expected types.GomegaMatcher) {
+	DescribeTable("examples", func(value any, expected types.GomegaMatcher) {
 		Expect(func() {
 			cli.ArgCount(value)
 		}).To(expected)
@@ -574,7 +574,7 @@ var _ = Describe("ArgCount", func() {
 		Entry("uninitialized flag", &cli.Flag{}, Panic()),
 	)
 
-	DescribeTable("examples", func(value interface{}, expected types.GomegaMatcher) {
+	DescribeTable("examples", func(value any, expected types.GomegaMatcher) {
 		Expect(cli.ArgCount(value)).To(expected)
 	},
 		Entry("arg", cli.Initialized(&cli.Arg{NArg: 1}).Arg(), Equal(cli.ArgCount(1))),

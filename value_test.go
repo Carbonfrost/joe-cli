@@ -303,7 +303,7 @@ var _ = Describe("Value", func() {
 				"BigFloat",
 				&cli.Flag{Name: "o", Value: cli.BigFloat()},
 				"app -o 150.2",
-				WithTransform(func(v interface{}) interface{} {
+				WithTransform(func(v any) any {
 					f, _ := v.(*big.Float).Float64()
 					return f
 				}, Equal(float64(150.2))),
@@ -732,22 +732,22 @@ func (c *customValue) DisableSplitting() {
 }
 
 type hasDereference struct {
-	v interface{}
+	v any
 }
 
 func (*hasDereference) Set(string) error { return nil }
 func (*hasDereference) String() string   { return "" }
-func (d *hasDereference) Value() interface{} {
+func (d *hasDereference) Value() any {
 	return d.v
 }
 
 type hasGetter struct {
-	v interface{}
+	v any
 }
 
 func (*hasGetter) Set(string) error { return nil }
 func (*hasGetter) String() string   { return "" }
-func (d *hasGetter) Get() interface{} {
+func (d *hasGetter) Get() any {
 	return d.v
 }
 

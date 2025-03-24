@@ -20,7 +20,7 @@ import (
 
 var (
 	controlCodes = regexp.MustCompile("\u001B\\[\\d+m")
-	usageColor = false
+	usageColor   = false
 )
 
 // Template provides a wrapper around text templates to support some additional configuration
@@ -76,7 +76,7 @@ type stringHelper struct {
 
 type templateBinding struct {
 	t    *Template
-	data func() interface{}
+	data func() any
 }
 
 type buffer struct {
@@ -301,7 +301,7 @@ func PrintLicense() Action {
 	}, At(ActionTiming, ExecuteTemplate("License", nil)))
 }
 
-func defaultData(c *Context) interface{} {
+func defaultData(c *Context) any {
 	return struct {
 		App     *App
 		Command *Command
@@ -323,7 +323,7 @@ func RegisterTemplate(name string, template string) Action {
 }
 
 // RegisterTemplateFunc will register the specified function for use in template rendering.
-func RegisterTemplateFunc(name string, fn interface{}) Action {
+func RegisterTemplateFunc(name string, fn any) Action {
 	return actionThunk2((*Context).RegisterTemplateFunc, name, fn)
 }
 
@@ -497,7 +497,7 @@ func isCSITerminator(c rune) bool {
 }
 
 // Execute the template
-func (t *Template) Execute(wr io.Writer, data interface{}) error {
+func (t *Template) Execute(wr io.Writer, data any) error {
 	err := t.Template.Execute(wr, data)
 	if err != nil && t.Debug {
 		log.Fatal(err)
@@ -508,14 +508,14 @@ func (t *Template) Execute(wr io.Writer, data interface{}) error {
 // Bind the template to its data for later execution.  This generates a Stringer which can
 // be called to get the contents later.  A common use of binding the template is an argument
 // to an arg or flag description.
-func (t *Template) Bind(data interface{}) fmt.Stringer {
-	return &templateBinding{t, func() interface{} { return data }}
+func (t *Template) Bind(data any) fmt.Stringer {
+	return &templateBinding{t, func() any { return data }}
 }
 
 // BindFunc will bind the template to its data for later execution.  This generates a Stringer which can
 // be called to get the contents later.  A common use of binding the template is an argument
 // to an arg or flag description.
-func (t *Template) BindFunc(data func() interface{}) fmt.Stringer {
+func (t *Template) BindFunc(data func() any) fmt.Stringer {
 	return &templateBinding{t, data}
 }
 

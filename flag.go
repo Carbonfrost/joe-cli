@@ -3,6 +3,7 @@ package cli
 import (
 	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -99,7 +100,7 @@ type Flag struct {
 	//
 	// If unspecified, the value will be a string pointer.
 	// For more information about Values, see the Value type
-	Value interface{}
+	Value any
 
 	// DefaultText provides a description of the default value for the flag.  This is displayed
 	// on help screens but is otherwise unused
@@ -116,27 +117,27 @@ type Flag struct {
 	// Description provides a long description for the flag.  The long description is
 	// not used in any templates by default.  The type of Description should be string or
 	// fmt.Stringer.  Refer to func Description for details.
-	Description interface{}
+	Description any
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
-	Data map[string]interface{}
+	Data map[string]any
 
 	// Before executes before the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
-	Before interface{}
+	Before any
 
 	// After executes after the command runs.  Refer to cli.Action about the correct
 	// function signature to use.
-	After interface{}
+	After any
 
 	// Uses provides an action handler that is always executed during the initialization phase
 	// of the app.  Typically, hooks and other configuration actions are added to this handler.
-	Uses interface{}
+	Uses any
 
 	// Action executes if the flag was set.  Refer to cli.Action about the correct
 	// function signature to use.
-	Action interface{}
+	Action any
 
 	// Completion specifies a callback function that determines the auto-complete results
 	Completion Completion
@@ -147,7 +148,7 @@ type Flag struct {
 	Transform TransformFunc
 
 	count         int
-	optionalValue interface{} // set when blank and optional
+	optionalValue any // set when blank and optional
 }
 
 type flagsByCategory []*flagCategory
@@ -170,7 +171,7 @@ type option interface {
 	actualArgCounter() ArgCounter
 	transformFunc() TransformFunc
 	contextName() string
-	value() interface{}
+	value() any
 	name() string
 	envVars() []string
 	filePath() string
@@ -182,7 +183,7 @@ type option interface {
 type wrapOccurrenceContext struct {
 	*optionContext
 	index int
-	val   interface{}
+	val   any
 }
 
 func groupFlagsByCategory(flags []*Flag) flagsByCategory {
@@ -237,17 +238,17 @@ func (f *Flag) newSynopsis() *synopsis.Flag {
 
 // SetData sets the specified metadata on the flag.  When v is nil, the corresponding
 // metadata is deleted
-func (f *Flag) SetData(name string, v interface{}) {
+func (f *Flag) SetData(name string, v any) {
 	f.Data = setData(f.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
-func (f *Flag) LookupData(name string) (interface{}, bool) {
+func (f *Flag) LookupData(name string) (any, bool) {
 	v, ok := f.Data[name]
 	return v, ok
 }
 
-func (f *Flag) setDescription(value interface{}) {
+func (f *Flag) setDescription(value any) {
 	f.Description = value
 }
 
@@ -299,12 +300,12 @@ func (f *Flag) setOptional() {
 	f.setOptionalValue(valueSmartOptionalDefault(f.Value))
 }
 
-func (f *Flag) setOptionalValue(v interface{}) {
+func (f *Flag) setOptionalValue(v any) {
 	f.setInternalFlags(internalFlagOptional, true)
 	f.optionalValue = v
 }
 
-func (f *Flag) pipeline(t Timing) interface{} {
+func (f *Flag) pipeline(t Timing) any {
 	switch t {
 	case AfterTiming:
 		return f.After
@@ -398,7 +399,7 @@ func (c *wrapOccurrenceContext) RawOccurrences(name string) []string {
 	return c.optionContext.RawOccurrences(name)
 }
 
-func (c *wrapOccurrenceContext) lookupValue(name string) (interface{}, bool) {
+func (c *wrapOccurrenceContext) lookupValue(name string) (any, bool) {
 	if name == "" {
 		return c.val, true
 	}
@@ -469,7 +470,7 @@ func (f *Flag) Names() []string {
 // Set will update the value of the flag
 func (f *Flag) Set(arg any) error {
 	if arg, ok := arg.(string); ok {
-		if trySetOptional(f.Value, func() (interface{}, bool) {
+		if trySetOptional(f.Value, func() (any, bool) {
 			return f.optionalValue, (arg == "" && f.flags.optional())
 		}) {
 			return nil
@@ -514,7 +515,7 @@ func (f *Flag) filePath() string {
 	return f.FilePath
 }
 
-func (f *Flag) value() interface{} {
+func (f *Flag) value() any {
 	var created bool
 	f.Value, created = ensureDestination(f.Value, false)
 	if created {
@@ -564,7 +565,7 @@ func hasOnlyShortName(f *Flag) bool {
 	return len(f.Name) == 1
 }
 
-func impliesValueFlagOnly(p interface{}) bool {
+func impliesValueFlagOnly(p any) bool {
 	switch val := p.(type) {
 	case *bool:
 		return true
@@ -598,16 +599,14 @@ func findFlagByName(items []*Flag, v any) (*Flag, int, bool) {
 		if sub.Name == name {
 			return sub, index, true
 		}
-		for _, alias := range sub.Aliases {
-			if alias == name {
-				return sub, index, true
-			}
+		if slices.Contains(sub.Aliases, name) {
+			return sub, index, true
 		}
 	}
 	return nil, -1, false
 }
 
-func isFlagType(p interface{}) internalFlags {
+func isFlagType(p any) internalFlags {
 	if impliesValueFlagOnly(p) {
 		return internalFlagFlagOnly
 	}

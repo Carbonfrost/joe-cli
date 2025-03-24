@@ -196,7 +196,7 @@ func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings Bindi
 			}
 		}
 
-		for i := 0; i < skip; i++ {
+		for range skip {
 			if err = positionalOpts.Done(); err != nil {
 				return
 			}

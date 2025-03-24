@@ -46,21 +46,21 @@ type Command struct {
 
 	// Action specifies the action to run for the command, assuming no other more specific command
 	// has been selected.  Refer to cli.Action about the correct function signature to use.
-	Action interface{}
+	Action any
 
 	// Before executes before the app action or any sub-command action runs.  Refer to
 	// cli.Action about the correct function signature to use.
-	Before interface{}
+	Before any
 
 	// After executes after the app action or any sub-command action runs.
 	// Refer to cli.Action about the correct function signature to use.
-	After interface{}
+	After any
 
 	// Uses provides an action handler that is always executed during the initialization phase
 	// of the app.  Typically, hooks and other configuration actions are added to this handler.
 	// Actions within the Uses and Before pipelines can modify the app Commands and Flags lists.  Any
 	// commands or flags added to the list will be initialized
-	Uses interface{}
+	Uses any
 
 	// Category places the command into a category.  Categories are displayed on the default
 	// help screen.
@@ -69,7 +69,7 @@ type Command struct {
 	// Description provides a long description for the command.  The long description is
 	// displayed on the help screen.  The type of Description should be string or
 	// fmt.Stringer.  Refer to func Description for details.
-	Description interface{}
+	Description any
 
 	// Comment provides a short descriptive comment.  This is
 	// usually a few words to summarize the purpose of the command.
@@ -77,7 +77,7 @@ type Command struct {
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
-	Data map[string]interface{}
+	Data map[string]any
 
 	// Options sets common options for use with the command
 	Options Option
@@ -102,7 +102,7 @@ type Command struct {
 }
 
 type rootCommandData struct {
-	templateFuncs map[string]interface{}
+	templateFuncs map[string]any
 	templates     *template.Template
 }
 
@@ -285,7 +285,7 @@ func (c *Command) Flag(name string) (*Flag, bool) {
 }
 
 // Arg tries to obtain a arg by name or alias
-func (c *Command) Arg(name interface{}) (*Arg, bool) {
+func (c *Command) Arg(name any) (*Arg, bool) {
 	a, _, ok := findArgByName(c.Args, name)
 	return a, ok
 }
@@ -509,12 +509,12 @@ func (c *Command) newSynopsis() *synopsis.Command {
 }
 
 // SetData sets the specified metadata on the command
-func (c *Command) SetData(name string, v interface{}) {
+func (c *Command) SetData(name string, v any) {
 	c.Data = setData(c.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
-func (c *Command) LookupData(name string) (interface{}, bool) {
+func (c *Command) LookupData(name string) (any, bool) {
 	v, ok := c.Data[name]
 	return v, ok
 }
@@ -542,7 +542,7 @@ func (c *Command) setUsageText(s string) {
 	c.UsageText = s
 }
 
-func (c *Command) setDescription(name interface{}) {
+func (c *Command) setDescription(name any) {
 	c.Description = name
 }
 
@@ -589,7 +589,7 @@ func (c *Command) options() *Option {
 	return &c.Options
 }
 
-func (c *Command) pipeline(t Timing) interface{} {
+func (c *Command) pipeline(t Timing) any {
 	switch t {
 	case AfterTiming:
 		return c.After
@@ -762,10 +762,8 @@ func findCommandByName(cmds []*Command, v any) (*Command, int, bool) {
 		if sub.Name == name {
 			return sub, index, true
 		}
-		for _, alias := range sub.Aliases {
-			if alias == name {
-				return sub, index, true
-			}
+		if slices.Contains(sub.Aliases, name) {
+			return sub, index, true
 		}
 	}
 	return nil, -1, false

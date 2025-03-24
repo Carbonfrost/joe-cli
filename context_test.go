@@ -632,7 +632,7 @@ var _ = Describe("Context", func() {
 
 		DescribeTable("examples",
 			func(name []string, id string) {
-				var actualID interface{}
+				var actualID any
 				app := &cli.App{
 					Action: func(c *cli.Context) {
 						if actual, ok := c.FindTarget(cli.ContextPath(name)); ok {
@@ -954,7 +954,7 @@ var _ = Describe("Context", func() {
 	})
 
 	Describe("LookupFlag", func() {
-		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
+		DescribeTable("examples", func(v any, expected types.GomegaMatcher) {
 			var actual *cli.Flag
 			app := &cli.App{
 				Action: func(c context.Context) {
@@ -977,7 +977,7 @@ var _ = Describe("Context", func() {
 	})
 
 	Describe("LookupArg", func() {
-		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
+		DescribeTable("examples", func(v any, expected types.GomegaMatcher) {
 			var actual *cli.Arg
 			app := &cli.App{
 				Action: func(c context.Context) {
@@ -1036,7 +1036,7 @@ var _ = Describe("Context", func() {
 	})
 
 	Describe("LookupCommand", func() {
-		DescribeTable("examples", func(v interface{}, expected types.GomegaMatcher) {
+		DescribeTable("examples", func(v any, expected types.GomegaMatcher) {
 			var actual *cli.Command
 			app := &cli.App{
 				Name: "app",
@@ -1303,15 +1303,15 @@ var _ = Describe("ContextPath", func() {
 	)
 })
 
-func flagName(v interface{}) interface{} {
+func flagName(v any) any {
 	return v.(*cli.Flag).Name
 }
 
-func argName(v interface{}) interface{} {
+func argName(v any) any {
 	return v.(*cli.Arg).Name
 }
 
-func commandName(v interface{}) interface{} {
+func commandName(v any) any {
 	return v.(*cli.Command).Name
 }
 

@@ -29,7 +29,7 @@ type App struct {
 	// Description provides a description of the app.  This value is typically used in templates, and otherwise
 	// provides no special behavior.  The type of Description should be string or
 	// fmt.Stringer.  Refer to func Description for details.
-	Description interface{}
+	Description any
 
 	// BuildDate provides the time when the app was built.  This value is typically used in templates, and otherwise
 	// provides no special behavior.   The default value is inferred by checking the last modification time of
@@ -68,25 +68,25 @@ type App struct {
 
 	// Action specifies the action to run for the app, assuming no other more specific command
 	// has been selected.  Refer to cli.Action about the correct function signature to use.
-	Action interface{}
+	Action any
 
 	// Before executes before the app action or any sub-command action runs.
 	// Refer to cli.Action about the correct function signature to use.
-	Before interface{}
+	Before any
 
 	// After executes after the app action or any sub-command action runs.
 	// Refer to cli.Action about the correct function signature to use.
-	After interface{}
+	After any
 
 	// Uses provides an action handler that is always executed during the initialization phase
 	// of the app.  Typically, hooks and other configuration actions are added to this handler.
 	// Actions within the Uses and Before pipelines can modify the app Commands and Flags lists.  Any
 	// commands or flags added to the list will be initialized
-	Uses interface{}
+	Uses any
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
-	Data map[string]interface{}
+	Data map[string]any
 
 	// Options sets common options for use with the app
 	Options Option
@@ -212,7 +212,7 @@ func (a *App) Flag(name string) (*Flag, bool) {
 
 // Arg gets the argument by name, which can be either string, int, or the actual
 // Arg.
-func (a *App) Arg(name interface{}) (*Arg, bool) {
+func (a *App) Arg(name any) (*Arg, bool) {
 	if a.rootCommand != nil {
 		return a.rootCommand.Arg(name)
 	}
@@ -247,7 +247,7 @@ func (a *App) createRoot() *Command {
 }
 
 // SetData sets the specified metadata on the app
-func (a *App) SetData(name string, v interface{}) {
+func (a *App) SetData(name string, v any) {
 	a.Data = setData(a.Data, name, v)
 }
 

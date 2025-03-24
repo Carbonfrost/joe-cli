@@ -11,10 +11,10 @@ import (
 
 var _ = Describe("Exit", func() {
 	DescribeTable("arguments",
-		func(message interface{}, expectedMessage types.GomegaMatcher, expectedCode int) {
+		func(message any, expectedMessage types.GomegaMatcher, expectedCode int) {
 			var err cli.ExitCoder
 			switch msg := message.(type) {
-			case []interface{}:
+			case []any:
 				err = cli.Exit(msg...)
 			default:
 				err = cli.Exit(message)
@@ -25,14 +25,14 @@ var _ = Describe("Exit", func() {
 			Expect(err.ExitCode()).To(Equal(expectedCode))
 		},
 		Entry("string", "message", Equal("message"), 1),
-		Entry("string slice", []interface{}{"class", "ified"}, Equal("classified"), 1),
-		Entry("end with exit code", []interface{}{"b", 255}, Equal("b"), 255),
-		Entry("end with error code", []interface{}{"error", cli.UnexpectedArgument}, Equal("unexpected argument: error"), 2),
-		Entry("error and error code", []interface{}{errors.New("error"), cli.UnexpectedArgument}, Equal("unexpected argument: error"), 2),
+		Entry("string slice", []any{"class", "ified"}, Equal("classified"), 1),
+		Entry("end with exit code", []any{"b", 255}, Equal("b"), 255),
+		Entry("end with error code", []any{"error", cli.UnexpectedArgument}, Equal("unexpected argument: error"), 2),
+		Entry("error and error code", []any{errors.New("error"), cli.UnexpectedArgument}, Equal("unexpected argument: error"), 2),
 		Entry("already exit coder", cli.Exit("a", 255), Equal("a"), 255),
 		Entry("error", errors.New("a"), Equal("a"), 1),
 		Entry("error code", cli.UnexpectedArgument, Equal("unexpected argument"), 2),
 		Entry("nil", nil, Equal("exited with status 1"), 1),
-		Entry("empty", []interface{}{}, Equal("exited with status 1"), 1),
+		Entry("empty", []any{}, Equal("exited with status 1"), 1),
 	)
 })
