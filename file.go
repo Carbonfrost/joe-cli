@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -74,14 +75,22 @@ type File struct {
 }
 
 // FileSet provides a list of files and/or directories and whether the scope of the
-// file set is recursive
+// file set is recursive.
+// A FileSet can also be read-in from a reader using the SetData
+// method. The format is a list of file names, with blank lines
+// or lines starting with comment characters being skipped.
+// Comment characters are # and ;.
 type FileSet struct {
+	// Recursive determines whether iteration over the file set by
+	// Do or All recursively opens directories
 	Recursive bool
 
 	// Files provides the files named in the file set.  These can be files or
 	// directories
 	Files []string
-	FS    fs.FS
+
+	// FS is the file system used to open files
+	FS fs.FS
 }
 
 type stdFile struct {
@@ -267,6 +276,21 @@ func (f *FileSet) Set(arg string) error {
 
 	f.Files = append(f.Files, arg)
 	return nil
+}
+
+// SetData reads in a list of paths from a reader.
+// Blank lines and comment lines (using ; or #) will be
+// ignored. Whitespace is trimmed.
+func (f *FileSet) SetData(in io.Reader) error {
+	scanner := bufio.NewScanner(in)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if len(line) == 0 || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			continue
+		}
+		f.Files = append(f.Files, line)
+	}
+	return scanner.Err()
 }
 
 func (f *FileSet) String() string {

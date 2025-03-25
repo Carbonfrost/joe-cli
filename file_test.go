@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing/fstest"
 	"time"
 
@@ -336,7 +337,8 @@ var _ = Describe("File", func() {
 var _ = Describe("FileReference", func() {
 
 	testFileSystem := fstest.MapFS{
-		"d/b.bin": {Data: []byte("facade")},
+		"d/b.bin":  {Data: []byte("facade")},
+		"d/b.list": {Data: []byte("a\nb\nc\n")},
 	}
 
 	It("gets the contents of a file", func() {
@@ -423,6 +425,45 @@ var _ = Describe("FileReference", func() {
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.String("b")).To(Equal("facade facade"))
 	})
+
+	It("gets lines into fileset", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:    "b",
+					Value:   new(cli.FileSet),
+					Options: cli.FileReference | cli.Merge,
+				},
+			},
+			FS:     testFileSystem,
+			Action: act,
+		}
+		err := app.RunContext(context.TODO(), []string{"app", "d/b.list", "d/b.list"})
+		Expect(err).NotTo(HaveOccurred())
+
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
+		Expect(context.FileSet("b").Files).To(Equal([]string{"a", "b", "c", "a", "b", "c"}))
+	})
+
+	It("gets lines into fileset from stdin", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:    "b",
+					Value:   new(cli.FileSet),
+					Options: cli.FileReference,
+				},
+			},
+			Action: act,
+			Stdin:  strings.NewReader("ok.txt\n\n"),
+		}
+		_ = app.RunContext(context.TODO(), []string{"app", "-"})
+
+		context := cli.FromContext(act.ExecuteArgsForCall(0))
+		Expect(context.FileSet("b").Files).To(Equal([]string{"ok.txt"}))
+	})
 })
 
 var _ = Describe("FileSet", func() {
@@ -482,6 +523,37 @@ var _ = Describe("FileSet", func() {
 		}
 		_ = app.RunContext(context.Background(), []string{"app", "--", "-"})
 		Expect(string(actual)).To(Equal("hello\n"))
+	})
+
+	Describe("SetData", func() {
+
+		DescribeTable("examples", func(data string, expected types.GomegaMatcher) {
+			value := new(cli.FileSet)
+			err := cli.SetData(value, bytes.NewReader([]byte(data)))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(value.Files).To(expected)
+		},
+			Entry(
+				"nominal",
+				"a.txt\nb.txt",
+				Equal([]string{"a.txt", "b.txt"}),
+			),
+			Entry(
+				"comments and blank lines",
+				"# comment\n; comment\n\n\n\ns.txt",
+				Equal([]string{"s.txt"}),
+			),
+			Entry(
+				"trim leading whitespace",
+				"    a.txt",
+				Equal([]string{"a.txt"}),
+			),
+			Entry(
+				"trim trailing whitespace",
+				"a.txt  ",
+				Equal([]string{"a.txt"}),
+			),
+		)
 	})
 
 	Describe("Do", func() {
