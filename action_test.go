@@ -3156,7 +3156,7 @@ var _ = Describe("ValueTransform", func() {
 			Flags: []*cli.Flag{
 				{
 					Name:  "long",
-					Uses:  cli.ValueTransform(cli.TransformFileReference(testFileSystem, false)),
+					Uses:  cli.ValueTransform(cli.TransformFileReference(testFileSystem)),
 					Value: value,
 				},
 			},

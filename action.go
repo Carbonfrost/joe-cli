@@ -1251,27 +1251,32 @@ func transformOutputToString(v any) (string, error) {
 	panic(fmt.Sprintf("unexpected transform output %T", v))
 }
 
-// TransformFileReference obtains the transform for the given file system and whether the
-// prefix @ is required.
-func TransformFileReference(f fs.FS, usingAtSyntax bool) TransformFunc {
-	if usingAtSyntax {
-		return func(raw []string) (any, error) {
-			readers := make([]io.Reader, len(raw)-1)
-			for i, s := range raw[1:] {
-				if strings.HasPrefix(s, "@") {
-					f, err := f.Open(s[1:])
-					if err != nil {
-						return nil, err
-					}
-					readers[i] = f
-				} else {
-					readers[i] = strings.NewReader(s)
+// TransformOptionalFileReference obtains the transform for the given
+// file system to treat the input as a file.  When the
+// prefix @ is specified, the file is loaded and its contents
+// are returned by the transform.  For other cases where the
+// prefix is not present, it is interpretted as a literal value.
+// When f is nil, the file system is determined from the Context.
+func TransformOptionalFileReference(f fs.FS) TransformFunc {
+	return func(raw []string) (any, error) {
+		readers := make([]io.Reader, len(raw)-1)
+		for i, s := range raw[1:] {
+			if strings.HasPrefix(s, "@") {
+				f, err := f.Open(s[1:])
+				if err != nil {
+					return nil, err
 				}
+				readers[i] = f
+			} else {
+				readers[i] = strings.NewReader(s)
 			}
-			return io.MultiReader(readers...), nil
 		}
+		return io.MultiReader(readers...), nil
 	}
+}
 
+// TransformFileReference obtains the transform for the given file system.
+func TransformFileReference(f fs.FS) TransformFunc {
 	return func(raw []string) (any, error) {
 		readers := make([]io.Reader, len(raw)-1)
 		for i, s := range raw[1:] {

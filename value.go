@@ -618,7 +618,7 @@ func (v *NameValue) AllowFileReferencesFlag() Prototype {
 func (v *NameValue) Initializer() Action {
 	if v.AllowFileReference {
 		return actionFunc(func(c context.Context) error {
-			return Do(c, ValueTransform(TransformFileReference(FromContext(c).actualFS(), true)))
+			return Do(c, ValueTransform(TransformOptionalFileReference(FromContext(c).actualFS())))
 		})
 	}
 	return nil
