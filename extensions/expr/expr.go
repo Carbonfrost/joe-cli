@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -184,7 +185,8 @@ const (
 )
 
 var (
-	errStopWalk = errors.New("stop walking")
+	errStopWalk            = errors.New("stop walking")
+	validIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9@#+\._\*:-]+$`)
 )
 
 func newBoundExpr(e *Expr) *boundExpr {
@@ -235,7 +237,8 @@ func (e *Expression) Initializer() cli.Action {
 				After:  sub.After,
 			})
 		}
-		return nil
+
+		return finalizeExprs(e)
 
 	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) (err error) {
 		var all cli.BindingMap
@@ -845,6 +848,37 @@ func setData(data map[string]interface{}, name string, v interface{}) map[string
 	}
 	data[name] = v
 	return data
+}
+
+func finalizeExprs(e *Expression) error {
+	// Check for duplicative and invalid names of expressions
+	names := map[string]bool{}
+	var errs []error
+
+	for i, e := range e.Exprs {
+		if e.Name == "" {
+			errs = append(errs, fmt.Errorf("expr at index #%d must have a name", i))
+			continue
+		}
+		if err := checkValidIdentifier(e.Name); err != nil {
+			errs = append(errs, err)
+		} else if names[e.Name] {
+			errs = append(errs, fmt.Errorf("duplicate name used: %q", e.Name))
+		}
+		names[e.Name] = true
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("errors initializing expression: %w", errors.Join(errs...))
+	}
+	return nil
+}
+
+func checkValidIdentifier(name string) error {
+	if !validIdentifierPattern.MatchString(name) {
+		return fmt.Errorf("not a valid name")
+	}
+	return nil
 }
 
 var (

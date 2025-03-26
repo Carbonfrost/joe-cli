@@ -122,6 +122,72 @@ var _ = Describe("Expr", func() {
 		})
 	})
 
+	Describe("naming", func() {
+
+		var (
+			beInvalid = MatchError(ContainSubstring("not a valid name"))
+		)
+
+		DescribeTable("undefined behavior", func(e *expr.Expr) {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{Name: "inuse", Aliases: []string{"alsoinuse"}},
+							},
+						},
+						Uses: expr.AddExpr(e),
+					},
+				},
+			}
+
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+		},
+			Entry(
+				"expr duplicates alias", &expr.Expr{Name: "alsoinuse"}),
+		)
+
+		DescribeTable("errors", func(e *expr.Expr, expected types.GomegaMatcher) {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{Name: "inuse", Aliases: []string{"alsoinuse"}},
+							},
+						},
+						Uses: expr.AddExpr(e),
+					},
+				},
+			}
+
+			_, err := app.Initialize(context.Background())
+			Expect(err).To(expected)
+		},
+			Entry(
+				"no name",
+				&expr.Expr{},
+				MatchError(ContainSubstring("expr at index #1 must have a name"))),
+			Entry(
+				"duplicate expr name",
+				&expr.Expr{Name: "inuse"},
+				MatchError(ContainSubstring(`duplicate name used: "inuse"`))),
+
+			Entry("expr with dashes", &expr.Expr{Name: "expr-dash"}, Succeed()),
+			Entry("expr with underscores", &expr.Expr{Name: "expr_under"}, Succeed()),
+			Entry("expr with numeric", &expr.Expr{Name: "123"}, Succeed()),
+			Entry("expr with special char @", &expr.Expr{Name: "@"}, Succeed()),
+			Entry("expr with special char #", &expr.Expr{Name: "#"}, Succeed()),
+			Entry("expr with special char *", &expr.Expr{Name: "*"}, Succeed()),
+			Entry("expr with special char +", &expr.Expr{Name: "+"}, Succeed()),
+			Entry("expr with special char :", &expr.Expr{Name: ":"}, Succeed()),
+			Entry("expr with spaces", &expr.Expr{Name: "expr name with spaces"}, beInvalid),
+			Entry("expr with invalid cahr", &expr.Expr{Name: "expr&expr"}, beInvalid),
+		)
+	})
+
 	It("does instance expressions", func() {
 		var seen []int
 		act := new(joeclifakes.FakeAction)
