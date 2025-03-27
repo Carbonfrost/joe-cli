@@ -85,9 +85,9 @@ func (z *zshComplete) formatCompletion(item CompletionItem) string {
 	}
 	itemType := "plain"
 	switch item.Type {
-	case FileCompletionType:
+	case CompletionTypeFile:
 		itemType = "file"
-	case DirectoryCompletionType:
+	case CompletionTypeDirectory:
 		itemType = "dir"
 	}
 	spaceAfter := "1"

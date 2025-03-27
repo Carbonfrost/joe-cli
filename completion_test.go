@@ -75,7 +75,7 @@ var _ = Describe("Complete", func() {
 			{Value: "--flag"},
 		}))),
 		Entry("file arg delegate", "app", "", Equal([]cli.CompletionItem{
-			{Value: "", Type: cli.FileCompletionType},
+			{Value: "", Type: cli.CompletionTypeFile},
 		})),
 		Entry("sub-command", "app file_specified", "", ContainElements([]cli.CompletionItem{
 			{Value: "sub", HelpText: "sub help text"},

@@ -44,9 +44,9 @@ type CompletionFunc func(*Context) []CompletionItem
 
 // Completion types
 const (
-	TokenCompletionType     CompletionType = 0
-	FileCompletionType      CompletionType = 1
-	DirectoryCompletionType CompletionType = 2
+	CompletionTypeToken CompletionType = iota
+	CompletionTypeFile
+	CompletionTypeDirectory
 )
 
 const (
@@ -270,11 +270,11 @@ func (s StandardCompletion) Complete(ctx context.Context) []CompletionItem {
 	switch s {
 	case FileCompletion:
 		return []CompletionItem{
-			{Value: c.Incomplete, Type: FileCompletionType},
+			{Value: c.Incomplete, Type: CompletionTypeFile},
 		}
 	case DirectoryCompletion:
 		return []CompletionItem{
-			{Value: c.Incomplete, Type: DirectoryCompletionType},
+			{Value: c.Incomplete, Type: CompletionTypeDirectory},
 		}
 	}
 	panic(fmt.Sprintf("unexpected value: %v", s))
