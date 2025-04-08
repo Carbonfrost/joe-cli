@@ -49,8 +49,9 @@ type Value struct {
 	// flag type.  If unspecified, a map[string]string is used.
 	Args interface{}
 
-	setName bool
-	rawArgs map[string]string
+	setName          bool
+	rawArgs          map[string]string
+	disableSplitting bool
 }
 
 // FactoryFunc describes the factory function for a provider
@@ -196,6 +197,12 @@ func (v *Value) ArgumentFlag() cli.Prototype {
 	}
 }
 
+// DisableSplitting causes commas to be treated literally instead of as
+// delimiters between values.
+func (v *Value) DisableSplitting() {
+	v.disableSplitting = true
+}
+
 // SetArgument provides an action that can be used to set the argument for a provider.
 // This enables you to have a dedicated flag to handle setting provider arguments:
 //
@@ -274,8 +281,16 @@ func (v *Value) Set(arg string) error {
 		}
 		arg = args[1]
 	}
-	cli.Set(&v.rawArgs, arg)
-	return cli.Set(v.Args, arg)
+
+	var args []string
+	if v.disableSplitting {
+		args = []string{arg}
+	} else {
+		args = cli.SplitList(arg, ",", -1)
+	}
+
+	cli.Set(&v.rawArgs, args...)
+	return cli.Set(v.Args, args...)
 }
 
 // String obtains the textual representation

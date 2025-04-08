@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
 	"github.com/Carbonfrost/joe-cli/extensions/structure"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -507,6 +509,135 @@ var _ = Describe("Value", func() {
 			}),
 		),
 	)
+
+	Describe("map[string]string value", func() {
+
+		DescribeTable("examples", func(arguments string, expectedName string, expectedOpts types.GomegaMatcher) {
+			opts := new(map[string]string)
+			po := &provider.Value{
+				Args: opts,
+			}
+
+			var options cli.Option
+			if strings.HasPrefix(arguments, "app-disable-splitting") {
+				options = cli.DisableSplitting
+			}
+
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name:    "provider",
+						Value:   po,
+						Options: options,
+					},
+				},
+			}
+
+			args, _ := cli.Split(arguments)
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(po.Name).To(Equal(expectedName))
+			Expect(*opts).To(expectedOpts)
+		},
+			Entry(
+				"name only",
+				"app --provider csv",
+				"csv",
+				BeEmpty(),
+			),
+			Entry(
+				"inline format",
+				"app --provider csv,comma=A,useCRLF=true",
+				"csv",
+				Equal(map[string]string{
+					"comma":   "A",
+					"useCRLF": "true",
+				}),
+			),
+			Entry(
+				"repeated",
+				"app --provider csv --provider comma=A --provider useCRLF=true",
+				"csv",
+				Equal(map[string]string{
+					"comma":   "A",
+					"useCRLF": "true",
+				}),
+			),
+			Entry(
+				"disable splitting",
+				"app-disable-splitting --provider csv,comma=A,useCRLF=true",
+				"csv",
+				Equal(map[string]string{
+					"comma": "A,useCRLF=true",
+				}),
+			),
+		)
+	})
+
+	Describe("expression", func() {
+
+		DescribeTable("examples", func(arguments string, expectedName string, expectedOpts types.GomegaMatcher) {
+			opts := &providerOptions{}
+			po := &provider.Value{
+				Args: structure.Of(opts),
+			}
+			app := &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						NArg: cli.TakeUntilNextFlag,
+					},
+					{
+						Name: "expression",
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{
+									Name: "p",
+									Args: cli.Args("_1", po),
+								},
+							},
+						},
+					},
+				},
+			}
+
+			args, _ := cli.Split(arguments)
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(po.Name).To(Equal(expectedName))
+			Expect(opts).To(expectedOpts)
+		},
+			Entry(
+				"name only",
+				"app . -p csv",
+				"csv",
+				Equal(&providerOptions{
+					Comma:   "",
+					UseCRLF: false,
+				}),
+			),
+			Entry(
+				"inline format",
+				"app . -p csv,comma=A,useCRLF=true",
+				"csv",
+				Equal(&providerOptions{
+					Comma:   "A",
+					UseCRLF: true,
+				}),
+			),
+			Entry(
+				"repeated",
+				"app . -p csv -p comma=A -p useCRLF=true",
+				"csv",
+				Equal(&providerOptions{
+					Comma:   "A",
+					UseCRLF: true,
+				}),
+			),
+		)
+
+	})
 })
 
 type Options struct {
