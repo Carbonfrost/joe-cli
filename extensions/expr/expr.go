@@ -23,11 +23,11 @@ type Evaluator interface {
 	// Evaluate performs the evaluation.  The v argument is the value of the prior
 	// expression operator.  The yield argument is used to pass one or more additional
 	// values to the next expression operator.
-	Evaluate(c context.Context, v interface{}, yield func(interface{}) error) error
+	Evaluate(c context.Context, v any, yield func(any) error) error
 }
 
 // EvaluatorFunc provides the basic function for an Evaluator
-type EvaluatorFunc func(*cli.Context, interface{}, func(interface{}) error) error
+type EvaluatorFunc func(*cli.Context, any, func(any) error) error
 
 // Expr represents an operator in an expression.  An expression is composed of an
 // ordered series of operators meant to describe how to process one or more values.
@@ -70,28 +70,28 @@ type Expr struct {
 	// Description provides a long description.  The long description is
 	// not used in any templates by default.  The type of Description should be string or
 	// fmt.Stringer.  Refer to func Description for details.
-	Description interface{}
+	Description any
 
 	// Evaluate provides the evaluation behavior for the expression.  The value should
 	// implement Evaluator or support runtime conversion to that interface via
 	// the rules provided by the cli.EvaluatorOf function.
-	Evaluate interface{}
+	Evaluate any
 
 	// Before executes before the expression is evaluated.  Refer to cli.Action about the correct
 	// function signature to use.
-	Before interface{}
+	Before any
 
 	// After executes after the expression is evaluated.  Refer to cli.Action about the correct
 	// function signature to use.
-	After interface{}
+	After any
 
 	// Uses provides an action handler that is always executed during the initialization phase
 	// of the app.  Typically, hooks and other configuration actions are added to this handler.
-	Uses interface{}
+	Uses any
 
 	// Data provides an arbitrary mapping of additional data.  This data can be used by
 	// middleware and it is made available to templates
-	Data map[string]interface{}
+	Data map[string]any
 
 	// Options sets various options about how to treat the expression operator.  For example, options can
 	// hide the expression operator.
@@ -160,7 +160,7 @@ type evaluatorFunc func(context.Context, any, func(any) error) error
 
 // Yielder provides the signature of the function used to yield
 // values to the expression pipeline
-type Yielder func(interface{}) error
+type Yielder func(any) error
 
 type boundExpr struct {
 	*exprSet
@@ -294,7 +294,7 @@ func (e *expressionDescription) String() string {
 // expression operator to use and optionally a Lookup.   The main use case
 // for this function is to create a custom evaluation step that is appended to
 // the expression pipeline
-func NewBinding(ev Evaluator, exprlookup ...interface{}) Binding {
+func NewBinding(ev Evaluator, exprlookup ...any) Binding {
 	var (
 		expr   *Expr
 		lookup cli.Lookup = cli.LookupValues{}
@@ -334,64 +334,64 @@ func NewBinding(ev Evaluator, exprlookup ...interface{}) Binding {
 //   - func(interface{}) bool
 //   - func(interface{}) error
 //   - func(interface{})
-func EvaluatorOf(v interface{}) Evaluator {
+func EvaluatorOf(v any) Evaluator {
 	switch a := v.(type) {
 	case nil:
 		return EvaluatorOf(true)
 	case Evaluator:
 		return a
-	case func(*cli.Context, interface{}, func(interface{}) error) error:
+	case func(*cli.Context, any, func(any) error) error:
 		return EvaluatorFunc(a)
-	case func(*cli.Context, interface{}) error:
-		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
+	case func(*cli.Context, any) error:
+		return EvaluatorFunc(func(c *cli.Context, v any, y func(any) error) error {
 			err := a(c, v)
 			if err == nil {
 				return y(v)
 			}
 			return err
 		})
-	case func(*cli.Context, interface{}) bool:
-		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
+	case func(*cli.Context, any) bool:
+		return EvaluatorFunc(func(c *cli.Context, v any, y func(any) error) error {
 			if a(c, v) {
 				return y(v)
 			}
 			return nil
 		})
-	case func(*cli.Context, interface{}):
-		return EvaluatorFunc(func(c *cli.Context, v interface{}, y func(interface{}) error) error {
+	case func(*cli.Context, any):
+		return EvaluatorFunc(func(c *cli.Context, v any, y func(any) error) error {
 			a(c, v)
 			return y(v)
 		})
-	case func(context.Context, interface{}, func(interface{}) error) error:
-		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
+	case func(context.Context, any, func(any) error) error:
+		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
 			return a(c, v, y)
 		})
-	case func(context.Context, interface{}) error:
-		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
+	case func(context.Context, any) error:
+		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
 			err := a(c, v)
 			if err == nil {
 				return y(v)
 			}
 			return err
 		})
-	case func(context.Context, interface{}) bool:
-		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
+	case func(context.Context, any) bool:
+		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
 			if a(c, v) {
 				return y(v)
 			}
 			return nil
 		})
-	case func(context.Context, interface{}):
-		return evaluatorFunc(func(c context.Context, v interface{}, y func(interface{}) error) error {
+	case func(context.Context, any):
+		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
 			a(c, v)
 			return y(v)
 		})
-	case func(interface{}, func(interface{}) error) error:
-		return evaluatorFunc(func(_ context.Context, v interface{}, y func(interface{}) error) error {
+	case func(any, func(any) error) error:
+		return evaluatorFunc(func(_ context.Context, v any, y func(any) error) error {
 			return a(v, y)
 		})
-	case func(interface{}) error:
-		return evaluatorFunc(func(_ context.Context, v interface{}, y func(interface{}) error) error {
+	case func(any) error:
+		return evaluatorFunc(func(_ context.Context, v any, y func(any) error) error {
 			err := a(v)
 			if err == nil {
 				return y(v)
@@ -501,12 +501,12 @@ func (e *Expr) SetLocalArgs(args []*cli.Arg) error {
 }
 
 // SetData sets the specified metadata on the expression operator
-func (e *Expr) SetData(name string, v interface{}) {
+func (e *Expr) SetData(name string, v any) {
 	e.Data = setData(e.Data, name, v)
 }
 
 // LookupData obtains the data if it exists
-func (e *Expr) LookupData(name string) (interface{}, bool) {
+func (e *Expr) LookupData(name string) (any, bool) {
 	v, ok := e.Data[name]
 	return v, ok
 }
@@ -556,7 +556,7 @@ func (e *Expr) setInternalFlags(f exprFlags, v bool) {
 }
 
 // Evaluate provides the evaluation of the function and implements the Evaluator interface
-func (e EvaluatorFunc) Evaluate(c context.Context, v interface{}, yield func(interface{}) error) error {
+func (e EvaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error) error {
 	if e == nil {
 		return nil
 	}
@@ -668,11 +668,11 @@ func (e *Expression) String() string {
 	return strings.Join(e.args, " ")
 }
 
-func (e *Expression) Evaluate(ctx context.Context, items ...interface{}) error {
+func (e *Expression) Evaluate(ctx context.Context, items ...any) error {
 	return e.evaluateCore(ctx, items...)
 }
 
-func (e *Expression) evaluateCore(ctx context.Context, items ...interface{}) error {
+func (e *Expression) evaluateCore(ctx context.Context, items ...any) error {
 	yielders := make([]Yielder, len(e.items))
 	yielderThunk := func(i int) Yielder {
 		if i >= len(yielders) || yielders[i] == nil {
@@ -683,7 +683,7 @@ func (e *Expression) evaluateCore(ctx context.Context, items ...interface{}) err
 
 	for ik := range e.items {
 		i := ik
-		yielders[i] = func(in interface{}) error {
+		yielders[i] = func(in any) error {
 			return e.items[i].Evaluate(ctx, in, yielderThunk(i+1))
 		}
 	}
@@ -799,14 +799,14 @@ func (b *exprBinding) Expr() *Expr {
 	return b.expr
 }
 
-func (s *exprSet) lookupValue(name string) (interface{}, bool) {
+func (s *exprSet) lookupValue(name string) (any, bool) {
 	if _, _, g, ok := s.Binding.LookupOption(name); ok {
 		return g.(*cli.Arg).Value, true
 	}
 	return nil, false
 }
 
-func emptyYielder(interface{}) error {
+func emptyYielder(any) error {
 	return nil
 }
 
@@ -836,13 +836,13 @@ func renderHelp(us *synopsis.Usage) string {
 	return sb.String()
 }
 
-func setData(data map[string]interface{}, name string, v interface{}) map[string]interface{} {
+func setData(data map[string]any, name string, v any) map[string]any {
 	if v == nil {
 		delete(data, name)
 		return data
 	}
 	if data == nil {
-		return map[string]interface{}{
+		return map[string]any{
 			name: v,
 		}
 	}

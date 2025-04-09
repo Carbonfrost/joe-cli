@@ -17,7 +17,7 @@ import (
 )
 
 type OutputContext struct {
-	Vars      map[string]interface{}
+	Vars      map[string]any
 	Overwrite bool
 	DryRun    bool
 	FS        cli.FS
@@ -76,7 +76,7 @@ func (c *OutputContext) PopDir() error {
 	return nil
 }
 
-func (c *OutputContext) SetData(name string, value interface{}) {
+func (c *OutputContext) SetData(name string, value any) {
 	c.Vars[name] = value
 }
 

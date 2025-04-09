@@ -47,7 +47,7 @@ type Value struct {
 
 	// Args provides the arguments to the provider.  Args should be any supported
 	// flag type.  If unspecified, a map[string]string is used.
-	Args interface{}
+	Args any
 
 	setName          bool
 	rawArgs          map[string]string

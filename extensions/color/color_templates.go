@@ -9,12 +9,12 @@ import (
 
 type templateContext struct {
 	c     *cli.Context
-	funcs map[string]interface{}
+	funcs map[string]any
 
 	colorEnabledCache *bool
 }
 
-type sprinter = func(...interface{}) (string, error)
+type sprinter = func(...any) (string, error)
 
 var (
 	styleNames = map[string]cli.Style{
@@ -49,12 +49,12 @@ var (
 	}
 )
 
-func templateFuncs(c *cli.Context) map[string]interface{} {
+func templateFuncs(c *cli.Context) map[string]any {
 	t := &templateContext{c: c}
 	bold := t.sprintStyle(cli.Bold)
 	underline := t.sprintStyle(cli.Underline)
 
-	t.funcs = map[string]interface{}{
+	t.funcs = map[string]any{
 		"Black":         t.sprintForegroundColor(cli.Black),
 		"Red":           t.sprintForegroundColor(cli.Red),
 		"Green":         t.sprintForegroundColor(cli.Green),
@@ -100,7 +100,7 @@ func templateFuncs(c *cli.Context) map[string]interface{} {
 }
 
 func (t *templateContext) sprintStyle(s cli.Style) sprinter {
-	return func(a ...interface{}) (string, error) {
+	return func(a ...any) (string, error) {
 		return t.format(
 			func(w cli.Writer) { w.SetStyle(s) },
 			func(w cli.Writer) { w.Reset() },
@@ -118,7 +118,7 @@ func (t *templateContext) reset() func() string {
 }
 
 func (t *templateContext) sprintForegroundColor(f cli.Color) sprinter {
-	return func(a ...interface{}) (string, error) {
+	return func(a ...any) (string, error) {
 		return t.format(
 			func(w cli.Writer) { w.SetForeground(f) },
 			func(w cli.Writer) { w.SetForeground(cli.Default) },
@@ -135,14 +135,14 @@ func (t *templateContext) resetColor() func() string {
 	}
 }
 
-func (t *templateContext) setColor(color string, a ...interface{}) (string, error) {
+func (t *templateContext) setColor(color string, a ...any) (string, error) {
 	if _, ok := colorNames[color]; ok {
 		return t.funcs[color].(sprinter)(a...)
 	}
 	return "", fmt.Errorf("not valid color: %q", color)
 }
 
-func (t *templateContext) setBackgroundColor(color string, a ...interface{}) (string, error) {
+func (t *templateContext) setBackgroundColor(color string, a ...any) (string, error) {
 	if f, ok := colorNames[color]; ok {
 		return t.format(
 			func(w cli.Writer) { w.SetBackground(f) },
@@ -153,7 +153,7 @@ func (t *templateContext) setBackgroundColor(color string, a ...interface{}) (st
 	return "", fmt.Errorf("not valid color: %q", color)
 }
 
-func (t *templateContext) setStyle(styles string, a ...interface{}) (string, error) {
+func (t *templateContext) setStyle(styles string, a ...any) (string, error) {
 	s := strings.Fields(styles)
 	switch len(s) {
 	case 0:
@@ -184,7 +184,7 @@ func (t *templateContext) setStyle(styles string, a ...interface{}) (string, err
 	return "", fmt.Errorf("not valid style: %q", styles)
 }
 
-func (t *templateContext) format(on, off func(cli.Writer), a []interface{}) (string, error) {
+func (t *templateContext) format(on, off func(cli.Writer), a []any) (string, error) {
 	res := t.c.NewBuffer()
 	text := fmt.Sprint(a...)
 	if len(a) > 0 && len(text) == 0 {

@@ -29,7 +29,7 @@ var _ = Describe("Value", func() {
 
 	Describe("String", func() {
 		DescribeTable("examples",
-			func(value interface{}, expected types.GomegaMatcher) {
+			func(value any, expected types.GomegaMatcher) {
 				Expect(structure.Of(value).String()).To(expected)
 			},
 			Entry("map", map[string]string{"mass": "ive", "ly": "m"}, Equal("ly=m,mass=ive")),
@@ -123,16 +123,16 @@ var _ = Describe("Value", func() {
 	})
 })
 
-func unwrap(v, _ interface{}) interface{} {
+func unwrap(v, _ any) any {
 	return v
 }
 
-func unwrapBigFloat(v interface{}) interface{} {
+func unwrapBigFloat(v any) any {
 	f, _ := v.(*big.Float).Float64()
 	return f
 }
 
-func fakeValueArg(v interface{}) interface{} {
+func fakeValueArg(v any) any {
 	f := v.(*joeclifakes.FakeValue).SetArgsForCall(0)
 	return f
 }

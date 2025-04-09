@@ -246,7 +246,7 @@ type wrapperRenderContext struct {
 func RegisterTemplateFuncs() cli.Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
 		tc := new(wrapperRenderContext)
-		templateFuncs := map[string]interface{}{
+		templateFuncs := map[string]any{
 			"Table":    tc.Table,
 			"EndTable": tc.EndTable,
 			"Headers":  tc.Headers,
@@ -286,7 +286,7 @@ func (c *tableContext) Footers(titles ...string) string {
 	return ""
 }
 
-func (c *tableContext) Cell(value interface{}) (string, error) {
+func (c *tableContext) Cell(value any) (string, error) {
 	if len(c.cells) == 0 {
 		return "", errCellCalledWrongTime
 	}
@@ -400,7 +400,7 @@ func (p *porcelainContext) EndTable() string {
 	return p.Row()
 }
 
-func (c *wrapperRenderContext) Table(f ...interface{}) (string, error) {
+func (c *wrapperRenderContext) Table(f ...any) (string, error) {
 	switch len(f) {
 	case 0:
 		c.inner = newTableContext(defaultFormat)
@@ -436,7 +436,7 @@ func (c *wrapperRenderContext) EndTable() string {
 	return c.inner.EndTable()
 }
 
-func getFormat(v interface{}) *Format {
+func getFormat(v any) *Format {
 	switch f := v.(type) {
 	case *Format:
 		return f

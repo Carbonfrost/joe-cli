@@ -9,7 +9,7 @@ var (
 	valueType = reflect.TypeFor[flag.Value]()
 )
 
-func BindSupportedValue(v interface{}) interface{} {
+func BindSupportedValue(v any) any {
 	// Bind functions will either use *V or V depending upon what
 	// supports the built-in convention values or implements Value.
 	// Any built-in primitive will work as is.  However, if v is actually

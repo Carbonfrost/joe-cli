@@ -68,7 +68,7 @@ var _ = Describe("Features", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		calls := make([]bool, w.SetColorCapableCallCount())
-		for i := 0; i < w.SetColorCapableCallCount(); i++ {
+		for i := range w.SetColorCapableCallCount() {
 			calls[i] = w.SetColorCapableArgsForCall(i)
 		}
 		Expect(w.ResetColorCapableCallCount()).To(Equal(resetColorCapableCallCount))
@@ -98,7 +98,7 @@ var _ = Describe("Features", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		calls := make([]bool, w.SetColorCapableCallCount())
-		for i := 0; i < w.SetColorCapableCallCount(); i++ {
+		for i := range w.SetColorCapableCallCount() {
 			calls[i] = w.SetColorCapableArgsForCall(i)
 		}
 		Expect(w.ResetColorCapableCallCount()).To(Equal(resetColorCapableCallCount))

@@ -31,7 +31,7 @@ type Generator interface {
 
 // Vars contains template variables.  Variables are copied into the template
 // context
-type Vars map[string]interface{}
+type Vars map[string]any
 
 // Interface provides the interface of a template.  The primary implementation
 // is usually from the text/template package.
@@ -41,7 +41,7 @@ type Interface interface {
 
 type dataSetter struct {
 	name  string
-	value interface{}
+	value any
 }
 
 func New(items ...Generator) *Root {
@@ -50,7 +50,7 @@ func New(items ...Generator) *Root {
 	}
 }
 
-func Data(name string, value interface{}) Generator {
+func Data(name string, value any) Generator {
 	return &dataSetter{name, value}
 }
 
@@ -107,7 +107,7 @@ func (r *Root) pipeline() cli.Action {
 				workDir = "."
 			}
 			ctx := &OutputContext{
-				Vars:      map[string]interface{}{},
+				Vars:      map[string]any{},
 				Overwrite: r.Overwrite,
 				DryRun:    r.DryRun,
 				FS:        c.FS.(cli.FS),
@@ -148,7 +148,7 @@ func (v Vars) Generate(_ context.Context, c *OutputContext) error {
 	return nil
 }
 
-func someData(namevalues ...interface{}) Generator {
+func someData(namevalues ...any) Generator {
 	if len(namevalues)%2 != 0 {
 		panic("expected name, value in pairs")
 	}

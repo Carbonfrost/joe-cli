@@ -363,7 +363,7 @@ func writeArgList(sb styleWriter, rtl bool, req, opt []*Arg) {
 	}
 }
 
-func optionName(name interface{}) string {
+func optionName(name any) string {
 	switch n := name.(type) {
 	case rune:
 		if n == '-' {

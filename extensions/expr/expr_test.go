@@ -66,7 +66,7 @@ var _ = Describe("Expr", func() {
 									Name: "expr",
 									Args: cli.Args("a", cli.Bool()),
 									Uses: proto,
-									Data: map[string]interface{}{"A": 1},
+									Data: map[string]any{"A": 1},
 								},
 							},
 						},
@@ -86,7 +86,7 @@ var _ = Describe("Expr", func() {
 			Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
 			Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
 			Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
-			Entry("Data", cli.Prototype{Data: map[string]interface{}{"B": 3}}, Fields{"Data": Equal(map[string]interface{}{"A": 1, "B": 3})}),
+			Entry("Data", cli.Prototype{Data: map[string]any{"B": 3}}, Fields{"Data": Equal(map[string]any{"A": 1, "B": 3})}),
 			Entry("Aliases", cli.Prototype{Aliases: []string{"e", "f"}}, Fields{"Aliases": Equal([]string{"e", "f"})}),
 		)
 
@@ -105,7 +105,7 @@ var _ = Describe("Expr", func() {
 									Name: "expr",
 									Args: cli.Args("a", cli.Bool()),
 									Uses: cli.Prototype{Options: cli.Hidden},
-									Data: map[string]interface{}{"A": 1},
+									Data: map[string]any{"A": 1},
 								},
 							},
 						},
@@ -527,7 +527,7 @@ var _ = Describe("Expr", func() {
 
 		It("contains values in captured context", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
-			Expect(cli.FromContext(captured).Values()).To(Equal([]interface{}{true, 2, []string{"a", "b", "c"}}))
+			Expect(cli.FromContext(captured).Values()).To(Equal([]any{true, 2, []string{"a", "b", "c"}}))
 		})
 
 		It("provides context Name", func() {
@@ -680,7 +680,7 @@ var _ = Describe("Expr", func() {
 		act := func() { called = true }
 
 		DescribeTable("examples",
-			func(thunk interface{}) {
+			func(thunk any) {
 				var handler expr.Evaluator
 				Expect(func() {
 					handler = expr.EvaluatorOf(thunk)
@@ -690,14 +690,14 @@ var _ = Describe("Expr", func() {
 				handler.Evaluate(&cli.Context{}, nil, new(exprfakes.FakeYielder).Spy)
 				Expect(called).To(BeTrue())
 			},
-			Entry("func(*Context, interface{}, func(interface{}) error) error", func(*cli.Context, interface{}, func(interface{}) error) error { act(); return nil }),
-			Entry("func(*Context, interface{}) error", func(*cli.Context, interface{}) error { act(); return nil }),
-			Entry("func(*Context, interface{}) bool", func(*cli.Context, interface{}) bool { act(); return false }),
-			Entry("func(*Context, interface{})", func(*cli.Context, interface{}) { act() }),
-			Entry("func(interface{}, func(interface{}) error) error", func(interface{}, func(interface{}) error) error { act(); return nil }),
-			Entry("func(interface{}) error", func(interface{}) error { act(); return nil }),
-			Entry("func(interface{}) bool", func(interface{}) bool { act(); return false }),
-			Entry("func(interface{})", func(interface{}) { act() }),
+			Entry("func(*Context, interface{}, func(interface{}) error) error", func(*cli.Context, any, func(any) error) error { act(); return nil }),
+			Entry("func(*Context, interface{}) error", func(*cli.Context, any) error { act(); return nil }),
+			Entry("func(*Context, interface{}) bool", func(*cli.Context, any) bool { act(); return false }),
+			Entry("func(*Context, interface{})", func(*cli.Context, any) { act() }),
+			Entry("func(interface{}, func(interface{}) error) error", func(any, func(any) error) error { act(); return nil }),
+			Entry("func(interface{}) error", func(any) error { act(); return nil }),
+			Entry("func(interface{}) bool", func(any) bool { act(); return false }),
+			Entry("func(interface{})", func(any) { act() }),
 		)
 
 		It("always yields from boolean", func() {
@@ -714,7 +714,7 @@ var _ = Describe("Expr", func() {
 			"examples",
 			func(arguments string, match types.GomegaMatcher) {
 				var captured bytes.Buffer
-				evaluator := func(c *cli.Context, in interface{}, yield func(interface{}) error) error {
+				evaluator := func(c *cli.Context, in any, yield func(any) error) error {
 					fmt.Fprintf(c.Stdout, "-> %s=%v ", c.Name(), c.Values())
 					return yield(in)
 				}
@@ -722,7 +722,7 @@ var _ = Describe("Expr", func() {
 				app := &cli.App{
 					Name: "app",
 					Action: func(c *cli.Context) {
-						items := make([]interface{}, 0)
+						items := make([]any, 0)
 						for _, v := range c.List("f") {
 							items = append(items, v)
 						}
@@ -899,7 +899,7 @@ var _ = Describe("Expr", func() {
 		JustBeforeEach(func() {
 			app := &cli.App{
 				Action: func(c *cli.Context) {
-					items := make([]interface{}, 0)
+					items := make([]any, 0)
 					for _, v := range c.List("start") {
 						items = append(items, v)
 					}
@@ -917,7 +917,7 @@ var _ = Describe("Expr", func() {
 								{
 									Name: "expr",
 									Args: cli.Args("a", cli.String(), "b", cli.String(), "c", cli.String()),
-									Evaluate: func(c *cli.Context, in interface{}, yield func(interface{}) error) error {
+									Evaluate: func(c *cli.Context, in any, yield func(any) error) error {
 										fmt.Fprintf(c.Stdout, "%s%s%s%s ", in, c.String("a"), c.String("b"), c.String("c"))
 										return nil
 									},

@@ -68,7 +68,7 @@ func File(name string, ops ...FileGenerator) Generator {
 // Contents generates a file with the given contents.  Contents is either
 // a string, []byte, or io.Reader, which is copied to the output file of the given
 // name.  As a special case, if contents is some other type, it is JSON encoded.
-func Contents(contents interface{}) FileGenerator {
+func Contents(contents any) FileGenerator {
 	return newGenerateContents(func(_ context.Context, _ *OutputContext) ([]byte, error) {
 		switch c := contents.(type) {
 		case string:
@@ -105,7 +105,7 @@ func Touch() FileGenerator {
 }
 
 // Template generates a file by executing a template.
-func Template(tt Interface, namedata ...interface{}) FileGenerator {
+func Template(tt Interface, namedata ...any) FileGenerator {
 	return newGenerateContents(func(ctx context.Context, c *OutputContext) ([]byte, error) {
 		err := someData(namedata...).Generate(ctx, c)
 		if err != nil {

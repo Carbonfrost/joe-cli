@@ -12,7 +12,7 @@ type exprData struct {
 	HelpText    string
 	ManualText  string
 	Description string
-	Data        map[string]interface{}
+	Data        map[string]any
 }
 
 type exprDataCategory struct {

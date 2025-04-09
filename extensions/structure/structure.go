@@ -19,7 +19,7 @@ import (
 // disabling splitting.
 type Value struct {
 	// V is the value that is actually initialized, a pointer to the struct.
-	V interface{}
+	V any
 
 	// Options specifies the mapstructure options to use during the conversion.
 	// If nil, some default options are specified that supports viable weakly typed
@@ -48,7 +48,7 @@ func ErrorUnused(cfg *mapstructure.DecoderConfig) {
 // must be a pointer to a struct.   By default, a set of
 // viable options provide conversions is also specified.  (To stop this,
 // you must set or clear Options directly)
-func Of(v interface{}) *Value {
+func Of(v any) *Value {
 	return &Value{
 		V: v,
 	}
@@ -80,7 +80,7 @@ func (v *Value) WithOptions(options ...DecoderOption) *Value {
 }
 
 // Value obtains the inner value.
-func (v *Value) Value() interface{} {
+func (v *Value) Value() any {
 	return v.V
 }
 
