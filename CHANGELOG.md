@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.9.1 (April 14, 2025)
+
+### New Features
+
+* Expr extension:
+    * `Error` and additional signatures for `EvaluatorOf` (e143248)
+    * `Predicate` and `Invariant` as types (cceef77)
+* Breaking changes:
+    * `TransformFileReference` change API to remove Boolean (`TransformOptionalFileReference`) (7eb6714)
+* `FileSet` support for loading pathspec format files as input (3272b92)
+
+### Bug fixes and improvements
+
+* Bug fix: Ensure value splitting within `provider.Value` maps (04aeb81)
+* Bug fix: Re-initialize sub-commands on rename (94ec6e1)
+* Bug fixes: Usage template typos; visibility (2814c5b)
+* Bug fix: Fix parse error to report all remaining (7f7d241)
+* Validate names used in expression operators (e15dc20)
+* Improve handling of ANSI colors on usage screen (5b01e62)
+* Expr extension: remove need for `*Context` where unneeded (211bd0d)
+* Rename `TokenCompletionType`, etc. to `CompletionTypeToken` for idiomaticness (ec69ae7)
+* Chores:
+    * Update dependent versions (d209b87)
+    * Apply Go modernizations (4de634a, f07f29e)
+    * Unit tests: Instead of `context.TODO` use `context.Background` (08cb8d2)
+
+
 ## v0.9.0 (March 17, 2025)
 
 ### New Features
