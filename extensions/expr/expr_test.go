@@ -3,6 +3,7 @@ package expr_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -674,41 +675,6 @@ var _ = Describe("Expr", func() {
 		})
 	})
 
-	Describe("EvaluatorOf", func() {
-
-		var called bool
-		act := func() { called = true }
-
-		DescribeTable("examples",
-			func(thunk any) {
-				var handler expr.Evaluator
-				Expect(func() {
-					handler = expr.EvaluatorOf(thunk)
-				}).NotTo(Panic())
-
-				called = false
-				handler.Evaluate(&cli.Context{}, nil, new(exprfakes.FakeYielder).Spy)
-				Expect(called).To(BeTrue())
-			},
-			Entry("func(*Context, interface{}, func(interface{}) error) error", func(*cli.Context, any, func(any) error) error { act(); return nil }),
-			Entry("func(*Context, interface{}) error", func(*cli.Context, any) error { act(); return nil }),
-			Entry("func(*Context, interface{}) bool", func(*cli.Context, any) bool { act(); return false }),
-			Entry("func(*Context, interface{})", func(*cli.Context, any) { act() }),
-			Entry("func(interface{}, func(interface{}) error) error", func(any, func(any) error) error { act(); return nil }),
-			Entry("func(interface{}) error", func(any) error { act(); return nil }),
-			Entry("func(interface{}) bool", func(any) bool { act(); return false }),
-			Entry("func(interface{})", func(any) { act() }),
-		)
-
-		It("always yields from boolean", func() {
-			ev := expr.EvaluatorOf(true)
-			yield := new(exprfakes.FakeYielder)
-			err := ev.Evaluate(&cli.Context{}, nil, yield.Spy)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(yield.CallCount()).To(Equal(1))
-		})
-	})
-
 	Describe("parsing", func() {
 		DescribeTable(
 			"examples",
@@ -980,4 +946,84 @@ var _ = Describe("Expr", func() {
 
 	})
 
+})
+var _ = Describe("Predicate", func() {
+
+	It("yields if true", func() {
+		ev := expr.Predicate(func(v any) bool {
+			return true
+		})
+		yield := new(exprfakes.FakeYielder)
+		err := ev.Evaluate(&cli.Context{}, "input", yield.Spy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(yield.CallCount()).To(Equal(1))
+		Expect(yield.ArgsForCall(0)).To(Equal("input"))
+	})
+
+	It("does not yield if false", func() {
+		ev := expr.Predicate(func(v any) bool {
+			return false
+		})
+		yield := new(exprfakes.FakeYielder)
+		err := ev.Evaluate(&cli.Context{}, nil, yield.Spy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(yield.CallCount()).To(Equal(0))
+	})
+})
+
+var _ = Describe("Error", func() {
+
+	It("returns the specified error", func() {
+		ev := expr.EvaluatorOf(errors.New("an error"))
+		yield := new(exprfakes.FakeYielder)
+		err := ev.Evaluate(&cli.Context{}, nil, yield.Spy)
+		Expect(err).To(MatchError("an error"))
+		Expect(yield.CallCount()).To(Equal(0))
+		Expect(ev).To(BeAssignableToTypeOf(expr.Error(nil)))
+	})
+
+	It("generates an error from nil", func() {
+		ev := expr.Error(nil)
+		yield := new(exprfakes.FakeYielder)
+		err := ev.Evaluate(&cli.Context{}, "input", yield.Spy)
+		Expect(err).To(MatchError("unsupported value: string"))
+	})
+})
+
+var _ = Describe("EvaluatorOf", func() {
+
+	var called bool
+	act := func() { called = true }
+
+	DescribeTable("examples",
+		func(thunk any) {
+			var handler expr.Evaluator
+			Expect(func() {
+				handler = expr.EvaluatorOf(thunk)
+			}).NotTo(Panic())
+
+			called = false
+			handler.Evaluate(&cli.Context{}, nil, new(exprfakes.FakeYielder).Spy)
+			Expect(called).To(BeTrue())
+		},
+		Entry("func(*Context, any, func(any) error) error", func(*cli.Context, any, func(any) error) error { act(); return nil }),
+		Entry("func(*Context, any) error", func(*cli.Context, any) error { act(); return nil }),
+		Entry("func(*Context, any) bool", func(*cli.Context, any) bool { act(); return false }),
+		Entry("func(*Context, any)", func(*cli.Context, any) { act() }),
+		Entry("func(any, func(any) error) error", func(any, func(any) error) error { act(); return nil }),
+		Entry("func(any) error", func(any) error { act(); return nil }),
+		Entry("func(any) bool", func(any) bool { act(); return false }),
+		Entry("func(any)", func(any) { act() }),
+		Entry("func() bool", func() bool { act(); return false }),
+		Entry("func() error", func() error { act(); return nil }),
+	)
+
+	It("always yields from boolean", func() {
+		ev := expr.EvaluatorOf(true)
+		yield := new(exprfakes.FakeYielder)
+		err := ev.Evaluate(&cli.Context{}, nil, yield.Spy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(yield.CallCount()).To(Equal(1))
+		Expect(ev).To(BeAssignableToTypeOf(expr.Invariant(false)))
+	})
 })

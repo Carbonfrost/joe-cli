@@ -9,12 +9,12 @@ import (
 )
 
 type FakeEvaluator struct {
-	EvaluateStub        func(context.Context, interface{}, func(interface{}) error) error
+	EvaluateStub        func(context.Context, any, func(any) error) error
 	evaluateMutex       sync.RWMutex
 	evaluateArgsForCall []struct {
 		arg1 context.Context
-		arg2 interface{}
-		arg3 func(interface{}) error
+		arg2 any
+		arg3 func(any) error
 	}
 	evaluateReturns struct {
 		result1 error
@@ -26,13 +26,13 @@ type FakeEvaluator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeEvaluator) Evaluate(arg1 context.Context, arg2 interface{}, arg3 func(interface{}) error) error {
+func (fake *FakeEvaluator) Evaluate(arg1 context.Context, arg2 any, arg3 func(any) error) error {
 	fake.evaluateMutex.Lock()
 	ret, specificReturn := fake.evaluateReturnsOnCall[len(fake.evaluateArgsForCall)]
 	fake.evaluateArgsForCall = append(fake.evaluateArgsForCall, struct {
 		arg1 context.Context
-		arg2 interface{}
-		arg3 func(interface{}) error
+		arg2 any
+		arg3 func(any) error
 	}{arg1, arg2, arg3})
 	stub := fake.EvaluateStub
 	fakeReturns := fake.evaluateReturns
@@ -53,13 +53,13 @@ func (fake *FakeEvaluator) EvaluateCallCount() int {
 	return len(fake.evaluateArgsForCall)
 }
 
-func (fake *FakeEvaluator) EvaluateCalls(stub func(context.Context, interface{}, func(interface{}) error) error) {
+func (fake *FakeEvaluator) EvaluateCalls(stub func(context.Context, any, func(any) error) error) {
 	fake.evaluateMutex.Lock()
 	defer fake.evaluateMutex.Unlock()
 	fake.EvaluateStub = stub
 }
 
-func (fake *FakeEvaluator) EvaluateArgsForCall(i int) (context.Context, interface{}, func(interface{}) error) {
+func (fake *FakeEvaluator) EvaluateArgsForCall(i int) (context.Context, any, func(any) error) {
 	fake.evaluateMutex.RLock()
 	defer fake.evaluateMutex.RUnlock()
 	argsForCall := fake.evaluateArgsForCall[i]

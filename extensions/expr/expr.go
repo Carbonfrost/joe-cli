@@ -316,24 +316,26 @@ func NewBinding(ev Evaluator, exprlookup ...any) Binding {
 // EvaluatorOf creates an expression evaluator for a given value.  The
 // value must be bool or a function.  If a bool, then it works as a predicate
 // for the corresponding invariant (i.e. false filters out all values, and true
-// includes all values).  If a function, the signature must match either the
+// includes all values).  If an error value, then it always returns such an error.
+// If a function, the signature must match either the
 // Evaluator.Evaluate function signature or a  variation that excludes
 // the context and/or yielder.
 // You can also use bool as a return type as in the same signature used by
 // Predicate.  These are valid signatures:
 //
-//   - func(*cli.Context, interface{}, func(interface{})error) error
-//   - func(*cli.Context, interface{}) error
-//   - func(*cli.Context, interface{}) bool
-//   - func(*cli.Context, interface{})
-//   - func(context.Context, interface{}, func(interface{})error) error
-//   - func(context.Context, interface{}) error
-//   - func(context.Context, interface{}) bool
-//   - func(context.Context, interface{})
-//   - func(interface{}, func(interface{})error) error
-//   - func(interface{}) bool
-//   - func(interface{}) error
-//   - func(interface{})
+//   - func(*cli.Context, any, func(any)error) error
+//   - func(*cli.Context, any) error
+//   - func(*cli.Context, any) bool
+//   - func(*cli.Context, any)
+//   - func(context.Context, any, func(any)error) error
+//   - func(context.Context, any) error
+//   - func(context.Context, any) bool
+//   - func(context.Context, any)
+//   - func(any, func(any)error) error
+//   - func(any) bool
+//   - func(any) error
+//   - func(any)
+//
 func EvaluatorOf(v any) Evaluator {
 	switch a := v.(type) {
 	case nil:
@@ -406,8 +408,18 @@ func EvaluatorOf(v any) Evaluator {
 			a(v)
 			return true
 		})
+	case func() bool:
+		return Predicate(func(any) bool {
+			return a()
+		})
+	case func() error:
+		return evaluatorFunc(func(context.Context, any, func(any) error) error {
+			return a()
+		})
 	case bool:
 		return Invariant(a)
+	case error:
+		return Error(a)
 	}
 	panic(fmt.Sprintf("unexpected type: %T", v))
 }
@@ -425,6 +437,17 @@ func (i Invariant) Evaluate(_ context.Context, v any, y func(any) error) error {
 		return y(v)
 	}
 	return nil
+}
+
+// Error provides an evaluator which yields an error. The zero value
+// is also useful, returning a generic error
+func Error(err error) Evaluator {
+	return EvaluatorOf(func(_ context.Context, v any, _ func(any) error) error {
+		if err == nil {
+			return fmt.Errorf("unsupported value: %T", v)
+		}
+		return err
+	})
 }
 
 func groupExprsByCategory(exprs []*Expr) exprsByCategory {

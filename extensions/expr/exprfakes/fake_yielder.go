@@ -8,10 +8,10 @@ import (
 )
 
 type FakeYielder struct {
-	Stub        func(interface{}) error
+	Stub        func(any) error
 	mutex       sync.RWMutex
 	argsForCall []struct {
-		arg1 interface{}
+		arg1 any
 	}
 	returns struct {
 		result1 error
@@ -23,11 +23,11 @@ type FakeYielder struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeYielder) Spy(arg1 interface{}) error {
+func (fake *FakeYielder) Spy(arg1 any) error {
 	fake.mutex.Lock()
 	ret, specificReturn := fake.returnsOnCall[len(fake.argsForCall)]
 	fake.argsForCall = append(fake.argsForCall, struct {
-		arg1 interface{}
+		arg1 any
 	}{arg1})
 	stub := fake.Stub
 	returns := fake.returns
@@ -48,13 +48,13 @@ func (fake *FakeYielder) CallCount() int {
 	return len(fake.argsForCall)
 }
 
-func (fake *FakeYielder) Calls(stub func(interface{}) error) {
+func (fake *FakeYielder) Calls(stub func(any) error) {
 	fake.mutex.Lock()
 	defer fake.mutex.Unlock()
 	fake.Stub = stub
 }
 
-func (fake *FakeYielder) ArgsForCall(i int) interface{} {
+func (fake *FakeYielder) ArgsForCall(i int) any {
 	fake.mutex.RLock()
 	defer fake.mutex.RUnlock()
 	return fake.argsForCall[i].arg1
