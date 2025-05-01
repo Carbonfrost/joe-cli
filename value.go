@@ -39,7 +39,8 @@ import (
 //   - Initializer() Action      obtains an initialization action for the value which is called after initialization
 //     of the flag or arg
 //
-//   - Value() interface{}       obtains the actual value to return from a lookup, useful when flag.Value is a wrapper
+//   - Value() T                 obtains the actual value to return from a lookup, useful when flag.Value is a wrapper.
+//     (the underlying value T is used)
 //
 //   - Synopsis() string         obtains the synopsis text
 //
@@ -738,6 +739,15 @@ func dereference(v any) any {
 		}
 		if d, ok := v.(flag.Getter); ok {
 			return d.Get()
+		}
+
+		// Reflection to detect typed value dereference
+		selector := reflect.ValueOf(v)
+		if valueMethod, ok := selector.Type().MethodByName("Value"); ok {
+			if valueMethod.Type.NumIn() == 1 && valueMethod.Type.NumOut() == 1 {
+				out := valueMethod.Func.Call([]reflect.Value{selector})
+				return out[0].Interface()
+			}
 		}
 		return v
 	}

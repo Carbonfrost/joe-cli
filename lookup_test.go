@@ -184,6 +184,12 @@ var _ = Describe("Lookup", func() {
 				BeAssignableToTypeOf(&big.Int{}),
 			),
 			Entry(
+				"Value auto dereference (typed)",
+				&hasTypedDereference[*big.Int]{v: &big.Int{}},
+				func(lk cli.Lookup) any { return lk.Value("a") },
+				BeAssignableToTypeOf(&big.Int{}),
+			),
+			Entry(
 				"Value auto dereference (via flag.Getter)",
 				&hasGetter{v: &big.Int{}},
 				func(lk cli.Lookup) any { return lk.Value("a") },

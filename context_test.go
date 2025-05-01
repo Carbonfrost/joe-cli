@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
@@ -127,6 +128,202 @@ var _ = Describe("Context", func() {
 
 			capturedContext := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(capturedContext.Value("f")).To(Equal(60))
+		})
+
+		Describe("accessors", func() {
+			DescribeTable("examples",
+				func(v any, lookup func(*cli.Context) any, expected types.GomegaMatcher) {
+					act := new(joeclifakes.FakeAction)
+					app := &cli.App{
+						Flags: []*cli.Flag{
+							{Name: "a", Value: v},
+						},
+						Action: act,
+					}
+
+					args, _ := cli.Split("app")
+					_ = app.RunContext(context.Background(), args)
+
+					lk := cli.FromContext(act.ExecuteArgsForCall(0))
+					Expect(lookup(lk)).To(expected)
+				},
+				Entry(
+					"bool",
+					cli.Bool(),
+					func(lk *cli.Context) any { return lk.Bool("a") },
+					Equal(false),
+				),
+				Entry(
+					"File",
+					&cli.File{},
+					func(lk *cli.Context) any { return lk.File("a") },
+					// Due to middleware setting up FS, we can only check type
+					BeAssignableToTypeOf(&cli.File{}),
+				),
+				Entry(
+					"FileSet",
+					&cli.FileSet{},
+					func(lk *cli.Context) any { return lk.FileSet("a") },
+					// Due to middleware setting up FS, we can only check type
+					BeAssignableToTypeOf(&cli.FileSet{}),
+				),
+				Entry(
+					"Float32",
+					cli.Float32(),
+					func(lk *cli.Context) any { return lk.Float32("a") },
+					Equal(float32(0)),
+				),
+				Entry(
+					"Float64",
+					cli.Float64(),
+					func(lk *cli.Context) any { return lk.Float64("a") },
+					Equal(float64(0)),
+				),
+				Entry(
+					"Int",
+					cli.Int(),
+					func(lk *cli.Context) any { return lk.Int("a") },
+					Equal(int(0)),
+				),
+				Entry(
+					"Int16",
+					cli.Int16(),
+					func(lk *cli.Context) any { return lk.Int16("a") },
+					Equal(int16(0)),
+				),
+				Entry(
+					"Int32",
+					cli.Int32(),
+					func(lk *cli.Context) any { return lk.Int32("a") },
+					Equal(int32(0)),
+				),
+				Entry(
+					"Int64",
+					cli.Int64(),
+					func(lk *cli.Context) any { return lk.Int64("a") },
+					Equal(int64(0)),
+				),
+				Entry(
+					"Int8",
+					cli.Int8(),
+					func(lk *cli.Context) any { return lk.Int8("a") },
+					Equal(int8(0)),
+				),
+				Entry(
+					"Duration",
+					cli.Duration(),
+					func(lk *cli.Context) any { return lk.Duration("a") },
+					Equal(time.Duration(0)),
+				),
+				Entry(
+					"List",
+					cli.List(),
+					func(lk *cli.Context) any { return lk.List("a") },
+					BeAssignableToTypeOf([]string{}),
+				),
+				Entry(
+					"Map",
+					cli.Map(),
+					func(lk *cli.Context) any { return lk.Map("a") },
+					BeAssignableToTypeOf(map[string]string{}),
+				),
+				Entry(
+					"NameValue",
+					&cli.NameValue{},
+					func(lk *cli.Context) any { return lk.NameValue("a") },
+					BeAssignableToTypeOf(&cli.NameValue{}),
+				),
+				Entry(
+					"NameValues",
+					cli.NameValues(),
+					func(lk *cli.Context) any { return lk.NameValues("a") },
+					BeAssignableToTypeOf(make([]*cli.NameValue, 0)),
+				),
+				Entry(
+					"String",
+					cli.String(),
+					func(lk *cli.Context) any { return lk.String("a") },
+					Equal(""),
+				),
+				Entry(
+					"Uint",
+					cli.Uint(),
+					func(lk *cli.Context) any { return lk.Uint("a") },
+					Equal(uint(0)),
+				),
+				Entry(
+					"Uint16",
+					cli.Uint16(),
+					func(lk *cli.Context) any { return lk.Uint16("a") },
+					Equal(uint16(0)),
+				),
+				Entry(
+					"Uint32",
+					cli.Uint32(),
+					func(lk *cli.Context) any { return lk.Uint32("a") },
+					Equal(uint32(0)),
+				),
+				Entry(
+					"Uint64",
+					cli.Uint64(),
+					func(lk *cli.Context) any { return lk.Uint64("a") },
+					Equal(uint64(0)),
+				),
+				Entry(
+					"Uint8",
+					cli.Uint8(),
+					func(lk *cli.Context) any { return lk.Uint8("a") },
+					Equal(uint8(0)),
+				),
+				Entry(
+					"URL",
+					cli.URL(),
+					func(lk *cli.Context) any { return lk.URL("a") },
+					BeAssignableToTypeOf(&url.URL{}),
+				),
+				Entry(
+					"Regexp",
+					cli.Regexp(),
+					func(lk *cli.Context) any { return lk.Regexp("a") },
+					BeAssignableToTypeOf(&regexp.Regexp{}),
+				),
+				Entry(
+					"IP",
+					cli.IP(),
+					func(lk *cli.Context) any { return lk.IP("a") },
+					BeAssignableToTypeOf(net.IP{}),
+				),
+				Entry(
+					"BigFloat",
+					cli.BigFloat(),
+					func(lk *cli.Context) any { return lk.BigFloat("a") },
+					BeAssignableToTypeOf(&big.Float{}),
+				),
+				Entry(
+					"BigInt",
+					cli.BigInt(),
+					func(lk *cli.Context) any { return lk.BigInt("a") },
+					BeAssignableToTypeOf(&big.Int{}),
+				),
+				Entry(
+					"Value auto dereference",
+					&hasDereference{v: &big.Int{}},
+					func(lk *cli.Context) any { return lk.Value("a") },
+					BeAssignableToTypeOf(&big.Int{}),
+				),
+				Entry(
+					"Value auto dereference (typed)",
+					&hasTypedDereference[*big.Int]{v: &big.Int{}},
+					func(lk *cli.Context) any { return lk.Value("a") },
+					BeAssignableToTypeOf(&big.Int{}),
+				),
+				Entry(
+					"Value auto dereference (via flag.Getter)",
+					&hasGetter{v: &big.Int{}},
+					func(lk *cli.Context) any { return lk.Value("a") },
+					BeAssignableToTypeOf(&big.Int{}),
+				),
+			)
 		})
 	})
 

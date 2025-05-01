@@ -741,6 +741,16 @@ func (d *hasDereference) Value() any {
 	return d.v
 }
 
+type hasTypedDereference[T any] struct {
+	v T
+}
+
+func (*hasTypedDereference[_]) Set(string) error { return nil }
+func (*hasTypedDereference[_]) String() string   { return "" }
+func (d *hasTypedDereference[T]) Value() T {
+	return d.v
+}
+
 type hasGetter struct {
 	v any
 }
