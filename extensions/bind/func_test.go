@@ -504,6 +504,43 @@ var _ = Describe("Evaluator", func() {
 		Expect(*varNames.value).To(Equal(color.Never))
 	})
 
+	It("uses resetable value from the multiple bindings", func() {
+		var seen []*cli.NameValue
+
+		evaluatorThunk := func(nv *cli.NameValue) expr.Evaluator {
+			c := *nv // Must copy the value so we have each instance that occurred
+			seen = append(seen, &c)
+			return expr.AlwaysTrue
+		}
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name:     "more",
+								Args:     cli.Args("i", new(cli.NameValue)),
+								Evaluate: bind.Evaluator(evaluatorThunk, bind.NameValue("i")),
+							},
+						},
+					},
+				},
+			},
+			Action: func(c *cli.Context) {
+				expr.FromContext(c, "expression").Evaluate(c, 0)
+			},
+		}
+		args, _ := cli.Split("app -- -more 1 -more 2 -more 3")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(seen).To(Equal([]*cli.NameValue{
+			{Name: "1", Value: "true"},
+			{Name: "2", Value: "true"},
+			{Name: "3", Value: "true"},
+		}))
+	})
+
 	Describe("binding arguments", func() {
 		DescribeTable("examples", func(binder bind.Binder[string], expected string) {
 			var (

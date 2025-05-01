@@ -189,35 +189,54 @@ var _ = Describe("Expr", func() {
 		)
 	})
 
-	It("does instance expressions", func() {
-		var seen []int
-		act := new(joeclifakes.FakeAction)
-		app := &cli.App{
-			Args: []*cli.Arg{
-				{
-					Value: &expr.Expression{
-						Exprs: []*expr.Expr{
-							{
-								Name: "more",
-								Args: cli.Args("i", new(int)),
-								Evaluate: func(c *cli.Context, _ any) {
-									seen = append(seen, c.Values()[0].(int))
+	Describe("instancing", func() {
+
+		DescribeTable("examples", func(v any, expected types.GomegaMatcher) {
+			var seen []any
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{
+									Name: "more",
+									Args: cli.Args("i", v),
+									Evaluate: func(c *cli.Context, _ any) {
+										val := c.Values()[0]
+										// Some types need to be copied
+										if cv, ok := val.(*cli.NameValue); ok {
+											var v cli.NameValue = *cv
+											val = &v
+										}
+
+										seen = append(seen, val)
+										Expect(c.Values()).To(HaveLen(1))
+									},
 								},
 							},
 						},
 					},
 				},
-			},
-			Action: act,
-		}
-		args, _ := cli.Split("app -- -more 1 -more 2 -more 3")
-		err := app.RunContext(context.Background(), args)
-		Expect(err).NotTo(HaveOccurred())
+				Action: act,
+			}
+			args, _ := cli.Split("app -- -more 1 -more 2 -more 3")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
 
-		captured := cli.FromContext(act.ExecuteArgsForCall(0))
-		expr.FromContext(captured, "expression").Evaluate(captured, 0)
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
+			expr.FromContext(captured, "expression").Evaluate(captured, 0)
 
-		Expect(seen).To(Equal([]int{1, 2, 3}))
+			Expect(seen).To(expected)
+		},
+			Entry("int", new(int), Equal([]any{int(1), int(2), int(3)})),
+			Entry("NameValue (resettable)", new(cli.NameValue), Equal([]any{
+				&cli.NameValue{Name: "1", Value: "true"},
+				&cli.NameValue{Name: "2", Value: "true"},
+				&cli.NameValue{Name: "3", Value: "true"}},
+			)),
+		)
+
 	})
 
 	It("invokes the action on the arg", func() {

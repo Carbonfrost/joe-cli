@@ -632,7 +632,10 @@ func (v *valuePairCounter) Done() error {
 	return nil
 }
 
-func (v *valuePairCounter) Take(arg string, _ bool) error {
+func (v *valuePairCounter) Take(arg string, possibleFlag bool) error {
+	if possibleFlag && strings.HasPrefix(arg, "-") {
+		return EndOfArguments
+	}
 	switch v.count {
 	case 0:
 		if _, _, hasValue := splitValuePair(arg); hasValue {

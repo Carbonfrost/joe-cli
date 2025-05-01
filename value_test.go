@@ -174,6 +174,21 @@ var _ = Describe("Value", func() {
 				}),
 			),
 			Entry(
+				"name-value occurrence with possible flag",
+				&cli.Flag{
+					Name:  "o",
+					Value: &cli.NameValue{},
+				},
+				// hello gets interpreted as one namevalue instance
+				// because next is -o, but ultimately next namevalue wins
+				// as final occurrence
+				"app -o hello -o goodbye earth",
+				Equal(&cli.NameValue{
+					Name:  "goodbye",
+					Value: "earth",
+				}),
+			),
+			Entry(
 				"name-value only name sets true",
 				&cli.Flag{
 					Name:  "o",
