@@ -524,7 +524,7 @@ func failWithContextError(c *Context) error {
 	if r, ok := c.LookupData(panicDataKey); ok {
 		rvr := r.(*panicData)
 		fmt.Fprint(c.Stderr, rvr.stack)
-		return c.internalError(fmt.Errorf(rvr.recovered))
+		return c.internalError(errors.New(rvr.recovered))
 	}
 	return nil
 }

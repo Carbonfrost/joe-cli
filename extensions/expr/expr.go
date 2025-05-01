@@ -335,7 +335,6 @@ func NewBinding(ev Evaluator, exprlookup ...any) Binding {
 //   - func(any) bool
 //   - func(any) error
 //   - func(any)
-//
 func EvaluatorOf(v any) Evaluator {
 	switch a := v.(type) {
 	case nil:
