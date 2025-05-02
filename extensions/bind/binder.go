@@ -1,3 +1,6 @@
+// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 // Package bind provides functions for creating late-bound actions and evaluators.
 // It's common to produce actions or evaluators that delegate to other
 // actions or evaluators, to values in the context, or to models where the values

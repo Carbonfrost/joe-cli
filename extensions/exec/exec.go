@@ -1,3 +1,6 @@
+// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 // Package exec allows invoking other commands, including triggering the manual, opening a document,
 // or opening a Web page in the default Web browser.  It also provides a representation of the
 // flag value syntax used by the -exec expression in Unix-like find designed to pass the name of

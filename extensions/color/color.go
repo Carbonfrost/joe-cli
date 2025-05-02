@@ -1,3 +1,6 @@
+// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 // Package color provides template functions for adding color
 // to the command line output.  It automatically detects whether the
 // terminal supports color, and it contains conventions-based approaches
