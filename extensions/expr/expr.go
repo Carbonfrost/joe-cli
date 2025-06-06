@@ -135,6 +135,8 @@ type Predicate func(v any) bool
 // the input value
 type Invariant bool
 
+type composite []Evaluator
+
 // Always or never yield the input value
 const (
 	AlwaysTrue  = Invariant(true)
@@ -441,6 +443,16 @@ func (i Invariant) Evaluate(_ context.Context, v any, y func(any) error) error {
 	return nil
 }
 
+// ComposeEvaluator produces an evaluator which considers each evaluator in
+// turn. If any evaluator yields the value, evaluation stops. If any evaluator
+// returns an error, the evaluation stops and returns the error. This evaluator
+// can be thought of as a logical conjunction in the case where evaluators
+// work like Boolean predicates. Indeed, [Predicate] is often the type of the evaluators
+// passed this function.
+func ComposeEvaluator(e ...Evaluator) Evaluator {
+	return composite(e)
+}
+
 // Error provides an evaluator which yields an error. The zero value
 // is also useful, returning a generic error
 func Error(err error) Evaluator {
@@ -593,6 +605,30 @@ func (e evaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error)
 		return nil
 	}
 	return e(c, v, yield)
+}
+
+func (c composite) Evaluate(ctx context.Context, v any, yield func(any) error) error {
+	if yield == nil {
+		yield = emptyYielder
+	}
+	var yielded bool
+	yieldWrapper := func(any) error {
+		err := yield(v)
+		yielded = true
+		return err
+	}
+
+	for _, e := range c {
+		err := e.Evaluate(ctx, v, yieldWrapper)
+		if err != nil {
+			return err
+		}
+		if yielded {
+			yielded = false
+			break
+		}
+	}
+	return nil
 }
 
 func (f exprFlags) hidden() bool {

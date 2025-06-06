@@ -993,6 +993,66 @@ var _ = Describe("Predicate", func() {
 	})
 })
 
+var _ = Describe("ComposeEvaluator", func() {
+
+	It("handles all evaluators", func() {
+		fake1 := new(exprfakes.FakeEvaluator)
+		fake2 := new(exprfakes.FakeEvaluator)
+
+		compose := expr.ComposeEvaluator(fake1, fake2)
+		compose.Evaluate(context.Background(), nil, nil)
+		Expect(fake1.EvaluateCallCount()).To(Equal(1))
+		Expect(fake2.EvaluateCallCount()).To(Equal(1))
+	})
+
+	It("stops on first evaluator to yield", func() {
+		fake := new(exprfakes.FakeYielder)
+		value := new(struct{})
+		yieldEvaluator := new(exprfakes.FakeEvaluator)
+		yieldEvaluator.EvaluateStub = func(_ context.Context, v any, y func(any) error) error {
+			Expect(v).To(BeIdenticalTo(value))
+			return y(v)
+		}
+		blockedEvaluator := new(exprfakes.FakeEvaluator)
+
+		compose := expr.ComposeEvaluator(yieldEvaluator, blockedEvaluator)
+		compose.Evaluate(context.Background(), value, fake.Spy)
+		Expect(yieldEvaluator.EvaluateCallCount()).To(Equal(1))
+		Expect(blockedEvaluator.EvaluateCallCount()).To(Equal(0))
+		Expect(fake.CallCount()).To(Equal(1))
+	})
+
+	It("stops on first truthful Predicate", func() {
+		// This test mainly addresses the conjecture of the ComposeEvaluator documentation
+		// which is that Predicates are useful to ComposeEvaluator!
+		fake := new(exprfakes.FakeYielder)
+		value := new(struct{})
+		yieldEvaluator := expr.Predicate(func(any) bool {
+			return true
+		})
+		blockedEvaluator := new(exprfakes.FakeEvaluator)
+
+		compose := expr.ComposeEvaluator(yieldEvaluator, blockedEvaluator)
+		compose.Evaluate(context.Background(), value, fake.Spy)
+		Expect(blockedEvaluator.EvaluateCallCount()).To(Equal(0))
+		Expect(fake.CallCount()).To(Equal(1))
+	})
+
+	It("does not propagate when evaluator returns error", func() {
+		yieldsErrorEvaluator := new(exprfakes.FakeEvaluator)
+		yieldsErrorEvaluator.EvaluateStub = func(context.Context, any, func(any) error) error {
+			return errors.New("an error")
+		}
+		blockedEvaluator := new(exprfakes.FakeEvaluator)
+
+		compose := expr.ComposeEvaluator(yieldsErrorEvaluator, blockedEvaluator)
+		err := compose.Evaluate(context.Background(), nil, nil)
+		Expect(yieldsErrorEvaluator.EvaluateCallCount()).To(Equal(1))
+		Expect(blockedEvaluator.EvaluateCallCount()).To(Equal(0))
+		Expect(err).To(MatchError("an error"))
+	})
+})
+
 var _ = Describe("Error", func() {
 
 	It("returns the specified error", func() {
