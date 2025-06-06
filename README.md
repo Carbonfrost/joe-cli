@@ -8,3 +8,6 @@
 
 `cli` (tentative name) is another command line parsing and commander for Go.
 
+## Code of conduct
+
+This project has adopted a [Code of conduct](.github/CODE_OF_CONDUCT.md).
