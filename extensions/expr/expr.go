@@ -332,14 +332,23 @@ func NewBinding(ev Evaluator, exprlookup ...any) Binding {
 //   - func(*cli.Context, any) error
 //   - func(*cli.Context, any) bool
 //   - func(*cli.Context, any)
+//   - func(*cli.Context) error
+//   - func(*cli.Context) bool
+//   - func(*cli.Context)
 //   - func(context.Context, any, func(any)error) error
 //   - func(context.Context, any) error
 //   - func(context.Context, any) bool
 //   - func(context.Context, any)
+//   - func(context.Context) error
+//   - func(context.Context) bool
+//   - func(context.Context)
 //   - func(any, func(any)error) error
 //   - func(any) bool
 //   - func(any) error
 //   - func(any)
+//   - func() bool
+//   - func() error
+//   - func()
 func EvaluatorOf(v any) Evaluator {
 	switch a := v.(type) {
 	case nil:
@@ -368,17 +377,35 @@ func EvaluatorOf(v any) Evaluator {
 			a(c, v)
 			return y(v)
 		})
-	case func(context.Context, any, func(any) error) error:
-		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
-			return a(c, v, y)
+	case func(*cli.Context) bool:
+		return EvaluatorFunc(func(c *cli.Context, v any, y func(any) error) error {
+			if a(c) {
+				return y(v)
+			}
+			return nil
 		})
+	case func(*cli.Context) error:
+		return EvaluatorFunc(func(c *cli.Context, v any, y func(any) error) error {
+			err := a(c)
+			if err != nil {
+				return err
+			}
+			return y(v)
+		})
+	case func(*cli.Context):
+		return EvaluatorFunc(func(c *cli.Context, v any, y func(any) error) error {
+			a(c)
+			return y(v)
+		})
+	case func(context.Context, any, func(any) error) error:
+		return evaluatorFunc(a)
 	case func(context.Context, any) error:
 		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
 			err := a(c, v)
-			if err == nil {
-				return y(v)
+			if err != nil {
+				return err
 			}
-			return err
+			return y(v)
 		})
 	case func(context.Context, any) bool:
 		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
@@ -392,6 +419,26 @@ func EvaluatorOf(v any) Evaluator {
 			a(c, v)
 			return y(v)
 		})
+	case func(context.Context) error:
+		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
+			err := a(c)
+			if err != nil {
+				return err
+			}
+			return y(v)
+		})
+	case func(context.Context) bool:
+		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
+			if a(c) {
+				return y(v)
+			}
+			return nil
+		})
+	case func(context.Context):
+		return evaluatorFunc(func(c context.Context, v any, y func(any) error) error {
+			a(c)
+			return y(v)
+		})
 	case func(any, func(any) error) error:
 		return evaluatorFunc(func(_ context.Context, v any, y func(any) error) error {
 			return a(v, y)
@@ -399,10 +446,10 @@ func EvaluatorOf(v any) Evaluator {
 	case func(any) error:
 		return evaluatorFunc(func(_ context.Context, v any, y func(any) error) error {
 			err := a(v)
-			if err == nil {
-				return y(v)
+			if err != nil {
+				return err
 			}
-			return err
+			return y(v)
 		})
 	case func(any) bool:
 		return Predicate(a)
@@ -419,6 +466,11 @@ func EvaluatorOf(v any) Evaluator {
 	case func() error:
 		return evaluatorFunc(func(context.Context, any, func(any) error) error {
 			return a()
+		})
+	case func():
+		return evaluatorFunc(func(_ context.Context, v any, y func(any) error) error {
+			a()
+			return y(v)
 		})
 	case bool:
 		return Invariant(a)

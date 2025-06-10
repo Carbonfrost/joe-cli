@@ -1098,6 +1098,15 @@ var _ = Describe("EvaluatorOf", func() {
 		Entry("func(any)", func(any) { act() }),
 		Entry("func() bool", func() bool { act(); return false }),
 		Entry("func() error", func() error { act(); return nil }),
+		Entry("func(*cli.Context) error", func(*cli.Context) (_ error) { act(); return }),
+		Entry("func(*cli.Context) bool", func(*cli.Context) (_ bool) { act(); return }),
+		Entry("func(*cli.Context)", func(*cli.Context) { act() }),
+		Entry("func(context.Context) error", func(context.Context) (_ error) { act(); return }),
+		Entry("func(context.Context) bool", func(context.Context) (_ bool) { act(); return }),
+		Entry("func(context.Context)", func(context.Context) { act() }),
+		Entry("func() error", func() (_ error) { act(); return }),
+		Entry("func() bool", func() (_ bool) { act(); return }),
+		Entry("func()", func() { act() }),
 	)
 
 	It("always yields from boolean", func() {
