@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"regexp"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
@@ -410,6 +411,23 @@ var _ = Describe("DisplayHelpScreen", func() {
 				},
 			},
 			Not(ContainSubstring("--hidden"))),
+	)
+
+	DescribeTable("arg examples",
+		func(arg *cli.Arg, expected types.GomegaMatcher) {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					arg,
+				},
+			}
+			Expect(renderScreen(app, "app --help")).To(expected)
+		},
+		Entry("optional arg",
+			&cli.Arg{
+				UsageText: "usage",
+				NArg:      cli.OptionalArg(regexp.MustCompile("-.+").MatchString)},
+			ContainSubstring("[usage]"),
+		),
 	)
 
 	DescribeTable("sub-command examples",
