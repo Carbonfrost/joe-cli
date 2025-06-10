@@ -14,8 +14,7 @@
 	install \
 	-install-%
 
-BUILD_VERSION=$(shell git rev-parse --short HEAD)
-GO_LDFLAGS=-X 'github.com/Carbonfrost/joe-cli/internal/build.Version=$(BUILD_VERSION)'
+GO_LDFLAGS=
 
 build: generate
 
