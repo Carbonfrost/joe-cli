@@ -567,6 +567,7 @@ func At(t Timing, a Action) Action {
 //   - func() error
 //   - func()
 //   - Action
+//   - error
 //
 // You can also implement the legacy Action interface which used *Context instead of
 // context.Context in the Execute method (i.e. Execute(*Context) error)
@@ -616,6 +617,10 @@ func ActionOf(item any) Action {
 	case func(Action) Action:
 		return middlewareFunc(func(c *Context, next Action) error {
 			return Do(c, a(next))
+		})
+	case error:
+		return ActionOf(func() error {
+			return a
 		})
 	}
 	panic(fmt.Sprintf("unexpected type: %T", item))

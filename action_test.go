@@ -1185,6 +1185,11 @@ var _ = Describe("ActionOf", func() {
 		}).NotTo(Panic())
 	})
 
+	It("supports error as action", func() {
+		act := cli.ActionOf(errors.New("e"))
+		Expect(act.Execute(context.TODO())).To(MatchError("e"))
+	})
+
 	It("invokes the context action", func() {
 		ctx := &cli.Context{}
 		var called int
