@@ -23,7 +23,7 @@ import (
 )
 
 // Context provides the context in which the app, command, or flag is executing or initializing.
-// Context is used to faciliate interactions with the Joe-cli application context
+// Context is used to facilitate interactions with the Joe-cli application context
 // that is currently being initialized or executed.  It wraps context.Context and
 // can be obtained from FromContext
 type Context struct {

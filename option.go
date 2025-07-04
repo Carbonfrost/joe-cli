@@ -302,7 +302,7 @@ func (o Option) MarshalText() ([]byte, error) {
 // UnmarshalText converts the textual representation
 func (o *Option) UnmarshalText(b []byte) error {
 	res := *o
-	for _, s := range strings.Split(string(b), ",") {
+	for s := range strings.SplitSeq(string(b), ",") {
 		token := strings.TrimSpace(s)
 		res |= unmarshalText(token)
 	}

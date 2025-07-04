@@ -32,7 +32,7 @@
 // Additional formats can be registered using the RegisterTableFormat action.
 //
 // When you want to display tabular data in the CLI, you can use the RegisterTable
-// function to give the table a name and specifiy
+// function to give the table a name and specify
 package table
 
 import (
@@ -41,7 +41,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/olekukonko/tablewriter"
 )
@@ -146,7 +146,7 @@ const (
 `
 
 	subCommandListingTemplate = `
-{{- Table "Unformatted" -}}	
+{{- Table "Unformatted" -}}
 {{- range . -}}
 {{- Row -}}
 {{- .Names | BoldFirst | Join ", " | Cell -}}
@@ -322,8 +322,8 @@ func (c *tableContext) EndTable() string {
 		default:
 			sin = 3
 		}
-		if strings.HasPrefix(lines[i], sep) {
-			lines[i] = c.cornerSeparators[sin] + strings.TrimPrefix(lines[i], sep)
+		if after, ok := strings.CutPrefix(lines[i], sep); ok {
+			lines[i] = c.cornerSeparators[sin] + after
 		}
 		if strings.HasSuffix(lines[i], sep) {
 			lines[i] = strings.TrimSuffix(lines[i], sep) + c.cornerSeparators[sin+2]

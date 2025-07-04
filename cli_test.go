@@ -437,7 +437,7 @@ var _ = Describe("ReadString", func() {
 		Expect(err).To(MatchError("stdin not tty"))
 	})
 
-	It("propogates inner reader error", func() {
+	It("propagates inner reader error", func() {
 		app := &cli.App{
 			Name:   "any",
 			Stdout: io.Discard,
