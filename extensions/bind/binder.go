@@ -352,8 +352,8 @@ func Duration(nameopt ...any) Binder[time.Duration] {
 // argument by index.
 // When present in the Uses pipeline, this also sets up the corresponding flag or
 // arg with a reasonable default of the same type.
-func File(nameopt ...any) Binder[*cli.File] {
-	return byName((*cli.Context).File, nameopt)
+func File(nameopt ...any) *FileBinder {
+	return &FileBinder{binder: byName((*cli.Context).File, nameopt)}
 }
 
 // FileSet obtains a binder that obtains a value from the context. If the name is
@@ -522,7 +522,7 @@ func For[T any](nameopt ...any) Binder[T] {
 	}().(Binder[T])
 }
 
-func byName[T any](f func(*cli.Context, any) T, nameopt []any) Binder[T] {
+func byName[T any](f func(*cli.Context, any) T, nameopt []any) *binder[T] {
 	var name any
 	switch len(nameopt) {
 	case 0:
@@ -573,3 +573,52 @@ var (
 	_ binderInit        = (*exactBinder[any])(nil)
 	_ binderImpliedName = (*exactBinder[any])(nil)
 )
+
+// FileBinder provides a binder for [cli.File]
+type FileBinder struct {
+	*binder[*cli.File]
+}
+
+func (f *FileBinder) Bind(c context.Context) (*cli.File, error) {
+	return f.binder.Bind(c)
+}
+
+// Name obtains the name for the file
+func (f *FileBinder) Name() Binder[string] {
+	return then(f, func(f *cli.File) string {
+		return f.Name
+	})
+}
+
+// Dir obtains the name for the file
+func (f *FileBinder) Dir() Binder[string] {
+	return then(f, (*cli.File).Dir)
+}
+
+// Exists obtains the name for the file
+func (f *FileBinder) Exists() Binder[bool] {
+	return then(f, (*cli.File).Exists)
+}
+
+// Ext obtains the name for the file
+func (f *FileBinder) Ext() Binder[string] {
+	return then(f, (*cli.File).Ext)
+}
+
+// Base obtains the name for the file
+func (f *FileBinder) Base() Binder[string] {
+	return then(f, (*cli.File).Base)
+}
+
+func then[T, U any](b Binder[T], fn func(T) U) bindFunc[U] {
+	return func(c context.Context) (U, error) {
+		t, err := b.Bind(c)
+		if err != nil {
+			var zero U
+			return zero, err
+		}
+		return fn(t), nil
+	}
+}
+
+var _ Binder[*cli.File] = (*FileBinder)(nil)

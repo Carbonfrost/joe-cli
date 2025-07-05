@@ -157,6 +157,11 @@ func (f *File) String() string {
 	return f.Name
 }
 
+// Base obtains the basename of the file
+func (f *File) Base() string {
+	return filepath.Base(f.Name)
+}
+
 // Ext obtains the file extension
 func (f *File) Ext() string {
 	return filepath.Ext(f.Name)

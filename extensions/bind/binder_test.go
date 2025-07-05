@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"testing/fstest"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -52,6 +53,52 @@ var _ = Describe("Binder", func() {
 				Entry("flag by name", bind.Call(factory, bind.Int("flag")), "flag"),
 			)
 		})
+	})
+})
+
+func callFactory[T any](t *T) func(T) error {
+	return func(s T) error {
+		*t = s
+		return nil
+	}
+}
+
+var _ = Describe("FileBinder", func() {
+
+	It("delegates to bind properties", func() {
+		var (
+			exists                   bool
+			dir, ext, name, basename string
+		)
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "f",
+					Value: new(cli.File),
+					Uses: cli.Pipeline(
+						bind.Call(callFactory(&name), bind.File().Name()),
+						bind.Call(callFactory(&basename), bind.File().Base()),
+						bind.Call(callFactory(&ext), bind.File().Ext()),
+						bind.Call(callFactory(&dir), bind.File().Dir()),
+						bind.Call(callFactory(&exists), bind.File().Exists()),
+					),
+				},
+			},
+			FS: fstest.MapFS{
+				"V/filename.txt": {
+					Data: []byte("data"),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f V/filename.txt")
+		_ = app.RunContext(context.Background(), args)
+
+		Expect(name).To(Equal("V/filename.txt"))
+		Expect(basename).To(Equal("filename.txt"))
+		Expect(ext).To(Equal(".txt"))
+		Expect(dir).To(Equal("V"))
+		Expect(exists).To(BeTrue())
 	})
 })
 
