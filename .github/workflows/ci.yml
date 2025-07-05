@@ -19,7 +19,15 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-      - run: go test -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Tests (Ubuntu)
+        run: go test -v -coverprofile=coverage.txt -covermode=count -coverpkg=./... ./...
         if: matrix.os == 'ubuntu-latest'
       - run: go test ./...
         if: matrix.os == 'windows-latest'
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls@latest 
+      - name: Send coverage
+        if: "matrix.platform == 'ubuntu-latest'"
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: goveralls -coverprofile=coverage.out -service=github
