@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.9.2 (July 13, 2025)
+
+### New Features
+
+* `ActionOf`, add support for `error` as argument (9a3a7b4)
+* Allow typed value dereferences (27e1af9)
+* Bind extension:
+    * Add `FileBinder` and delegates, allowing easier use of file components as bindings (242d3a8)
+* Expression extension:
+    * `EvaluatorOf`: Support additional function signatures (d370117)
+    * `ComposeEvaluator` (78ba84b)
+
+### Bug fixes and improvements
+
+* Bug: Ensure `OptionalArg` is treated as optional in synopsis (f1a9a33)
+* Chores:
+    * Update to go1.24 (8a5d3cd)
+    * Adopt coverralls (2ffc8b9)
+    * Licensing and copyright information (6895338)
+    * Adopt a code of conduct (8c1a09d)
+    * Lint: address spelling errors; modernizations (e1549e9)
+    * Address minor linter errors (95cf25a)
+    * Remove a redundant call to `FromContext` (95cf25a)
+* Adopt debug symbol info to control version in `joe` (a9743f2)
+* Bug fix: ensure name value arg counter doesn't consume possible flags (c3f0a08)
+
+
 ## v0.9.1 (April 14, 2025)
 
 ### New Features
