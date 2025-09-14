@@ -174,62 +174,62 @@ func (f *File) Dir() string {
 
 // Open the file
 func (f *File) Open() (fs.File, error) {
-	return f.actualFS().Open(f.Name)
+	return actualFS(f.FS).Open(f.Name)
 }
 
 // OpenContext is used to open the file with the given context
 func (f *File) OpenContext(c context.Context) (fs.File, error) {
-	return f.actualFS().OpenContext(c, f.Name)
+	return actualFS(f.FS).OpenContext(c, f.Name)
 }
 
 // OpenFile will open the file using the specified flags and permissions
 func (f *File) OpenFile(flag int, perm os.FileMode) (fs.File, error) {
-	return f.actualFS().OpenFile(f.Name, flag, perm)
+	return actualFS(f.FS).OpenFile(f.Name, flag, perm)
 }
 
 // Create the file
 func (f *File) Create() (fs.File, error) {
-	return f.actualFS().Create(f.Name)
+	return actualFS(f.FS).Create(f.Name)
 }
 
 // Chmod to change mode
 func (f *File) Chmod(mode fs.FileMode) error {
-	return f.actualFS().Chmod(f.Name, mode)
+	return actualFS(f.FS).Chmod(f.Name, mode)
 }
 
 // Chown to change owner
 func (f *File) Chown(uid int, gid int) error {
-	return f.actualFS().Chown(f.Name, uid, gid)
+	return actualFS(f.FS).Chown(f.Name, uid, gid)
 }
 
 // Chtimes to change times
 func (f *File) Chtimes(atime, mtime time.Time) error {
-	return f.actualFS().Chtimes(f.Name, atime, mtime)
+	return actualFS(f.FS).Chtimes(f.Name, atime, mtime)
 }
 
 // Rename file
 func (f *File) Rename(newpath string) error {
-	return f.actualFS().Rename(f.Name, newpath)
+	return actualFS(f.FS).Rename(f.Name, newpath)
 }
 
 // Remove file
 func (f *File) Remove() error {
-	return f.actualFS().Remove(f.Name)
+	return actualFS(f.FS).Remove(f.Name)
 }
 
 // RemoveAll to remove file and all ancestors
 func (f *File) RemoveAll() error {
-	return f.actualFS().RemoveAll(f.Name)
+	return actualFS(f.FS).RemoveAll(f.Name)
 }
 
 // Mkdir creates a directory
 func (f *File) Mkdir(mode fs.FileMode) error {
-	return f.actualFS().Mkdir(f.Name, mode)
+	return actualFS(f.FS).Mkdir(f.Name, mode)
 }
 
 // MkdirAll creates a directory and all ancestors
 func (f *File) MkdirAll(mode fs.FileMode) error {
-	return f.actualFS().MkdirAll(f.Name, mode)
+	return actualFS(f.FS).MkdirAll(f.Name, mode)
 }
 
 // Exists tests whether the file exists
@@ -240,12 +240,12 @@ func (f *File) Exists() bool {
 
 // Stat obtains information about the file
 func (f *File) Stat() (fs.FileInfo, error) {
-	return f.actualFS().Stat(f.Name)
+	return actualFS(f.FS).Stat(f.Name)
 }
 
 // Walk walks the file tree, calling fn for each file or directory in the tree, including the root.
 func (f *File) Walk(fn fs.WalkDirFunc) error {
-	return walkFile(f.actualFS(), f.Name, fn)
+	return walkFile(actualFS(f.FS), f.Name, fn)
 }
 
 // Initializer obtains the initializer for the File, which is used to setup the file system used
@@ -267,13 +267,6 @@ func (f *File) setupOptionRequireFS(c *Context) error {
 		f.FS = c.actualFS()
 	}
 	return nil
-}
-
-func (f *File) actualFS() FS {
-	if f.FS == nil {
-		return newDefaultFS(os.Stdin, os.Stdout)
-	}
-	return wrapFS(f.FS)
 }
 
 // Set argument value; can call repeatedly
@@ -307,7 +300,7 @@ func (f *FileSet) String() string {
 
 // Exists tests whether all files in the set exist
 func (f *FileSet) Exists() bool {
-	ff := f.actualFS()
+	ff := actualFS(f.FS)
 	for _, file := range f.Files {
 		_, err := (&File{file, ff}).Stat()
 		if fileNotExists(err) {
@@ -337,7 +330,7 @@ func (f *FileSet) All() iter.Seq2[*File, error] {
 // Do will invoke the given function on each file in the set.  If recursion is
 // enabled, it will recurse directories and process on each file encountered.
 func (f *FileSet) Do(fn func(*File, error) error) error {
-	ff := f.actualFS()
+	ff := actualFS(f.FS)
 	if f.Recursive {
 		for _, file := range f.Files {
 			err := walkFile(ff, file, func(path string, _ fs.DirEntry, walkErr error) error {
@@ -356,13 +349,6 @@ func (f *FileSet) Do(fn func(*File, error) error) error {
 		}
 	}
 	return nil
-}
-
-func (f *FileSet) actualFS() FS {
-	if f.FS == nil {
-		return newDefaultFS(os.Stdin, os.Stdout)
-	}
-	return wrapFS(f.FS)
 }
 
 // NewCounter obtains the arg counter for file sets, which is implied to be TakeUntilNextFlag
@@ -655,111 +641,55 @@ func (c *contextFile) Write(p []byte) (n int, err error) {
 }
 
 func (d dirFS) Stat(name string) (fs.FileInfo, error) {
-	full, err := d.path(name)
-	if err != nil {
-		return nil, err
-	}
-	return os.Stat(full)
+	return os.Stat(d.path(name))
 }
 
 func (d dirFS) Open(name string) (fs.File, error) {
-	full, err := d.path(name)
-	if err != nil {
-		return nil, err
-	}
-	return os.Open(full)
+	return os.Open(d.path(name))
 }
 
 func (d dirFS) Create(name string) (fs.File, error) {
-	full, err := d.path(name)
-	if err != nil {
-		return nil, err
-	}
-	return os.Create(full)
+	return os.Create(d.path(name))
 }
 
 func (d dirFS) Chmod(name string, mode fs.FileMode) error {
-	full, err := d.path(name)
-	if err != nil {
-		return err
-	}
-	return os.Chmod(full, mode)
+	return os.Chmod(d.path(name), mode)
 }
 
 func (d dirFS) Chtimes(name string, atime, mtime time.Time) error {
-	full, err := d.path(name)
-	if err != nil {
-		return err
-	}
-	return os.Chtimes(full, atime, mtime)
+	return os.Chtimes(d.path(name), atime, mtime)
 }
 
 func (d dirFS) Chown(name string, uid int, gid int) error {
-	full, err := d.path(name)
-	if err != nil {
-		return err
-	}
-	return os.Chown(full, uid, gid)
+	return os.Chown(d.path(name), uid, gid)
 }
 
 func (d dirFS) Rename(oldpath, newpath string) error {
-	old, err := d.path(oldpath)
-	if err != nil {
-		return err
-	}
-	new, err := d.path(newpath)
-	if err != nil {
-		return err
-	}
-	return os.Rename(old, new)
+	return os.Rename(d.path(oldpath), d.path(newpath))
 }
 
 func (d dirFS) Remove(name string) error {
-	full, err := d.path(name)
-	if err != nil {
-		return err
-	}
-	return os.Remove(full)
+	return os.Remove(d.path(name))
 }
 
 func (d dirFS) RemoveAll(name string) error {
-	full, err := d.path(name)
-	if err != nil {
-		return err
-	}
-	return os.RemoveAll(full)
+	return os.RemoveAll(d.path(name))
 }
 
 func (d dirFS) Mkdir(name string, mode fs.FileMode) error {
-	full, err := d.path(name)
-	if err != nil {
-		return err
-	}
-	return os.Mkdir(full, mode)
+	return os.Mkdir(d.path(name), mode)
 }
 
 func (d dirFS) MkdirAll(name string, mode fs.FileMode) error {
-	full, err := d.path(name)
-	if err != nil {
-		return err
-	}
-	return os.MkdirAll(full, mode)
+	return os.MkdirAll(d.path(name), mode)
 }
 
 func (d dirFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
-	full, err := d.path(name)
-	if err != nil {
-		return nil, err
-	}
-	return os.OpenFile(full, flag, perm)
+	return os.OpenFile(d.path(name), flag, perm)
 }
 
 func (d dirFS) OpenContext(c context.Context, name string) (fs.File, error) {
-	full, err := d.path(name)
-	if err != nil {
-		return nil, err
-	}
-	f, err := os.Open(full)
+	f, err := os.Open(d.path(name))
 	if err != nil {
 		return nil, err
 	}
@@ -771,18 +701,14 @@ func (d dirFS) Sub(name string) (fs.FS, error) {
 	if name == "." {
 		return d, nil
 	}
-	p, err := d.path(name)
-	if err != nil {
-		return nil, err
-	}
-	return dirFS(p), nil
+	return dirFS(d.path(name)), nil
 }
 
-func (d dirFS) path(name string) (string, error) {
+func (d dirFS) path(name string) string {
 	if strings.HasPrefix(name, "/") {
-		return name, nil
+		return name
 	}
-	return path.Join(string(d), name), nil
+	return path.Join(string(d), name)
 }
 
 func fileNotExists(err error) bool {
@@ -809,6 +735,13 @@ func wrapContextFile(ctx context.Context, f *os.File) fs.File {
 
 func walkFile(ff FS, name string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(ff, name, fn)
+}
+
+func actualFS(f fs.FS) FS {
+	if f == nil {
+		return newDefaultFS(os.Stdin, os.Stdout)
+	}
+	return wrapFS(f)
 }
 
 func ignoreBlankPathError(err error) error {
