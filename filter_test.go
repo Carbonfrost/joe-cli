@@ -117,6 +117,7 @@ var _ = Describe("IfMatch", func() {
 		Entry("HasValue", targetApp, cli.HasValue, Equal([]string{"-f", "<a>"})),
 		Entry("RootCommand", targetApp, cli.RootCommand, Equal([]string{"p"})),
 		Entry("Seen", targetApp, cli.Seen, ConsistOf([]string{"-f", "<a>"})),
+		Entry("HasSeen", targetApp, cli.HasSeen("f"), ConsistOf([]string{"c", "-f", "<a>"})),
 		Entry("Initial", timingApp, cli.InitialTiming, Equal([]string{"i"})),
 		Entry("Before", timingApp, cli.BeforeTiming, Equal([]string{"b"})),
 		Entry("After", timingApp, cli.AfterTiming, Equal([]string{"a"})),

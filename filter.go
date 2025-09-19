@@ -87,6 +87,16 @@ func PatternFilter(pat string) ContextFilter {
 	return newContextPathPattern(pat)
 }
 
+// HasSeen provides a context filter for when a particular flag or arg has been seen
+func HasSeen(name any) ContextFilter {
+	if name == "" || name == nil {
+		return Seen
+	}
+	return ContextFilterFunc(func(c *Context) bool {
+		return c.Seen(name)
+	})
+}
+
 func (f FilterModes) Matches(ctx context.Context) bool {
 	// Note that Anything has the highest hamming weight so it gets
 	// tested first using the optimal implementation
