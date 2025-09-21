@@ -190,6 +190,12 @@ const (
 	// other reason, you can use this action.
 	Trigger
 
+	// ParseUnknownFlagsAsArgs causes the parser for the command to treat a missing
+	// flag as the value for an argument rather than generate an immediate error.
+	// This may allow clients to have special handling within arguments to treat
+	// flag-like syntax specially.
+	ParseUnknownFlagsAsArgs
+
 	maxOption
 
 	// None represents no options
@@ -225,61 +231,64 @@ const (
 	internalFlagDisableAutoVisibility
 	internalFlagVisibleExplicitlyRequested
 	internalFlagTriggerRequested
+	internalFlagParseUnknownFlagsAsArgs
 )
 
 var (
 	builtinOptions = FeatureMap[Option]{
-		Hidden:                 ActionFunc(hiddenOption),
-		Visible:                ActionFunc(visibleOption),
-		DisableAutoVisibility:  setInternalFlag(internalFlagDisableAutoVisibility),
-		Required:               ActionFunc(requiredOption),
-		Exits:                  ActionFunc(wrapWithExit),
-		MustExist:              Before(ActionFunc(mustExistOption)),
-		SkipFlagParsing:        setInternalFlag(internalFlagSkipFlagParsing),
-		WorkingDirectory:       Pipeline(DirectoryCompletion, Before(ActionFunc(workingDirectoryOption))),
-		Optional:               ActionFunc(optionalOption),
-		DisallowFlagsAfterArgs: setInternalFlag(internalFlagDisallowFlagsAfterArgs),
-		No:                     ActionFunc(noOption),
-		NonPersistent:          setInternalFlag(internalFlagNonPersistent),
-		DisableSplitting:       setInternalFlag(internalFlagDisableSplitting),
-		Merge:                  setInternalFlag(internalFlagMerge | internalFlagMergeExplicitlyRequested),
-		RightToLeft:            setInternalFlag(internalFlagRightToLeft),
-		PreventSetup:           ActionOf((*Context).PreventSetup),
-		EachOccurrence:         ActionFunc(eachOccurrenceOpt),
-		AllowFileReference:     actionFunc(allowFileReferenceOpt),
-		FileReference:          actionFunc(fileReferenceOpt),
-		SortedFlags:            Before(ActionFunc(sortedFlagsOpt)),
-		SortedCommands:         Before(ActionFunc(sortedCommandsOpt)),
-		SortedExprs:            Before(ActionFunc(sortedExprsOpt)),
-		ImpliedAction:          setInternalFlag(internalFlagImpliedAction),
-		Trigger:                setInternalFlag(internalFlagTriggerRequested),
+		Hidden:                  ActionFunc(hiddenOption),
+		Visible:                 ActionFunc(visibleOption),
+		DisableAutoVisibility:   setInternalFlag(internalFlagDisableAutoVisibility),
+		Required:                ActionFunc(requiredOption),
+		Exits:                   ActionFunc(wrapWithExit),
+		MustExist:               Before(ActionFunc(mustExistOption)),
+		SkipFlagParsing:         setInternalFlag(internalFlagSkipFlagParsing),
+		WorkingDirectory:        Pipeline(DirectoryCompletion, Before(ActionFunc(workingDirectoryOption))),
+		Optional:                ActionFunc(optionalOption),
+		DisallowFlagsAfterArgs:  setInternalFlag(internalFlagDisallowFlagsAfterArgs),
+		No:                      ActionFunc(noOption),
+		NonPersistent:           setInternalFlag(internalFlagNonPersistent),
+		DisableSplitting:        setInternalFlag(internalFlagDisableSplitting),
+		Merge:                   setInternalFlag(internalFlagMerge | internalFlagMergeExplicitlyRequested),
+		RightToLeft:             setInternalFlag(internalFlagRightToLeft),
+		PreventSetup:            ActionOf((*Context).PreventSetup),
+		EachOccurrence:          ActionFunc(eachOccurrenceOpt),
+		AllowFileReference:      actionFunc(allowFileReferenceOpt),
+		FileReference:           actionFunc(fileReferenceOpt),
+		SortedFlags:             Before(ActionFunc(sortedFlagsOpt)),
+		SortedCommands:          Before(ActionFunc(sortedCommandsOpt)),
+		SortedExprs:             Before(ActionFunc(sortedExprsOpt)),
+		ImpliedAction:           setInternalFlag(internalFlagImpliedAction),
+		Trigger:                 setInternalFlag(internalFlagTriggerRequested),
+		ParseUnknownFlagsAsArgs: setInternalFlag(internalFlagParseUnknownFlagsAsArgs),
 	}
 
 	builtinOptionLabels = map[Option]string{
-		Hidden:                 "HIDDEN",
-		Required:               "REQUIRED",
-		Exits:                  "EXITS",
-		MustExist:              "MUST_EXIST",
-		SkipFlagParsing:        "SKIP_FLAG_PARSING",
-		WorkingDirectory:       "WORKING_DIRECTORY",
-		Optional:               "OPTIONAL",
-		DisallowFlagsAfterArgs: "DISALLOW_FLAGS_AFTER_ARGS",
-		No:                     "NO",
-		NonPersistent:          "NON_PERSISTENT",
-		DisableSplitting:       "DISABLE_SPLITTING",
-		Merge:                  "MERGE",
-		RightToLeft:            "RIGHT_TO_LEFT",
-		PreventSetup:           "PREVENT_SETUP",
-		EachOccurrence:         "EACH_OCCURRENCE",
-		AllowFileReference:     "ALLOW_FILE_REFERENCE",
-		FileReference:          "FILE_REFERENCE",
-		SortedFlags:            "SORTED_FLAGS",
-		SortedCommands:         "SORTED_COMMANDS",
-		SortedExprs:            "SORTED_EXPRS",
-		ImpliedAction:          "IMPLIED_ACTION",
-		Visible:                "VISIBLE",
-		DisableAutoVisibility:  "DISABLE_AUTO_VISIBILITY",
-		Trigger:                "TRIGGER",
+		Hidden:                  "HIDDEN",
+		Required:                "REQUIRED",
+		Exits:                   "EXITS",
+		MustExist:               "MUST_EXIST",
+		SkipFlagParsing:         "SKIP_FLAG_PARSING",
+		WorkingDirectory:        "WORKING_DIRECTORY",
+		Optional:                "OPTIONAL",
+		DisallowFlagsAfterArgs:  "DISALLOW_FLAGS_AFTER_ARGS",
+		No:                      "NO",
+		NonPersistent:           "NON_PERSISTENT",
+		DisableSplitting:        "DISABLE_SPLITTING",
+		Merge:                   "MERGE",
+		RightToLeft:             "RIGHT_TO_LEFT",
+		PreventSetup:            "PREVENT_SETUP",
+		EachOccurrence:          "EACH_OCCURRENCE",
+		AllowFileReference:      "ALLOW_FILE_REFERENCE",
+		FileReference:           "FILE_REFERENCE",
+		SortedFlags:             "SORTED_FLAGS",
+		SortedCommands:          "SORTED_COMMANDS",
+		SortedExprs:             "SORTED_EXPRS",
+		ImpliedAction:           "IMPLIED_ACTION",
+		Visible:                 "VISIBLE",
+		DisableAutoVisibility:   "DISABLE_AUTO_VISIBILITY",
+		Trigger:                 "TRIGGER",
+		ParseUnknownFlagsAsArgs: "PARSE_UNKNOWN_FLAGS_AS_ARGS",
 	}
 )
 
@@ -432,6 +441,10 @@ func (f internalFlags) triggerRequested() bool {
 	return f&internalFlagTriggerRequested == internalFlagTriggerRequested
 }
 
+func (f internalFlags) parseUnknownFlagsAsArgs() bool {
+	return f&internalFlagParseUnknownFlagsAsArgs == internalFlagParseUnknownFlagsAsArgs
+}
+
 func (f internalFlags) toRaw() RawParseFlag {
 	var flags RawParseFlag
 	if f.disallowFlagsAfterArgs() {
@@ -439,6 +452,9 @@ func (f internalFlags) toRaw() RawParseFlag {
 	}
 	if f.rightToLeft() {
 		flags |= RawRTL
+	}
+	if f.parseUnknownFlagsAsArgs() {
+		flags |= RawParseUnknownFlagsAsArgs
 	}
 	return flags
 }

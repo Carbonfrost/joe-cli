@@ -58,6 +58,7 @@ const (
 	RawRTL = RawParseFlag(1 << iota)
 	RawDisallowFlagsAfterArgs
 	RawSkipProgramName
+	RawParseUnknownFlagsAsArgs
 )
 
 const (
@@ -73,6 +74,7 @@ const (
 
 const (
 	flagsOrArgs = parserState(iota)
+	didPushbackArg
 	argsOnly
 )
 
@@ -155,6 +157,10 @@ func (f RawParseFlag) skipProgramName() bool {
 	return f&RawSkipProgramName == RawSkipProgramName
 }
 
+func (f RawParseFlag) parseUnknownFlagsAsArgs() bool {
+	return f&RawParseUnknownFlagsAsArgs == RawParseUnknownFlagsAsArgs
+}
+
 // RawParse does low-level parsing that will parse from the given input arguments.   (This is for
 // advanced use.) The bindings parameter determines how to resolve flags and args.  The return values
 // are a map of data corresponding to the raw occurrences using the same names.  An error,
@@ -167,18 +173,14 @@ func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings Bindi
 	}
 	positionalOpts := newArgBinding(b)
 
-	if args.empty() {
-		err = positionalOpts.Done()
-		return
-	}
-
-	pos := positionalOpts.takers
 	disallowFlagsAfterArgs := flags.disallowFlagsAfterArgs()
+	parseUnknownFlagsAsArgs := flags.parseUnknownFlagsAsArgs()
 
 	// When in RTL mode, identify the first argument to actually fill by
 	// counting the number of arguments required by arguments right-to-left.
 	count := len(arguments)
 	if flags.rightToLeft() {
+		pos := positionalOpts.takers
 		skip := len(pos)
 
 		for i := len(pos) - 1; i >= 0 && i < len(pos); i-- {
@@ -214,7 +216,7 @@ func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings Bindi
 	)
 
 	// Skip program name
-	if flags.skipProgramName() {
+	if !args.empty() && flags.skipProgramName() {
 		args.pop()
 	}
 
@@ -223,7 +225,7 @@ Parsing:
 		arg := args.pop()
 
 		// end of options?
-		if arg == "" || arg == "-" || arg[0] != '-' || state == argsOnly {
+		if arg == "" || arg == "-" || arg[0] != '-' || state == argsOnly || state == didPushbackArg {
 			for {
 				if arg == "--" {
 					state = argsOnly
@@ -234,6 +236,7 @@ Parsing:
 					continue Parsing
 				}
 
+				// Note that when pushed back, possibleFlag must be false
 				err = positionalOpts.SetArg(arg, args, state == flagsOrArgs)
 				if err != nil {
 					// Not accepted as an argument, possibly a flag per usual out of
@@ -245,12 +248,15 @@ Parsing:
 						return
 					}
 				}
-				argName := "<" + positionalOpts.name() + ">"
-				appendOutput(positionalOpts.name(), []string{argName, arg})
+				appendOutput(positionalOpts.name(), []string{positionalOpts.argName(), arg})
+
+				if state == didPushbackArg {
+					state = flagsOrArgs
+				}
 
 				if args.empty() {
 					if err = positionalOpts.Done(); err != nil {
-						err = argTakerError(argName, "", err, nil)
+						err = argTakerError(positionalOpts.argName(), "", err, nil)
 						return
 					}
 					continue Parsing
@@ -272,12 +278,9 @@ Parsing:
 
 		// Long option processing
 		if arg[1] == '-' {
-			e := strings.IndexRune(arg, '=')
 			var value string
-			if e > 0 {
-				value = arg[e+1:]
-				arg = arg[:e]
-			}
+			var hasValue bool
+			arg, value, hasValue = strings.Cut(arg, "=")
 
 			// Lookup the flag uname given the possible alias name.
 			// If the flag name is only one character, then also check
@@ -285,6 +288,11 @@ Parsing:
 			flag, ok := b.ResolveAlias(arg[2:])
 
 			if !ok {
+				if parseUnknownFlagsAsArgs {
+					state = didPushbackArg
+					args.pushBack(arg)
+					continue Parsing
+				}
 				err = unknownOption(arg[2:], prepend(optionName(arg[2:]), args...))
 				return
 			}
@@ -297,9 +305,9 @@ Parsing:
 			// If we require an option and did not have an =
 			// then use the next argument as an option.
 			_, opt, _, _ := b.LookupOption(flag)
-			if e < 0 {
+			if !hasValue {
 				var outputs []string
-				var oldArgs = prepend(optionName(arg[2:]), args...)
+				oldArgs := prepend(optionName(arg[2:]), args...)
 				if outputs, err = args.take(flag, opt); err != nil {
 					err = argTakerError(optionName(arg[2:]), "", err, oldArgs)
 					return
@@ -324,6 +332,11 @@ Parsing:
 			short := "-" + string(c)
 			flag, ok := b.ResolveAlias(string(c))
 			if !ok {
+				if i == 0 && parseUnknownFlagsAsArgs {
+					state = didPushbackArg
+					args.pushBack("-" + arg)
+					continue Parsing
+				}
 				err = unknownOption(c, prepend("-"+arg[i:], args...))
 				return
 			}
@@ -338,11 +351,11 @@ Parsing:
 					continue Parsing
 				}
 
-				// If an equal sign is present, this is the synt ax -s=value,
+				// If an equal sign is present, this is the syntax -s=value,
 				// which implies trying to set a value.  Include the = in
 				// the binding
 				if value[0] == '=' {
-					var oldArgs = prepend(short+value, args...)
+					oldArgs := prepend(short+value, args...)
 					err = flagUnexpectedArgument(short, value, oldArgs)
 					return
 				}
@@ -366,7 +379,7 @@ Parsing:
 			}
 
 			var outputs []string
-			var oldArgs = prepend(short, args...)
+			oldArgs := prepend(short, args...)
 			if outputs, err = args.take(flag, opt); err != nil {
 				err = argTakerError(optionName(flag), value, err, oldArgs)
 				return
@@ -381,17 +394,12 @@ Parsing:
 }
 
 func (s *set) parse(args argList, flags RawParseFlag) error {
-	err := s.parseBindings(args, flags)
+	bindings, err := RawParse(args, s.Binding, flags)
+	s.BindingMap = bindings
 	if err != nil {
 		return err
 	}
 	return s.BindingMap.ApplyTo(s)
-}
-
-func (s *set) parseBindings(args argList, flags RawParseFlag) error {
-	bindings, err := RawParse(args, s.Binding, flags)
-	s.BindingMap = bindings
-	return err
 }
 
 func (b *bindingImpl) Reset() {
@@ -571,12 +579,13 @@ func (a *argList) pop() string {
 	return res
 }
 
-func (a argList) len() int {
-	return len(a)
+func (a *argList) pushBack(s string) {
+	r := *a
+	*a = prepend(s, r...)
 }
 
 func (a argList) empty() bool {
-	return a.len() == 0
+	return len(a) == 0
 }
 
 func (a argList) current() string {
@@ -628,6 +637,10 @@ func (a *argBinding) next() bool {
 
 func (a *argBinding) name() string {
 	return a.names[a.index]
+}
+
+func (a *argBinding) argName() string {
+	return "<" + a.name() + ">"
 }
 
 func (a *argBinding) current() ArgCounter {

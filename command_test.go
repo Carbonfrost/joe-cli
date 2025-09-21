@@ -238,6 +238,98 @@ var _ = Describe("Command", func() {
 
 	})
 
+	Describe("ParseUnknownFlagsAsArgs", func() {
+
+		DescribeTable("examples", func(args string, argCounter int, expected map[string]types.GomegaMatcher) {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name:    "app",
+				Options: cli.ParseUnknownFlagsAsArgs,
+				Action:  act,
+				Args: []*cli.Arg{
+					{
+						Name:  "args",
+						NArg:  argCounter,
+						Value: cli.List(),
+					},
+				},
+				Flags: []*cli.Flag{
+					{Name: "long", Value: new(bool)},
+					{Name: "f", Value: new(bool)},
+					{Name: "g", Value: new(bool)},
+				},
+			}
+
+			arguments, _ := cli.Split(args)
+			err := app.RunContext(context.Background(), arguments)
+			Expect(err).NotTo(HaveOccurred())
+			captured := cli.FromContext(act.ExecuteArgsForCall(0))
+
+			for k, v := range expected {
+				Expect(captured.Value(k)).To(v)
+			}
+		},
+			Entry("TakeUntilNextFlag", "app --unknown --long", cli.TakeUntilNextFlag, map[string]types.GomegaMatcher{
+				"args": Equal([]string{"--unknown"}),
+				"long": BeTrue(),
+			}),
+			Entry("TakeRemaining", "app --unknown --long --other", cli.TakeRemaining, map[string]types.GomegaMatcher{
+				"args": Equal([]string{"--unknown", "--long", "--other"}),
+				"long": BeFalse(),
+			}),
+			Entry("TakeExceptForFlags", "app --unknown --long --other", cli.TakeExceptForFlags, map[string]types.GomegaMatcher{
+				"args": Equal([]string{"--unknown", "--other"}),
+				"long": BeTrue(),
+			}),
+
+			Entry("TakeUntilNextFlag - short", "app -x -f", cli.TakeUntilNextFlag, map[string]types.GomegaMatcher{
+				"args": Equal([]string{"-x"}),
+				"f":    BeTrue(),
+			}),
+			Entry("TakeRemaining - short", "app -x -f -y", cli.TakeRemaining, map[string]types.GomegaMatcher{
+				"args": Equal([]string{"-x", "-f", "-y"}),
+				"long": BeFalse(),
+			}),
+			Entry("TakeExceptForFlags - short", "app -x -f -y", cli.TakeExceptForFlags, map[string]types.GomegaMatcher{
+				"args": Equal([]string{"-x", "-y"}),
+				"f":    BeTrue(),
+			}),
+
+			Entry("run-in flags", "app -xfg", cli.TakeUntilNextFlag, map[string]types.GomegaMatcher{
+				"args": Equal([]string{"-xfg"}),
+				"f":    BeFalse(),
+				"g":    BeFalse(),
+			}),
+		)
+
+		It("treats run-in flags as error when ambiguous", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name:    "app",
+				Options: cli.ParseUnknownFlagsAsArgs,
+				Action:  act,
+				Args: []*cli.Arg{
+					{
+						Name:  "args",
+						NArg:  cli.TakeUntilNextFlag,
+						Value: cli.List(),
+					},
+				},
+				Flags: []*cli.Flag{
+					{Name: "f", Value: new(bool)},
+					{Name: "g", Value: new(bool)},
+				},
+			}
+
+			// This is treated as an error because even though -x is not defined, earlier flags
+			// -f and -g are
+			arguments, _ := cli.Split("app -fgx")
+			err := app.RunContext(context.Background(), arguments)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("unknown option: -x"))
+		})
+	})
+
 	Describe("DisallowFlagsAfterArgs", func() {
 		DescribeTable("causes flags after args error", func(arguments string) {
 			app := &cli.App{
