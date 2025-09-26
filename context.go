@@ -194,10 +194,6 @@ func (c *Context) Execute(args []string) error {
 func (c *Context) parse(args []string) *robustParseResult {
 	root := c.Command()
 	set := root.buildSet(c)
-	if root.internalFlags().skipFlagParsing() {
-		args = append([]string{args[0], "--"}, args[1:]...)
-	}
-
 	flags := root.internalFlags().toRaw() | RawSkipProgramName
 	err := set.parse(args, flags)
 	return &robustParseResult{bindings: set.BindingMap, err: err}

@@ -59,6 +59,7 @@ const (
 	RawDisallowFlagsAfterArgs
 	RawSkipProgramName
 	RawParseUnknownFlagsAsArgs
+	RawSkipFlagParsing
 )
 
 const (
@@ -161,6 +162,10 @@ func (f RawParseFlag) parseUnknownFlagsAsArgs() bool {
 	return f&RawParseUnknownFlagsAsArgs == RawParseUnknownFlagsAsArgs
 }
 
+func (f RawParseFlag) skipFlagParsing() bool {
+	return f&RawSkipFlagParsing == RawSkipFlagParsing
+}
+
 // RawParse does low-level parsing that will parse from the given input arguments.   (This is for
 // advanced use.) The bindings parameter determines how to resolve flags and args.  The return values
 // are a map of data corresponding to the raw occurrences using the same names.  An error,
@@ -218,6 +223,9 @@ func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings Bindi
 	// Skip program name
 	if !args.empty() && flags.skipProgramName() {
 		args.pop()
+	}
+	if flags.skipFlagParsing() {
+		state = argsOnly
 	}
 
 Parsing:

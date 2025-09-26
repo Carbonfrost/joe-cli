@@ -447,6 +447,9 @@ func (f internalFlags) parseUnknownFlagsAsArgs() bool {
 
 func (f internalFlags) toRaw() RawParseFlag {
 	var flags RawParseFlag
+	if f.skipFlagParsing() {
+		flags |= RawSkipFlagParsing
+	}
 	if f.disallowFlagsAfterArgs() {
 		flags |= RawDisallowFlagsAfterArgs
 	}
