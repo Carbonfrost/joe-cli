@@ -12,14 +12,15 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.37.0
-	github.com/spf13/afero v1.14.0
-	golang.org/x/term v0.33.0
+	github.com/onsi/ginkgo/v2 v2.25.1
+	github.com/onsi/gomega v1.38.2
+	github.com/spf13/afero v1.15.0
+	golang.org/x/term v0.36.0
 )
 
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/chavacava/garif v0.1.0 // indirect
 	github.com/cristalhq/acmd v0.12.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -51,15 +52,15 @@ require (
 	github.com/quasilyte/stdinfo v0.0.0-20220114132959-f7386bf02567 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20240213143201-ec583247a57a // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/mod v0.28.0 // indirect
+	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/tools v0.37.0 // indirect
 	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.5.1 // indirect
 )
 
