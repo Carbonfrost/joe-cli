@@ -219,6 +219,14 @@ func Redirect[V any](name any, valopt ...V) cli.Action {
 	}
 }
 
+// SetPointer sets a pointer as the binding action
+func SetPointer[V any](v *V, binder Binder[V]) cli.Action {
+	return Call(func(in V) (_ error) {
+		*v = in
+		return
+	}, binder)
+}
+
 func newEvaluator(initz cli.Action, evaluator evaluatorFunc) *evaluatorInit {
 	return &evaluatorInit{
 		Action:    cli.Pipeline(initz, expr.SetEvaluator(evaluator)),

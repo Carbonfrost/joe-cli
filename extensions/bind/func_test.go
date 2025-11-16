@@ -282,6 +282,33 @@ var _ = Describe("Call3", func() {
 	})
 })
 
+var _ = Describe("SetPointer", func() {
+
+	Describe("binding arguments", func() {
+		DescribeTable("examples", func(binder bind.Binder[string], expected string) {
+			var target string
+
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{Name: "arg", NArg: 1},
+				},
+				Flags: []*cli.Flag{
+					{Name: "f"},
+				},
+				Uses: bind.SetPointer(&target, binder),
+			}
+
+			args, _ := cli.Split("app -f flag_value arg_value")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(target).To(Equal(expected))
+		},
+			Entry("named", bind.String("f"), "flag_value"),
+			Entry("implicit name", bind.String(), "arg_value"),
+		)
+	})
+})
+
 var _ = Describe("Evaluator", func() {
 
 	It("invokes the factory", func() {
