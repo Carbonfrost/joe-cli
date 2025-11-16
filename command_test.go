@@ -63,6 +63,47 @@ var _ = Describe("Command", func() {
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 
+	Describe("default commands", func() {
+
+		DescribeTableSubtree("examples", func(name string) {
+
+			It("is present", func() {
+				var cmd *cli.Command
+
+				app := &cli.App{
+					Action: func(c *cli.Context) {
+						cmd, _ = c.Command().Command(name)
+					},
+					Commands: []*cli.Command{
+						{Name: "c"},
+					},
+				}
+				app.RunContext(context.Background(), []string{"app"})
+				Expect(cmd).ToNot(BeNil())
+			})
+
+			It("is tagged", func() {
+				var cmd *cli.Command
+
+				app := &cli.App{
+					Action: func(c *cli.Context) {
+						cmd, _ = c.Command().Command(name)
+					},
+					Commands: []*cli.Command{
+						{Name: "c"},
+					},
+				}
+				app.RunContext(context.Background(), []string{"app"})
+				Expect(cmd.Data).To(HaveKeyWithValue(cli.SourceAnnotation()))
+			})
+		},
+
+			Entry("include version", "version"),
+			Entry("include help", "help"),
+		)
+
+	})
+
 	Describe("actions", func() {
 
 		var (

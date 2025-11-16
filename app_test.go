@@ -114,6 +114,18 @@ var _ = Describe("App", func() {
 			Expect(help).ToNot(BeNil())
 		})
 
+		It("is tagged", func() {
+			var help *cli.Flag
+			app := &cli.App{
+				Action: func(c *cli.Context) {
+					help, _ = c.Command().Flag("help")
+				},
+			}
+
+			app.RunContext(context.Background(), []string{"app"})
+			Expect(help.Data).To(HaveKeyWithValue(cli.SourceAnnotation()))
+		})
+
 		It("prints default help output", func() {
 			var (
 				capture bytes.Buffer
@@ -142,6 +154,18 @@ var _ = Describe("App", func() {
 
 			app.RunContext(context.Background(), []string{"app"})
 			Expect(version).ToNot(BeNil())
+		})
+
+		It("is tagged", func() {
+			var version *cli.Flag
+			app := &cli.App{
+				Action: func(c *cli.Context) {
+					version, _ = c.Command().Flag("version")
+				},
+			}
+
+			app.RunContext(context.Background(), []string{"app"})
+			Expect(version.Data).To(HaveKeyWithValue(cli.SourceAnnotation()))
 		})
 
 		It("prints default version output", func() {

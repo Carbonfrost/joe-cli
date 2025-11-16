@@ -429,19 +429,21 @@ func setupDefaultTemplates(c *Context) error {
 	return nil
 }
 
-func optionalCommand(name string, cmd func() *Command) ActionFunc {
+func optionalCommand(name string, cmd Action) ActionFunc {
 	return func(c *Context) error {
 		app := c.Command()
 		if len(app.Subcommands) > 0 {
 			if _, ok := app.Command(name); !ok {
-				app.Subcommands = append(app.Subcommands, cmd())
+				return c.AddCommand(&Command{
+					Uses: Pipeline(cmd, tagged),
+				})
 			}
 		}
 		return nil
 	}
 }
 
-func optionalFlag(name string, f func() *Flag) ActionFunc {
+func optionalFlag(name string, f Action) ActionFunc {
 	return func(c *Context) error {
 		// Don't create optional flags if setup has been tainted
 		// or if a flag with the same name exists
@@ -451,7 +453,10 @@ func optionalFlag(name string, f func() *Flag) ActionFunc {
 
 		app := c.Command()
 		if _, ok := app.Flag(name); !ok {
-			return c.AddFlag(f())
+			return c.AddFlag(&Flag{
+				Name: name,
+				Uses: Pipeline(f, tagged),
+			})
 		}
 		return nil
 	}

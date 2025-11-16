@@ -164,16 +164,9 @@ func SetCompletion(c Completion) Action {
 
 func setupCompletion(c context.Context) error {
 	return Do(c, Pipeline(
-		optionalFlag("zsh-completion", zshCompletionFlag),
+		optionalFlag("zsh-completion", ShellCompleteIntegration("zsh", newZshComplete())),
 		ApplyShellCompletion(),
 	))
-}
-
-func zshCompletionFlag() *Flag {
-	return &Flag{
-		Name: "zsh-completion",
-		Uses: ShellCompleteIntegration("zsh", newZshComplete()),
-	}
 }
 
 func setupRobustParsingMode(c *Context) {

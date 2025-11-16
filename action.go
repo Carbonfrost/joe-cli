@@ -13,6 +13,7 @@ import (
 	"maps"
 	"os"
 	"os/signal"
+	"reflect"
 	"regexp"
 	"runtime/debug"
 	"strings"
@@ -304,10 +305,16 @@ var (
 			ActionFunc(applyImplicitVisibility),
 			IfMatch(RootCommand,
 				actions(
-					ActionFunc(optionalCommand("help", defaultHelpCommand)),
-					ActionFunc(optionalFlag("help", defaultHelpFlag)),
-					ActionFunc(optionalCommand("version", defaultVersionCommand)),
-					ActionFunc(optionalFlag("version", defaultVersionFlag)),
+					ActionFunc(optionalCommand("help", ActionOf(func(c context.Context) error {
+						// HACK For some reason, in this context DisplayHelpScreen is not
+						// pure and can capture state in between unit tests, so we need
+						// this wrapping action func
+						return Do(c, DisplayHelpScreen())
+					}),
+					)),
+					ActionFunc(optionalFlag("help", DisplayHelpScreen())),
+					ActionFunc(optionalCommand("version", PrintVersion())),
+					ActionFunc(optionalFlag("version", PrintVersion())),
 					actionFunc(setupCompletion),
 				),
 			),
@@ -434,6 +441,9 @@ var (
 	// that is late initialized in init() rather than
 	// a function that directly depends upon its values.
 	flow [targetTypeMaxValue]*actionPipelines
+
+	tagged  = Data(SourceAnnotation())
+	pkgPath = reflect.TypeFor[Action]().PkgPath()
 )
 
 func init() {
@@ -494,6 +504,12 @@ func Do(c context.Context, action Action) error {
 		return nil
 	}
 	return action.Execute(c)
+}
+
+// SourceAnnotation gets the name and value of the annotation added to the Data
+// of all flags and commands that are initialized from this package
+func SourceAnnotation() (string, string) {
+	return "Source", pkgPath
 }
 
 // SuppressError wraps an action to ignore its error.
@@ -1894,32 +1910,6 @@ func doThenExit(a Action) Action {
 		}
 		return Exit(0)
 	})
-}
-
-func defaultVersionFlag() *Flag {
-	return &Flag{
-		Name: "version",
-		Uses: PrintVersion(),
-	}
-}
-
-func defaultHelpFlag() *Flag {
-	return &Flag{
-		Name: "help",
-		Uses: DisplayHelpScreen(),
-	}
-}
-
-func defaultHelpCommand() *Command {
-	return &Command{
-		Uses: DisplayHelpScreen(),
-	}
-}
-
-func defaultVersionCommand() *Command {
-	return &Command{
-		Uses: PrintVersion(),
-	}
 }
 
 var (
