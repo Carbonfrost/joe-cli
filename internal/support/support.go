@@ -4,14 +4,24 @@
 package support
 
 import (
+	"fmt"
+	"math/big"
+	"net"
+	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/term"
 )
+
+type valueResetOrMerge interface {
+	Reset()
+}
 
 func ParseMap(values []string) map[string]string {
 	res := map[string]string{}
@@ -71,6 +81,79 @@ func SplitList(s, sep string, n int) []string {
 		return res
 	}
 	return strings.SplitN(s, sep, n)
+}
+
+func MustValueReset(p any) {
+	res, ok := p.(valueResetOrMerge)
+	if !ok {
+		panic(errUnsupportedForCopying(p))
+	}
+	res.Reset()
+}
+
+func MustValueCloneZero(p any) any {
+	// TODO This does not support []*NameValue
+	switch val := p.(type) {
+	case *bool:
+		return new(bool)
+	case *string:
+		return new(string)
+	case *[]string:
+		return new([]string)
+	case *int:
+		return new(int)
+	case *int8:
+		return new(int8)
+	case *int16:
+		return new(int16)
+	case *int32:
+		return new(int32)
+	case *int64:
+		return new(int64)
+	case *uint:
+		return new(uint)
+	case *uint8:
+		return new(uint8)
+	case *uint16:
+		return new(uint16)
+	case *uint32:
+		return new(uint32)
+	case *uint64:
+		return new(uint64)
+	case *float32:
+		return new(float32)
+	case *float64:
+		return new(float64)
+	case *time.Duration:
+		return new(time.Duration)
+	case *map[string]string:
+		return new(map[string]string)
+	case **url.URL:
+		return new(*url.URL)
+	case *net.IP:
+		return new(net.IP)
+	case **regexp.Regexp:
+		return new(*regexp.Regexp)
+	case **big.Int:
+		return new(*big.Int)
+	case **big.Float:
+		return new(*big.Float)
+	case *[]byte:
+		return new([]byte)
+	case valueResetOrMerge:
+		r := reflect.ValueOf(val).MethodByName("Copy")
+		if r.IsValid() {
+			res := r.Call(nil)[0].Interface()
+			res.(valueResetOrMerge).Reset()
+			return res
+		}
+	}
+
+	panic(errUnsupportedForCopying(p))
+}
+
+func errUnsupportedForCopying(p any) error {
+	return fmt.Errorf("unsupported flag type for copying or resetting: %T", p)
 }
 
 func GuessWidth() int {

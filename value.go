@@ -852,64 +852,11 @@ func optionSetOccurrence(o option, values ...string) error {
 
 // valueCloneZero creates a clone with the same type
 func valueCloneZero(p any) any {
-	switch val := p.(type) {
-	case *bool:
-		return Bool()
-	case *string:
-		return String()
-	case *[]string:
-		return List()
-	case *int:
-		return Int()
-	case *int8:
-		return Int8()
-	case *int16:
-		return Int16()
-	case *int32:
-		return Int32()
-	case *int64:
-		return Int64()
-	case *uint:
-		return Uint()
-	case *uint8:
-		return Uint8()
-	case *uint16:
-		return Uint16()
-	case *uint32:
-		return Uint32()
-	case *uint64:
-		return Uint64()
-	case *float32:
-		return Float32()
-	case *float64:
-		return Float64()
-	case *time.Duration:
-		return Duration()
-	case *map[string]string:
-		return Map()
+	switch p.(type) {
 	case *[]*NameValue:
 		return NameValues()
-	case **url.URL:
-		return URL()
-	case *net.IP:
-		return IP()
-	case **regexp.Regexp:
-		return Regexp()
-	case **big.Int:
-		return BigInt()
-	case **big.Float:
-		return BigFloat()
-	case *[]byte:
-		return Bytes()
-	case valueResetOrMerge:
-		r := reflect.ValueOf(val).MethodByName("Copy")
-		if r.IsValid() {
-			res := r.Call(nil)[0].Interface()
-			res.(valueResetOrMerge).Reset()
-			return res
-		}
 	}
-	panic(fmt.Sprintf("unsupported flag type for copying: %T", p))
+	return support.MustValueCloneZero(p)
 }
 
 func valueSmartOptionalDefault(v any) any {

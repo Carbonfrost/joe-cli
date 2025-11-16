@@ -19,6 +19,7 @@ import (
 	"time"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // Hex represents an integer that parses from the hex syntax
@@ -123,7 +124,12 @@ func (j *jsonValue) Set(s string) error {
 }
 
 func (j *jsonValue) SetData(r io.Reader) error {
-	return json.NewDecoder(r).Decode(j.V)
+	err := json.NewDecoder(r).Decode(j.V)
+	if err == io.EOF {
+		return nil
+	}
+
+	return err
 }
 
 func (j *jsonValue) Get() any {
@@ -135,6 +141,14 @@ func (j *jsonValue) String() string {
 		return cli.Quote(j.V)
 	}
 	return ""
+}
+
+func (j *jsonValue) Reset() {
+	support.MustValueReset(j.V)
+}
+
+func (j *jsonValue) Copy() *jsonValue {
+	return &jsonValue{V: support.MustValueCloneZero(j.V)}
 }
 
 func (j *jsonValue) supportsIntrinsicSet() bool {

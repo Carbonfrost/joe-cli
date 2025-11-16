@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"math"
+	"testing/fstest"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -121,7 +122,55 @@ var _ = Describe("JSON", func() {
 				HaveOccurred(),
 				BeZero(),
 			),
+			Entry(
+				"empty string is ignored",
+				``,
+				Not(HaveOccurred()),
+				BeZero(),
+			),
 		)
+	})
+
+	It("supports copying via EachOccurrence", func() {
+		var seen []*cli.NameValue
+
+		seenWith := func(nv *cli.NameValue) error {
+			c := *nv // Must copy the value so we have each instance that occurred
+			seen = append(seen, &c)
+			return nil
+		}
+
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Value:   value.JSON(new(cli.NameValue)),
+					Options: cli.EachOccurrence | cli.FileReference,
+					Action: func(c *cli.Context) {
+						seenWith(c.NameValue(""))
+					},
+				},
+			},
+			FS: fstest.MapFS{
+				"h.json": {Data: []byte(`{ "Name": "H", "Value": "0" }`)},
+				"i.json": {Data: []byte(`{ "Name": "I", "Value": "1" }`)},
+			},
+			Action: new(joeclifakes.FakeAction),
+		}
+
+		args, _ := cli.Split("app -f h.json -f i.json")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(seen).To(ContainElements(
+			&cli.NameValue{
+				Name:  "H",
+				Value: "0",
+			}, &cli.NameValue{
+				Name:  "I",
+				Value: "1",
+			}))
 	})
 
 })
