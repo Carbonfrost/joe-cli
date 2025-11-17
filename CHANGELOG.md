@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.9.3 (November 16, 2025)
+
+### New Features
+
+* `bind.SetPointer` (a5ace84)
+* Handle fallback from unknown flags (2317fb8)
+* `HasSeen` (c80ea55)
+
+### Bug fixes and improvements
+
+* Bug fix: allow JSON wrapper to ignore EOF (d7d48ae)
+* Add source annotations to built-in version/help flags (9a15594)
+* JSON wrapper support for copying and resetting inner value (d7d48ae)
+* Convert args only into raw flag (c7e0076)
+* Cleanup in `File`, `FileSet` (20f8a68)
+* Chores:
+    * Update GitHub configuration (9e5d188, ba50254, 5130bf1)
+    * Update dependent versions (8fc0631, d17ed24)
+
 ## v0.9.2 (July 13, 2025)
 
 ### New Features
