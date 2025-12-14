@@ -294,6 +294,33 @@ var _ = Describe("File", func() {
 		Expect(string(actual)).To(Equal("hello\n"))
 	})
 
+	It("reads multiple times from stdin", func() {
+		var actual []byte
+		buf := bytes.NewBufferString("hello\n")
+		app := cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:  "f",
+					Value: &cli.File{},
+				},
+				{
+					Name:  "g",
+					Value: &cli.File{},
+				},
+			},
+			Stdin: buf,
+			Action: func(c *cli.Context) {
+				f, _ := c.File("f").Open()
+				_, _ = io.ReadAll(f)
+
+				g, _ := c.File("g").Open()
+				actual, _ = io.ReadAll(g)
+			},
+		}
+		_ = app.RunContext(context.Background(), []string{"app", "-", "-"})
+		Expect(string(actual)).To(Equal("hello\n"))
+	})
+
 	Describe("standard file", func() {
 
 		It("uses stdin when opening read mode", func() {

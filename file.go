@@ -5,6 +5,7 @@ package cli
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -97,8 +98,9 @@ type FileSet struct {
 }
 
 type stdFile struct {
-	in  io.Reader
-	out io.Writer
+	in      io.Reader
+	out     io.Writer
+	inCache *bytes.Buffer
 }
 
 type defaultFS struct {
@@ -130,7 +132,7 @@ func NewFS(f fs.FS) FS {
 func NewSysFS(base FS, in io.Reader, out io.Writer) FS {
 	return &defaultFS{
 		FS:  base,
-		std: &stdFile{in, out},
+		std: &stdFile{in: in, out: out},
 	}
 }
 
@@ -417,14 +419,14 @@ func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (fs.File, e
 	if name == "-" && d.std != nil {
 		switch flag & readWriteMask {
 		case os.O_RDONLY:
-			return d.std.in.(*os.File), nil
+			return d.std.in.(fs.File), nil
 		case os.O_RDWR:
 			if (flag & (os.O_APPEND | os.O_CREATE)) > 0 {
-				return d.std.out.(*os.File), nil
+				return d.std.out.(fs.File), nil
 			}
 			return nil, errors.New("open not supported: O_RDWR must be specified with O_APPEND or O_CREATE")
 		case os.O_WRONLY:
-			return d.std.out.(*os.File), nil
+			return d.std.out.(fs.File), nil
 		}
 	}
 	return d.FS.OpenFile(name, flag, perm)
@@ -432,7 +434,7 @@ func (d defaultFS) OpenFile(name string, flag int, perm os.FileMode) (fs.File, e
 
 func (d defaultFS) OpenContext(c context.Context, name string) (fs.File, error) {
 	if name == "-" && d.std != nil {
-		return d.std, nil
+		return d.std.copy(), nil
 	}
 	return d.FS.OpenContext(c, name)
 }
@@ -576,7 +578,7 @@ func (f fsExtensionWrapper) OpenFile(name string, flag int, perm fs.FileMode) (f
 }
 
 func (s *stdFile) Stat() (fs.FileInfo, error) {
-	if f, ok := s.in.(*os.File); ok {
+	if f, ok := s.in.(fileStat); ok {
 		return f.Stat()
 	}
 	return nil, nil
@@ -616,6 +618,18 @@ func (s *stdFile) WriteString(str string) (n int, err error) {
 
 func (s *stdFile) Write(p []byte) (n int, err error) {
 	return s.out.Write(p)
+}
+
+func (s *stdFile) copy() *stdFile {
+	if s.inCache == nil {
+		var cache bytes.Buffer
+		_, _ = cache.ReadFrom(s.in)
+		s.inCache = &cache
+	}
+	return &stdFile{
+		in:  bytes.NewReader(s.inCache.Bytes()),
+		out: s.out,
+	}
 }
 
 func (c *contextFile) Read(p []byte) (n int, err error) {
