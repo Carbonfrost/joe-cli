@@ -2830,7 +2830,6 @@ var _ = Describe("EachOccurrence", func() {
 	It("works with Bind in Uses pipeline", func() {
 		// Tests for a bug:  pipeline additions provided by Bind
 		// where not wrapped in EachOccurrence
-		fs := new(cli.FileSet)
 		var values []uint64
 		binder := func(r uint64) error {
 			values = append(values, r)
@@ -2843,10 +2842,6 @@ var _ = Describe("EachOccurrence", func() {
 					Name:    "f",
 					Options: cli.EachOccurrence,
 					Uses:    cli.Bind(binder),
-				},
-				{
-					Name:  "vars",
-					Value: fs,
 				},
 			},
 		}
