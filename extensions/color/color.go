@@ -9,6 +9,7 @@ package color
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/Carbonfrost/joe-cli"
 )
@@ -74,13 +75,14 @@ var (
 		TemplateFuncs: RegisterTemplateFuncs(),
 	}
 
+	pkgPath = reflect.TypeFor[Emoji]().PkgPath()
 	tagged = cli.Data(SourceAnnotation())
 )
 
 // SourceAnnotation gets the name and value of the annotation added to the Data
 // of all flags that are initialized from this package
 func SourceAnnotation() (string, string) {
-	return "Source", "joe-cli/color"
+	return "Source", pkgPath
 }
 
 // RegisterTemplateFuncs sets up the template funcs which can be used
