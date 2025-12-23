@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.9.4 (December 22, 2025)
+
+### New Feature
+
+* `marshal` package to support API representation of command lines (e18d31c)
+
+### Bug fixes and improvements
+
+* Allow reading from stdin multiple times; other file improvements (f952bb3)
+* Update source annotation in color extension (682ef2b)
+* Cleanup unused test setup (c064e61)
+
+
 ## v0.9.3 (November 16, 2025)
 
 ### New Features
