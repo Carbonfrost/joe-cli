@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -372,13 +373,7 @@ func (r *Registry) Execute(c context.Context) error {
 }
 
 func (m Map) ProviderNames() []string {
-	keys := make([]string, len(m))
-	var i int
-	for k := range m {
-		keys[i] = k
-		i++
-	}
-	return keys
+	return slices.Collect(maps.Keys(m))
 }
 
 func (m Map) LookupProvider(name string) (d Detail, ok bool) {
