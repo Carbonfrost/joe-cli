@@ -40,6 +40,52 @@ var _ = Describe("Assert", func() {
 	)
 })
 
+var _ = Context("universe filters", func() {
+
+	var (
+		falseFilter cli.ContextFilterFunc = func(c *cli.Context) bool {
+			return false
+		}
+
+		trueFilter cli.ContextFilterFunc = func(c *cli.Context) bool {
+			return true
+		}
+	)
+
+	var _ = Describe("Any", func() {
+
+		It("is Anything when empty", func() {
+			Expect(cli.Any()).To(BeIdenticalTo(cli.Anything))
+		})
+
+		It("doesn't match if all don't", func() {
+			Expect(cli.Any(falseFilter, falseFilter).Matches(nil)).To(BeFalse())
+		})
+
+		It("matches if any does", func() {
+			Expect(cli.Any(trueFilter, falseFilter).Matches(nil)).To(BeTrue())
+		})
+
+	})
+
+	var _ = Describe("All", func() {
+
+		It("is Anything when empty", func() {
+			Expect(cli.All()).To(BeIdenticalTo(cli.Anything))
+		})
+
+		It("doesn't match if any doesn't", func() {
+			Expect(cli.All(trueFilter, falseFilter).Matches(nil)).To(BeFalse())
+		})
+
+		It("matches if all do", func() {
+			Expect(cli.All(trueFilter, trueFilter).Matches(nil)).To(BeTrue())
+		})
+
+	})
+
+})
+
 var _ = Describe("IfMatch", func() {
 
 	var (

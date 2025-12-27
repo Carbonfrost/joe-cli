@@ -29,6 +29,11 @@ type bitSet[T ~int, V any] struct {
 	m    map[T]V
 }
 
+type (
+	anyFilter []ContextFilter
+	allFilter []ContextFilter
+)
+
 const (
 	// AnyFlag filters the context for any flag
 	AnyFlag FilterModes = 1 << iota
@@ -80,6 +85,18 @@ var (
 func anyImpl(*Context) bool    { return true }
 func seenThis(c *Context) bool { return c.Seen("") }
 func isRoot(c *Context) bool   { return c.Parent() == nil }
+
+// Any provides a composite ContextFilter where any filter
+// from a list can match. When empty, this is the same as Anything.
+func Any(f ...ContextFilter) ContextFilter {
+	return castUniverseFilter[anyFilter](f)
+}
+
+// All provides a composite ContextFilter where all filters
+// from a list must match. When empty, this is the same as Anything.
+func All(f ...ContextFilter) ContextFilter {
+	return castUniverseFilter[allFilter](f)
+}
 
 // PatternFilter parses a context pattern string and returns
 // a filter which matches on it.
@@ -141,6 +158,37 @@ func (f ContextFilterFunc) Matches(c context.Context) bool {
 		return true
 	}
 	return f(FromContext(c))
+}
+
+func (a anyFilter) Matches(c context.Context) bool {
+	for _, f := range a {
+		if f.Matches(c) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a allFilter) Matches(c context.Context) bool {
+	for _, f := range a {
+		if !f.Matches(c) {
+			return false
+		}
+	}
+	return true
+}
+
+func castUniverseFilter[TFilter interface {
+	~[]ContextFilter
+	ContextFilter
+}](f []ContextFilter) ContextFilter {
+	if len(f) == 0 {
+		return Anything
+	}
+	if len(f) == 1 {
+		return f[0]
+	}
+	return TFilter(f)
 }
 
 func decompose[T ~int, V any](m map[T]V) *bitSet[T, V] {
