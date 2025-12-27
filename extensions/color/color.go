@@ -76,7 +76,7 @@ var (
 	}
 
 	pkgPath = reflect.TypeFor[Emoji]().PkgPath()
-	tagged = cli.Data(SourceAnnotation())
+	tagged  = cli.Data(SourceAnnotation())
 )
 
 // SourceAnnotation gets the name and value of the annotation added to the Data
