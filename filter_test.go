@@ -6,7 +6,10 @@ package cli_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+
 	"github.com/Carbonfrost/joe-cli"
+	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -120,12 +123,18 @@ var _ = Describe("IfMatch", func() {
 								Name:   "f",
 								Value:  new(bool),
 								Before: cli.IfMatch(mode, appendName),
+								Data: map[string]any{
+									"tag": "t",
+								},
 							},
 						},
 						Args: []*cli.Arg{
 							{
 								Name:   "a",
 								Before: cli.IfMatch(mode, appendName),
+								Data: map[string]any{
+									"tag": "x",
+								},
 							},
 						},
 					},
@@ -174,6 +183,9 @@ var _ = Describe("IfMatch", func() {
 		Entry("nil thunk matches everything", targetApp, cli.ContextFilterFunc(nil), ConsistOf([]string{"-f", "<a>", "c", "p"})),
 		Entry("pattern", targetApp, cli.PatternFilter("c -f"), Equal([]string{"-f"})),
 		Entry("empty matches everything", targetApp, cli.PatternFilter(""), Equal([]string{"p", "c", "-f", "<a>"})),
+		Entry("pattern multi", targetApp, cli.PatternFilter("c -f, c, <a>"), ConsistOf([]string{"-f", "c", "<a>"})),
+		Entry("pattern tag", targetApp, cli.PatternFilter("{tag:t}"), ConsistOf([]string{"-f"})),
+		Entry("pattern tag bool", targetApp, cli.PatternFilter("{tag}"), ConsistOf([]string{"-f", "<a>"})),
 	)
 })
 
@@ -212,5 +224,71 @@ var _ = Describe("FilterModes", func() {
 			Entry("RootCommand", cli.RootCommand, "root command"),
 			Entry("Seen", cli.Seen, "option that has been seen"),
 		)
+	})
+})
+
+var _ = Describe("HasData", func() {
+
+	It("matches context by key", func() {
+		fake := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: cli.Pipeline(
+				cli.Data("key", "value"),
+				cli.IfMatch(cli.HasData("key"), fake),
+			),
+		}
+
+		_, _ = app.Initialize(context.Background())
+		Expect(fake.ExecuteCallCount()).To(Equal(1))
+	})
+
+	It("matches context by inherited key", func() {
+		fake := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Uses: cli.IfMatch(cli.HasData("key"), fake),
+				},
+			},
+			Uses: cli.Data("key", "value"),
+		}
+		_ = app.RunContext(context.Background(), []string{"app", "sub"})
+		Expect(fake.ExecuteCallCount()).To(Equal(1))
+	})
+
+	It("matches context by key and value", func() {
+		fake := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: cli.Pipeline(
+				cli.Data("key", "value"),
+				cli.IfMatch(cli.HasData("key", "value"), fake),
+			),
+		}
+		_, _ = app.Initialize(context.Background())
+		Expect(fake.ExecuteCallCount()).To(Equal(1))
+	})
+
+	It("does not match context with different value", func() {
+		fake := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: cli.Pipeline(
+				cli.Data("key", "value"),
+				cli.IfMatch(cli.HasData("key", "nonmatchingvalue"), fake),
+			),
+		}
+		_, _ = app.Initialize(context.Background())
+		Expect(fake.ExecuteCallCount()).To(Equal(0))
+	})
+
+	Context("string representation", func() {
+		DescribeTable("examples", func(subj cli.ContextFilter, expected string) {
+			Expect(fmt.Sprint(subj)).To(Equal(expected))
+		},
+			Entry("nominal", cli.HasData("tag", "t"), "{tag:t}"),
+			Entry("key only", cli.HasData("tag"), "{tag}"),
+			Entry("non-string", cli.HasData("t", 2), "{t 2}"),
+		)
+
 	})
 })

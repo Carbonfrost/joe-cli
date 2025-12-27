@@ -145,10 +145,6 @@ func fromContext(ctx context.Context) (*Context, bool) {
 	return c, ok
 }
 
-func newContextPathPattern(pat string) contextPathPattern {
-	return contextPathPattern{strings.Fields(pat)}
-}
-
 func newValueTarget(v any, name string, action Action) *valueTarget {
 	return &valueTarget{
 		v:    v,
@@ -1469,9 +1465,8 @@ func (c ContextPath) String() string {
 // - <arg>    an argument matching the arg name
 // - <->      any expression
 // - <-expr>  an expression matching the arg name
-
 func (c ContextPath) Match(pattern string) bool {
-	return newContextPathPattern(pattern).Match(c)
+	return contextPathPattern{strings.Fields(pattern)}.Match(c)
 }
 
 func (cp contextPathPattern) Matches(c context.Context) bool {
