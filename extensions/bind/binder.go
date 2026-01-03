@@ -123,6 +123,12 @@ type binderImpliedName interface {
 	SetName(any)
 }
 
+type binderSupportInterface[V any] interface {
+	binderInit
+	binderImpliedName
+	Binder[V]
+}
+
 type binder[V any] struct {
 	binderSupport[V]
 	lookupValue func(*cli.Context, any) V
@@ -164,7 +170,7 @@ func Exact[T any](valopt ...T) Binder[T] {
 	if len(valopt) > 1 {
 		panic("expected 0 or 1 args for valopt")
 	}
-	return &exactBinder[T]{v: valopt[0]}
+	return wrapWithComposite(&exactBinder[T]{v: valopt[0]}).(Binder[T])
 }
 
 // Value obtains a binder that obtains a value from the context. If the name is
@@ -173,7 +179,7 @@ func Exact[T any](valopt ...T) Binder[T] {
 // When present in the Uses pipeline, this also sets up the corresponding flag or
 // arg with a reasonable default of the same type.
 func Value[T any](nameopt ...any) Binder[T] {
-	return byName(contextValue[T], nameopt)
+	return wrapWithComposite(byName(contextValue[T], nameopt)).(Binder[T])
 }
 
 func contextValue[T any](c *cli.Context, name any) T {
@@ -352,7 +358,7 @@ func Duration(nameopt ...any) Binder[time.Duration] {
 // When present in the Uses pipeline, this also sets up the corresponding flag or
 // arg with a reasonable default of the same type.
 func File(nameopt ...any) *FileBinder {
-	return &FileBinder{binder: byName((*cli.Context).File, nameopt)}
+	return wrapWithComposite(byName((*cli.Context).File, nameopt)).(*FileBinder)
 }
 
 // FileSet obtains a binder that obtains a value from the context. If the name is
@@ -500,19 +506,17 @@ func bind3[T, U, V any](c context.Context, t Binder[T], u Binder[U], v Binder[V]
 }
 
 var (
-	_ binderInit        = (*binder[any])(nil)
-	_ binderImpliedName = (*binder[any])(nil)
-	_ binderInit        = (*exactBinder[any])(nil)
-	_ binderImpliedName = (*exactBinder[any])(nil)
+	_ binderSupportInterface[any] = (*binder[any])(nil)
+	_ binderSupportInterface[any] = (*exactBinder[any])(nil)
 )
 
 // FileBinder provides a binder for [cli.File]
 type FileBinder struct {
-	*binder[*cli.File]
+	binderSupportInterface[*cli.File]
 }
 
 func (f *FileBinder) Bind(c context.Context) (*cli.File, error) {
-	return f.binder.Bind(c)
+	return f.binderSupportInterface.Bind(c)
 }
 
 // Name obtains the name for the file
@@ -551,6 +555,15 @@ func then[T, U any](b Binder[T], fn func(T) U) bindFunc[U] {
 		}
 		return fn(t), nil
 	}
+}
+
+func wrapWithComposite[V any](in binderSupportInterface[V]) any {
+	var zero V
+	switch any(zero).(type) {
+	case *cli.File:
+		return &FileBinder{in.(binderSupportInterface[*cli.File])}
+	}
+	return in
 }
 
 var _ Binder[*cli.File] = (*FileBinder)(nil)

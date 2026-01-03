@@ -15,6 +15,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
+	"github.com/onsi/gomega/types"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -233,19 +234,20 @@ var _ = Describe("Exact", func() {
 		Expect(app.Flags[0].Value).To(PointTo(BeTrue()))
 	})
 
+	Describe("composite binder types", func() {
+		DescribeTable("examples", func(binder any, expected types.GomegaMatcher) {
+			Expect(binder).To(expected)
+		},
+			Entry("File", bind.Exact(new(cli.File)), BeAssignableToTypeOf(new(bind.FileBinder))),
+		)
+	})
+
 })
 
 var _ = Describe("Value", func() {
 
 	DescribeTable("examples", func(fn any) {
-		var actual any
-
-		rv := reflect.ValueOf(fn)
-		Expect(func() {
-			results := rv.Call(nil)
-			actual = results[0].Interface()
-		}).NotTo(Panic())
-		Expect(actual).NotTo(BeNil())
+		Expect(fn).To(WithTransform(calledWithReflection, Not(BeNil())))
 	},
 		Entry("Int", bind.Value[int]),
 		Entry("Bool", bind.Value[bool]),
@@ -277,7 +279,27 @@ var _ = Describe("Value", func() {
 		Entry("Bytes", bind.Value[[]byte]),
 		Entry("Interface", bind.Value[any]),
 	)
+
+	Describe("composite binder types", func() {
+		DescribeTable("examples", func(fn any, expected types.GomegaMatcher) {
+			Expect(fn).To(WithTransform(calledWithReflection, expected))
+		},
+			Entry("File", bind.Value[*cli.File], BeAssignableToTypeOf(new(bind.FileBinder))),
+		)
+	})
 })
+
+func calledWithReflection(fn any) any {
+	var actual any
+
+	rv := reflect.ValueOf(fn)
+	Expect(func() {
+		results := rv.Call(nil)
+		actual = results[0].Interface()
+	}).NotTo(Panic())
+
+	return actual
+}
 
 func box[T any](t T) *T {
 	return &t
