@@ -239,6 +239,7 @@ var _ = Describe("Exact", func() {
 			Expect(binder).To(expected)
 		},
 			Entry("File", bind.Exact(new(cli.File)), BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("NameValue", bind.Exact(new(cli.NameValue)), BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
 	})
 
@@ -285,6 +286,7 @@ var _ = Describe("Value", func() {
 			Expect(fn).To(WithTransform(calledWithReflection, expected))
 		},
 			Entry("File", bind.Value[*cli.File], BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("NameValue", bind.Value[*cli.NameValue], BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
 	})
 })

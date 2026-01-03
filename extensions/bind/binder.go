@@ -384,8 +384,8 @@ func Map(nameopt ...any) Binder[map[string]string] {
 // argument by index.
 // When present in the Uses pipeline, this also sets up the corresponding flag or
 // arg with a reasonable default of the same type.
-func NameValue(nameopt ...any) Binder[*cli.NameValue] {
-	return byName((*cli.Context).NameValue, nameopt)
+func NameValue(nameopt ...any) *NameValueBinder {
+	return wrapWithComposite(byName((*cli.Context).NameValue, nameopt)).(*NameValueBinder)
 }
 
 // NameValues obtains a binder that obtains a value from the context. If the name is
@@ -546,6 +546,25 @@ func (f *FileBinder) Base() Binder[string] {
 	return then(f, (*cli.File).Base)
 }
 
+// NameValueBinder provides a binder for [cli.NameValue]
+type NameValueBinder struct {
+	binderSupportInterface[*cli.NameValue]
+}
+
+// Name provides a delegate binder which obtains the name part
+func (f *NameValueBinder) Name() Binder[string] {
+	return then(f, func(f *cli.NameValue) string {
+		return f.Name
+	})
+}
+
+// Value provides a delegate binder which obtains the value part
+func (f *NameValueBinder) Value() Binder[string] {
+	return then(f, func(f *cli.NameValue) string {
+		return f.Value
+	})
+}
+
 func then[T, U any](b Binder[T], fn func(T) U) bindFunc[U] {
 	return func(c context.Context) (U, error) {
 		t, err := b.Bind(c)
@@ -562,6 +581,8 @@ func wrapWithComposite[V any](in binderSupportInterface[V]) any {
 	switch any(zero).(type) {
 	case *cli.File:
 		return &FileBinder{in.(binderSupportInterface[*cli.File])}
+	case *cli.NameValue:
+		return &NameValueBinder{in.(binderSupportInterface[*cli.NameValue])}
 	}
 	return in
 }
