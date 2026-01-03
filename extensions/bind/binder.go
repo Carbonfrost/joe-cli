@@ -60,7 +60,6 @@ package bind
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"net"
 	"net/url"
@@ -453,73 +452,6 @@ func Bytes(nameopt ...any) Binder[[]byte] {
 // arg with a reasonable default of the same type.
 func Interface(nameopt ...any) Binder[any] {
 	return byName((*cli.Context).Value, nameopt)
-}
-
-// For provides the binder of the specified type
-func For[T any](nameopt ...any) Binder[T] {
-	var t T
-	return func() any {
-		switch any(t).(type) {
-		case bool:
-			return Bool(nameopt...)
-		case string:
-			return String(nameopt...)
-		case []string:
-			return List(nameopt...)
-		case int:
-			return Int(nameopt...)
-		case int8:
-			return Int8(nameopt...)
-		case int16:
-			return Int16(nameopt...)
-		case int32:
-			return Int32(nameopt...)
-		case int64:
-			return Int64(nameopt...)
-		case uint:
-			return Uint(nameopt...)
-		case uint8:
-			return Uint8(nameopt...)
-		case uint16:
-			return Uint16(nameopt...)
-		case uint32:
-			return Uint32(nameopt...)
-		case uint64:
-			return Uint64(nameopt...)
-		case float32:
-			return Float32(nameopt...)
-		case float64:
-			return Float64(nameopt...)
-		case time.Duration:
-			return Duration(nameopt...)
-		case *cli.File:
-			return File(nameopt...)
-		case *cli.FileSet:
-			return FileSet(nameopt...)
-		case map[string]string:
-			return Map(nameopt...)
-		case *cli.NameValue:
-			return NameValue(nameopt...)
-		case []*cli.NameValue:
-			return NameValues(nameopt...)
-		case *url.URL:
-			return URL(nameopt...)
-		case *regexp.Regexp:
-			return Regexp(nameopt...)
-		case *net.IP:
-			return IP(nameopt...)
-		case *big.Int:
-			return BigInt(nameopt...)
-		case *big.Float:
-			return BigFloat(nameopt...)
-		case []byte:
-			return Bytes(nameopt...)
-		case any:
-			return Interface(nameopt...)
-		default:
-			panic(fmt.Sprintf("unexpected target type %T", t))
-		}
-	}().(Binder[T])
 }
 
 func byName[T any](f func(*cli.Context, any) T, nameopt []any) *binder[T] {

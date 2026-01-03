@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"reflect"
 	"regexp"
 	"testing/fstest"
 	"time"
@@ -234,44 +235,47 @@ var _ = Describe("Exact", func() {
 
 })
 
-var _ = Describe("For", func() {
+var _ = Describe("Value", func() {
 
-	DescribeTable("examples", func(fn func() any) {
+	DescribeTable("examples", func(fn any) {
 		var actual any
+
+		rv := reflect.ValueOf(fn)
 		Expect(func() {
-			actual = fn
+			results := rv.Call(nil)
+			actual = results[0].Interface()
 		}).NotTo(Panic())
 		Expect(actual).NotTo(BeNil())
 	},
-		Entry("Int", func() any { return bind.For[int]() }),
-		Entry("Bool", func() any { return bind.For[bool]() }),
-		Entry("String", func() any { return bind.For[string]() }),
-		Entry("List", func() any { return bind.For[[]string]() }),
-		Entry("Int", func() any { return bind.For[int]() }),
-		Entry("Int8", func() any { return bind.For[int8]() }),
-		Entry("Int16", func() any { return bind.For[int16]() }),
-		Entry("Int32", func() any { return bind.For[int32]() }),
-		Entry("Int64", func() any { return bind.For[int64]() }),
-		Entry("Uint", func() any { return bind.For[uint]() }),
-		Entry("Uint8", func() any { return bind.For[uint8]() }),
-		Entry("Uint16", func() any { return bind.For[uint16]() }),
-		Entry("Uint32", func() any { return bind.For[uint32]() }),
-		Entry("Uint64", func() any { return bind.For[uint64]() }),
-		Entry("Float32", func() any { return bind.For[float32]() }),
-		Entry("Float64", func() any { return bind.For[float64]() }),
-		Entry("Duration", func() any { return bind.For[time.Duration]() }),
-		Entry("File", func() any { return bind.For[*cli.File]() }),
-		Entry("FileSet", func() any { return bind.For[*cli.FileSet]() }),
-		Entry("Map", func() any { return bind.For[map[string]string]() }),
-		Entry("NameValue", func() any { return bind.For[*cli.NameValue]() }),
-		Entry("NameValues", func() any { return bind.For[[]*cli.NameValue]() }),
-		Entry("URL", func() any { return bind.For[*url.URL]() }),
-		Entry("Regexp", func() any { return bind.For[*regexp.Regexp]() }),
-		Entry("IP", func() any { return bind.For[net.IP]() }),
-		Entry("BigInt", func() any { return bind.For[*big.Int]() }),
-		Entry("BigFloat", func() any { return bind.For[*big.Float]() }),
-		Entry("Bytes", func() any { return bind.For[[]byte]() }),
-		Entry("Interface", func() any { return bind.For[any]() }),
+		Entry("Int", bind.Value[int]),
+		Entry("Bool", bind.Value[bool]),
+		Entry("String", bind.Value[string]),
+		Entry("List", bind.Value[[]string]),
+		Entry("Int", bind.Value[int]),
+		Entry("Int8", bind.Value[int8]),
+		Entry("Int16", bind.Value[int16]),
+		Entry("Int32", bind.Value[int32]),
+		Entry("Int64", bind.Value[int64]),
+		Entry("Uint", bind.Value[uint]),
+		Entry("Uint8", bind.Value[uint8]),
+		Entry("Uint16", bind.Value[uint16]),
+		Entry("Uint32", bind.Value[uint32]),
+		Entry("Uint64", bind.Value[uint64]),
+		Entry("Float32", bind.Value[float32]),
+		Entry("Float64", bind.Value[float64]),
+		Entry("Duration", bind.Value[time.Duration]),
+		Entry("File", bind.Value[*cli.File]),
+		Entry("FileSet", bind.Value[*cli.FileSet]),
+		Entry("Map", bind.Value[map[string]string]),
+		Entry("NameValue", bind.Value[*cli.NameValue]),
+		Entry("NameValues", bind.Value[[]*cli.NameValue]),
+		Entry("URL", bind.Value[*url.URL]),
+		Entry("Regexp", bind.Value[*regexp.Regexp]),
+		Entry("IP", bind.Value[net.IP]),
+		Entry("BigInt", bind.Value[*big.Int]),
+		Entry("BigFloat", bind.Value[*big.Float]),
+		Entry("Bytes", bind.Value[[]byte]),
+		Entry("Interface", bind.Value[any]),
 	)
 })
 
