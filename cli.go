@@ -1,6 +1,7 @@
 // Copyright 2023 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 // Package cli is a framework for command line applications.  joe-cli is designed to be
 // easy to use and to extend.  It features a declarative model for organizing the app and
 // a robust middleware/hook system to customize the app with reusable logic.

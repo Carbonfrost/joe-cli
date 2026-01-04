@@ -1,6 +1,7 @@
 // Copyright 2025 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 // Package provider implements a technique for identifying named providers with arguments.
 // The main use case for providers is extensibility.  For example, in a command line tool that
 // lets the user decide which output format to use, you could use providers to name the output
@@ -30,7 +31,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/structure"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 )

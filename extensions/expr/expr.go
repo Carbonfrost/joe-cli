@@ -1,6 +1,9 @@
 // Copyright 2025 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
+// Package expr provides conventions for command line expressions, which are flag-like
+// arguments which are ordered and processed using pipe and filter semantics.
 package expr
 
 import (

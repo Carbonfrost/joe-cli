@@ -1,6 +1,7 @@
 // Copyright 2025 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 // Package structure provides a flag Value which can be used to initialize a structure.
 // Under the covers, mergo is used.  The default configuration supports string-based conversion
 // from all the types that joe-cli supports built-in.
@@ -11,7 +12,7 @@ import (
 	"net/url"
 	"reflect"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/mitchellh/mapstructure"
 )
