@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -90,6 +90,53 @@ var _ = Describe("Registry", func() {
 
 			actual, _ := provider.Services(c).Registry("providers").New("csv", nil)
 			Expect(actual).To(Equal(&csvProvider{"a", true}))
+		})
+
+		It("creates provider given the value", func() {
+			action := new(joeclifakes.FakeAction)
+			registry := &provider.Registry{
+				Name: "providers",
+				Providers: provider.Details{
+					"csv": {
+						Value: &csvProvider{"value", true},
+					},
+				},
+			}
+
+			app := &cli.App{
+				Uses:   registry,
+				Action: action,
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+
+			c := cli.FromContext(action.ExecuteArgsForCall(0))
+
+			actual, _ := provider.Services(c).Registry("providers").New("csv", nil)
+			Expect(actual).To(Equal(&csvProvider{"value", true}))
+		})
+
+		It("returns an error on provider has no factory or value", func() {
+			action := new(joeclifakes.FakeAction)
+			registry := &provider.Registry{
+				Name: "providers",
+				Providers: provider.Details{
+					"csv": {},
+				},
+			}
+
+			app := &cli.App{
+				Uses:   registry,
+				Action: action,
+			}
+
+			_ = app.RunContext(context.Background(), []string{"app"})
+			c := cli.FromContext(action.ExecuteArgsForCall(0))
+
+			_, err := provider.Services(c).Registry("providers").New("csv", nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("provider \"csv\" must define either Factory or Value"))
 		})
 
 		It("returns an error on non-existent provider", func() {

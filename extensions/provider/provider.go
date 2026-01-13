@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -354,16 +354,23 @@ func (r *Registry) LookupProvider(name string) (Detail, bool) {
 
 func (r *Registry) New(name string, opts map[string]string) (any, error) {
 	pro, ok := r.LookupProvider(name)
-	defaults := pro.Defaults
-	fac := pro.Factory
-	mergedOpts := map[string]string{}
-	maps.Copy(mergedOpts, defaults)
-	maps.Copy(mergedOpts, opts)
-
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %q", name)
 	}
-	return fac(mergedOpts)
+
+	if pro.Factory != nil {
+		mergedOpts := map[string]string{}
+		maps.Copy(mergedOpts, pro.Defaults)
+		maps.Copy(mergedOpts, opts)
+
+		return pro.Factory(mergedOpts)
+
+	} else if pro.Value != nil {
+		return pro.Value, nil
+
+	} else {
+		return nil, fmt.Errorf("provider %q must define either Factory or Value", name)
+	}
 }
 
 func (r *Registry) Execute(c context.Context) error {
