@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,9 @@ package marshal_test
 
 import (
 	"encoding/json"
+	"math"
 	"time"
+	"unsafe"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
@@ -263,4 +265,69 @@ var _ = Describe("From", func() {
              }`),
 	)
 
+	Describe("clean marshal data dictionary", func() {
+
+		Describe("filtering by access", func() {
+
+			It("filters out private data by default", func() {
+
+				target := &cli.Command{
+					Data: map[string]any{
+						"_Private": "3",
+					},
+				}
+				m := marshal.From(target).(marshal.Command)
+				Expect(m.Data).To(BeEmpty())
+			})
+
+			It("can keep private data", func() {
+
+				target := &cli.Command{
+					Data: map[string]any{
+						"_Private": "3",
+						"Public":   "3",
+					},
+				}
+				m := marshal.From(target, marshal.WithPrivateData()).(marshal.Command)
+				Expect(m.Data).To(HaveKeyWithValue("_Private", "3"))
+				Expect(m.Data).To(HaveKeyWithValue("Public", "3"))
+
+			})
+		})
+
+		Describe("filtering by type", func() {
+
+			DescribeTable("examples", func(data map[string]any, expected types.GomegaMatcher) {
+				target := &cli.Command{
+					Data: data,
+				}
+				m := marshal.From(target).(marshal.Command)
+				Expect(m.Data).To(expected)
+			},
+
+				Entry("avoid clearly unmarshable types", map[string]any{
+					"func":          func() {},
+					"chan":          make(chan int),
+					"unsafePointer": unsafe.Pointer(nil),
+					"complex64":     complex64(4 + 5i),
+					"complex128:":   complex128(6 + 7i),
+				}, BeEmpty()),
+
+				Entry("map recursion", map[string]any{
+					"map": map[string]any{
+						"func": func() {},
+					},
+				}, Equal(map[string]any{"map": map[string]any{}})),
+
+				Entry("floats", map[string]any{
+					"nan":  math.NaN,
+					"-inf": math.Inf(-1),
+					"inf":  math.Inf(1),
+				}, BeEmpty()),
+
+				Entry("hide underbar keys", map[string]any{"_HiddenKey": ""}, BeEmpty()),
+			)
+		})
+
+	})
 })

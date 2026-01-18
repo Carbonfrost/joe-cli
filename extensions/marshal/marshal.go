@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -29,7 +29,7 @@ type App struct {
 	Copyright  string         `json:"copyright,omitempty"`
 	License    string         `json:"license,omitempty"`
 	Comment    string         `json:"comment,omitempty"`
-	Options    Option         `json:"options,omitempty"`
+	Options    Options        `json:"options,omitempty"`
 	Data       map[string]any `json:"data,omitempty"`
 }
 
@@ -44,7 +44,7 @@ type Command struct {
 	UsageText   string         `json:"usageText,omitempty"`
 	Comment     string         `json:"comment,omitempty"`
 	Category    string         `json:"category,omitempty"`
-	Options     Option         `json:"options,omitempty"`
+	Options     Options        `json:"options,omitempty"`
 	Data        map[string]any `json:"data,omitempty"`
 }
 
@@ -58,7 +58,7 @@ type Flag struct {
 	Category    string         `json:"category,omitempty"`
 	UsageText   string         `json:"usageText,omitempty"`
 	DefaultText string         `json:"defaultText,omitempty"`
-	Options     Option         `json:"options,omitempty"`
+	Options     Options        `json:"options,omitempty"`
 	Data        map[string]any `json:"data,omitempty"`
 }
 
@@ -71,11 +71,11 @@ type Arg struct {
 	Category    string         `json:"category,omitempty"`
 	UsageText   string         `json:"usageText,omitempty"`
 	DefaultText string         `json:"defaultText,omitempty"`
-	Options     Option         `json:"options,omitempty"`
+	Options     Options        `json:"options,omitempty"`
 	Data        map[string]any `json:"data,omitempty"`
 }
 
-type Option = cli.Option
+type Options = cli.Option
 
 // Type identifies the built-in supported types
 type Type int
