@@ -1284,6 +1284,9 @@ func transformOutputToString(v any) (string, error) {
 // When f is nil, the file system is determined from the Context.
 func TransformOptionalFileReference(f fs.FS) TransformFunc {
 	return func(raw []string) (any, error) {
+		if f == nil {
+			f = newDefaultFS(os.Stdin, os.Stdout)
+		}
 		readers := make([]io.Reader, len(raw)-1)
 		for i, s := range raw[1:] {
 			if strings.HasPrefix(s, "@") {
