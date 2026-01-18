@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -207,6 +207,13 @@ func ContextValue[T any](key any) Binder[T] {
 // Context binds the context as a parameter.
 func Context() Binder[*cli.Context] {
 	return FromContext(cli.FromContext)
+}
+
+// FS binds the file system as a parameter.
+func FS() Binder[cli.FS] {
+	return then(Context(), func(c *cli.Context) cli.FS {
+		return cli.NewFS(c.FS)
+	})
 }
 
 // Bool obtains a binder that obtains a value from the context. If the name is

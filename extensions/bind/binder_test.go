@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,6 +6,7 @@ package bind_test
 
 import (
 	"context"
+	"io/fs"
 	"math/big"
 	"net"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
+	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	"github.com/onsi/gomega/types"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -123,6 +125,26 @@ var _ = Describe("ContextValue", func() {
 		}
 		app.RunContext(ctx, []string{"app"})
 		Expect(actionCalledWith).To(Equal(2))
+	})
+
+})
+
+var _ = Describe("FS", func() {
+
+	It("retrieves the FS from context", func() {
+		var actionCalledWith fs.FS
+		fn := func(f cli.FS) cli.Action {
+			actionCalledWith = f
+			return nil
+		}
+
+		fake := new(joeclifakes.FakeFS)
+		app := &cli.App{
+			FS:     fake,
+			Action: bind.Action(fn, bind.FS()),
+		}
+		app.RunContext(context.Background(), []string{"app"})
+		Expect(actionCalledWith).To(Equal(fake))
 	})
 
 })

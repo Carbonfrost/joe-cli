@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -122,8 +122,12 @@ type dirFS string
 
 var errStopWalk = errors.New("stop walking")
 
-// NewFS wraps the given FS for use as a CLI file system.
+// NewFS wraps the given FS for use as a CLI file system. If the argument
+// is nil, the result will also be nil
 func NewFS(f fs.FS) FS {
+	if f == nil {
+		return nil
+	}
 	return wrapFS(f)
 }
 
