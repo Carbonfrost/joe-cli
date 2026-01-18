@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -23,7 +23,7 @@ type evaluatorInit struct {
 // If this is added to the Uses timing, it will actually be run in the
 // Action timing and the binders can also provide initializers if they
 // have the method Initializer() Action (as the binders in this package do).
-func Action[T any](fn func(T) cli.Action, t Binder[T]) cli.Action {
+func Action[T any, Action cli.Action](fn func(T) Action, t Binder[T]) cli.Action {
 	return cli.Pipeline(
 		initializers(t),
 		bindTiming(func(c context.Context) error {
@@ -41,7 +41,7 @@ func Action[T any](fn func(T) cli.Action, t Binder[T]) cli.Action {
 // If this is added to the Uses timing, it will actually be run in the
 // Action timing and the binders can also provide initializers if they
 // have the method Initializer() Action (as the binders in this package do).
-func Action2[T, U any](fn func(T, U) cli.Action, t Binder[T], u Binder[U]) cli.Action {
+func Action2[T, U any, Action cli.Action](fn func(T, U) Action, t Binder[T], u Binder[U]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u),
 		bindTiming(func(c context.Context) error {
@@ -59,7 +59,7 @@ func Action2[T, U any](fn func(T, U) cli.Action, t Binder[T], u Binder[U]) cli.A
 // If this is added to the Uses timing, it will actually be run in the
 // Action timing and the binders can also provide initializers if they
 // have the method Initializer() Action (as the binders in this package do).
-func Action3[T, U, V any](fn func(T, U, V) cli.Action, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
+func Action3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u, v),
 		bindTiming(func(c context.Context) error {
@@ -124,7 +124,7 @@ func Call3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U], v Bi
 }
 
 // Evaluator produces an evaluator from the bound values.
-func Evaluator[T any](factory func(T) expr.Evaluator, t Binder[T]) expr.Evaluator {
+func Evaluator[T any, Evaluator expr.Evaluator](factory func(T) Evaluator, t Binder[T]) expr.Evaluator {
 	return newEvaluator(initializers(t),
 		func(c context.Context, v any, yield func(any) error) error {
 			a0, err := bind(c, t)
@@ -136,7 +136,7 @@ func Evaluator[T any](factory func(T) expr.Evaluator, t Binder[T]) expr.Evaluato
 }
 
 // Evaluator2 produces an evaluator from the bound values.
-func Evaluator2[T, U any](eval func(T, U) expr.Evaluator, t Binder[T], u Binder[U]) expr.Evaluator {
+func Evaluator2[T, U any, Evaluator expr.Evaluator](eval func(T, U) Evaluator, t Binder[T], u Binder[U]) expr.Evaluator {
 	return newEvaluator(initializers(t, u),
 		func(c context.Context, v any, yield func(any) error) error {
 			a0, a1, err := bind2(c, t, u)
@@ -148,7 +148,7 @@ func Evaluator2[T, U any](eval func(T, U) expr.Evaluator, t Binder[T], u Binder[
 }
 
 // Evaluator3 produces an evaluator from the bound values.
-func Evaluator3[T, U, V any](eval func(T, U, V) expr.Evaluator, t Binder[T], u Binder[U], v Binder[V]) expr.Evaluator {
+func Evaluator3[T, U, V any, Evaluator expr.Evaluator](eval func(T, U, V) Evaluator, t Binder[T], u Binder[U], v Binder[V]) expr.Evaluator {
 	return newEvaluator(initializers(t, u, v),
 		func(c context.Context, vany any, yield func(any) error) error {
 			a0, a1, a2, err := bind3(c, t, u, v)
