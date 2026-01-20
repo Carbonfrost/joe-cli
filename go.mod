@@ -73,6 +73,7 @@ tool (
 )
 
 ignore (
+	.github
 	_examples
 	bin
 	eng
