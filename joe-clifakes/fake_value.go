@@ -150,10 +150,6 @@ func (fake *FakeValue) StringReturnsOnCall(i int, result1 string) {
 func (fake *FakeValue) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.setMutex.RLock()
-	defer fake.setMutex.RUnlock()
-	fake.stringMutex.RLock()
-	defer fake.stringMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

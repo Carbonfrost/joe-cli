@@ -152,10 +152,6 @@ func (fake *FakeArgCounter) TakeReturnsOnCall(i int, result1 error) {
 func (fake *FakeArgCounter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.doneMutex.RLock()
-	defer fake.doneMutex.RUnlock()
-	fake.takeMutex.RLock()
-	defer fake.takeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
