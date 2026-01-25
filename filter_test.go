@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -47,11 +47,11 @@ var _ = Describe("Assert", func() {
 var _ = Context("universe filters", func() {
 
 	var (
-		falseFilter cli.ContextFilterFunc = func(c *cli.Context) bool {
+		falseFilter contextFilterFunc = func(context.Context) bool {
 			return false
 		}
 
-		trueFilter cli.ContextFilterFunc = func(c *cli.Context) bool {
+		trueFilter contextFilterFunc = func(context.Context) bool {
 			return true
 		}
 	)
@@ -63,11 +63,11 @@ var _ = Context("universe filters", func() {
 		})
 
 		It("doesn't match if all don't", func() {
-			Expect(cli.Any(falseFilter, falseFilter).Matches(nil)).To(BeFalse())
+			Expect(cli.Any(falseFilter, falseFilter).Matches(context.Background())).To(BeFalse())
 		})
 
 		It("matches if any does", func() {
-			Expect(cli.Any(trueFilter, falseFilter).Matches(nil)).To(BeTrue())
+			Expect(cli.Any(trueFilter, falseFilter).Matches(context.Background())).To(BeTrue())
 		})
 
 	})
@@ -79,11 +79,11 @@ var _ = Context("universe filters", func() {
 		})
 
 		It("doesn't match if any doesn't", func() {
-			Expect(cli.All(trueFilter, falseFilter).Matches(nil)).To(BeFalse())
+			Expect(cli.All(trueFilter, falseFilter).Matches(context.Background())).To(BeFalse())
 		})
 
 		It("matches if all do", func() {
-			Expect(cli.All(trueFilter, trueFilter).Matches(nil)).To(BeTrue())
+			Expect(cli.All(trueFilter, trueFilter).Matches(context.Background())).To(BeTrue())
 		})
 
 	})
@@ -293,3 +293,9 @@ var _ = Describe("HasData", func() {
 
 	})
 })
+
+type contextFilterFunc func(context.Context) bool
+
+func (f contextFilterFunc) Matches(c context.Context) bool {
+	return f(c)
+}
