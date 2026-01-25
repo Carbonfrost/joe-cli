@@ -34,6 +34,20 @@
 // signature func(int)error, which is decoupled from Joe's types and probably easier
 // to test.
 //
+// # Binders
+//
+// For binders built-in to this package as well as any that implement the interface
+// interface { SetName(any) }, the name of the binder can be omitted and is
+// implicitly set.  The name will be the index of the binder in
+// the function call used within a command or the empty string if used within an arg
+// or flag. For example, the following are equivalent if they are used within the
+// Uses pipeline of a command that defines two args "first" and "second",
+// because of this built-in behavior:
+//
+//	bind.Call2(myFunction, bind.String(), bind.Int())   // names omitted
+//	bind.Call2(myFunction, bind.String(0), bind.Int(1))
+//	bind.Call2(myFunction, bind.String("first"), bind.Int("second"))
+//
 // # Evaluators
 //
 // Say that you have an expression that has an operand "-name TEXT",

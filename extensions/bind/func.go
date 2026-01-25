@@ -401,6 +401,16 @@ func (e evaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error)
 	return e(c, v, yield)
 }
 
+// Initializers obtains the initializers for a sequence of binders.
+// For a binder that has a method Initializer() Action, such method will be called
+// to retrieve the initializer. For a binder that has a method SetName(any), the
+// method will be called to set the implicit name that can be used when a binder is
+// used within a function. Refer to the package overview for information about implicit
+// naming.
+func Initializers(binders ...any) cli.Action {
+	return initializers(binders...)
+}
+
 func initializers(binders ...any) cli.Action {
 	var uses, setters []cli.Action
 	for index, binder := range binders {
