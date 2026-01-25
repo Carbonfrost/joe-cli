@@ -127,14 +127,19 @@ var (
 // that is initializing or running. If the argument is nil, the return value will be.
 // Otherwise, if it can't be found, it panics
 func FromContext(ctx context.Context) *Context {
-	if ctx == nil {
-		return nil
-	}
-	c, ok := fromContext(ctx)
+	c, ok := TryFromContext(ctx)
 	if !ok {
 		panic("ctx does not provide *cli.Context")
 	}
 	return c
+}
+
+// TryFromContext obtains the context if it is present.
+func TryFromContext(ctx context.Context) (*Context, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	return fromContext(ctx)
 }
 
 func fromContext(ctx context.Context) (*Context, bool) {
