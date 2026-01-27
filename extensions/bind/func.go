@@ -8,15 +8,7 @@ import (
 	"context"
 
 	"github.com/Carbonfrost/joe-cli"
-	"github.com/Carbonfrost/joe-cli/extensions/expr"
 )
-
-type evaluatorFunc func(_ context.Context, v any, yield func(any) error) error
-
-type evaluatorInit struct {
-	expr.Evaluator
-	cli.Action
-}
 
 // Action obtains an action invokes the function to derive another action
 // whilst binding the parameters.
@@ -285,42 +277,6 @@ func caller3[T, U, V any](time cli.Timing, call func(T, U, V) error, t Binder[T]
 	}))
 }
 
-// Evaluator produces an evaluator from the bound values.
-func Evaluator[T any, Evaluator expr.Evaluator](factory func(T) Evaluator, t Binder[T]) expr.Evaluator {
-	return newEvaluator(initializers(t),
-		func(c context.Context, v any, yield func(any) error) error {
-			a0, err := bind(c, t)
-			if err != nil {
-				return err
-			}
-			return factory(a0).Evaluate(c, v, yield)
-		})
-}
-
-// Evaluator2 produces an evaluator from the bound values.
-func Evaluator2[T, U any, Evaluator expr.Evaluator](eval func(T, U) Evaluator, t Binder[T], u Binder[U]) expr.Evaluator {
-	return newEvaluator(initializers(t, u),
-		func(c context.Context, v any, yield func(any) error) error {
-			a0, a1, err := bind2(c, t, u)
-			if err != nil {
-				return err
-			}
-			return eval(a0, a1).Evaluate(c, v, yield)
-		})
-}
-
-// Evaluator3 produces an evaluator from the bound values.
-func Evaluator3[T, U, V any, Evaluator expr.Evaluator](eval func(T, U, V) Evaluator, t Binder[T], u Binder[U], v Binder[V]) expr.Evaluator {
-	return newEvaluator(initializers(t, u, v),
-		func(c context.Context, vany any, yield func(any) error) error {
-			a0, a1, a2, err := bind3(c, t, u, v)
-			if err != nil {
-				return err
-			}
-			return eval(a0, a1, a2).Evaluate(c, vany, yield)
-		})
-}
-
 // Indirect binds a value to the specified option indirectly.
 // For example, it is common to define a FileSet arg and a Boolean flag that
 // controls whether or not the file set is enumerated recursively.  You can use
@@ -390,17 +346,6 @@ func SetPointer[V any](v *V, binder Binder[V]) cli.Action {
 	}, binder)
 }
 
-func newEvaluator(initz cli.Action, evaluator evaluatorFunc) *evaluatorInit {
-	return &evaluatorInit{
-		Action:    cli.Pipeline(initz, expr.SetEvaluator(evaluator)),
-		Evaluator: evaluator,
-	}
-}
-
-func (e evaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error) error {
-	return e(c, v, yield)
-}
-
 // Initializers obtains the initializers for a sequence of binders.
 // For a binder that has a method Initializer() Action, such method will be called
 // to retrieve the initializer. For a binder that has a method SetName(any), the
@@ -437,8 +382,4 @@ func willSetImpliedName(b binderImpliedName, index int) cli.ActionFunc {
 		}
 		return nil
 	}
-}
-
-func bindTiming(a func(context.Context) error) cli.Action {
-	return cli.At(cli.ActionTiming, cli.ActionOf(a))
 }

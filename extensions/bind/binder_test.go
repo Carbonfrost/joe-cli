@@ -325,11 +325,3 @@ func calledWithReflection(fn any) any {
 
 	return actual
 }
-
-func box[T any](t T) *T {
-	return &t
-}
-
-func unwrap[V any](v V, _ any) V {
-	return v
-}
