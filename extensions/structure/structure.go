@@ -96,17 +96,17 @@ func (v *Value) DisableSplitting() {
 
 // Set the text of the value.  Can be called successively to append.
 func (v *Value) Set(arg string) error {
-	text := arg
-	var args []string
+	var args map[string]string
 
 	if v.disableSplitting {
-		args = []string{text}
+		key, value, _ := support.ParseKeyValue(arg)
+		args = map[string]string{key: value}
+
 	} else {
-		args = cli.SplitList(text, ",", -1)
+		args = support.FlattenValues(support.ParseMap(arg))
 	}
 
-	src := support.ParseMap(args)
-	return Decode(src, v.V, v.Options...)
+	return Decode(args, v.V, v.Options...)
 }
 
 func (v *Value) String() string {

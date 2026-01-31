@@ -369,7 +369,7 @@ func setCore(dest any, disableSplitting bool, value string) error {
 		*p = s + value
 		return nil
 	case *[]string:
-		*p = append(*p, values()...)
+		*p = append(*p, support.Unescape(values())...)
 		return nil
 	case *[]byte:
 		bb, err := hex.DecodeString(value)
@@ -384,7 +384,12 @@ func setCore(dest any, disableSplitting bool, value string) error {
 			m = map[string]string{}
 			*p = m
 		}
-		maps.Copy(m, support.ParseMap(values()))
+		if disableSplitting {
+			key, value, _ := support.ParseKeyValue(value)
+			m[key] = value
+		} else {
+			maps.Copy(m, support.FlattenValues(support.ParseMap(value)))
+		}
 
 		return nil
 	case *[]*NameValue:
@@ -784,11 +789,11 @@ func parseBool(value string) (bool, error) {
 }
 
 func splitValuePair(arg string) (k, v string, hasValue bool) {
-	a := SplitList(arg, "=", 2)
-	if len(a) == 1 {
-		return a[0], "true", false
+	key, value, ok := support.ParseKeyValue(arg)
+	if ok {
+		return key, value, ok
 	}
-	return a[0], a[1], true
+	return key, "true", false
 }
 
 func optionReset(p any, flags internalFlags) {

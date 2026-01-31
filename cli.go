@@ -112,8 +112,7 @@ func SplitList(s, sep string, n int) []string {
 
 // SplitMap considers escape sequences when splitting
 func SplitMap(s string) map[string]string {
-	i := support.SplitList(s, ",", -1)
-	return support.ParseMap(i)
+	return support.FlattenValues(support.ParseMap(s))
 }
 
 // ReadPasswordString securely gets a password, without the trailing '\n'.
