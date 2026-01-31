@@ -88,6 +88,9 @@ type Detail struct {
 	// no defaults.
 	Value any
 
+	// Aliases specifies the aliases that can be used
+	Aliases []string
+
 	// HelpText contains text which briefly describes the usage of the provider.
 	HelpText string
 }
@@ -401,6 +404,13 @@ func (d Details) ProviderNames() []string {
 
 func (d Details) LookupProvider(name string) (Detail, bool) {
 	r, ok := d[name]
+	if !ok {
+		for _, v := range d {
+			if slices.Contains(v.Aliases, name) {
+				return v, true
+			}
+		}
+	}
 	return r, ok
 }
 

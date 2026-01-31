@@ -186,6 +186,23 @@ var _ = Describe("Registry", func() {
 	})
 })
 
+var _ = Describe("Details", func() {
+
+	Describe("LookupProvider", func() {
+
+		It("looks up via alias", func() {
+			details := provider.Details{
+				"A": {
+					Aliases: []string{"B"},
+				},
+			}
+			actual, ok := details.LookupProvider("B")
+			Expect(ok).To(BeTrue())
+			Expect(actual).To(Equal(provider.Detail{Aliases: []string{"B"}}))
+		})
+	})
+})
+
 var _ = Describe("Factory", func() {
 	It("decodes options from map", func() {
 		var called bool
