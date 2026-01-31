@@ -174,6 +174,26 @@ var _ = Describe("Flag", func() {
 					Expect(captured.Value("")).To(Equal("value"))
 				})
 			})
+
+			It("an error to re-use persistent flag names", func() {
+				app := &cli.App{
+					Name: "app",
+					Commands: []*cli.Command{
+						{
+							Name: "sub",
+							Flags: []*cli.Flag{
+								{Name: "f"},
+							},
+						},
+					},
+					Flags: []*cli.Flag{
+						{Name: "f"},
+					},
+				}
+				_, err := app.Initialize(context.Background())
+				Expect(err).To(MatchError(ContainSubstring(`internal error, at "app sub" (initial timing):`)))
+				Expect(err).To(MatchError(ContainSubstring(`duplicate name used: "f" (persistent from app)`)))
+			})
 		})
 	})
 

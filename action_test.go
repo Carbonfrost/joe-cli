@@ -273,6 +273,7 @@ var _ = Describe("timings", func() {
 					},
 				}
 				arguments = []string{"app", "--no-flag"}
+				commands = nil
 			})
 
 			It("sets negative value", func() {
@@ -2337,7 +2338,7 @@ var _ = Describe("Customize", func() {
 						Name: "sub",
 						Flags: []*cli.Flag{
 							{
-								Name: "flag",
+								Name: "goflag",
 							},
 						},
 					},
@@ -2348,7 +2349,8 @@ var _ = Describe("Customize", func() {
 				},
 				Uses: uses,
 			}
-			app.Initialize(context.Background())
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
 			expected(app)
 		},
 
@@ -2359,10 +2361,10 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes flags recursively within commands",
-			cli.Customize("--flag", cli.Data("match", "flag")),
+			cli.Customize("--goflag", cli.Data("match", "goflag")),
 			func(app *cli.App) {
 				Expect(app.Commands[0].Flags[0].Data).To(
-					HaveKeyWithValue("match", "flag"),
+					HaveKeyWithValue("match", "goflag"),
 				)
 			}),
 

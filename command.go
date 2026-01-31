@@ -697,6 +697,20 @@ func finalizeArgsAndFlags(c *Context) error {
 	// an error for duplicative names
 	names := map[string]bool{}
 	var errs []error
+	for _, f := range c.PersistentFlags() {
+		names[f.Name] = true
+	}
+	checkPersistent := func(name string) string {
+		// Generate an additional context if the name is persistent
+		for _, parent := range c.Lineage()[1:] {
+			for _, f := range parent.LocalFlags() {
+				if f.Name == name {
+					return fmt.Sprintf(" (persistent from %s)", parent.Name())
+				}
+			}
+		}
+		return ""
+	}
 
 	for i, a := range c.LocalArgs() {
 		if a.Name == "" {
@@ -704,7 +718,7 @@ func finalizeArgsAndFlags(c *Context) error {
 			continue
 		}
 		if names[a.Name] {
-			errs = append(errs, fmt.Errorf("duplicate name used: %q", a.Name))
+			errs = append(errs, fmt.Errorf("duplicate name used: %q%s", a.Name, checkPersistent(a.Name)))
 		}
 		names[a.Name] = true
 	}
@@ -717,7 +731,7 @@ func finalizeArgsAndFlags(c *Context) error {
 		if err := checkValidIdentifier(f.Name); err != nil {
 			errs = append(errs, err)
 		} else if names[f.Name] {
-			errs = append(errs, fmt.Errorf("duplicate name used: %q", f.Name))
+			errs = append(errs, fmt.Errorf("duplicate name used: %q%s", f.Name, checkPersistent(f.Name)))
 		}
 		names[f.Name] = true
 	}
