@@ -347,14 +347,18 @@ func optionName(name any) string {
 	panic("unreachable!")
 }
 
-func listOfValues(values []string) string {
+func listOfValues(values []string, useQuotes bool) string {
+	quotes := [2]string{"", ""}
+	if useQuotes {
+		quotes[0], quotes[1] = "`", "'"
+	}
 	switch len(values) {
 	case 0:
 		return ""
 	case 1:
 		return values[0]
 	case 2:
-		return fmt.Sprintf("`%s' or `%s'", values[0], values[1])
+		return fmt.Sprintf("%[1]s%[3]s%[2]s or %[1]s%[4]s%[2]s", quotes[0], quotes[1], values[0], values[1])
 	default:
 		var b bytes.Buffer
 		for i, v := range values {
@@ -364,9 +368,9 @@ func listOfValues(values []string) string {
 			if i == len(values)-1 {
 				b.WriteString("or ")
 			}
-			b.WriteString("`")
+			b.WriteString(quotes[0])
 			b.WriteString(v)
-			b.WriteString("'")
+			b.WriteString(quotes[1])
 		}
 		return b.String()
 	}

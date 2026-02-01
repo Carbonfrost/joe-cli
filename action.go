@@ -831,7 +831,7 @@ func Enum(options ...string) Action {
 			Uses: ValidatorFunc(func(raw []string) error {
 				for _, occur := range raw {
 					if _, ok := oset[occur]; !ok {
-						expected := listOfValues(options)
+						expected := listOfValues(options, true)
 						return &ParseError{
 							Code: InvalidArgument,
 							Err: errorTemplate{
@@ -865,11 +865,8 @@ func Mutex(names ...string) Action {
 				return nil
 			case 1:
 				return fmt.Errorf("either %s or %s can be used, but not both", c.Name(), alsoSeen[0])
-			case 2:
-				return fmt.Errorf("can't use %s together with %s or %s", c.Name(), alsoSeen[0], alsoSeen[1])
 			default:
-				y := len(alsoSeen) - 1
-				return fmt.Errorf("can't use %s together with %s", c.Name(), strings.Join(alsoSeen[0:y], ", ")+", or "+alsoSeen[y])
+				return fmt.Errorf("can't use %s together with %s", c.Name(), listOfValues(alsoSeen, false))
 			}
 		}
 
