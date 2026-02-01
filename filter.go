@@ -61,6 +61,9 @@ const (
 	// HasValue checks whether the target is an arg, flag, or value setup
 	HasValue
 
+	// Whether completion is occurring
+	Completing
+
 	subcommandDidNotExecute
 
 	// Anything matches any kind of target
@@ -76,6 +79,7 @@ var (
 		HasValue:                (*Context).HasValue,
 		Seen:                    seenThis,
 		RootCommand:             isRoot,
+		Completing:              completingThis,
 		subcommandDidNotExecute: (*Context).subcommandDidNotExecute,
 	}
 
@@ -87,12 +91,14 @@ var (
 		Seen:        {"option that has been seen", "SEEN"},
 		RootCommand: {"root command", "ROOT_COMMAND"},
 		HasValue:    {"target with value", "HAS_VALUE"},
+		Completing:  {"in shell completion", "COMPLETING"},
 	}
 )
 
-func anyImpl(*Context) bool    { return true }
-func seenThis(c *Context) bool { return c.Seen("") }
-func isRoot(c *Context) bool   { return c.Parent() == nil }
+func anyImpl(*Context) bool          { return true }
+func seenThis(c *Context) bool       { return c.Seen("") }
+func isRoot(c *Context) bool         { return c.Parent() == nil }
+func completingThis(c *Context) bool { return c.robustParsingMode() }
 
 // Any provides a composite ContextFilter where any filter
 // from a list can match. When empty, this is the same as Anything.

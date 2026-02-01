@@ -209,6 +209,7 @@ var _ = Describe("FilterModes", func() {
 			Entry("HasValue", cli.HasValue, "HAS_VALUE"),
 			Entry("RootCommand", cli.RootCommand, "ROOT_COMMAND"),
 			Entry("Seen", cli.Seen, "SEEN"),
+			Entry("Completing", cli.Completing, "COMPLETING"),
 		)
 	})
 
@@ -224,6 +225,7 @@ var _ = Describe("FilterModes", func() {
 			Entry("HasValue", cli.HasValue, "target with value"),
 			Entry("RootCommand", cli.RootCommand, "root command"),
 			Entry("Seen", cli.Seen, "option that has been seen"),
+			Entry("Completing", cli.Completing, "in shell completion"),
 		)
 	})
 })
