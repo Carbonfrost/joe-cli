@@ -67,13 +67,13 @@ var _ = Describe("Registry", func() {
 							"comma":   "a",
 							"useCRLF": "true",
 						},
-						Factory: func(opts map[string]string) (any, error) {
+						Factory: provider.FactoryFunc(func(opts map[string]string) (any, error) {
 							b, _ := strconv.ParseBool(opts["useCRLF"])
 							return &csvProvider{
 								Comma:   opts["comma"],
 								UseCRLF: b,
 							}, nil
-						},
+						}),
 					},
 				},
 			}
@@ -203,15 +203,15 @@ var _ = Describe("Details", func() {
 	})
 })
 
-var _ = Describe("Factory", func() {
+var _ = Describe("FactoryOf", func() {
 	It("decodes options from map", func() {
 		var called bool
-		provider.Factory(func(o Options) any {
+		provider.FactoryOf(func(o Options) any {
 			Expect(o.A).To(Equal("A"))
 			Expect(o.B).To(Equal("B"))
 			called = true
 			return nil
-		})(map[string]string{
+		}).New(map[string]string{
 			"A": "A",
 			"B": "B",
 		})
@@ -220,10 +220,10 @@ var _ = Describe("Factory", func() {
 
 	It("can accept configuration options to return error", func() {
 		var called bool
-		_, err := provider.Factory(func(o Options) any {
+		_, err := provider.FactoryOf(func(o Options) any {
 			called = true
 			return nil
-		}, structure.ErrorUnused)(map[string]string{
+		}, structure.ErrorUnused).New(map[string]string{
 			"Extra": "this field is not on the struct",
 		})
 		Expect(called).To(BeFalse())
@@ -232,8 +232,8 @@ var _ = Describe("Factory", func() {
 	})
 
 	DescribeTable("examples", func(f any) {
-		Expect(func() { provider.Factory(f) }).NotTo(Panic())
-		actual, _ := provider.Factory(f)(nil)
+		Expect(func() { provider.FactoryOf(f) }).NotTo(Panic())
+		actual, _ := provider.FactoryOf(f).New(nil)
 		Expect(actual).To(Equal("provider"))
 	},
 		Entry("no-op", func(any) (any, error) { return "provider", nil }),
@@ -242,7 +242,7 @@ var _ = Describe("Factory", func() {
 	)
 
 	DescribeTable("error", func(f any) {
-		Expect(func() { provider.Factory(f) }).To(Panic())
+		Expect(func() { provider.FactoryOf(f) }).To(Panic())
 	},
 		Entry("need args", func() (any, error) { return "provider", nil }),
 		Entry("need return value", func(Options) {}),

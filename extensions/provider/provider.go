@@ -62,6 +62,10 @@ type Value struct {
 // FactoryFunc describes the factory function for a provider
 type FactoryFunc func(opts map[string]string) (any, error)
 
+type Factory interface {
+	New(opts map[string]string) (any, error)
+}
+
 // Lookup defines how to obtain the provider or information about it from its name
 type Lookup interface {
 	ProviderNames() []string
@@ -79,8 +83,8 @@ type Detail struct {
 
 	// Factory is responsible for creating the provider given the options.
 	// The value is a function, and must be one of the functions available to
-	// FactoryFunc
-	Factory FactoryFunc
+	// Factory
+	Factory Factory
 
 	// Value is a discrete value to use for the provider.  Factory and Value
 	// are designed to be mutually exclusive; however, when both as specified,
@@ -144,34 +148,11 @@ var (
 // options and return the provider and optionally an error.  The actual types can be
 // more specific than interface{}.  When they are, type conversion is provided using
 // the Decode method
-func Factory(fn any, options ...structure.DecoderOption) FactoryFunc {
+func FactoryOf(fn any, options ...structure.DecoderOption) Factory {
 	if fn == nil {
 		panic("cannot specify nil argument")
 	}
-	if !validFactory(fn) {
-		panic("unexpected function signature")
-	}
-
-	v := reflect.ValueOf(fn)
-	optType := reflect.TypeOf(fn).In(0)
-	return FactoryFunc(func(opts map[string]string) (any, error) {
-		if opts == nil {
-			opts = map[string]string{}
-		}
-
-		value := reflect.New(optType).Interface()
-		err := structure.Decode(opts, value, options...)
-		if err != nil {
-			return nil, err
-		}
-		o := reflect.ValueOf(value).Elem().Interface()
-
-		out := v.Call([]reflect.Value{reflect.ValueOf(o)})
-		if len(out) > 1 {
-			err, _ = out[1].Interface().(error)
-		}
-		return out[0].Interface(), err
-	})
+	return newReflectedFactory(fn, options...)
 }
 
 func validFactory(fn any) bool {
@@ -187,6 +168,23 @@ func validFactory(fn any) bool {
 		return false
 	}
 	return true
+}
+
+func newReflectedFactory(fn any, options ...structure.DecoderOption) *reflectedFactory {
+	if !validFactory(fn) {
+		panic("unexpected function signature")
+	}
+	return &reflectedFactory{
+		v:       reflect.ValueOf(fn),
+		optType: reflect.TypeOf(fn).In(0),
+		options: options,
+	}
+}
+
+type reflectedFactory struct {
+	v       reflect.Value
+	optType reflect.Type
+	options []structure.DecoderOption
 }
 
 // ArgumentFlag obtains a conventions-based flag for setting an argument
@@ -365,8 +363,7 @@ func (r *Registry) New(name string, opts map[string]string) (any, error) {
 		mergedOpts := map[string]string{}
 		maps.Copy(mergedOpts, pro.Defaults)
 		maps.Copy(mergedOpts, opts)
-
-		return pro.Factory(mergedOpts)
+		return pro.Factory.New(mergedOpts)
 
 	} else if pro.Value != nil {
 		return pro.Value, nil
@@ -435,6 +432,31 @@ func toData(r *Registry) []providerData {
 	}
 	return res
 }
+
+func (r *reflectedFactory) New(opts map[string]string) (any, error) {
+	if opts == nil {
+		opts = map[string]string{}
+	}
+
+	value := reflect.New(r.optType).Interface()
+	err := structure.Decode(opts, value, r.options...)
+	if err != nil {
+		return nil, err
+	}
+	o := reflect.ValueOf(value).Elem().Interface()
+
+	out := r.v.Call([]reflect.Value{reflect.ValueOf(o)})
+	if len(out) > 1 {
+		err, _ = out[1].Interface().(error)
+	}
+	return out[0].Interface(), err
+}
+
+func (f FactoryFunc) New(opts map[string]string) (any, error) {
+	return f(opts)
+}
+
+var _ Factory = (FactoryFunc)(nil)
 
 var (
 	_ flag.Value = (*Value)(nil)
