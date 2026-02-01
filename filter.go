@@ -61,7 +61,7 @@ const (
 	// HasValue checks whether the target is an arg, flag, or value setup
 	HasValue
 
-	// Whether completion is occurring
+	// Completing checks whether completion is occurring
 	Completing
 
 	subcommandDidNotExecute

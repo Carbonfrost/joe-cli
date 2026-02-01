@@ -80,6 +80,7 @@ type Options = cli.Option
 // Type identifies the built-in supported types
 type Type int
 
+// The various types that the CLI supports
 const (
 	UnknownType Type = iota
 

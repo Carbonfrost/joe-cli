@@ -253,118 +253,147 @@ func (c LookupValues) Interface(name any) (any, bool) {
 	return c.try(name, false)
 }
 
+// Bool retrieves the value and coerces it to the return type
 func (c LookupFunc) Bool(name any) bool {
 	return lookupBool(c, name)
 }
 
+// String retrieves the value and coerces it to the return type
 func (c LookupFunc) String(name any) string {
 	return lookupString(c, name)
 }
 
+// List retrieves the value and coerces it to the return type
 func (c LookupFunc) List(name any) []string {
 	return lookupList(c, name)
 }
 
+// Int retrieves the value and coerces it to the return type
 func (c LookupFunc) Int(name any) int {
 	return lookupInt(c, name)
 }
 
+// Int8 retrieves the value and coerces it to the return type
 func (c LookupFunc) Int8(name any) int8 {
 	return lookupInt8(c, name)
 }
 
+// Int16 retrieves the value and coerces it to the return type
 func (c LookupFunc) Int16(name any) int16 {
 	return lookupInt16(c, name)
 }
 
+// Int32 retrieves the value and coerces it to the return type
 func (c LookupFunc) Int32(name any) int32 {
 	return lookupInt32(c, name)
 }
 
+// Int64 retrieves the value and coerces it to the return type
 func (c LookupFunc) Int64(name any) int64 {
 	return lookupInt64(c, name)
 }
 
+// Uint retrieves the value and coerces it to the return type
 func (c LookupFunc) Uint(name any) uint {
 	return lookupUint(c, name)
 }
 
+// Uint8 retrieves the value and coerces it to the return type
 func (c LookupFunc) Uint8(name any) uint8 {
 	return lookupUint8(c, name)
 }
 
+// Uint16 retrieves the value and coerces it to the return type
 func (c LookupFunc) Uint16(name any) uint16 {
 	return lookupUint16(c, name)
 }
 
+// Uint32 retrieves the value and coerces it to the return type
 func (c LookupFunc) Uint32(name any) uint32 {
 	return lookupUint32(c, name)
 }
 
+// Uint64 retrieves the value and coerces it to the return type
 func (c LookupFunc) Uint64(name any) uint64 {
 	return lookupUint64(c, name)
 }
 
+// Float32 retrieves the value and coerces it to the return type
 func (c LookupFunc) Float32(name any) float32 {
 	return lookupFloat32(c, name)
 }
 
+// Float64 retrieves the value and coerces it to the return type
 func (c LookupFunc) Float64(name any) float64 {
 	return lookupFloat64(c, name)
 }
 
+// Duration retrieves the value and coerces it to the return type
 func (c LookupFunc) Duration(name any) time.Duration {
 	return lookupDuration(c, name)
 }
 
+// File retrieves the value and coerces it to the return type
 func (c LookupFunc) File(name any) *File {
 	return lookupFile(c, name)
 }
 
+// FileSet retrieves the value and coerces it to the return type
 func (c LookupFunc) FileSet(name any) *FileSet {
 	return lookupFileSet(c, name)
 }
 
+// Map retrieves the value and coerces it to the return type
 func (c LookupFunc) Map(name any) map[string]string {
 	return lookupMap(c, name)
 }
 
+// NameValue retrieves the value and coerces it to the return type
 func (c LookupFunc) NameValue(name any) *NameValue {
 	return lookupNameValue(c, name)
 }
 
+// NameValues retrieves the value and coerces it to the return type
 func (c LookupFunc) NameValues(name any) []*NameValue {
 	return lookupNameValues(c, name)
 }
 
+// URL retrieves the value and coerces it to the return type
 func (c LookupFunc) URL(name any) *url.URL {
 	return lookupURL(c, name)
 }
 
+// Regexp retrieves the value and coerces it to the return type
 func (c LookupFunc) Regexp(name any) *regexp.Regexp {
 	return lookupRegexp(c, name)
 }
 
+// IP retrieves the value and coerces it to the return type
 func (c LookupFunc) IP(name any) net.IP {
 	return lookupIP(c, name)
 }
 
+// BigInt retrieves the value and coerces it to the return type
 func (c LookupFunc) BigInt(name any) *big.Int {
 	return lookupBigInt(c, name)
 }
 
+// BigFloat retrieves the value and coerces it to the return type
 func (c LookupFunc) BigFloat(name any) *big.Float {
 	return lookupBigFloat(c, name)
 }
 
+// Bytes retrieves the value and coerces it to the return type
 func (c LookupFunc) Bytes(name any) []byte {
 	return lookupBytes(c, name)
 }
 
+// Interface retrieves the value and coerces it to the return type
 func (c LookupFunc) Interface(name any) (any, bool) {
 	return c.try(name, false)
 }
 
+// Value retrieves the value
 func (c LookupFunc) Value(name any) any {
 	r, _ := c.try(name, true)
 	return r

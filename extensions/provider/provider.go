@@ -143,7 +143,7 @@ var (
 {{ end }}`
 )
 
-// Factory uses reflection to create a provider factory function.  In particular,
+// FactoryOf uses reflection to create a provider factory function.  In particular,
 // the function argument must have a signature that takes one argument for
 // options and return the provider and optionally an error.  The actual types can be
 // more specific than interface{}.  When they are, type conversion is provided using
@@ -367,10 +367,9 @@ func (r *Registry) New(name string, opts map[string]string) (any, error) {
 
 	} else if pro.Value != nil {
 		return pro.Value, nil
-
-	} else {
-		return nil, fmt.Errorf("provider %q must define either Factory or Value", name)
 	}
+
+	return nil, fmt.Errorf("provider %q must define either Factory or Value", name)
 }
 
 func (r *Registry) Execute(c context.Context) error {
