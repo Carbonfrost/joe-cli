@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -626,7 +627,7 @@ var _ = Describe("NameValue", func() {
 					Name:    "v",
 					Value:   &cli.NameValue{AllowFileReference: true},
 					Options: cli.EachOccurrence,
-					Uses:    cli.Bind(binder),
+					Uses:    bind.Call(binder),
 				},
 			},
 		}

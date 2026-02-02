@@ -11,6 +11,7 @@ import (
 	tt "text/template"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 )
 
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
@@ -79,7 +80,7 @@ func (r *Root) OverwriteFlag() cli.Prototype {
 		Name:     "overwrite",
 		HelpText: "Overwrite files",
 		Setup: cli.Setup{
-			Uses: cli.Bind(r.SetOverwrite),
+			Uses: bind.Call(r.SetOverwrite),
 		},
 	}
 }
@@ -90,7 +91,7 @@ func (r *Root) DryRunFlag() cli.Prototype {
 		Name:     "dry-run",
 		HelpText: "Display what commands will be run without actually executing them",
 		Setup: cli.Setup{
-			Uses: cli.Bind(r.SetDryRun),
+			Uses: bind.Call(r.SetDryRun),
 		},
 	}
 }

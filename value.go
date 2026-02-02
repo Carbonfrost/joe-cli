@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -620,7 +620,7 @@ func (v *NameValue) AllowFileReferencesFlag() Prototype {
 		Name:     "allow-files",
 		HelpText: "Allow a file to be specified with name=@file",
 		Setup: Setup{
-			Uses: Bind(v.SetAllowFileReference),
+			Uses: bind(v.SetAllowFileReference),
 		},
 	}
 }

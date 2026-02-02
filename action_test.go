@@ -13,12 +13,12 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"regexp"
 	"runtime"
 	"testing/fstest"
 	"time"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -2645,158 +2645,6 @@ var _ = Describe("Accessory", func() {
 	})
 })
 
-var _ = Describe("Bind", func() {
-
-	It("invokes bind func with value from flag", func() {
-		var value uint64
-		binder := func(r uint64) error {
-			value = r
-			return nil
-		}
-		app := &cli.App{
-			Flags: []*cli.Flag{
-				{
-					Name:   "memory",
-					Value:  new(uint64),
-					Action: cli.Bind(binder),
-				},
-			},
-		}
-		args, _ := cli.Split("app --memory 33")
-		_ = app.RunContext(context.Background(), args)
-		Expect(value).To(Equal(uint64(33)))
-	})
-
-	It("invokes bind func with static value", func() {
-		var value uint64
-		binder := func(r uint64) error {
-			value = r
-			return nil
-		}
-		app := &cli.App{
-			Flags: []*cli.Flag{
-				{
-					Name: "max-memory",
-					Uses: cli.Bind(binder, 1024),
-				},
-			},
-		}
-		args, _ := cli.Split("app --max-memory")
-		_ = app.RunContext(context.Background(), args)
-		Expect(value).To(Equal(uint64(1024)))
-		Expect(app.Flags[0].Value).To(PointTo(BeTrue()))
-	})
-
-	DescribeTable("generics",
-		func(uses cli.Action, expected any) {
-			act := new(joeclifakes.FakeAction)
-			app := &cli.App{
-				Flags: []*cli.Flag{
-					{
-						Name: "f",
-						Uses: uses,
-					},
-				},
-				Action: act,
-			}
-			_ = app.RunContext(context.Background(), []string{"app"})
-			Expect(act.ExecuteArgsForCall(0).Value("f")).To(BeAssignableToTypeOf(expected))
-		},
-
-		Entry("bool",
-			cli.Bind(func(_ bool) error { return nil }),
-			false),
-		Entry("File",
-			cli.Bind(func(_ *cli.File) error { return nil }),
-			new(cli.File)),
-		Entry("FileSet",
-			cli.Bind(func(_ *cli.FileSet) error { return nil }),
-			new(cli.FileSet)),
-		Entry("Regexp",
-			cli.Bind(func(_ *regexp.Regexp) error { return nil }),
-			new(regexp.Regexp)),
-		Entry("NameValue",
-			cli.Bind(func(_ *cli.NameValue) error { return nil }),
-			new(cli.NameValue)),
-		Entry("List",
-			cli.Bind(func(_ []string) error { return nil }),
-			[]string{}),
-		Entry("Map",
-			cli.Bind(func(_ map[string]string) error { return nil }),
-			map[string]string{}),
-	)
-})
-
-var _ = Describe("BindIndirect", func() {
-
-	It("copies the implied value of the function", func() {
-		fs := &cli.FileSet{Recursive: true}
-		app := &cli.App{
-			Flags: []*cli.Flag{
-				{
-					Name: "no-recursive",
-					Uses: cli.BindIndirect("files", (*cli.FileSet).SetRecursive, false),
-				},
-			},
-			Args: []*cli.Arg{
-				{
-					Name:  "files",
-					Value: fs,
-				},
-			},
-		}
-		app.Initialize(context.Background())
-		Expect(app.Flags[0].Value).To(Equal(new(bool)))
-	})
-
-	It("invokes bind func with static value", func() {
-		fs := &cli.FileSet{Recursive: true}
-		app := &cli.App{
-			Flags: []*cli.Flag{
-				{
-					Name:  "no-recursive",
-					Value: new(bool),
-					Uses:  cli.BindIndirect("files", (*cli.FileSet).SetRecursive, false),
-				},
-			},
-			Args: []*cli.Arg{
-				{
-					Name:  "files",
-					Value: fs,
-				},
-			},
-		}
-		args, _ := cli.Split("app --no-recursive .")
-		_ = app.RunContext(context.Background(), args)
-		Expect(fs.Recursive).To(BeFalse())
-	})
-
-	It("invokes bind func with corresponding value", func() {
-		fs := new(cli.FileSet)
-		act := new(joeclifakes.FakeAction)
-		app := &cli.App{
-			Flags: []*cli.Flag{
-				{
-					Name:   "recursive",
-					Value:  new(bool),
-					Action: act,
-					Uses:   cli.BindIndirect("files", (*cli.FileSet).SetRecursive),
-				},
-			},
-			Args: []*cli.Arg{
-				{
-					Name:  "files",
-					Value: fs,
-				},
-			},
-		}
-		args, _ := cli.Split("app --recursive .")
-		_ = app.RunContext(context.Background(), args)
-		Expect(act.ExecuteCallCount()).To(Equal(1), "action should still be called")
-		Expect(fs.Recursive).To(BeTrue())
-	})
-})
-
 var _ = Describe("EachOccurrence", func() {
 
 	It("provides access to Raw and RawOccurrence", func() {
@@ -2842,7 +2690,7 @@ var _ = Describe("EachOccurrence", func() {
 				{
 					Name:    "f",
 					Options: cli.EachOccurrence,
-					Uses:    cli.Bind(binder),
+					Uses:    bind.Call(binder),
 				},
 			},
 		}
@@ -2868,7 +2716,7 @@ var _ = Describe("EachOccurrence", func() {
 				{
 					Name:    "f",
 					Options: cli.EachOccurrence,
-					Uses:    cli.Bind(binder),
+					Uses:    bind.Call(binder),
 				},
 			},
 		}
@@ -2890,7 +2738,7 @@ var _ = Describe("EachOccurrence", func() {
 					Name:    "f",
 					Value:   ptr,
 					Options: cli.EachOccurrence,
-					Uses:    cli.Bind(binder),
+					Uses:    bind.Call(binder),
 				},
 			},
 		}

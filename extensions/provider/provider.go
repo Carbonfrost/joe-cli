@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/structure"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 )
@@ -194,7 +195,7 @@ func (v *Value) ArgumentFlag() cli.Prototype {
 		Value: new(string),
 		Setup: cli.Setup{
 			Uses: cli.Pipeline(
-				cli.Bind(v.Set),
+				bind.Call(v.Set),
 				func(c *cli.Context) {
 					c.SetHelpText(fmt.Sprintf("Sets an argument for %s", c.Data()["DependentFlag"]))
 				},
@@ -231,7 +232,7 @@ func SetArgument(name string) cli.Action {
 		Value:    new(string),
 		HelpText: fmt.Sprintf("Sets an argument for %s", name),
 		Setup: cli.Setup{
-			Action: cli.BindIndirect(name, (*Value).Set),
+			Action: bind.Indirect(name, (*Value).Set),
 		},
 	}
 }

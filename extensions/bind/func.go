@@ -50,7 +50,17 @@ func Action3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T
 // If this is added to the Uses timing, it will actually be run in the
 // Action timing and the binders can also provide initializers if they
 // have the method Initializer() Action (as the binders in this package do).
-func Call[T any](call func(T) error, t Binder[T]) cli.Action {
+func Call[T any](call func(T) error, opt ...Binder[T]) cli.Action {
+	var t Binder[T]
+	switch len(opt) {
+	case 0:
+		t = Value[T]("")
+	case 1:
+		t = opt[0]
+	default:
+		panic("expected zero or one arg")
+	}
+
 	return cli.Pipeline(
 		initializers(t),
 		caller(cli.ActionTiming, call, t),

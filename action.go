@@ -676,73 +676,6 @@ func SetValue(v any) Action {
 	return actionThunk1((*Context).SetValue, v)
 }
 
-// Bind invokes a function, either using the value specified or the value read from
-// the flag or arg.  The bind function is the function to execute, and valopt is optional,
-// and if specified, indicates the value to set; otherwise, the value is read from the flag.
-func Bind[V any](bind func(V) error, valopt ...V) Action {
-	return bindThunk(FromContext, func(_ *Context, v V) error {
-		return bind(v)
-	}, valopt...)
-}
-
-// BindContext binds a value to a context value.
-// The value function determines how to obtain the value from the context.  Usually, this
-// is a call to context/Context.Value.   The bind function is the function to set the value,
-// and valopt is optional, and if specified, indicates the value to set; otherwise, the
-// value is read from the flag.
-func BindContext[T, V any](value func(context.Context) *T, bind func(*T, V) error, valopt ...V) Action {
-	return bindThunk(func(c context.Context) *T {
-		return value(c)
-	}, bind, valopt...)
-}
-
-// BindIndirect binds a value to the specified option indirectly.
-// For example, it is common to define a FileSet arg and a Boolean flag that
-// controls whether or not the file set is enumerated recursively.  You can use
-// BindIndirect to update the arg indirectly by naming it and the bind function:
-//
-//	&cli.Arg{
-//	    Name: "files",
-//	    Value: new(cli.FileSet),
-//	}
-//	&cli.Flag{
-//	    Name: "recursive",
-//	    HelpText: "Whether files is recursively searched",
-//	    Action: cli.BindIndirect("files", (*cli.FileSet).SetRecursive),
-//	}
-//
-// The name parameter specifies the name of the flag or arg that is affected.  The
-// bind function is the function to set the value, and valopt is optional, and if specified,
-// indicates the value to set; otherwise, the value is read from the flag.
-func BindIndirect[T, V any](name any, bind func(*T, V) error, valopt ...V) Action {
-	return bindThunk(func(c context.Context) *T {
-		return FromContext(c).Value(name).(*T)
-	}, bind, valopt...)
-}
-
-func bindThunk[T, V any](thunk func(context.Context) *T, bind func(*T, V) error, valopt ...V) Action {
-	switch len(valopt) {
-	case 0:
-		proto := &Prototype{Value: support.BindSupportedValue(new(V))}
-		return Pipeline(proto, bindTiming(func(c context.Context) error {
-			return bind(thunk(c), c.Value("").(V))
-		}))
-
-	case 1:
-		proto := &Prototype{Value: new(bool)}
-		val := valopt[0]
-		return Pipeline(proto, bindTiming(func(c context.Context) error {
-			return bind(thunk(c), val)
-		}))
-	default:
-		panic("expected 0 or 1 args for valopt")
-	}
-}
-
-func bindTiming(a actionFunc) Action {
-	return At(ActionTiming, a)
-}
-
 // Accessory provides an action which sets up an accessory flag for the current flag or argument.
 // A common pattern is that a flag has a related sibling flag that can be used to refine the value.
 // For example, you might define a --recursive flag next to a FileSet argument.  When a Value
@@ -1911,6 +1844,13 @@ func doThenExit(a Action) Action {
 		}
 		return Exit(0)
 	})
+}
+
+func bind[V any](fn func(V) error) Action {
+	proto := &Prototype{Value: support.BindSupportedValue(new(V))}
+	return Pipeline(proto, At(ActionTiming, ActionFunc(func(c *Context) error {
+		return fn(c.Value("").(V))
+	})))
 }
 
 var (
