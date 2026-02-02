@@ -1,5 +1,45 @@
 # Changelog
 
+## v0.10.0 (February 1, 2026)
+
+### New Features
+
+* Introduce `TryFromContext` (e6b477d)
+* Introduce log extension (76c49bf)
+* Introduce codec interface (2ebb0ff)
+* Config extension: workspaces (63dcaec)
+* Bind extension:
+    * Breaking change: Merge `bind.Value` and `bind.For` (cbdceca)
+    * Breaking change: Relocate binding of evaluators into `expr` (b533be8)
+    * Add covariance to functors (e0d2bd0)
+    * Introduce `NameValueBinder` (63b1a02)
+    * Ensure composite `FileBinder` is returned when `File` is used (da1d3e6)
+    * `FS` binder (d05ed90)
+    * Make `Initializers` API (18cbb42)
+    * Introduce `Before` and `After` to bind extension (22009a6)
+* Provider extension
+    * Allow discrete values in provider definitions (4cc72f2)
+    * Breaking change: Rename `Factory/FactoryOf` (6982110)
+    * Support alias lookup (169827f)
+* Support filtering data in marshal conversion (4d03b35)
+* `Completing` filter mode (249fef6)
+* `Any`, `All` context filters (dd3bd5b)
+* `HasData` and parsing of filters (1c6045a)
+
+### Bug fixes and improvements
+
+* Revamp parsing of maps and lists (6a508ff)
+* Bug fix: allow `FS` to be nil in `TransformOptionalFileReference` and infer default (97a2dba)
+* Fix tests: context filter func conversion (53d258d)
+* Update Mutex to use listOfValue's convention for its message (abf3493)
+* Update dependent versions; re-go generate (a7760f2, d61d32d)
+* Chores:
+    * Fix GitHub configuration to 1.25 (4e0ef7a)
+    * Address minor linter errors and improvements (70f0009, 2b95b71)
+    * Ignore `_examples, eng, bin` dirs in go module (975c5fc)
+    * Update copyright headers and package documentation (07d078b)
+    * go.mod: Update ignore filter (acafbc9)
+
 ## v0.9.4 (December 22, 2025)
 
 ### New Feature
