@@ -107,6 +107,29 @@ var _ = Describe("FileBinder", func() {
 	})
 })
 
+var _ = Describe("BoolBinder", func() {
+
+	It("delegates to bind properties", func() {
+		var negated bool
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "f",
+					Value: new(bool),
+					Uses: cli.Pipeline(
+						bind.Call(callFactory(&negated), bind.Bool().Negated()),
+					),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -f")
+		_ = app.RunContext(context.Background(), args)
+		Expect(negated).To(BeFalse())
+	})
+})
+
 var _ = Describe("ContextValue", func() {
 
 	It("invokes the function with the value", func() {
@@ -262,6 +285,7 @@ var _ = Describe("Exact", func() {
 			Expect(binder).To(expected)
 		},
 			Entry("File", bind.Exact(new(cli.File)), BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("Boolean", bind.Exact(true), BeAssignableToTypeOf(new(bind.BoolBinder))),
 			Entry("NameValue", bind.Exact(new(cli.NameValue)), BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
 	})
@@ -309,6 +333,7 @@ var _ = Describe("Value", func() {
 			Expect(fn).To(WithTransform(calledWithReflection, expected))
 		},
 			Entry("File", bind.Value[*cli.File], BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("Boolean", bind.Value[bool], BeAssignableToTypeOf(new(bind.BoolBinder))),
 			Entry("NameValue", bind.Value[*cli.NameValue], BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
 	})

@@ -235,8 +235,8 @@ func FS() Binder[cli.FS] {
 // argument by index.
 // When present in the Uses pipeline, this also sets up the corresponding flag or
 // arg with a reasonable default of the same type.
-func Bool(nameopt ...any) Binder[bool] {
-	return byName((*cli.Context).Bool, nameopt)
+func Bool(nameopt ...any) *BoolBinder {
+	return wrapWithComposite(byName((*cli.Context).Bool, nameopt)).(*BoolBinder)
 }
 
 // String obtains a binder that obtains a value from the context. If the name is
@@ -527,10 +527,21 @@ func bind3[T, U, V any](c context.Context, t Binder[T], u Binder[U], v Binder[V]
 	return
 }
 
-var (
-	_ binderSupportInterface[any] = (*binder[any])(nil)
-	_ binderSupportInterface[any] = (*exactBinder[any])(nil)
-)
+// BoolBinder provides a binder for [cli.Bool]
+type BoolBinder struct {
+	binderSupportInterface[bool]
+}
+
+func (f *BoolBinder) Bind(c context.Context) (bool, error) {
+	return f.binderSupportInterface.Bind(c)
+}
+
+// Negated obtains the logical NOT value for a Boolean
+func (b *BoolBinder) Negated() Binder[bool] {
+	return then(b, func(v bool) bool {
+		return !v
+	})
+}
 
 // FileBinder provides a binder for [cli.File]
 type FileBinder struct {
@@ -601,6 +612,8 @@ func then[T, U any](b Binder[T], fn func(T) U) bindFunc[U] {
 func wrapWithComposite[V any](in binderSupportInterface[V]) any {
 	var zero V
 	switch any(zero).(type) {
+	case bool:
+		return &BoolBinder{in.(binderSupportInterface[bool])}
 	case *cli.File:
 		return &FileBinder{in.(binderSupportInterface[*cli.File])}
 	case *cli.NameValue:
@@ -609,4 +622,9 @@ func wrapWithComposite[V any](in binderSupportInterface[V]) any {
 	return in
 }
 
-var _ Binder[*cli.File] = (*FileBinder)(nil)
+var (
+	_ binderSupportInterface[any] = (*binder[any])(nil)
+	_ binderSupportInterface[any] = (*exactBinder[any])(nil)
+	_ Binder[*cli.File]           = (*FileBinder)(nil)
+	_ Binder[bool]                = (*BoolBinder)(nil)
+)
