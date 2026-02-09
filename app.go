@@ -96,7 +96,7 @@ type App struct {
 	Options Option
 
 	// FS specifies the file system that is used by default for Files.
-	// If the FS implements func OpenContext(context.Context, string)(fs.File, error), note that
+	// If the FS implements func OpenContextFS, note that
 	// this will be called instead of Open in places where the Context is available.
 	// For os.File this means that if the context has a Deadline, SetReadDeadline
 	// and/or SetWriteDeadline will be set.  Clients can implement similar functions in their

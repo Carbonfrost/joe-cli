@@ -36,6 +36,7 @@ import (
 type FS interface {
 	fs.FS
 	fs.StatFS
+	OpenContextFS
 	Chmod(name string, mode fs.FileMode) error
 	Chown(name string, uid, gid int) error
 	Create(name string) (fs.File, error)
@@ -46,6 +47,10 @@ type FS interface {
 	RemoveAll(path string) error
 	Chtimes(name string, atime time.Time, mtime time.Time) error
 	Rename(oldpath, newpath string) error
+}
+
+type OpenContextFS interface {
+	fs.FS
 	OpenContext(context.Context, string) (fs.File, error)
 }
 
