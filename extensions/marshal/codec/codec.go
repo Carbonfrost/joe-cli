@@ -10,25 +10,7 @@ import (
 	"io"
 )
 
-type Codec interface {
-	NewDecoder(io.Reader, ...DecodeOption) Decoder
-	NewEncoder(io.Writer, ...EncodeOption) Encoder
-	Marshal(v any) ([]byte, error)
-	Unmarshal(data []byte, v any) error
-}
-
-type Decoder interface {
-	Decode(v any) error
-}
-
-type Encoder interface {
-	Encode(v any) error
-}
-
-type DecodeOption interface {
-	Apply(Decoder)
-}
-
-type EncodeOption interface {
-	Apply(Encoder)
+type Interface interface {
+	MarshalWrite(w io.Writer, in any) error
+	UnmarshalRead(r io.Reader, out any) error
 }

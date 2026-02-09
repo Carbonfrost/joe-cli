@@ -11,22 +11,16 @@ import (
 
 type jsonCodec struct{}
 
-func NewJSONCodec() Codec {
+func NewJSONCodec() Interface {
 	return &jsonCodec{}
 }
 
-func (*jsonCodec) NewDecoder(r io.Reader, _ ...DecodeOption) Decoder {
-	return json.NewDecoder(r)
+func (*jsonCodec) MarshalWrite(w io.Writer, in any) error {
+	e := json.NewEncoder(w)
+	return e.Encode(in)
 }
 
-func (*jsonCodec) NewEncoder(w io.Writer, _ ...EncodeOption) Encoder {
-	return json.NewEncoder(w)
-}
-
-func (*jsonCodec) Marshal(v any) ([]byte, error) {
-	return json.Marshal(v)
-}
-
-func (*jsonCodec) Unmarshal(data []byte, v any) error {
-	return json.Unmarshal(data, v)
+func (*jsonCodec) UnmarshalRead(r io.Reader, out any) error {
+	e := json.NewDecoder(r)
+	return e.Decode(out)
 }
