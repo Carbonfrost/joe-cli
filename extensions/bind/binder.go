@@ -75,6 +75,7 @@ package bind
 
 import (
 	"context"
+	"io"
 	"math/big"
 	"net"
 	"net/url"
@@ -227,6 +228,20 @@ func Context() Binder[*cli.Context] {
 func FS() Binder[cli.FS] {
 	return then(Context(), func(c *cli.Context) cli.FS {
 		return cli.NewFS(c.FS)
+	})
+}
+
+// Stdout binds stdout.
+func Stdout() Binder[io.Writer] {
+	return then(Context(), func(c *cli.Context) io.Writer {
+		return c.Stdout
+	})
+}
+
+// Stdin binds stdin.
+func Stdin() Binder[io.Reader] {
+	return then(Context(), func(c *cli.Context) io.Reader {
+		return c.Stdin
 	})
 }
 
