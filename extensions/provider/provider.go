@@ -401,7 +401,10 @@ func (d Details) ProviderNames() []string {
 func (d Details) LookupProvider(name string) (Detail, bool) {
 	r, ok := d[name]
 	if !ok {
-		for _, v := range d {
+		for k, v := range d {
+			if strings.EqualFold(name, k) {
+				return v, true
+			}
 			if slices.Contains(v.Aliases, name) {
 				return v, true
 			}

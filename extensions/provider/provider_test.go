@@ -200,6 +200,17 @@ var _ = Describe("Details", func() {
 			Expect(ok).To(BeTrue())
 			Expect(actual).To(Equal(provider.Detail{Aliases: []string{"B"}}))
 		})
+
+		It("looks up case insensitive", func() {
+			details := provider.Details{
+				"A": {
+					Value: 1,
+				},
+			}
+			actual, ok := details.LookupProvider("a")
+			Expect(ok).To(BeTrue())
+			Expect(actual).To(Equal(provider.Detail{Value: 1}))
+		})
 	})
 })
 
