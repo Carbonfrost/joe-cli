@@ -53,10 +53,6 @@ var _ = Describe("Registry", func() {
 	})
 
 	Describe("New", func() {
-		type csvProvider struct {
-			Comma   string
-			UseCRLF bool
-		}
 
 		It("creates provider given the factory and its defaults", func() {
 			action := new(joeclifakes.FakeAction)
@@ -744,3 +740,10 @@ var _ = Describe("Value", func() {
 type Options struct {
 	A, B string
 }
+
+type csvProvider struct {
+	Comma   string
+	UseCRLF bool
+}
+
+type formatProvider interface{}
