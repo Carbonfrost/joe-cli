@@ -47,7 +47,8 @@ var _ = Describe("Registry", func() {
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
 			services := provider.Services(c)
-			Expect(services.Registry("providers")).To(Equal(registry))
+			actual, _ := services.LookupRegistry("providers")
+			Expect(actual).To(Equal(registry))
 		})
 	})
 
@@ -88,7 +89,8 @@ var _ = Describe("Registry", func() {
 
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
-			actual, _ := provider.Services(c).Registry("providers").New("csv", nil)
+			reg, _ := provider.Services(c).LookupRegistry("providers")
+			actual, _ := reg.New("csv", nil)
 			Expect(actual).To(Equal(&csvProvider{"a", true}))
 		})
 
@@ -113,7 +115,8 @@ var _ = Describe("Registry", func() {
 
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
-			actual, _ := provider.Services(c).Registry("providers").New("csv", nil)
+			reg, _ := provider.Services(c).LookupRegistry("providers")
+			actual, _ := reg.New("csv", nil)
 			Expect(actual).To(Equal(&csvProvider{"value", true}))
 		})
 
@@ -134,7 +137,8 @@ var _ = Describe("Registry", func() {
 			_ = app.RunContext(context.Background(), []string{"app"})
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
-			_, err := provider.Services(c).Registry("providers").New("csv", nil)
+			reg, _ := provider.Services(c).LookupRegistry("providers")
+			_, err := reg.New("csv", nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("provider \"csv\" must define either Factory or Value"))
 		})
@@ -154,7 +158,8 @@ var _ = Describe("Registry", func() {
 			_ = app.RunContext(context.Background(), []string{"app"})
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
-			_, err := provider.Services(c).Registry("providers").New("csv", nil)
+			reg, _ := provider.Services(c).LookupRegistry("providers")
+			_, err := reg.New("csv", nil)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -179,8 +184,8 @@ var _ = Describe("Registry", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
-
-			actual := provider.Services(c).Registry("providers").ProviderNames()
+			reg, _ := provider.Services(c).LookupRegistry("providers")
+			actual := reg.ProviderNames()
 			Expect(actual).To(ConsistOf([]string{"csv", "json", "yaml"}))
 		})
 	})
@@ -272,6 +277,14 @@ var _ = Describe("SetArgument", func() {
 					Name:  "provider",
 					Value: value,
 					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
+				},
+			},
+			Uses: &provider.Registry{
+				Name: "provider",
+				Providers: provider.Map{
+					"hello": {
+						"world": "a",
+					},
 				},
 			},
 		}
@@ -550,6 +563,15 @@ var _ = Describe("Value", func() {
 				{
 					Name:  "provider",
 					Value: po,
+				},
+			},
+			Uses: &provider.Registry{
+				Name: "provider",
+				Providers: provider.Map{
+					"csv": {
+						"comma":   "a",
+						"useCRLF": "true",
+					},
 				},
 			},
 		}

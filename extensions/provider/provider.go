@@ -51,6 +51,10 @@ type Value struct {
 	// Name is the name of the provider to use
 	Name string
 
+	// Registry specifies the name of the registry to use. If empty, the name of
+	// the flag selects it
+	Registry string
+
 	// Args provides the arguments to the provider.  Args should be any supported
 	// flag type.  If unspecified, a map[string]string is used.
 	Args any
@@ -251,7 +255,7 @@ func ListProviders(name string) cli.Action {
 		},
 		cli.Initializer(cli.ActionFunc(fallbackTemplate)),
 		cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) error {
-			registry := Services(c).Registry(name)
+			registry, _ := Services(c).LookupRegistry(name)
 			tpl := c.Template("Providers")
 			data := struct {
 				Providers []providerData
@@ -325,8 +329,8 @@ func (v *Value) Initializer() cli.Action {
 func validateProviderExists(c *cli.Context) error {
 	v := c.Value("").(*Value)
 	provider := strings.TrimLeft(c.Name(), "-")
-	registry := Services(c).Registry(provider)
-	if registry == nil {
+	registry, ok := Services(c).LookupRegistry(provider)
+	if !ok {
 		return nil
 	}
 	if registry.AllowUnknown {
