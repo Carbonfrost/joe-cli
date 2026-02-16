@@ -244,7 +244,7 @@ var (
 		Exits:                   ActionFunc(wrapWithExit),
 		MustExist:               Before(ActionFunc(mustExistOption)),
 		SkipFlagParsing:         setInternalFlag(internalFlagSkipFlagParsing),
-		WorkingDirectory:        Pipeline(DirectoryCompletion, Before(ActionFunc(workingDirectoryOption))),
+		WorkingDirectory:        Pipeline(DirectoryCompletion, workingDirectoryOption()),
 		Optional:                ActionFunc(optionalOption),
 		DisallowFlagsAfterArgs:  setInternalFlag(internalFlagDisallowFlagsAfterArgs),
 		No:                      ActionFunc(noOption),
@@ -520,15 +520,17 @@ func mustExistOption(c *Context) error {
 	return fmt.Errorf("%v: no such file or directory", v)
 }
 
-func workingDirectoryOption(c *Context) error {
-	if c.Seen("") {
-		newDir := fmt.Sprint(c.Value(""))
-		if newDir == "" {
-			return nil
+func workingDirectoryOption() Action {
+	return At(ValidatorTiming, ActionFunc(func(c *Context) error {
+		if c.Seen("") {
+			newDir := fmt.Sprint(c.Value(""))
+			if newDir == "" {
+				return nil
+			}
+			return os.Chdir(newDir)
 		}
-		return os.Chdir(newDir)
-	}
-	return nil
+		return nil
+	}))
 }
 
 func optionalOption(c *Context) error {
