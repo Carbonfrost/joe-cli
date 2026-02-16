@@ -39,7 +39,7 @@ func Services(c context.Context) *ContextServices {
 	return c.Value(servicesKey).(*ContextServices)
 }
 
-// Registry gets the registry by name, if any. The name argument
+// LookupRegistry gets the registry by name, if any. The name argument
 // is the name of the registry, but as a special case, if the name
 // starts with dashes as if the name of a flag, those are trimmed.
 // The argument can also be a Flag. The name of the flag is used,

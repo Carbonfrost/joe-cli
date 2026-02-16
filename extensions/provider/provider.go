@@ -111,7 +111,7 @@ type Map map[string]map[string]string
 // to be listed.  This value is used in the Uses
 // pipeline of either the flag or its containing command.
 type Registry struct {
-	// Name of the registry, which is the same as the name of the flag
+	// Name of the registry. This typically shares the name of the flag.
 	Name string
 
 	// Providers names each of the providers which are allowed with a mapping to

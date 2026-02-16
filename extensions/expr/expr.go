@@ -4,6 +4,32 @@
 
 // Package expr provides conventions for command line expressions, which are flag-like
 // arguments which are ordered and processed using pipe and filter semantics.
+//
+// # Evaluators
+//
+// Evaluators support the binding pattern.
+//
+// Say that you have an expression that has an operand "-name TEXT",
+// and you have a function SetName(string)cli.Evaluator that can produce the
+// evaluator that is actually used. You can use the following to simplify the binding
+// of the string argument.
+//
+//	&cli.Arg {
+//	    Name: "expression",
+//	    Value: cli.Expression{
+//	        Exprs: []*cli.Expr{
+//	            {
+//	                Name: "name",
+//	                Args: cli.Args(cli.String()),
+//	                Evaluator: expr.BindEvaluator(SetName, bind.String()),
+//	            }
+//	        }
+//	    }
+//	}
+//
+// Notice that the bind.String() call doesn't require you to name the argument from
+// which to obtain the value. When unspecified, it uses the first argument in the
+// argument list for the Expr.
 package expr
 
 import (

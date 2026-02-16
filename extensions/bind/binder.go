@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package bind provides functions for creating late-bound actions and evaluators.
-// It's common to produce actions or evaluators that delegate to other
-// actions or evaluators, to values in the context, or to models where the values
+// Package bind provides functions for creating late-bound actions.
+// It's common to produce actions that delegate to other
+// actions, to values in the context, or to models where the values
 // that are needed have been set.  This package provides idioms that can simplify
 // this code and encourage the pattern of separating the concerns.
 //
@@ -47,30 +47,6 @@
 //	bind.Call2(myFunction, bind.String(), bind.Int())   // names omitted
 //	bind.Call2(myFunction, bind.String(0), bind.Int(1))
 //	bind.Call2(myFunction, bind.String("first"), bind.Int("second"))
-//
-// # Evaluators
-//
-// Say that you have an expression that has an operand "-name TEXT",
-// and you have a function SetName(string)cli.Evaluator that can produce the
-// evaluator that is actually used. You can use the following to simplify the binding
-// of the string argument.
-//
-//	&cli.Arg {
-//	    Name: "expression",
-//	    Value: cli.Expression{
-//	        Exprs: []*cli.Expr{
-//	            {
-//	                Name: "name",
-//	                Args: cli.Args(cli.String()),
-//	                Evaluator: bind.Evaluator(SetName, bind.String()),
-//	            }
-//	        }
-//	    }
-//	}
-//
-// Notice that the bind.String() call doesn't require you to name the argument from
-// which to obtain the value. When unspecified, it uses the first argument in the
-// argument list for the Expr.
 package bind
 
 import (
