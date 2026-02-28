@@ -80,23 +80,23 @@ var _ = Describe("Evaluator", func() {
 			Flags: []*cli.Flag{
 				{
 					Name:  "string",
-					Value: box("value set"),
+					Value: new("value set"),
 				},
 				{
 					Name:  "bool",
-					Value: box(true),
+					Value: new(true),
 				},
-				{Name: "list", Value: box([]string{"list"})},
-				{Name: "int", Value: box(2)},
-				{Name: "int8", Value: box(int8(8))},
-				{Name: "int16", Value: box(int16(16))},
-				{Name: "int32", Value: box(int32(32))},
-				{Name: "int64", Value: box(int64(64))},
-				{Name: "uint", Value: box(uint(2))},
-				{Name: "uint8", Value: box(uint8(8))},
-				{Name: "uint16", Value: box(uint(16))},
-				{Name: "uint32", Value: box(uint(32))},
-				{Name: "uint64", Value: box(uint(64))},
+				{Name: "list", Value: new([]string{"list"})},
+				{Name: "int", Value: new(2)},
+				{Name: "int8", Value: new(int8(8))},
+				{Name: "int16", Value: new(int16(16))},
+				{Name: "int32", Value: new(int32(32))},
+				{Name: "int64", Value: new(int64(64))},
+				{Name: "uint", Value: new(uint(2))},
+				{Name: "uint8", Value: new(uint8(8))},
+				{Name: "uint16", Value: new(uint(16))},
+				{Name: "uint32", Value: new(uint(32))},
+				{Name: "uint64", Value: new(uint(64))},
 			},
 			Action: func(c context.Context) {
 				for _, e := range evaluators {
@@ -157,20 +157,20 @@ var _ = Describe("Evaluator", func() {
 
 		app := &cli.App{
 			Flags: []*cli.Flag{
-				{Name: "float32", Value: box(float32(32))},
-				{Name: "float64", Value: box(float64(64))},
-				{Name: "duration", Value: box(2 * time.Second)},
+				{Name: "float32", Value: new(float32(32))},
+				{Name: "float64", Value: new(float64(64))},
+				{Name: "duration", Value: new(2 * time.Second)},
 				{Name: "file", Value: &cli.File{}},
 				{Name: "fileSet", Value: &cli.FileSet{}},
-				{Name: "mmap", Value: box(map[string]string{"m": "a"})},
+				{Name: "mmap", Value: new(map[string]string{"m": "a"})},
 				{Name: "nameValue", Value: &cli.NameValue{Name: "n", Value: "v"}},
 				{Name: "nameValues", Value: cli.NameValues("a", "b")},
-				{Name: "url", Value: box(unwrap(url.Parse("http://go.com")))},
-				{Name: "regexp", Value: box(regexp.MustCompile("[a-z]"))},
-				{Name: "ip", Value: box(net.ParseIP("127.0.0.1"))},
-				{Name: "bigInt", Value: box(big.NewInt(200))},
-				{Name: "bigFloat", Value: box(big.NewFloat(100))},
-				{Name: "bytes", Value: box([]byte{1, 2})},
+				{Name: "url", Value: new(unwrap(url.Parse("http://go.com")))},
+				{Name: "regexp", Value: new(regexp.MustCompile("[a-z]"))},
+				{Name: "ip", Value: new(net.ParseIP("127.0.0.1"))},
+				{Name: "bigInt", Value: new(big.NewInt(200))},
+				{Name: "bigFloat", Value: new(big.NewFloat(100))},
+				{Name: "bytes", Value: new([]byte{1, 2})},
 			},
 			Action: func(c context.Context) {
 				for _, e := range evaluators {
@@ -385,10 +385,6 @@ func evalFactory[T any](t *T) func(T) expr.Evaluator {
 func newContext(app *cli.App) context.Context {
 	ctxt, _ := app.Initialize(context.Background())
 	return ctxt
-}
-
-func box[T any](t T) *T {
-	return &t
 }
 
 func unwrap[V any](v V, _ any) V {

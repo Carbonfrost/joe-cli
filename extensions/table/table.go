@@ -326,8 +326,8 @@ func (c *tableContext) EndTable() string {
 		if after, ok := strings.CutPrefix(lines[i], sep); ok {
 			lines[i] = c.cornerSeparators[sin] + after
 		}
-		if strings.HasSuffix(lines[i], sep) {
-			lines[i] = strings.TrimSuffix(lines[i], sep) + c.cornerSeparators[sin+2]
+		if before, ok := strings.CutSuffix(lines[i], sep); ok {
+			lines[i] = before + c.cornerSeparators[sin+2]
 		}
 		lines[i] = strings.ReplaceAll(lines[i], sep, c.cornerSeparators[sin+1])
 	}

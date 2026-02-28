@@ -770,7 +770,7 @@ func dereference(v any) any {
 	}
 
 	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		return val.Elem().Interface()
 	}
 	return v

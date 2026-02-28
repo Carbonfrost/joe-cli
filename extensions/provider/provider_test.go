@@ -746,4 +746,4 @@ type csvProvider struct {
 	UseCRLF bool
 }
 
-type formatProvider interface{}
+type formatProvider any

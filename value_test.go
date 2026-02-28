@@ -735,10 +735,6 @@ func unwrap[V any](v V, _ any) V {
 	return v
 }
 
-func addr[V any](v V) *V {
-	return &v
-}
-
 type customValue struct {
 	calledDisableSplitting bool
 	init                   cli.Action

@@ -24,7 +24,7 @@ type App struct {
 	ManualText string         `json:"manualText,omitempty"`
 	UsageText  string         `json:"usageText,omitempty"`
 	Version    string         `json:"version,omitempty"`
-	BuildDate  time.Time      `json:"buildDate,omitempty"`
+	BuildDate  time.Time      `json:"buildDate"`
 	Author     string         `json:"author,omitempty"`
 	Copyright  string         `json:"copyright,omitempty"`
 	License    string         `json:"license,omitempty"`
