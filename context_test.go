@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -827,6 +827,74 @@ var _ = Describe("Context", func() {
 			})
 		})
 
+	})
+
+	Describe("Descendents", func() {
+
+		It("provides the expected traversal", func() {
+			var (
+				app      *cli.App
+				paths    []string
+				commands []string
+			)
+			commands = make([]string, 0, 5)
+			paths = make([]string, 0, 5)
+			app = &cli.App{
+				Name: "_",
+				Action: func(c *cli.Context) {
+					for cmd := range c.Descendents() {
+						// Don't worry about "help" and "version" in this test
+						if cmd.Name() == "help" || cmd.Name() == "version" {
+							return
+						}
+
+						commands = append(commands, cmd.Name())
+						paths = append(paths, cmd.Path().String())
+					}
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "p",
+						Subcommands: []*cli.Command{
+							{
+								Name: "c",
+								Subcommands: []*cli.Command{
+									{
+										Name: "g",
+									},
+									{
+										Name: "h",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "q",
+					},
+				},
+			}
+
+			_ = app.RunContext(context.Background(), nil)
+
+			Expect(commands).To(Equal([]string{
+				"_",
+				"p",
+				"c",
+				"g",
+				"h",
+				"q",
+			}))
+			Expect(paths).To(Equal([]string{
+				"_",
+				"_ p",
+				"_ p c",
+				"_ p c g",
+				"_ p c h",
+				"_ q",
+			}))
+
+		})
 	})
 
 	Describe("FindTarget", func() {

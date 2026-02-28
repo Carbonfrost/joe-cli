@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"math/big"
 	"net"
 	"net/url"
@@ -1027,6 +1028,20 @@ func (c *Context) hookAt(timing Timing, pattern string, handler Action) error {
 func (c *Context) hookable() (hookable, bool) {
 	h, ok := c.target.(hookable)
 	return h, ok
+}
+
+// Descendents enumerates the current command and all descendent sub-commands
+// recursively
+func (c *Context) Descendents() iter.Seq[*Context] {
+	return func(yield func(*Context) bool) {
+		_ = c.Walk(func(d *Context) error {
+			if !yield(d) {
+				return errStopWalk
+			}
+
+			return nil
+		})
+	}
 }
 
 // Walk traverses the hierarchy of commands.  The provided function fn is called once for each command
