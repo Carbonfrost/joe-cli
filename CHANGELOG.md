@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.11.0 (March 1, 2026)
+
+### New Features
+
+* Expander extension (a8e894c)
+* `Descendents` (091963f)
+* Global uses (afcbec9)
+* Introduce stdin, stdout binders (d66f98f)
+* Provider binder (f5301aa)
+* Introduce `OpenContextFS` as interface (8538c5b)
+* `BoolBinder` (2e5bece)
+
+### Bug fixes and improvements
+
+* Breaking change: Remove `Bind`, `BindContext`, etc. from root package (2d0f7b7)
+* Provider extension: allow case insensitive lookup (9b51c5f)
+* Change codec interface to simplify it (b5d4da4)
+* Rework provider registry into global services (f35601d)
+* Move working directory option into `ValidatorTiming` (a8c0faa)
+* Bug fix: persistent flag overrides (72d64df)
+* Chores:
+    * Update to go1.26 (8ea3ea7)
+    * Update dependent versions (7df38d3)
+    * Documentation fixes (876d5e8)
+    * Apply go fix and modernize (654f87b)
+
 ## v0.10.0 (February 1, 2026)
 
 ### New Features
