@@ -17,6 +17,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -1720,7 +1721,7 @@ func (w withTimingWrapper) Execute(ctx context.Context) error {
 }
 
 func (b beforePipeline) Execute(c context.Context) error {
-	return ActionPipeline(append(append(append(b[0], b[1]...), b[2]...), b[3]...)).Execute(c)
+	return ActionPipeline(slices.Concat(b[:]...)).Execute(c)
 }
 
 func (i *hooksSupport) hook(at Timing, a Action) error {

@@ -1189,7 +1189,7 @@ var _ = Describe("ActionOf", func() {
 
 	It("supports error as action", func() {
 		act := cli.ActionOf(errors.New("e"))
-		Expect(act.Execute(context.TODO())).To(MatchError("e"))
+		Expect(act.Execute(context.Background())).To(MatchError("e"))
 	})
 
 	It("invokes the context action", func() {

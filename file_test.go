@@ -470,7 +470,7 @@ var _ = Describe("FileReference", func() {
 			FS:     testFileSystem,
 			Action: act,
 		}
-		err := app.RunContext(context.TODO(), []string{"app", "d/b.list", "d/b.list"})
+		err := app.RunContext(context.Background(), []string{"app", "d/b.list", "d/b.list"})
 		Expect(err).NotTo(HaveOccurred())
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
@@ -490,7 +490,7 @@ var _ = Describe("FileReference", func() {
 			Action: act,
 			Stdin:  strings.NewReader("ok.txt\n\n"),
 		}
-		_ = app.RunContext(context.TODO(), []string{"app", "-"})
+		_ = app.RunContext(context.Background(), []string{"app", "-"})
 
 		context := cli.FromContext(act.ExecuteArgsForCall(0))
 		Expect(context.FileSet("b").Files).To(Equal([]string{"ok.txt"}))

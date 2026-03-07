@@ -20,7 +20,7 @@ func BindSupportedValue(v any) any {
 	// *V but V is **W and W is a Value implementation, then unwrap this
 	// so we end up with *W.  For example, instead of **FileSet, just use *FileSet.
 	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr && val.Elem().Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer && val.Elem().Kind() == reflect.Pointer {
 		pointsToValue := val.Elem().Type()
 		if pointsToValue.Implements(valueType) {
 			return reflect.New(pointsToValue.Elem()).Interface()
