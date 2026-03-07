@@ -54,6 +54,25 @@ var _ = Describe("Map", func() {
 	)
 })
 
+var _ = Describe("Reflect", func() {
+
+	DescribeTable("examples", func(value any, text string, expected types.GomegaMatcher) {
+		e := expander.Compile(text)
+
+		expander := expander.Reflect(value)
+		Expect(e.Expand(expander)).To(expected)
+	},
+		Entry("nominal", struct {
+			S string
+			T string
+		}{"1", "2"}, "%(S) %(T)", Equal("1 2")),
+		Entry("case insensitive", struct{ R string }{"1"}, "%(r)", Equal("1")),
+		Entry("pointer", &struct{ M complex128 }{4 + 80i}, "%(M)", Equal("(4+80i)")),
+		Entry("nil", nil, "%(unknown)", Equal("<nil>")),
+		Entry("non-existing", struct{ A string }{"L"}, "%(unknown)", Equal("<nil>")),
+	)
+})
+
 var _ = Describe("Time", func() {
 
 	DescribeTable("examples", func(text string, expected types.GomegaMatcher) {

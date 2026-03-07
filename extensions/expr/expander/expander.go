@@ -11,6 +11,7 @@ package expander
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -178,6 +179,38 @@ func Unknown() Interface {
 	return Func(func(s string) any {
 		return ErrUnknownToken(s)
 	})
+}
+
+// Reflect provides a simple expander around a given value using
+// reflection
+func Reflect(v any) Interface {
+	if v == nil {
+		return Func(func(string) any {
+			return nil
+		})
+	}
+	return &reflectExpander{
+		reflect.ValueOf(v),
+	}
+}
+
+type reflectExpander struct {
+	v reflect.Value
+}
+
+func (r *reflectExpander) Expand(k string) any {
+	v := r.v
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	field := v.FieldByNameFunc(func(name string) bool {
+		return strings.EqualFold(name, k)
+	})
+
+	if !field.IsValid() {
+		return nil
+	}
+	return field.Interface()
 }
 
 type ErrUnknownToken string
