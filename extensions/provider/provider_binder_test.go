@@ -58,6 +58,41 @@ var _ = Describe("Bind", func() {
 		Expect(calledWith).To(BeAssignableToTypeOf(new(csvProvider)))
 		Expect(calledWith).To(Equal(&csvProvider{"b", false}))
 	})
+
+	It("implicitly sets the type of the argument", func() {
+		caller := func(string, any) error {
+			return nil
+		}
+		registry := &provider.Registry{
+			Name:         "format",
+			AllowUnknown: true,
+		}
+
+		app := &cli.App{
+			Name: "app",
+			Uses: registry,
+			Flags: []*cli.Flag{
+				{
+					Name: "format",
+					Uses: bind.Call2(caller, provider.BindValue().Name(), provider.BindValue().Args()),
+				},
+				{
+					Name: "format2",
+					Uses: bind.Call2(caller, provider.BindValue("format2").Name(), provider.BindValue("format2").Args()),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app --format csv,comma=b,useCRLF=false")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+
+		flag, _ := app.Flag("format")
+		Expect(flag.Value).To(BeAssignableToTypeOf(new(provider.Value)))
+
+		flag, _ = app.Flag("format2")
+		Expect(flag.Value).To(BeAssignableToTypeOf(new(provider.Value)))
+	})
 })
 
 var _ = Describe("ValueBinder", func() {

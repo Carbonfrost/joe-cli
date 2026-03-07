@@ -58,6 +58,43 @@ var _ = Describe("Binder", func() {
 				Entry("flag by name", bind.Call(factory, bind.Int("flag")), "flag"),
 			)
 		})
+
+		Describe("implicitly sets the type of the argument", func() {
+
+			var factory = func(string) error {
+				return nil
+			}
+			var factory2 = func(bool) error {
+				return nil
+			}
+
+			DescribeTable("examples", func(actual cli.Action, expected OmegaMatcher) {
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "flag", Uses: actual},
+					},
+					Action: cli.Pipeline(
+						func(c *cli.Context) {
+							Expect(c.Value("flag")).To(expected)
+						},
+					),
+				}
+
+				args, _ := cli.Split("app")
+				err := app.RunContext(context.Background(), args)
+				Expect(err).NotTo(HaveOccurred())
+			},
+				Entry("File name", bind.Call(factory, bind.File().Name()), BeAssignableToTypeOf(new(cli.File))),
+				Entry("File base", bind.Call(factory, bind.File().Base()), BeAssignableToTypeOf(new(cli.File))),
+				Entry("NameValue name", bind.Call(factory, bind.NameValue().Name()), BeAssignableToTypeOf(new(cli.NameValue))),
+				Entry("Boolean negated", bind.Call(factory2, bind.Bool().Negated()), BeAssignableToTypeOf(true)),
+
+				Entry("File name", bind.Call(factory, bind.File("flag").Name()), BeAssignableToTypeOf(new(cli.File))),
+				Entry("File base", bind.Call(factory, bind.File("flag").Base()), BeAssignableToTypeOf(new(cli.File))),
+				Entry("NameValue name", bind.Call(factory, bind.NameValue("flag").Name()), BeAssignableToTypeOf(new(cli.NameValue))),
+				Entry("Boolean negated", bind.Call(factory2, bind.Bool("flag").Negated()), BeAssignableToTypeOf(true)),
+			)
+		})
 	})
 })
 

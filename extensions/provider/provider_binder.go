@@ -10,30 +10,42 @@ import (
 
 // ValueBinder provides a binder which works with the *provider.Value
 type ValueBinder struct {
-	b bind.Binder[*Value]
+	delegateBinder[*Value]
 }
 
 type binder[T any] struct {
-	b bind.Binder[*Value]
+	delegateBinder[*Value]
+}
+
+type delegateBinder[T any] struct {
+	bind.Binder[T]
+}
+
+func delegate[T any](b bind.Binder[T]) delegateBinder[T] {
+	return delegateBinder[T]{b}
+}
+
+type binderInit interface {
+	Initializer() cli.Action
 }
 
 // BindValue provides the binder the invokes the provider factory with
 // its configured arguments
 func Bind[T any](nameopt ...any) bind.Binder[T] {
 	return &binder[T]{
-		b: bind.Value[*Value](nameopt...),
+		delegate(bind.Value[*Value](nameopt...)),
 	}
 }
 
 // BindValue provides the binder the obtains the provider *Value
 func BindValue(nameopt ...any) *ValueBinder {
 	return &ValueBinder{
-		bind.Value[*Value](nameopt...),
+		delegate(bind.Value[*Value](nameopt...)),
 	}
 }
 
 func (v *binder[T]) Bind(ctx context.Context) (T, error) {
-	value, err := v.b.Bind(ctx)
+	value, err := v.delegateBinder.Bind(ctx)
 	var zero T
 	if err != nil {
 		return zero, err
@@ -51,8 +63,12 @@ func (v *binder[T]) Bind(ctx context.Context) (T, error) {
 	return result.(T), nil
 }
 
+func (v delegateBinder[_]) Initializer() cli.Action {
+	return v.Binder.(binderInit).Initializer()
+}
+
 func (v *ValueBinder) Bind(ctx context.Context) (*Value, error) {
-	return v.b.Bind(ctx)
+	return v.delegateBinder.Bind(ctx)
 }
 
 func (v *ValueBinder) Args() bind.Binder[any] {
@@ -67,15 +83,25 @@ func (v *ValueBinder) Name() bind.Binder[string] {
 	})
 }
 
-func then[T, U any](b bind.Binder[T], fn func(T) U) bindFunc[U] {
-	return func(c context.Context) (U, error) {
-		t, err := b.Bind(c)
-		if err != nil {
-			var zero U
-			return zero, err
-		}
-		return fn(t), nil
+func then[U any](b bind.Binder[*Value], fn func(*Value) U) bind.Binder[U] {
+	return &thenBinder[U]{
+		delegateBinder: delegate(b),
+		thunk:          fn,
 	}
+}
+
+type thenBinder[U any] struct {
+	delegateBinder[*Value]
+	thunk func(*Value) U
+}
+
+func (b *thenBinder[U]) Bind(c context.Context) (U, error) {
+	t, err := b.delegateBinder.Bind(c)
+	if err != nil {
+		var zero U
+		return zero, err
+	}
+	return b.thunk(t), nil
 }
 
 type bindFunc[T any] func(context.Context) (T, error)

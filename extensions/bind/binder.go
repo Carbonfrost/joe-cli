@@ -589,15 +589,32 @@ func (f *NameValueBinder) Value() Binder[string] {
 	})
 }
 
-func then[T, U any](b Binder[T], fn func(T) U) bindFunc[U] {
-	return func(c context.Context) (U, error) {
-		t, err := b.Bind(c)
-		if err != nil {
-			var zero U
-			return zero, err
-		}
-		return fn(t), nil
+func then[T, U any](b Binder[T], fn func(T) U) Binder[U] {
+	return &thenBinder[T, U]{
+		binder: b,
+		thunk:  fn,
 	}
+}
+
+type thenBinder[T, U any] struct {
+	binder Binder[T]
+	thunk  func(T) U
+}
+
+func (b *thenBinder[_, U]) Bind(c context.Context) (U, error) {
+	t, err := b.binder.Bind(c)
+	if err != nil {
+		var zero U
+		return zero, err
+	}
+	return b.thunk(t), nil
+}
+
+func (b *thenBinder[_, _]) Initializer() cli.Action {
+	if i, ok := b.binder.(binderInit); ok {
+		return i.Initializer()
+	}
+	return nil
 }
 
 func wrapWithComposite[V any](in binderSupportInterface[V]) any {
