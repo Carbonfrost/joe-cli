@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -205,11 +205,11 @@ func (t *templateContext) format(on, off func(cli.Writer), a []any) (string, err
 
 func (t *templateContext) emoji(name string) (string, error) {
 	if len(name) > 0 && t.colorEnabled() {
-		res := string(emojiByName(name))
-		if len(res) == 0 {
+		res, ok := emojiByName[name]
+		if !ok {
 			return "", fmt.Errorf("not valid emoji: %q", name)
 		}
-		return res, nil
+		return string(res), nil
 	}
 	return "", nil
 }

@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,9 +10,13 @@ package color
 
 import (
 	"context"
+	"encoding"
+	"fmt"
 	"reflect"
+	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 )
 
 // Options is the configuration for the color extension and provides the initializer for the
@@ -49,6 +53,11 @@ const (
 	AllFeatures = -1
 )
 
+const (
+	// Defines provides a context filter for flags defined by this package
+	Defines ContextFilter = 0
+)
+
 // Emoji constants
 const (
 	Tada           Emoji = "🎉"
@@ -78,7 +87,24 @@ var (
 
 	pkgPath = reflect.TypeFor[Emoji]().PkgPath()
 	tagged  = cli.Data(SourceAnnotation())
+
+	emojiByName = map[string]Emoji{
+		"Tada":           Tada,
+		"Fire":           Fire,
+		"Sparkles":       Sparkles,
+		"Exclamation":    Exclamation,
+		"Bulb":           Bulb,
+		"X":              X,
+		"HeavyCheckMark": HeavyCheckMark,
+		"Warning":        Warning,
+		"Play":           Play,
+	}
+
+	definesImpl = cli.HasData(SourceAnnotation())
 )
+
+// ContextFilter provides the context filters in this package
+type ContextFilter int
 
 // SourceAnnotation gets the name and value of the annotation added to the Data
 // of all flags that are initialized from this package
@@ -107,39 +133,39 @@ func RegisterTemplateFuncs() cli.Action {
 // If the argument modeopt is specified, the value will be used; otherwise, it will be
 // obtained from the context.
 func SetMode(modeopt ...Mode) cli.Action {
-	switch len(modeopt) {
-	case 0:
-		return cli.Setup{
-			Uses: cli.Prototype{
-				Value: new(Mode),
-			},
-			Action: func(c *cli.Context) error {
-				switch v := c.Value("").(type) {
-				case bool:
-					c.SetColor(v)
-					return nil
-				case *Mode:
-					return c.Do(SetMode(*v))
-				default:
-					c.SetColor(true)
-					return nil
-				}
-			},
-		}
-	case 1:
-		switch modeopt[0] {
-		case Always:
-			return cli.SetColor(true)
-		case Never:
-			return cli.SetColor(false)
-		case Auto:
-			fallthrough
-		default:
-			return cli.AutodetectColor()
-		}
-	default:
-		panic("expected 0 or 1 argument")
+	return cli.Pipeline(
+		cli.Prototype{
+			Value: new(Mode),
+		},
+		bind.Call2(setMode, bind.Context(), bind.Exact(untyped(modeopt)...)),
+	)
+}
+
+func untyped[T any](values []T) []any {
+	res := make([]any, len(values))
+	for i := range values {
+		res[i] = values[i]
 	}
+	return res
+}
+
+func setMode(c *cli.Context, f any) error {
+	switch fb := f.(type) {
+	case bool:
+		c.SetColor(fb)
+		return nil
+	case Mode:
+		if fb == Auto {
+			c.AutodetectColor()
+		} else {
+			c.SetColor(fb == Always)
+		}
+		return nil
+	case *Mode:
+		return setMode(c, *fb)
+	}
+
+	return fmt.Errorf("not supported type %T", f)
 }
 
 func flagWithMode(c *cli.Context) error {
@@ -158,12 +184,9 @@ func flagWithMode(c *cli.Context) error {
 
 func bothFlags(c *cli.Context) error {
 	return c.AddFlag(&cli.Flag{
-		Name:     "color",
-		Options:  cli.No,
-		Value:    new(bool),
-		Action:   setFromBoolean,
-		Uses:     tagged,
-		HelpText: helpText,
+		Name:    "color",
+		Options: cli.No,
+		Uses:    booleanFlag(),
 	})
 }
 
@@ -179,12 +202,17 @@ func standaloneNoFlag(c *cli.Context) error {
 
 func standaloneFlag(c *cli.Context) error {
 	return c.AddFlag(&cli.Flag{
-		Name:     "color",
-		Value:    new(bool),
-		Action:   setFromBoolean,
-		Uses:     tagged,
-		HelpText: helpText,
+		Name: "color",
+		Uses: booleanFlag(),
 	})
+}
+
+func booleanFlag() cli.Action {
+	return cli.Pipeline(
+		bind.Call2(setFromBoolean, bind.Context(), bind.Bool("")),
+		tagged,
+		cli.HelpText(helpText),
+	)
 }
 
 func (o Options) Execute(c context.Context) error {
@@ -198,33 +226,47 @@ func (f Feature) Pipeline() cli.Action {
 	return featureMap.Pipeline(f)
 }
 
-func setFromBoolean(c *cli.Context) error {
-	c.SetColor(c.Bool(""))
+func (f ContextFilter) Matches(ctx context.Context) bool {
+	if f == Defines {
+		return definesImpl.Matches(ctx)
+	}
+	return false
+}
+
+// String produces a textual representation of the context filter
+func (f ContextFilter) String() string {
+	return "color.DEFINES"
+}
+
+// MarshalText provides the textual representation
+func (f ContextFilter) MarshalText() ([]byte, error) {
+	return []byte(f.String()), nil
+}
+
+// UnmarshalText converts the textual representation
+func (f *ContextFilter) UnmarshalText(b []byte) error {
+	token := strings.TrimSpace(string(b))
+	if token == "color.DEFINES" {
+		*f = Defines
+		return nil
+	}
 	return nil
 }
 
-func emojiByName(name string) Emoji {
-	switch name {
-	case "Tada":
-		return Tada
-	case "Fire":
-		return Fire
-	case "Sparkles":
-		return Sparkles
-	case "Exclamation":
-		return Exclamation
-	case "Bulb":
-		return Bulb
-	case "X":
-		return X
-	case "HeavyCheckMark":
-		return HeavyCheckMark
-	case "Warning":
-		return Warning
-	case "Play":
-		return Play
-	}
-	return ""
+// Describe produces a representation of the context filter suitable for use in messages
+func (f ContextFilter) Describe() string {
+	return "defined in joe-cli/color pkg"
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ContextFilter)(nil)
+	_ encoding.TextUnmarshaler = (*ContextFilter)(nil)
+	_ cli.ContextFilter        = (*ContextFilter)(nil)
+)
+
+func setFromBoolean(c *cli.Context, f bool) error {
+	c.SetColor(f)
+	return nil
 }
 
 var _ cli.Action = Options{}

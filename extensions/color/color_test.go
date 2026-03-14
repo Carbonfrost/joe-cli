@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package color_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -56,11 +57,6 @@ var _ = Describe("Features", func() {
 					Uses:  color.SetMode(),
 				},
 				{
-					Name:  "color-string",
-					Value: new(string),
-					Uses:  color.SetMode(),
-				},
-				{
 					Name:   "color-bool-off",
 					Value:  new(bool),
 					Action: color.SetMode(color.Never),
@@ -85,7 +81,6 @@ var _ = Describe("Features", func() {
 		Entry("no color", "app --no-color", 0, Equal([]bool{false})),
 		Entry("color via bool", "app --color-bool", 0, Equal([]bool{true})),
 		Entry("color off via action", "app --color-bool-off", 0, Equal([]bool{false})),
-		Entry("color via other", "app --color-string=w", 0, Equal([]bool{true})),
 	)
 
 	DescribeTable("set color via bool", func(arguments string, resetColorCapableCallCount int, setColorCapable types.GomegaMatcher) {
@@ -261,6 +256,61 @@ var _ = Describe("Templates", func() {
 			}
 			Expect(renderScreen(app, "app")).To(Equal("-><-"))
 		})
+	})
+})
+
+var _ = Describe("ContextFilter", func() {
+
+	Describe("MarshalJSON", func() {
+
+		DescribeTable("examples", func(val color.ContextFilter, expected string) {
+			actual, _ := json.Marshal(val)
+			Expect(string(actual)).To(Equal("\"" + expected + "\""))
+
+			var o color.ContextFilter
+			_ = json.Unmarshal(actual, &o)
+			Expect(o).To(Equal(val))
+			Expect(o.String()).To(Equal(expected))
+		},
+			Entry("Defines", color.Defines, "color.DEFINES"),
+		)
+	})
+
+	Describe("Describe", func() {
+
+		DescribeTable("examples", func(val color.ContextFilter, expected string) {
+			actual := val.Describe()
+			Expect(actual).To(Equal(expected))
+		},
+			Entry("Defines", color.Defines, "defined in joe-cli/color pkg"),
+		)
+	})
+
+	Describe("Defines", func() {
+		It("defines on all", func() {
+			actual := map[string]bool{}
+			app := &cli.App{
+				Name: "app",
+				Uses: color.Options{
+					Features: color.ModeFeature | color.FlagFeature | color.NoFlagFeature,
+				},
+				Action: func(c *cli.Context) {
+					for _, flag := range c.Flags() {
+						actual[flag.Name] = c.ContextOf(flag).Matches(color.Defines)
+					}
+				},
+			}
+			_ = app.RunContext(context.Background(), nil)
+
+			Expect(actual).To(Equal(map[string]bool{
+				"color":          true,
+				"no-color":       true,
+				"zsh-completion": false,
+				"help":           false,
+				"version":        false,
+			}))
+		})
+
 	})
 })
 
