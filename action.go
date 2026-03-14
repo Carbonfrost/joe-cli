@@ -1229,11 +1229,9 @@ func transformOutputToString(v any) (string, error) {
 // are returned by the transform.  For other cases where the
 // prefix is not present, it is interpretted as a literal value.
 // When f is nil, the file system is determined from the Context.
-func TransformOptionalFileReference(f fs.FS) TransformFunc {
+func TransformOptionalFileReference(fsys ...fs.FS) TransformFunc {
 	return func(raw []string) (any, error) {
-		if f == nil {
-			f = newDefaultFS(os.Stdin, os.Stdout)
-		}
+		f := actualFS(fsys...)
 		readers := make([]io.Reader, len(raw)-1)
 		for i, s := range raw[1:] {
 			if strings.HasPrefix(s, "@") {
@@ -1251,8 +1249,9 @@ func TransformOptionalFileReference(f fs.FS) TransformFunc {
 }
 
 // TransformFileReference obtains the transform for the given file system.
-func TransformFileReference(f fs.FS) TransformFunc {
+func TransformFileReference(fsys ...fs.FS) TransformFunc {
 	return func(raw []string) (any, error) {
+		f := actualFS(fsys...)
 		readers := make([]io.Reader, len(raw)-1)
 		for i, s := range raw[1:] {
 			f, err := f.Open(s)

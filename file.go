@@ -761,11 +761,11 @@ func walkFile(ff FS, name string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(ff, name, fn)
 }
 
-func actualFS(f fs.FS) FS {
-	if f == nil {
+func actualFS(f ...fs.FS) FS {
+	if len(f) == 0 || f[0] == nil {
 		return newDefaultFS(os.Stdin, os.Stdout)
 	}
-	return wrapFS(f)
+	return wrapFS(f[0])
 }
 
 func ignoreBlankPathError(err error) error {
