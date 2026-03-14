@@ -178,6 +178,7 @@ var _ = Describe("IfMatch", func() {
 		Entry("Before", timingApp, cli.BeforeTiming, Equal([]string{"b"})),
 		Entry("After", timingApp, cli.AfterTiming, Equal([]string{"a"})),
 		Entry("Action", timingApp, cli.ActionTiming, Equal([]string{"c"})),
+		// Note that Defines it covered below
 		Entry("combination", targetApp, cli.AnyFlag|cli.Seen, Equal([]string{"-f"})),
 		Entry("nil matches everything", targetApp, nil, ConsistOf([]string{"-f", "<a>", "c", "p"})),
 		Entry("thunk", targetApp, cli.ContextFilterFunc(func(c *cli.Context) bool { return false }), BeEmpty()),
@@ -210,6 +211,7 @@ var _ = Describe("FilterModes", func() {
 			Entry("RootCommand", cli.RootCommand, "ROOT_COMMAND"),
 			Entry("Seen", cli.Seen, "SEEN"),
 			Entry("Completing", cli.Completing, "COMPLETING"),
+			Entry("Defines", cli.Defines, "DEFINES"),
 		)
 	})
 
@@ -226,7 +228,30 @@ var _ = Describe("FilterModes", func() {
 			Entry("RootCommand", cli.RootCommand, "root command"),
 			Entry("Seen", cli.Seen, "option that has been seen"),
 			Entry("Completing", cli.Completing, "in shell completion"),
+			Entry("Defines", cli.Defines, "defined in joe-cli pkg"),
 		)
+	})
+
+	Describe("Defines", func() {
+		It("defines on all", func() {
+			actual := map[string]bool{}
+			app := &cli.App{
+				Name: "app",
+				Action: func(c *cli.Context) {
+					for _, flag := range c.Flags() {
+						actual[flag.Name] = c.ContextOf(flag).Matches(cli.Defines)
+					}
+				},
+			}
+			_ = app.RunContext(context.Background(), nil)
+
+			Expect(actual).To(Equal(map[string]bool{
+				"zsh-completion": true,
+				"help":           true,
+				"version":        true,
+			}))
+		})
+
 	})
 })
 

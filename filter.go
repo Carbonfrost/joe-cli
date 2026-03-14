@@ -64,6 +64,9 @@ const (
 	// Completing checks whether completion is occurring
 	Completing
 
+	// Defines filters the context to detect if the current flag or arg was defined by Joe-cli package
+	Defines
+
 	subcommandDidNotExecute
 
 	// Anything matches any kind of target
@@ -71,16 +74,17 @@ const (
 )
 
 var (
-	filterModeMatches = map[FilterModes]func(*Context) bool{
-		Anything:                anyImpl,
-		AnyFlag:                 (*Context).IsFlag,
-		AnyArg:                  (*Context).IsArg,
-		AnyCommand:              (*Context).IsCommand,
-		HasValue:                (*Context).HasValue,
-		Seen:                    seenThis,
-		RootCommand:             isRoot,
-		Completing:              completingThis,
-		subcommandDidNotExecute: (*Context).subcommandDidNotExecute,
+	filterModeMatches = map[FilterModes]ContextFilter{
+		Anything:                ContextFilterFunc(anyImpl),
+		AnyFlag:                 ContextFilterFunc((*Context).IsFlag),
+		AnyArg:                  ContextFilterFunc((*Context).IsArg),
+		AnyCommand:              ContextFilterFunc((*Context).IsCommand),
+		HasValue:                ContextFilterFunc((*Context).HasValue),
+		Seen:                    ContextFilterFunc(seenThis),
+		RootCommand:             ContextFilterFunc(isRoot),
+		Completing:              ContextFilterFunc(completingThis),
+		Defines:                 HasData(SourceAnnotation()),
+		subcommandDidNotExecute: ContextFilterFunc((*Context).subcommandDidNotExecute),
 	}
 
 	filterModeLabels = map[FilterModes][2]string{
@@ -92,6 +96,7 @@ var (
 		RootCommand: {"root command", "ROOT_COMMAND"},
 		HasValue:    {"target with value", "HAS_VALUE"},
 		Completing:  {"in shell completion", "COMPLETING"},
+		Defines:     {"defined in joe-cli pkg", "DEFINES"},
 	}
 )
 
@@ -189,7 +194,7 @@ func (f FilterModes) Matches(ctx context.Context) bool {
 	// tested first using the optimal implementation
 	c := FromContext(ctx)
 	for _, match := range decompose(filterModeMatches).items(f) {
-		if !match(c) {
+		if !match.Matches(c) {
 			return false
 		}
 	}
