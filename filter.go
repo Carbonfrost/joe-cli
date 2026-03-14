@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -183,6 +183,7 @@ func (h hasDataFilter) String() string {
 	return fmt.Sprintf("{%v %v}", h.name, h.value)
 }
 
+// Matches detects whether the context matches the filter modes
 func (f FilterModes) Matches(ctx context.Context) bool {
 	// Note that Anything has the highest hamming weight so it gets
 	// tested first using the optimal implementation
@@ -195,7 +196,7 @@ func (f FilterModes) Matches(ctx context.Context) bool {
 	return true
 }
 
-// String produces a textual representation of the timing
+// String produces a textual representation of the filter modes
 func (f FilterModes) String() string {
 	return filterModeLabels[f][1]
 }
@@ -217,11 +218,12 @@ func (f *FilterModes) UnmarshalText(b []byte) error {
 	return nil
 }
 
-// Describe produces a representation of the timing suitable for use in messages
+// Describe produces a representation of the filter modes suitable for use in messages
 func (f FilterModes) Describe() string {
 	return filterModeLabels[f][0]
 }
 
+// Matches implements [ContextFilter]
 func (f ContextFilterFunc) Matches(c context.Context) bool {
 	if f == nil {
 		return true
