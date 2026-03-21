@@ -523,8 +523,8 @@ type BoolBinder struct {
 	binderSupportInterface[bool]
 }
 
-func (f *BoolBinder) Bind(c context.Context) (bool, error) {
-	return f.binderSupportInterface.Bind(c)
+func (b *BoolBinder) Bind(c context.Context) (bool, error) {
+	return b.binderSupportInterface.Bind(c)
 }
 
 // Negated obtains the logical NOT value for a Boolean
@@ -589,16 +589,33 @@ func (f *NameValueBinder) Value() Binder[string] {
 	})
 }
 
-func then[T, U any](b Binder[T], fn func(T) U) Binder[U] {
+// Seq applies an additional function to a binding. As a special case, if the original binder
+// implements additional conventions, those are propagated into the result.
+func Seq[T, U any](binder Binder[T], then func(T) (U, error)) Binder[U] {
+	return SeqContext(binder, func(_ context.Context, t T) (U, error) {
+		return then(t)
+	})
+}
+
+// SeqContext applies an additional function with a context to a binding. As a
+// special case, if the original binder implements additional conventions, those are propagated
+// into the result.
+func SeqContext[T, U any](binder Binder[T], then func(context.Context, T) (U, error)) Binder[U] {
 	return &thenBinder[T, U]{
-		binder: b,
-		thunk:  fn,
+		binder: binder,
+		thunk:  then,
 	}
+}
+
+func then[T, U any](b Binder[T], fn func(T) U) Binder[U] {
+	return SeqContext(b, func(_ context.Context, t T) (U, error) {
+		return fn(t), nil
+	})
 }
 
 type thenBinder[T, U any] struct {
 	binder Binder[T]
-	thunk  func(T) U
+	thunk  func(context.Context, T) (U, error)
 }
 
 func (b *thenBinder[_, U]) Bind(c context.Context) (U, error) {
@@ -607,7 +624,7 @@ func (b *thenBinder[_, U]) Bind(c context.Context) (U, error) {
 		var zero U
 		return zero, err
 	}
-	return b.thunk(t), nil
+	return b.thunk(c, t)
 }
 
 func (b *thenBinder[_, _]) Initializer() cli.Action {

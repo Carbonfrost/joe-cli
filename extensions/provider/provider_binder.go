@@ -29,7 +29,7 @@ type binderInit interface {
 	Initializer() cli.Action
 }
 
-// BindValue provides the binder the invokes the provider factory with
+// Bind provides the binder the invokes the provider factory with
 // its configured arguments
 func Bind[T any](nameopt ...any) bind.Binder[T] {
 	return &binder[T]{
@@ -84,30 +84,9 @@ func (v *ValueBinder) Name() bind.Binder[string] {
 }
 
 func then[U any](b bind.Binder[*Value], fn func(*Value) U) bind.Binder[U] {
-	return &thenBinder[U]{
-		delegateBinder: delegate(b),
-		thunk:          fn,
-	}
-}
-
-type thenBinder[U any] struct {
-	delegateBinder[*Value]
-	thunk func(*Value) U
-}
-
-func (b *thenBinder[U]) Bind(c context.Context) (U, error) {
-	t, err := b.delegateBinder.Bind(c)
-	if err != nil {
-		var zero U
-		return zero, err
-	}
-	return b.thunk(t), nil
-}
-
-type bindFunc[T any] func(context.Context) (T, error)
-
-func (f bindFunc[T]) Bind(c context.Context) (T, error) {
-	return f(c)
+	return bind.SeqContext(b, func(_ context.Context, t *Value) (U, error) {
+		return fn(t), nil
+	})
 }
 
 var _ bind.Binder[any] = (*binder[any])(nil)
