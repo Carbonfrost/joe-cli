@@ -402,6 +402,15 @@ func (c *Context) LocalArgs() []*Arg {
 	return nil
 }
 
+// LocalCommands obtains the commands from the command.  If the current
+// context is not a command, this is nil.
+func (c *Context) LocalCommands() []*Command {
+	if !c.IsCommand() {
+		return nil
+	}
+	return c.Target().(*Command).Subcommands
+}
+
 // PersistentFlags locates the nearest command and obtains flags
 // from its parent and ancestor commands.  If the current
 // context is not a command, this is nil.

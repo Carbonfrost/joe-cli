@@ -117,6 +117,28 @@ func All(f ...ContextFilter) ContextFilter {
 	return castUniverseFilter[allFilter](f)
 }
 
+// HasFlag provides a context filter that detects whether a flag exists
+func HasFlag(name any) ContextFilter {
+	return findByNameFilter(name, (*Context).LocalFlags, findFlagByName)
+}
+
+// HasArg provides a context filter that detects whether an arg exists
+func HasArg(name any) ContextFilter {
+	return findByNameFilter(name, (*Context).LocalArgs, findArgByName)
+}
+
+// HasCommand provides a context filter that detects whether a command exists
+func HasCommand(name any) ContextFilter {
+	return findByNameFilter(name, (*Context).LocalCommands, findCommandByName)
+}
+
+func findByNameFilter[T any](name any, fn func(*Context) []T, finder func([]T, any) (T, int, bool)) ContextFilterFunc {
+	return func(c *Context) bool {
+		_, _, ok := finder(fn(c), name)
+		return ok
+	}
+}
+
 // PatternFilter parses a context pattern string and returns
 // a filter which matches on it.
 func PatternFilter(pat string) ContextFilter {
