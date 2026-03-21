@@ -17,6 +17,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
+	"github.com/Carbonfrost/joe-cli/extensions/bind/bindfakes"
 	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	"github.com/onsi/gomega/types"
 
@@ -56,6 +57,7 @@ var _ = Describe("Binder", func() {
 			},
 				Entry("arg by index", bind.Call(factory, bind.Int()), "arg"),
 				Entry("flag by name", bind.Call(factory, bind.Int("flag")), "flag"),
+				Entry("via ActionBinder", bind.Call(factory, bind.NewActionBinder(nil, bind.Int("flag"))), "flag"),
 			)
 		})
 
@@ -88,6 +90,7 @@ var _ = Describe("Binder", func() {
 				Entry("File base", bind.Call(factory, bind.File().Base()), BeAssignableToTypeOf(new(cli.File))),
 				Entry("NameValue name", bind.Call(factory, bind.NameValue().Name()), BeAssignableToTypeOf(new(cli.NameValue))),
 				Entry("Boolean negated", bind.Call(factory2, bind.Bool().Negated()), BeAssignableToTypeOf(true)),
+				Entry("wrapped in ActionBinder", bind.Call(factory, bind.NewActionBinder(nil, bind.File().Base())), BeAssignableToTypeOf(new(cli.File))),
 
 				Entry("File name", bind.Call(factory, bind.File("flag").Name()), BeAssignableToTypeOf(new(cli.File))),
 				Entry("File base", bind.Call(factory, bind.File("flag").Base()), BeAssignableToTypeOf(new(cli.File))),
@@ -95,6 +98,44 @@ var _ = Describe("Binder", func() {
 				Entry("Boolean negated", bind.Call(factory2, bind.Bool("flag").Negated()), BeAssignableToTypeOf(true)),
 			)
 		})
+	})
+})
+
+var _ = Describe("ActionBinder", func() {
+
+	It("invokes the binder", func() {
+		fakeBinder := new(bindfakes.FakeBinder[int])
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "flag",
+					Uses: bind.Call(callFactory(new(0)), bind.NewActionBinder(nil, fakeBinder)),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app --flag 2")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeBinder.BindCallCount()).To(Equal(1))
+	})
+
+	It("invokes the action", func() {
+		fakeBinder := new(bindfakes.FakeBinder[int])
+		fakeAction := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "flag",
+					Uses: bind.NewActionBinder(fakeAction, fakeBinder),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app --flag 2")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeAction.ExecuteCallCount()).To(Equal(1))
 	})
 })
 
@@ -261,16 +302,22 @@ var _ = Describe("Exact", func() {
 				Expect(err).NotTo(HaveOccurred())
 			},
 				Entry(
-					"explicit value",
+					"value from flag",
 					bind.Call(factory, bind.Exact[int]()),
 					"app --flag 300",
 					300,
 				),
 				Entry(
-					"value from flag",
+					"explicit value",
 					bind.Call(factory, bind.Exact(300)),
 					"app --flag",
 					true,
+				),
+				Entry(
+					"wrapped in ActionBinder",
+					bind.Call(factory, bind.NewActionBinder(nil, bind.Exact[int]())),
+					"app --flag 300",
+					300,
 				),
 			)
 		})

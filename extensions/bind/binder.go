@@ -62,6 +62,9 @@ import (
 	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
+//go:generate go tool counterfeiter -generate
+//counterfeiter:generate . Binder
+
 // Binder provides a strategy for obtaining a value from the context
 type Binder[T any] interface {
 	// Bind obtains the value from the context
@@ -98,6 +101,25 @@ func (b *exactBinder[V]) Initializer() cli.Action {
 		}
 		return ctx.Do(&cli.Prototype{Value: new(bool)})
 	})
+}
+
+// ActionBinder provides a binder which can also be used as an action
+type ActionBinder[T any] interface {
+	cli.Action
+	Binder[T]
+}
+
+type actionBinder[T any] struct {
+	cli.Action
+	Binder[T]
+}
+
+func (v actionBinder[_]) Initializer() cli.Action {
+	bin, ok := v.Binder.(binderInit)
+	if ok {
+		return bin.(binderInit).Initializer()
+	}
+	return nil
 }
 
 // binderSupport facilitates the implied naming/initializer logic that
@@ -151,6 +173,19 @@ func (b *binderSupport[_]) name() any {
 
 func (b *binder[V]) Bind(c context.Context) (V, error) {
 	return b.lookupValue(cli.FromContext(c), b.binderSupport.name()), nil
+}
+
+// NewActionBinder provides a binder which also provides an action.
+// The typical use is to implement an initializer within the action
+// that sets up the required flags and actions that the binder
+// depends on. The action binder is usually placed both into the Uses
+// pipeline and used in context of the bind where its value is
+// calculated.
+func NewActionBinder[T any](action cli.Action, binder Binder[T]) ActionBinder[T] {
+	return &actionBinder[T]{
+		Action: cli.ActionOf(action), // allow action to be nil
+		Binder: binder,
+	}
 }
 
 // Exact takes either the exact value that is specified
