@@ -308,16 +308,15 @@ var (
 			ActionFunc(applyImplicitVisibility),
 			IfMatch(RootCommand,
 				actions(
-					ActionFunc(optionalCommand("help", ActionOf(func(c context.Context) error {
+					optionalCommand("help", ActionOf(func(c context.Context) error {
 						// HACK For some reason, in this context DisplayHelpScreen is not
 						// pure and can capture state in between unit tests, so we need
 						// this wrapping action func
 						return Do(c, DisplayHelpScreen())
-					}),
-					)),
-					ActionFunc(optionalFlag("help", DisplayHelpScreen())),
-					ActionFunc(optionalCommand("version", PrintVersion())),
-					ActionFunc(optionalFlag("version", PrintVersion())),
+					})),
+					optionalFlag("help", DisplayHelpScreen()),
+					optionalCommand("version", PrintVersion()),
+					optionalFlag("version", PrintVersion()),
 					actionFunc(setupCompletion),
 					ActionFunc(setupExtensionUsings),
 				),

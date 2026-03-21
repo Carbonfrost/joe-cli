@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -140,6 +140,40 @@ var _ = Describe("App", func() {
 			_ = app.RunContext(context.Background(), []string{"app", "--help"})
 			Expect(capture.String()).To(HavePrefix("usage: hunter "))
 		})
+
+		It("does not set up default --help flag when exists", func() {
+			var help *cli.Flag
+
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{Name: "help", HelpText: "my custom flag"},
+				},
+				Action: func(c *cli.Context) {
+					help, _ = c.Command().Flag("help")
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(help.HelpText).To(Equal("my custom flag"))
+		})
+
+		It("does not set up default help command when exists", func() {
+			var help *cli.Command
+
+			app := &cli.App{
+				Commands: []*cli.Command{
+					{Name: "help", HelpText: "my custom command"},
+				},
+				Action: func(c *cli.Context) {
+					help, _ = c.Command().Command("help")
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(help.HelpText).To(Equal("my custom command"))
+		})
 	})
 
 	Describe("version", func() {
@@ -181,6 +215,40 @@ var _ = Describe("App", func() {
 
 			_ = app.RunContext(context.Background(), []string{"app", "--version"})
 			Expect(capture.String()).To(HavePrefix("hunter, version 1.619"))
+		})
+
+		It("does not set up default --version flag when exists", func() {
+			var version *cli.Flag
+
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{Name: "version", HelpText: "my custom flag"},
+				},
+				Action: func(c *cli.Context) {
+					version, _ = c.Command().Flag("version")
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(version.HelpText).To(Equal("my custom flag"))
+		})
+
+		It("does not set up default version command when exists", func() {
+			var version *cli.Command
+
+			app := &cli.App{
+				Commands: []*cli.Command{
+					{Name: "version", HelpText: "my custom command"},
+				},
+				Action: func(c *cli.Context) {
+					version, _ = c.Command().Command("version")
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(version.HelpText).To(Equal("my custom command"))
 		})
 	})
 

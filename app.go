@@ -441,35 +441,29 @@ func setupExtensionUsings(c *Context) error {
 	return c.Do(pipe)
 }
 
-func optionalCommand(name string, cmd Action) ActionFunc {
-	return func(c *Context) error {
+func optionalCommand(name string, cmd Action) Action {
+	return IfMatch(HasCommand(name), nil, ActionFunc(func(c *Context) error {
 		app := c.Command()
 		if len(app.Subcommands) > 0 {
-			if _, ok := app.Command(name); !ok {
-				return c.AddCommand(&Command{
-					Uses: Pipeline(cmd, tagged),
-				})
-			}
+			return c.AddCommand(&Command{
+				Uses: Pipeline(cmd, tagged),
+			})
 		}
 		return nil
-	}
+	}))
 }
 
-func optionalFlag(name string, f Action) ActionFunc {
-	return func(c *Context) error {
+func optionalFlag(name string, f Action) Action {
+	return IfMatch(HasFlag(name), nil, ActionFunc(func(c *Context) error {
 		// Don't create optional flags if setup has been tainted
 		// or if a flag with the same name exists
 		if c.SkipImplicitSetup() {
 			return nil
 		}
 
-		app := c.Command()
-		if _, ok := app.Flag(name); !ok {
-			return c.AddFlag(&Flag{
-				Name: name,
-				Uses: Pipeline(f, tagged),
-			})
-		}
-		return nil
-	}
+		return c.AddFlag(&Flag{
+			Name: name,
+			Uses: Pipeline(f, tagged),
+		})
+	}))
 }
