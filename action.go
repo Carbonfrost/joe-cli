@@ -1128,15 +1128,22 @@ func Implies(name, value string) Action {
 // IfMatch provides an action that only runs on a matching context.
 // If and only if the filter f matches will the corresponding action
 // be run. If f is nil, this is a no-op.
-func IfMatch(f ContextFilter, a Action) Action {
+func IfMatch(f ContextFilter, then Action, elseopt ...Action) Action {
+	if len(elseopt) > 1 {
+		panic("expected 0 or 1 args for elseopt")
+	}
 	if f == nil {
-		return a
+		return then
 	}
 	return actionFunc(func(c context.Context) error {
 		if f.Matches(c) {
-			return Do(c, a)
+			return Do(c, then)
 		}
-		return nil
+		if len(elseopt) == 0 {
+			return nil
+		}
+
+		return Do(c, elseopt[0])
 	})
 }
 

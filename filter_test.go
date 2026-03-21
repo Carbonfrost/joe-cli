@@ -92,6 +92,28 @@ var _ = Context("universe filters", func() {
 
 var _ = Describe("IfMatch", func() {
 
+	It("invokes the then action", func() {
+		action1 := new(joeclifakes.FakeAction)
+		action2 := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: cli.IfMatch(cli.Anything, action1, action2),
+		}
+		_, _ = app.Initialize(context.Background())
+		Expect(action1.ExecuteCallCount()).To(Equal(1))
+		Expect(action2.ExecuteCallCount()).To(Equal(0))
+	})
+
+	It("invokes the else action", func() {
+		action1 := new(joeclifakes.FakeAction)
+		action2 := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: cli.IfMatch(cli.Completing, action1, action2),
+		}
+		_, _ = app.Initialize(context.Background())
+		Expect(action1.ExecuteCallCount()).To(Equal(0))
+		Expect(action2.ExecuteCallCount()).To(Equal(1))
+	})
+
 	var (
 		timingStrings = map[cli.Timing]string{
 			cli.InitialTiming: "i",
