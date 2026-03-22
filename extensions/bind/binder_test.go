@@ -139,6 +139,58 @@ var _ = Describe("ActionBinder", func() {
 	})
 })
 
+var _ = Describe("Elem", func() {
+
+	It("applies element", func() {
+		var actual cli.NameValue
+		caller := func(v cli.NameValue) error {
+			actual = v
+			return nil
+		}
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						bind.Call(caller, bind.Elem(bind.NameValue())),
+					),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f key=value")
+		_ = app.RunContext(context.Background(), args)
+
+		Expect(actual.Name).To(Equal("key"))
+		Expect(actual.Value).To(Equal("value"))
+	})
+})
+
+var _ = Describe("Pointer", func() {
+	It("applies pointer", func() {
+		var actual int
+		caller := func(v *int) error {
+			actual = *v
+			return nil
+		}
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						bind.Call(caller, bind.Pointer(bind.Int())),
+					),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f 9161")
+		_ = app.RunContext(context.Background(), args)
+
+		Expect(actual).To(Equal(9161))
+	})
+})
+
 func callFactory[T any](t *T) func(T) error {
 	return func(s T) error {
 		*t = s

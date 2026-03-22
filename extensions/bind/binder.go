@@ -188,6 +188,20 @@ func NewActionBinder[T any](action cli.Action, binder Binder[T]) ActionBinder[T]
 	}
 }
 
+// Elem retrieves the pointer of a binder
+func Elem[T any, TP *T](src Binder[TP]) Binder[T] {
+	return then(src, func(v TP) T {
+		return *v
+	})
+}
+
+// Elem retrieves the element of a binder
+func Pointer[T any](src Binder[T]) Binder[*T] {
+	return then(src, func(v T) *T {
+		return &v
+	})
+}
+
 // Exact takes either the exact value that is specified
 // or will take the value from the flag or arg.
 func Exact[T any](valopt ...T) Binder[T] {
