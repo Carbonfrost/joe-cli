@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.12.0 (March 11, 2026)
+
+### New Features
+
+* `HasFlag`, `HasArg`, `HasCommand`, `LocalCommands` (099ca2e)
+* User override of version, help flags and commands (9191817)
+* `Defines` context filter (9c370d5)
+* Expr expander extension: Reflect expander (2e3f55e)
+* Bind extension:
+    * `Seq`, `SeqContext` (4cc0e74)
+    * `ActionBinder` (d3c70d7)
+    * `Elem`, `Pointer` binders (e9eb662)
+* Color extension (a284937)
+    * Remove support for string typed flags
+    * Modernize to use bind extension
+    * Introduce the `Defines` context filter
+* Make FS optional in some functions (b42b1d1)
+* `IfMatch` support for else clause (e0f92fd)
+
+### Bug fixes and improvements
+
+* Bug fix: Allow composite binders to propagate implicit underlying bindings (1a97b9c)
+* Chores:
+    * Apply go fix and modernize (4a03322)
+    * Update documentation: filters (d1f15b2)
+
+
 ## v0.11.0 (March 1, 2026)
 
 ### New Features
