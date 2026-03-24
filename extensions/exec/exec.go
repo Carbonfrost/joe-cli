@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,6 +11,8 @@ package exec
 import (
 	eexec "os/exec"
 	"time"
+
+	"github.com/Carbonfrost/joe-cli"
 )
 
 // Open a file or URL, optionally in the given app.
@@ -55,4 +57,12 @@ func appearsSuccessful(cmd *eexec.Cmd, timeout time.Duration) error {
 	case err := <-errc:
 		return err
 	}
+}
+
+// HaveLookPath returns a ContextFilter that checks if the given pathname exists on the PATH.
+func HaveLookPath(pathname string) cli.ContextFilter {
+	return cli.ContextFilterFunc(func(*cli.Context) bool {
+		_, err := eexec.LookPath(pathname)
+		return err == nil
+	})
 }
