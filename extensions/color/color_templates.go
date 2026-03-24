@@ -5,17 +5,19 @@
 package color
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 type templateContext struct {
-	c     *cli.Context
 	funcs map[string]any
 
-	colorEnabledCache *bool
+	colorEnabledThunk func() bool
 }
 
 type sprinter = func(...any) (string, error)
@@ -53,8 +55,26 @@ var (
 	}
 )
 
-func templateFuncs(c *cli.Context) map[string]any {
-	t := &templateContext{c: c}
+// NewTemplateFuncs gets the template funcs that support the
+// given mode
+func NewTemplateFuncs(modeopt ...Mode) map[string]any {
+	result := func() bool {
+		switch {
+		case len(modeopt) == 0 || modeopt[0] == Auto:
+			return support.ColorEnabled(os.Stdout)
+		case modeopt[0] == Never:
+			return false
+		case modeopt[0] == Always:
+		}
+		return true
+	}()
+	return templateFuncs(func() bool {
+		return result
+	})
+}
+
+func templateFuncs(colorEnabled func() bool) map[string]any {
+	t := &templateContext{colorEnabledThunk: colorEnabled}
 	bold := t.sprintStyle(cli.Bold)
 	underline := t.sprintStyle(cli.Underline)
 
@@ -115,9 +135,7 @@ func (t *templateContext) sprintStyle(s cli.Style) sprinter {
 
 func (t *templateContext) reset() func() string {
 	return func() string {
-		res := t.c.NewBuffer()
-		res.Reset()
-		return res.String()
+		return support.Format(t.colorEnabled(), (support.StyleWriter).Reset)
 	}
 }
 
@@ -133,9 +151,9 @@ func (t *templateContext) sprintForegroundColor(f cli.Color) sprinter {
 
 func (t *templateContext) resetColor() func() string {
 	return func() string {
-		res := t.c.NewBuffer()
-		res.SetForeground(cli.Default)
-		return res.String()
+		return support.Format(t.colorEnabled(), func(sw support.StyleWriter) {
+			sw.SetForeground(cli.Default)
+		})
 	}
 }
 
@@ -189,7 +207,10 @@ func (t *templateContext) setStyle(styles string, a ...any) (string, error) {
 }
 
 func (t *templateContext) format(on, off func(cli.Writer), a []any) (string, error) {
-	res := t.c.NewBuffer()
+	buf := bytes.NewBuffer(nil)
+	res := support.NewWriter(buf)
+	res.SetColorCapable(t.colorEnabled())
+
 	text := fmt.Sprint(a...)
 	if len(a) > 0 && len(text) == 0 {
 		return "", nil
@@ -200,7 +221,7 @@ func (t *templateContext) format(on, off func(cli.Writer), a []any) (string, err
 		fmt.Fprint(res, text)
 		off(res)
 	}
-	return res.String(), nil
+	return buf.String(), nil
 }
 
 func (t *templateContext) emoji(name string) (string, error) {
@@ -215,10 +236,5 @@ func (t *templateContext) emoji(name string) (string, error) {
 }
 
 func (t *templateContext) colorEnabled() bool {
-	if t.colorEnabledCache == nil {
-		res := t.c.NewBuffer()
-		enabled := res.ColorCapable()
-		t.colorEnabledCache = &enabled
-	}
-	return *t.colorEnabledCache
+	return t.colorEnabledThunk()
 }

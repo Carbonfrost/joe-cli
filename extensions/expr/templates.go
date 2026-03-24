@@ -6,7 +6,8 @@ package expr
 
 import (
 	"fmt"
-	"github.com/Carbonfrost/joe-cli"
+
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
@@ -39,9 +40,9 @@ func wrapSynopsis[T synopsis.Stringer](s T) *synopsisWrapper[T] {
 }
 
 func (s *synopsisWrapper[T]) String() string {
-	buf := cli.NewBuffer()
-	s.s.WriteTo(buf)
-	return buf.String()
+	return support.FormatDefault(func(sw support.StyleWriter) {
+		s.s.WriteTo(sw)
+	})
 }
 
 func exprAdapter(val *Expr) *exprData {

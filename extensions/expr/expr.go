@@ -45,6 +45,7 @@ import (
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
@@ -572,10 +573,9 @@ func (e *Expr) Names() []string {
 
 // Synopsis retrieves the synopsis for the expression operator.
 func (e *Expr) Synopsis() string {
-	buf := cli.NewBuffer()
-	buf.SetColorCapable(false)
-	e.newSynopsis().WriteTo(buf)
-	return buf.String()
+	return support.Format(false, func(sw support.StyleWriter) {
+		e.newSynopsis().WriteTo(sw)
+	})
 }
 
 // Arg gets the expression operator by name
@@ -973,9 +973,9 @@ func argsMustPrecedeExprs(arg string) error {
 }
 
 func renderHelp(us *synopsis.Usage) string {
-	sb := cli.NewBuffer()
-	us.HelpText(sb)
-	return sb.String()
+	return support.FormatDefault(func(sw support.StyleWriter) {
+		us.HelpText(sw)
+	})
 }
 
 func setData(data map[string]any, name string, v any) map[string]any {

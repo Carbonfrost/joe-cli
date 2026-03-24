@@ -155,14 +155,13 @@ var _ = Describe("NewBuffer", func() {
 		app := &cli.App{
 			Name: "demo",
 			Action: cli.Pipeline(cli.SetColor(true), func(c *cli.Context) {
-				buf := c.NewBuffer()
+				buf := c.Stdout
 				buf.SetStyle(cli.Bold)
 				buf.WriteString(" BOLD TEXT ")
 				buf.Reset()
-				actual = buf.String()
 			}),
 		}
-		renderScreen(app, "demo")
+		actual = renderScreen(app, "demo")
 		Expect(actual).To(Equal("\x1b[1m BOLD TEXT \x1b[0m"))
 	})
 
@@ -175,16 +174,15 @@ var _ = Describe("NewBuffer", func() {
 				{
 					Name: "sub",
 					Action: func(c *cli.Context) {
-						buf := c.NewBuffer()
+						buf := c.Stdout
 						buf.SetStyle(cli.Bold)
 						buf.WriteString(" BOLD TEXT ")
 						buf.Reset()
-						actual = buf.String()
 					},
 				},
 			},
 		}
-		renderScreen(app, "demo sub")
+		actual = renderScreen(app, "demo sub")
 		Expect(actual).To(Equal("\x1b[1m BOLD TEXT \x1b[0m"))
 	})
 
@@ -194,14 +192,13 @@ var _ = Describe("NewBuffer", func() {
 		app := &cli.App{
 			Name: "demo",
 			Action: cli.Pipeline(cli.AutodetectColor(), func(c *cli.Context) {
-				buf := c.NewBuffer()
+				buf := c.Stdout
 				buf.SetStyle(cli.Bold)
 				buf.WriteString("BOLD TEXT")
 				buf.Reset()
-				actual = buf.String()
 			}),
 		}
-		renderScreen(app, "demo")
+		actual = renderScreen(app, "demo")
 		Expect(actual).To(Equal("BOLD TEXT"))
 	})
 })

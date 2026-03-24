@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
@@ -305,9 +306,9 @@ func commandAdapter(val *Command) *commandData {
 }
 
 func renderHelp(us *synopsis.Usage) string {
-	sb := NewBuffer()
-	us.HelpText(sb)
-	return sb.String()
+	return support.FormatDefault(func(sw support.StyleWriter) {
+		us.HelpText(sw)
+	})
 }
 
 func flagAdapter(val *Flag) *flagData {

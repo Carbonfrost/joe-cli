@@ -17,6 +17,7 @@ import (
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // Options is the configuration for the color extension and provides the initializer for the
@@ -117,9 +118,21 @@ func SourceAnnotation() (string, string) {
 // function which has the same name as any of the Color and Style constants:
 //
 //	{{ "Text to make bold" | Bold }}
-func RegisterTemplateFuncs() cli.Action {
+func RegisterTemplateFuncs(modeopt ...Mode) cli.Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
-		for k, v := range templateFuncs(c) {
+		var thunk func() bool
+
+		if len(modeopt) == 0 || modeopt[0] == Auto {
+			thunk = func() bool {
+				return support.ColorEnabled(c.Stdout)
+			}
+		} else {
+			thunk = func() bool {
+				return modeopt[0] == Always
+			}
+		}
+
+		for k, v := range templateFuncs(thunk) {
 			c.RegisterTemplateFunc(k, v)
 		}
 		return nil

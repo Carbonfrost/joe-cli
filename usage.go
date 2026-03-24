@@ -9,17 +9,16 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"regexp"
 	"slices"
 	"strings"
 	"text/template"
 	"unicode"
 
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	"github.com/juju/ansiterm"
 	"github.com/juju/ansiterm/tabwriter"
-	"golang.org/x/term"
 )
 
 var (
@@ -73,19 +72,9 @@ type Color = ansiterm.Color
 // Style of terminal output
 type Style = ansiterm.Style
 
-type stringHelper struct {
-	*ansiterm.Writer
-	enabled bool
-}
-
 type templateBinding struct {
 	t    *Template
 	data func() any
-}
-
-type buffer struct {
-	Writer
-	res *bytes.Buffer
 }
 
 type wrapper struct {
@@ -133,33 +122,9 @@ const (
 	White         = ansiterm.White
 )
 
-// NewBuffer creates a buffer which is a Writer that can be used to accumulate
-// text into a buffer.  Color is enabled using auto-detection on stdout.
-func NewBuffer() *buffer {
-	res := new(bytes.Buffer)
-	w := NewWriter(res)
-	w.SetColorCapable(colorEnabled(os.Stdout))
-	return &buffer{
-		Writer: w,
-		res:    res,
-	}
-}
-
-// NewBuffer creates a buffer which is a Writer that can be used to accumulate
-// text into a buffer.  Color is enabled depending upon whether it has been enabled
-// for stdout.
-func (c *Context) NewBuffer() *buffer {
-	res := NewBuffer()
-	res.SetColorCapable(colorEnabled(c.Stdout))
-	return res
-}
-
 // NewWriter creates a new writer with support for color if TTY is detected
 func NewWriter(w io.Writer) Writer {
-	return &stringHelper{
-		Writer:  ansiterm.NewWriter(w),
-		enabled: colorEnabled(w),
-	}
+	return support.NewWriter(w)
 }
 
 // SetColor enables or disables color output on stdout.
@@ -532,73 +497,20 @@ func (t *templateBinding) String() string {
 	return buf.String()
 }
 
-func (b *buffer) String() string {
-	return b.res.String()
-}
-
-func (w *stringHelper) WriteString(s string) (int, error) {
-	return w.Writer.Write([]byte(s))
-}
-
-func (w *stringHelper) ResetColorCapable() {
-	w.SetColorCapable(colorEnabled(w.Writer))
-}
-
-func (w *stringHelper) ColorCapable() bool {
-	return w.enabled
-}
-
-func (w *stringHelper) SetColorCapable(value bool) {
-	w.enabled = value
-	w.Writer.SetColorCapable(value)
-}
-
-func (w *stringHelper) Underline(v ...any) (int, error) {
-	return w.Styled(Underline, v...)
-}
-
-func (w *stringHelper) Bold(v ...any) (int, error) {
-	return w.Styled(Bold, v...)
-}
-
-func (w *stringHelper) Styled(style Style, v ...any) (int, error) {
-	w.SetStyle(style)
-	n, err := fmt.Fprint(w, v...)
-	w.Reset()
-	return n, err
-}
-
 func wrapSynopsis[T synopsis.Stringer](s T) *synopsisWrapper[T] {
 	return &synopsisWrapper[T]{s}
 }
 
 func (s *synopsisWrapper[T]) String() string {
-	buf := NewBuffer()
-	buf.SetColorCapable(usageColor)
-	s.s.WriteTo(buf)
-	return buf.String()
-}
-
-func colorEnabled(w io.Writer) bool {
-	if s, ok := w.(*stringHelper); ok {
-		return s.enabled
-	}
-
-	f, ok := w.(*os.File)
-	if !ok {
-		return false
-	}
-
-	// https://no-color.org/, which requires any value to be treated as true
-	if _, ok := os.LookupEnv("NO_COLOR"); ok {
-		return false
-	}
-	return os.Getenv("TERM") != "dumb" && term.IsTerminal(int(f.Fd()))
+	return support.Format(usageColor, func(sw support.StyleWriter) {
+		s.s.WriteTo(sw)
+	})
 }
 
 func sprintSynopsis(s synopsis.Stringer) string {
-	buf := NewBuffer()
-	buf.SetColorCapable(false)
-	s.WriteTo(buf)
-	return buf.String()
+	return support.Format(false, func(sw support.StyleWriter) {
+		s.WriteTo(sw)
+	})
 }
+
+var _ support.ColorCapableWriter = (Writer)(nil)
