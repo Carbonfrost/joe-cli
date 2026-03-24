@@ -197,14 +197,12 @@ func (v *Value) ArgumentFlag() cli.Prototype {
 	return cli.Prototype{
 		Name:  "arg",
 		Value: new(string),
-		Setup: cli.Setup{
-			Uses: cli.Pipeline(
-				bind.Call(v.Set),
-				func(c *cli.Context) {
-					c.SetHelpText(fmt.Sprintf("Sets an argument for %s", c.Data()["DependentFlag"]))
-				},
-			),
-		},
+		Uses: cli.Pipeline(
+			bind.Call(v.Set),
+			func(c *cli.Context) {
+				c.SetHelpText(fmt.Sprintf("Sets an argument for %s", c.Data()["DependentFlag"]))
+			},
+		),
 	}
 }
 
@@ -231,14 +229,14 @@ func (v *Value) DisableSplitting() {
 //
 //	If the action is set to initialize a flag that is unnamed, the suffix -arg is implied.
 func SetArgument(name string) cli.Action {
-	return cli.Prototype{
-		Name:     name + "-arg",
-		Value:    new(string),
-		HelpText: fmt.Sprintf("Sets an argument for %s", name),
-		Setup: cli.Setup{
-			Action: bind.Indirect(name, (*Value).Set),
+	return cli.Pipeline(
+		cli.Prototype{
+			Name:     name + "-arg",
+			Value:    new(string),
+			HelpText: fmt.Sprintf("Sets an argument for %s", name),
 		},
-	}
+		bind.Indirect(name, (*Value).Set),
+	)
 }
 
 // ListProviders provides an action that can be used to display the list of providers.

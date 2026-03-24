@@ -377,9 +377,8 @@ func initializers(binders ...any) cli.Action {
 		}
 	}
 
-	return cli.ActionPipeline(setters).Append(cli.Setup{
-		Optional: true,
-		Uses:     cli.ActionPipeline(uses),
+	return cli.ActionPipeline(setters).Append(cli.Prototype{
+		Uses: cli.ActionPipeline(uses),
 	})
 }
 

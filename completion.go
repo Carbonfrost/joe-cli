@@ -132,14 +132,13 @@ func ShellCompleteIntegration(name string, s ShellComplete) Action {
 			Name:    name + "-complete",
 			Options: Hidden | Exits,
 			Value:   new(bool),
-			Setup: Setup{
-				Action: func(c *Context) error {
-					data := newCompletionData(c)
-					tpl := s.GetSourceTemplate()
-					return tpl.Execute(c.Stdout, data)
-				},
-			},
-		})
+		},
+		At(ActionTiming, ActionFunc(func(c *Context) error {
+			data := newCompletionData(c)
+			tpl := s.GetSourceTemplate()
+			return tpl.Execute(c.Stdout, data)
+		})),
+	)
 }
 
 // ApplyShellCompletion detects whether a dynamic shell completion request has been added to

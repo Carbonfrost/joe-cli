@@ -619,9 +619,7 @@ func (v *NameValue) AllowFileReferencesFlag() Prototype {
 	return Prototype{
 		Name:     "allow-files",
 		HelpText: "Allow a file to be specified with name=@file",
-		Setup: Setup{
-			Uses: bind(v.SetAllowFileReference),
-		},
+		Uses:     bind(v.SetAllowFileReference),
 	}
 }
 

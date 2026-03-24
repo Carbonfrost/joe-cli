@@ -79,9 +79,8 @@ func (r *Root) OverwriteFlag() cli.Prototype {
 	return cli.Prototype{
 		Name:     "overwrite",
 		HelpText: "Overwrite files",
-		Setup: cli.Setup{
-			Uses: bind.Call(r.SetOverwrite),
-		},
+
+		Uses: bind.Call(r.SetOverwrite),
 	}
 }
 
@@ -90,9 +89,7 @@ func (r *Root) DryRunFlag() cli.Prototype {
 	return cli.Prototype{
 		Name:     "dry-run",
 		HelpText: "Display what commands will be run without actually executing them",
-		Setup: cli.Setup{
-			Uses: bind.Call(r.SetDryRun),
-		},
+		Uses:     bind.Call(r.SetDryRun),
 	}
 }
 
@@ -101,13 +98,14 @@ func (r *Root) Execute(ctx context.Context) error {
 }
 
 func (r *Root) pipeline() cli.Action {
-	return cli.Setup{
-		Optional: true,
-		Uses: cli.AddFlags([]*cli.Flag{
-			{Uses: r.DryRunFlag()},
-			{Uses: r.OverwriteFlag()},
-		}...),
-		Action: func(c *cli.Context) error {
+	return cli.Pipeline(
+		cli.Prototype{
+			Uses: cli.AddFlags([]*cli.Flag{
+				{Uses: r.DryRunFlag()},
+				{Uses: r.OverwriteFlag()},
+			}...),
+		},
+		cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) error {
 			workDir := r.WorkingDirectory
 			if workDir == "" {
 				workDir = "."
@@ -121,8 +119,8 @@ func (r *Root) pipeline() cli.Action {
 				out:       c.Stdout,
 			}
 			return r.Generate(c, ctx)
-		},
-	}
+		})),
+	)
 }
 
 func (r *Root) Generate(ctx context.Context, c *OutputContext) error {

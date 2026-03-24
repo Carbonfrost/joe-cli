@@ -157,17 +157,14 @@ func DisplayHelpScreen(command ...string) Action {
 			Options:  Exits,
 			HelpText: "Display this help screen then exit",
 			Value:    new(bool),
-			Setup: Setup{
-				Optional: true,
-				Uses: IfMatch(AnyCommand, Pipeline(
-					HelpText("Display help for a command"),
-					AddArg(&Arg{
-						Name:  "command",
-						Value: List(),
-						NArg:  -1,
-					}),
-				)),
-			},
+			Uses: IfMatch(AnyCommand, Pipeline(
+				HelpText("Display help for a command"),
+				AddArg(&Arg{
+					Name:  "command",
+					Value: List(),
+					NArg:  -1,
+				}),
+			)),
 		},
 		At(ActionTiming, ActionFunc(func(c *Context) error {
 			ctxt, path, err := findCommandToDisplayHelpFor(c, command)

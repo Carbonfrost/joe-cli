@@ -1784,6 +1784,25 @@ var _ = Describe("Prototype", func() {
 		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
 	)
 
+	It("does not return timing mismatch error", func() {
+		act1 := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "b",
+					Action: cli.Prototype{
+						Uses: act1,
+					},
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -b d")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act1.ExecuteCallCount()).To(Equal(0))
+	})
+
 	It("ensures value inside nested prototype (addresses bug)", func() {
 		act := new(joeclifakes.FakeAction)
 		app := &cli.App{
@@ -1794,10 +1813,8 @@ var _ = Describe("Prototype", func() {
 					Name: "b",
 					Uses: cli.Prototype{
 						Value: new(bool),
-						Setup: cli.Setup{
-							Uses: cli.Prototype{
-								Value: new(string),
-							},
+						Uses: cli.Prototype{
+							Value: new(string),
 						},
 					},
 					Action: act,
@@ -1809,6 +1826,30 @@ var _ = Describe("Prototype", func() {
 		Expect(err).NotTo(HaveOccurred())
 		value := act.ExecuteArgsForCall(0).Value("")
 		Expect(value).To(BeTrue())
+	})
+
+	It("does not generate errors at invalid timing", func() {
+
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Before: &cli.Prototype{
+						Category: "c",
+					},
+					Action: &cli.Prototype{
+						Category: "c",
+					},
+					After: &cli.Prototype{
+						Category: "c",
+					},
+				},
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app", "-f", "s"})
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	DescribeTable("value target examples", func(proto cli.Prototype, expected Fields) {
@@ -1862,50 +1903,23 @@ func (p *protoValue) SetData(k string, v any) {
 }
 
 var _ = Describe("Setup", func() {
-	var (
-		setup cli.Setup
-		err   error
-	)
 
-	JustBeforeEach(func() {
+	It("returns timing mismatch error", func() {
 		app := &cli.App{
-			Name:   "app",
-			Action: setup,
+			Name: "app",
+			Action: cli.Setup{
+				Uses: func() {},
+			},
 		}
 
-		err = app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), []string{"app"})
+
+		Expect(err).To(HaveOccurred())
+		Expect(errors.Is(err, cli.ErrTimingTooLate)).To(BeTrue())
+		Expect(errors.Unwrap(err)).To(Equal(cli.ErrTimingTooLate))
+		Expect(err.(*cli.InternalError).Path.String()).To(Equal("app"))
+		Expect(err.Error()).To(Equal(`internal error, at "app" (action timing): too late for requested action timing`))
 	})
-
-	Context("when Optional is true", func() {
-		BeforeEach(func() {
-			setup = cli.Setup{
-				Optional: true,
-				Uses:     func() {},
-			}
-		})
-
-		It("does not return timing mismatch error ", func() {
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
-	Context("when Optional is false", func() {
-		BeforeEach(func() {
-			setup = cli.Setup{
-				Optional: false,
-				Uses:     func() {},
-			}
-		})
-
-		It("returns timing mismatch error ", func() {
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, cli.ErrTimingTooLate)).To(BeTrue())
-			Expect(errors.Unwrap(err)).To(Equal(cli.ErrTimingTooLate))
-			Expect(err.(*cli.InternalError).Path.String()).To(Equal("app"))
-			Expect(err.Error()).To(Equal(`internal error, at "app" (action timing): too late for requested action timing`))
-		})
-	})
-
 })
 
 var _ = Describe("FlagSetup", func() {

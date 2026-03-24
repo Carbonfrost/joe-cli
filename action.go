@@ -71,37 +71,38 @@ type ActionPipeline []Action
 // Setup provides simple initialization, typically used in Uses pipeline.  The Setup action
 // will add the specified actions to the Before, main, and After action and run
 // the Uses action immediately.
+// Compared to Prototype, a Setup depends upon the
+// timing, which means that an error will occur if Setup is used within a timing context
+// that is later than the corresponding pipelines.
+// For example, if you have Setup.Uses set,
+// this implies that the Setup can only be itself added to a Uses pipeline; if you add it
+// to a Before, Action, or After pipeline, an error will occur because it is too late to process
+// the pipeline set in Setup.Uses.
 type Setup struct {
 	Uses   any
 	Before any
 	Action any
 	After  any
-
-	// Optional causes setup to ignore timing errors.  By default, Setup depends upon the
-	// timing, which means that an error will occur if Setup is used within a timing context
-	// that is later than the corresponding pipelines.  For example, if you have Setup.Uses set,
-	// this implies that the Setup can only be itself added to a Uses pipeline; if you add it
-	// to a Before, Action, or After pipeline, an error will occur because it is too late to process
-	// the pipeline set in Setup.Uses.  Setting Optional to true will prevent this error.
-	//
-	// The common use case for this is to allow defining new actions by simply returning a Setup, and letting
-	// the user of the new action decide which parts of Setup get used by allowing them to specify the
-	// setup in the pipeline of their choice.  In the example, if the user
-	// assigned the action in the Action pipeline, this would imply that they don't care about the
-	// initialization behavior the action provides.  If the initialization is genuinely optional
-	// (and not a usage error of the new action), it is appropriate to set Optional to true.
-	Optional bool
 }
 
 // Prototype implements an action which sets up a flag, arg, or command.  The
 // prototype copies its values to the corresponding target if they have not
 // already been set.  Irrelevant fields are not set and do not cause errors; for example,
 // setting FilePath, Value, and EnvVars, for a Command prototype has no effect.
+//
 // Some values are merged rather than overwritten:
 // Data, Options, EnvVars, and Aliases.
+//
 // If setup has been prevented with the PreventSetup action,
 // the prototype will do nothing.  The main use of prototype is in extensions to provide
-// reasonable defaults
+// reasonable defaults within the initialization context.
+//
+// Compared to Setup, in a Prototype, the Uses, Before, Action, and After pipelines ignore timing errors;
+// if it is too late to apply any of them, they are skipped.
+//
+// The common use case is to allow defining new actions by simply returning a Prototype, and letting
+// the user of the new action decide which parts get used by allowing them to specify the
+// it in the pipeline of their choice.
 type Prototype struct {
 	Aliases     []string
 	Category    string
@@ -116,9 +117,13 @@ type Prototype struct {
 	Options     Option
 	UsageText   string
 	Value       any
-	Setup       Setup
 	Completion  Completion
 	NArg        any
+
+	Uses   any
+	Before any
+	Action any
+	After  any
 }
 
 // ValidatorFunc defines an Action that applies a validation rule to
@@ -467,7 +472,7 @@ func init() {
 func (s Setup) Execute(ctx context.Context) error {
 	c := FromContext(ctx)
 	if s.Uses != nil {
-		if err := c.act(s.Uses, InitialTiming, s.Optional); err != nil {
+		if err := c.act(s.Uses, InitialTiming, false); err != nil {
 			return err
 		}
 	}
@@ -765,7 +770,7 @@ func Enum(options ...string) Action {
 	return &Prototype{
 		UsageText:  usageText,
 		Completion: CompletionValues(options...),
-		Setup: Setup{
+		Uses: Setup{ // Wrapped in Setup because the pipeline is required
 			Uses: ValidatorFunc(func(raw []string) error {
 				for _, occur := range raw {
 					if _, ok := oset[occur]; !ok {
@@ -1493,7 +1498,14 @@ func (p Prototype) Execute(ctx context.Context) error {
 			p.copyToArg,
 			p.copyToValue,
 			commandSetupCore(true, p.copyToCommand),
-			p.Setup,
+
+			// Only apply pipelines if initializing
+			IfMatch(InitialTiming, Setup{
+				Uses:   p.Uses,
+				Action: p.Action,
+				After:  p.After,
+				Before: p.Before,
+			}),
 		))
 }
 

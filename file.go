@@ -385,9 +385,7 @@ func (f *FileSet) RecursiveFlag() Prototype {
 	return Prototype{
 		Name:     "recursive",
 		HelpText: "Include files and directories recursively",
-		Setup: Setup{
-			Uses: bind(f.SetRecursive),
-		},
+		Uses:     bind(f.SetRecursive),
 	}
 }
 
