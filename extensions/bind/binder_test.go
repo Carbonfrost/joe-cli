@@ -137,6 +137,23 @@ var _ = Describe("ActionBinder", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fakeAction.ExecuteCallCount()).To(Equal(1))
 	})
+
+	It("invokes the action as initializer in bind context", func() {
+		fakeAction := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "flag",
+					Uses: bind.Call(callFactory(new(0)), bind.NewActionBinder(fakeAction, new(bindfakes.FakeBinder[int]))),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app --flag 2")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeAction.ExecuteCallCount()).To(Equal(1))
+	})
 })
 
 var _ = Describe("Elem", func() {

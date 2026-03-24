@@ -117,9 +117,9 @@ type actionBinder[T any] struct {
 func (v actionBinder[_]) Initializer() cli.Action {
 	bin, ok := v.Binder.(binderInit)
 	if ok {
-		return bin.(binderInit).Initializer()
+		return cli.Pipeline(bin.(binderInit).Initializer(), v.Action)
 	}
-	return nil
+	return v.Action
 }
 
 // binderSupport facilitates the implied naming/initializer logic that
