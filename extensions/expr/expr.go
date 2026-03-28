@@ -1004,7 +1004,7 @@ func finalizeExprs(e *Expression) error {
 			errs = append(errs, fmt.Errorf("expr at index #%d must have a name", i))
 			continue
 		}
-		if err := checkValidIdentifier(e.Name); err != nil {
+		if err := checkValidFlagIdentifier(e.Name); err != nil {
 			errs = append(errs, err)
 		} else if names[e.Name] {
 			errs = append(errs, fmt.Errorf("duplicate name used: %q", e.Name))
@@ -1018,7 +1018,7 @@ func finalizeExprs(e *Expression) error {
 	return nil
 }
 
-func checkValidIdentifier(name string) error {
+func checkValidFlagIdentifier(name string) error {
 	if !validIdentifierPattern.MatchString(name) {
 		return fmt.Errorf("not a valid name")
 	}

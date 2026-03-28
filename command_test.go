@@ -664,23 +664,6 @@ var _ = Describe("Command", func() {
 			beInvalid = MatchError(ContainSubstring("not a valid name"))
 		)
 
-		DescribeTable("undefined behavior", func(option any) {
-			app := &cli.App{
-				Flags: []*cli.Flag{
-					{Name: "inuse", Aliases: []string{"alsoinuse"}},
-				},
-				Uses: addFlagOrArg(option),
-			}
-
-			_, err := app.Initialize(context.Background())
-			Expect(err).NotTo(HaveOccurred())
-		},
-			Entry(
-				"arg duplicates flag alias", &cli.Arg{Name: "alsoinuse"}),
-			Entry(
-				"flag duplicates flag alias", &cli.Flag{Name: "alsoinuse"}),
-		)
-
 		DescribeTable("errors", func(option any, expected types.GomegaMatcher) {
 			app := &cli.App{
 				Flags: []*cli.Flag{
@@ -711,6 +694,14 @@ var _ = Describe("Command", func() {
 				"arg duplicates flag name",
 				&cli.Arg{Name: "inuse"},
 				MatchError(ContainSubstring(`duplicate name used: "inuse"`))),
+			Entry(
+				"arg duplicates flag alias",
+				&cli.Arg{Name: "alsoinuse"},
+				MatchError(ContainSubstring(`duplicate name used: "alsoinuse"`))),
+			Entry(
+				"flag duplicates flag alias",
+				&cli.Flag{Name: "alsoinuse"},
+				MatchError(ContainSubstring(`duplicate name used: "alsoinuse"`))),
 
 			Entry("flag with dashes", &cli.Flag{Name: "flag-dash"}, Succeed()),
 			Entry("flag with underscores", &cli.Flag{Name: "flag_under"}, Succeed()),
@@ -721,7 +712,8 @@ var _ = Describe("Command", func() {
 			Entry("flag with special char +", &cli.Flag{Name: "+"}, Succeed()),
 			Entry("flag with special char :", &cli.Flag{Name: ":"}, Succeed()),
 			Entry("flag with spaces", &cli.Flag{Name: "flag name with spaces"}, beInvalid),
-			Entry("flag with invalid cahr", &cli.Flag{Name: "flag&flag"}, beInvalid),
+			Entry("flag with invalid char", &cli.Flag{Name: "flag&flag"}, beInvalid),
+			Entry("flag with invalid alias char", &cli.Flag{Name: "r", Aliases: []string{"flag&flag"}}, beInvalid),
 		)
 	})
 

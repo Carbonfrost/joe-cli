@@ -130,7 +130,7 @@ type valueContext struct {
 	lookup BindingLookup
 }
 
-var validIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9@#+\._\*:-]+$`)
+var validIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9@#+\._\*:\?-]+$`)
 
 // Bool creates a bool value.  This is for convenience to obtain the right pointer.
 func Bool() *bool {
@@ -699,7 +699,7 @@ func (v *valueContext) lookupValue(name string) (any, bool) {
 	return v.lookup.Interface(name)
 }
 
-func checkValidIdentifier(name string) error {
+func checkValidFlagIdentifier(name string) error {
 	if !validIdentifierPattern.MatchString(name) {
 		return fmt.Errorf("not a valid name")
 	}

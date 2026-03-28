@@ -722,10 +722,18 @@ func finalizeArgsAndFlags(c *Context) error {
 			errs = append(errs, fmt.Errorf("flag at index #%d must have a name", i))
 			continue
 		}
-		if err := checkValidIdentifier(f.Name); err != nil {
+		if err := checkValidFlagIdentifier(f.Name); err != nil {
 			errs = append(errs, err)
 		} else if names[f.Name] {
 			errs = append(errs, fmt.Errorf("duplicate name used: %q%s", f.Name, checkPersistent(f.Name)))
+		}
+		for _, a := range f.Aliases {
+			if err := checkValidFlagIdentifier(a); err != nil {
+				errs = append(errs, fmt.Errorf("invalid alias %q%s: %w", a, checkPersistent(f.Name), err))
+			} else if names[a] {
+				errs = append(errs, fmt.Errorf("duplicate name used: %q%s", a, checkPersistent(f.Name)))
+			}
+			names[a] = true
 		}
 		names[f.Name] = true
 	}
