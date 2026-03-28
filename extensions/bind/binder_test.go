@@ -490,6 +490,24 @@ var _ = Describe("Value", func() {
 			Entry("NameValue", bind.Value[*cli.NameValue], BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
 	})
+
+	It("unwraps pointer to Value", func() {
+		var actual element
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "flag",
+					Uses: bind.Call(callFactory(&actual), bind.Value[element]()),
+				},
+			},
+		}
+
+		arguments, _ := cli.Split("app --flag 300")
+		err := app.RunContext(context.Background(), arguments)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(Equal(element(300)))
+	})
 })
 
 func calledWithReflection(fn any) any {
@@ -503,3 +521,17 @@ func calledWithReflection(fn any) any {
 
 	return actual
 }
+
+// element is not Value, but *element is
+type element int
+
+var _ cli.Value = (*element)(nil)
+
+func (e *element) Set(s string) error {
+	var value int
+	err := cli.Set(&value, s)
+	*e = element(value)
+	return err
+}
+
+func (*element) String() string { return "" }

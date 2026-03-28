@@ -117,7 +117,7 @@ type actionBinder[T any] struct {
 func (v actionBinder[_]) Initializer() cli.Action {
 	bin, ok := v.Binder.(binderInit)
 	if ok {
-		return cli.Pipeline(bin.(binderInit).Initializer(), v.Action)
+		return cli.Pipeline(bin.Initializer(), v.Action)
 	}
 	return v.Action
 }
@@ -195,7 +195,7 @@ func Elem[T any, TP *T](src Binder[TP]) Binder[T] {
 	})
 }
 
-// Elem retrieves the element of a binder
+// Pointer retrieves the element of a binder
 func Pointer[T any](src Binder[T]) Binder[*T] {
 	return then(src, func(v T) *T {
 		return &v
@@ -225,6 +225,10 @@ func Value[T any](nameopt ...any) Binder[T] {
 
 func contextValue[T any](c *cli.Context, name any) T {
 	v := c.Value(name)
+	// It's possible the value is a pointer, which is copied
+	if value, ok := v.(*T); ok {
+		return *value
+	}
 	return v.(T)
 }
 
