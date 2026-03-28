@@ -1350,6 +1350,20 @@ func expandEnvVarName(content, name string) string {
 	return buf.String()
 }
 
+// Error provides an action that returns an error.
+func Error(a string) Action {
+	return ActionOf(func() error {
+		return errors.New(a)
+	})
+}
+
+// Errorf provides an action that formats an error like fmt.Errorf and returns it.
+func Errorf(format string, a ...any) Action {
+	return ActionOf(func() error {
+		return fmt.Errorf(format, a...)
+	})
+}
+
 // Print provides an action that formats using the default formats for its operands and writes to
 // standard output using the behavior of fmt.Print.
 func Print(a ...any) Action {

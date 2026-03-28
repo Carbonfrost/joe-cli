@@ -1443,6 +1443,21 @@ var _ = Describe("printing", func() {
 
 })
 
+var _ = Describe("Error", func() {
+
+	DescribeTable("examples", func(act cli.Action, expected OmegaMatcher) {
+		app := &cli.App{
+			Action: act,
+		}
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).To(expected)
+	},
+		Entry("Errorf", cli.Error("e"), MatchError("e")),
+		Entry("Errorf", cli.Errorf("typical error message: %s", "arg"), MatchError("typical error message: arg")),
+	)
+
+})
+
 var _ = Describe("HandleSignal", Ordered, func() {
 
 	BeforeAll(func() {
