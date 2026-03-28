@@ -6,6 +6,7 @@ package cli
 
 import (
 	"bytes"
+	"cmp"
 	"errors"
 	"fmt"
 	"strconv"
@@ -347,7 +348,8 @@ func optionName(name any) string {
 	panic("unreachable!")
 }
 
-func listOfValues(values []string, useQuotes bool) string {
+func listOfValues(values []string, useQuotes bool, conjopt ...string) string {
+	conj := cmp.Or(cmp.Or(conjopt...), "or")
 	quotes := [2]string{"", ""}
 	if useQuotes {
 		quotes[0], quotes[1] = "`", "'"
@@ -358,7 +360,7 @@ func listOfValues(values []string, useQuotes bool) string {
 	case 1:
 		return values[0]
 	case 2:
-		return fmt.Sprintf("%[1]s%[3]s%[2]s or %[1]s%[4]s%[2]s", quotes[0], quotes[1], values[0], values[1])
+		return fmt.Sprintf("%[1]s%[3]s%[2]s %[5]s %[1]s%[4]s%[2]s", quotes[0], quotes[1], values[0], values[1], conj)
 	default:
 		var b bytes.Buffer
 		for i, v := range values {
@@ -366,7 +368,8 @@ func listOfValues(values []string, useQuotes bool) string {
 				b.WriteString(", ")
 			}
 			if i == len(values)-1 {
-				b.WriteString("or ")
+				b.WriteString(conj)
+				b.WriteString(" ")
 			}
 			b.WriteString(quotes[0])
 			b.WriteString(v)

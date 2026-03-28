@@ -2949,6 +2949,30 @@ var _ = Describe("Enum", func() {
 	)
 })
 
+var _ = Describe("Requires", func() {
+	DescribeTable("examples", func(arguments string, expected types.GomegaMatcher) {
+		app := cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "a",
+					Uses:  cli.Requires("b", "c", "d"),
+					Value: cli.Bool(),
+				},
+				{Name: "b", Value: cli.Bool()},
+				{Name: "c", Value: cli.Bool()},
+				{Name: "d", Value: cli.Bool()},
+			},
+		}
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(expected)
+	},
+		Entry("nominal", "app -a", MatchError("-a must be specified with -b, -c, and -d")),
+		Entry("counter-example", "app -b", Not(HaveOccurred())),
+	)
+
+})
+
 var _ = Describe("Mutex", func() {
 	DescribeTable("examples", func(arguments string, expected types.GomegaMatcher) {
 		app := cli.App{

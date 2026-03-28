@@ -791,6 +791,27 @@ func Enum(options ...string) Action {
 	}
 }
 
+// Requires indicates a flag that requires another flag be present
+func Requires(names ...string) Action {
+	return At(ValidatorTiming, ActionFunc(func(c *Context) error {
+		if c.Seen("") {
+			unseen := make([]string, 0, len(names))
+			for _, o := range names {
+				if !c.Seen(o) {
+					unseen = append(unseen, optionName(o))
+				}
+			}
+			if len(unseen) == 0 {
+				return nil
+			}
+
+			return fmt.Errorf("%s must be specified with %s", c.Name(), listOfValues(unseen, false, "and"))
+		}
+
+		return nil
+	}))
+}
+
 // Mutex validates that explicit values are used mutually exclusively.
 // When used on any flag in a mutex group, the other named flags are not allowed to be
 // used.
