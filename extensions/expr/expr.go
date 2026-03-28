@@ -385,6 +385,8 @@ func EvaluatorOf(v any) Evaluator {
 		return EvaluatorOf(true)
 	case Evaluator:
 		return a
+	case cli.Action:
+		return Do(a)
 	case func(*cli.Context, any, func(any) error) error:
 		return EvaluatorFunc(a)
 	case func(*cli.Context, any) error:

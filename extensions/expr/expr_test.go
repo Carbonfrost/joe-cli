@@ -1108,6 +1108,7 @@ var _ = Describe("EvaluatorOf", func() {
 		Entry("func() error", func() (_ error) { act(); return }),
 		Entry("func() bool", func() (_ bool) { act(); return }),
 		Entry("func()", func() { act() }),
+		Entry("Action", &joeclifakes.FakeAction{ExecuteStub: func(context.Context) (_ error) { act(); return }}),
 	)
 
 	It("always yields from boolean", func() {
