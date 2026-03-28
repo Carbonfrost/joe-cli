@@ -1177,19 +1177,47 @@ func (c *Context) logicalArg(index int) *Arg {
 	return args[idx]
 }
 
+// Add adds a flag, arg, sub-command, or value target. If the argument
+// is nil, it is ignored. If the argument is App, this method panics.
+// For other types, an unnamed value target is added. See
+// [ProvideValueInitializer].
+func (c *Context) Add(target any, actionopt ...Action) error {
+	if target == nil {
+		return nil
+	}
+	switch t := target.(type) {
+	case *Flag:
+		return c.AddFlag(t, actionopt...)
+	case *Arg:
+		return c.AddArg(t, actionopt...)
+	case *Command:
+		return c.AddCommand(t, actionopt...)
+	case *App:
+		panic(fmt.Sprintf("unexpected type: %T", target))
+	default:
+		return c.ProvideValueInitializer(target, "", actionopt...)
+	}
+}
+
 // AddFlag provides a convenience method that adds a flag to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
-func (c *Context) AddFlag(f *Flag) error {
+// actionopt can specify an optional initializer for the flag.
+// Either the flag or the initializer can be nil, but not both.
+// When the flag is nil, it is implicitly created.
+func (c *Context) AddFlag(f *Flag, actionopt ...Action) error {
 	return c.updateFlags(func(flags []*Flag) []*Flag {
-		return append(flags, f)
+		return append(flags, withInitializer(f, actionopt...))
 	})
 }
 
 // AddCommand provides a convenience method that adds a Command to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
-func (c *Context) AddCommand(v *Command) error {
+// actionopt can specify an optional initializer for the command.
+// Either the command or the initializer can be nil, but not both.
+// When the command is nil, it is implicitly created.
+func (c *Context) AddCommand(v *Command, actionopt ...Action) error {
 	return c.updateSubcommands(func(cmds []*Command) []*Command {
-		return append(cmds, v)
+		return append(cmds, withInitializer(v, actionopt...))
 	})
 }
 
@@ -1197,10 +1225,32 @@ func (c *Context) AddCommand(v *Command) error {
 // is only valid during the initialization phase.  An error is returned for other timings.
 // Args can also be added to a value which has been provided
 // to a value initializer (see [ProvideValueInitializer])
-func (c *Context) AddArg(v *Arg) error {
+// actionopt can specify an optional initializer for the arg.
+// Either the arg or the initializer can be nil, but not both.
+// When the arg is nil, it is implicitly created.
+func (c *Context) AddArg(v *Arg, actionopt ...Action) error {
 	return c.updateArgs(func(args []*Arg) []*Arg {
-		return append(args, v)
+		return append(args, withInitializer(v, actionopt...))
 	})
+}
+
+func withInitializer[T any, TP interface {
+	*T
+	target
+}](in TP, actionopt ...Action) TP {
+	if in == nil && len(actionopt) == 0 {
+		panic("must specify at least one parameter")
+	}
+	if len(actionopt) > 1 {
+		panic("expected zero or one arg")
+	}
+	if in == nil {
+		in = new(T)
+	}
+	if len(actionopt) == 1 {
+		in.appendAction(InitialTiming, actionopt[0])
+	}
+	return in
 }
 
 // RemoveArg provides a convenience method that removes an Arg from the current command or app.

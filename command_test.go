@@ -657,10 +657,7 @@ var _ = Describe("Command", func() {
 		})
 
 		var addFlagOrArg = func(option any) cli.Action {
-			if flag, ok := option.(*cli.Flag); ok {
-				return cli.AddFlag(flag)
-			}
-			return cli.AddArg(option.(*cli.Arg))
+			return cli.Add(option)
 		}
 
 		var (

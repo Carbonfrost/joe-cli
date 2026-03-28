@@ -704,10 +704,7 @@ func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) 
 			proto = fn(val)
 		}
 
-		f := &Flag{
-			Uses: accessory(c, proto, name).Append(actionopt...),
-		}
-		return c.AddFlag(f)
+		return c.AddFlag(nil, accessory(c, proto, name).Append(actionopt...))
 	})
 }
 
@@ -720,10 +717,7 @@ func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) 
 // named "files", then the accessory flag would be named --files-recursive.
 func Accessory0(name string, actionopt ...Action) Action {
 	return actionFunc(func(c context.Context) error {
-		f := &Flag{
-			Uses: accessory(c, nil, name).Append(actionopt...),
-		}
-		return Do(c, AddFlag(f))
+		return Do(c, AddFlag(nil, accessory(c, nil, name).Append(actionopt...)))
 	})
 }
 
@@ -972,21 +966,29 @@ func ProvideValueInitializer(v any, name string, actionopt ...Action) Action {
 	return actionThunkVar3((*Context).ProvideValueInitializer, v, name, actionopt...)
 }
 
+// Add adds a flag, arg, sub-command, or value target. If the argument
+// is nil, it is ignored. If the argument is App, this method panics.
+// For other types, an unnamed value target is added. See
+// [ProvideValueInitializer].
+func Add(target any, actionopt ...Action) Action {
+	return actionThunkVar2((*Context).Add, target, actionopt)
+}
+
 // AddFlag provides an action which adds a flag to the command or app
-func AddFlag(f *Flag) Action {
-	return actionThunk1((*Context).AddFlag, f)
+func AddFlag(f *Flag, actionopt ...Action) Action {
+	return actionThunkVar2((*Context).AddFlag, f, actionopt)
 }
 
 // AddCommand provides an action which adds a sub-command to the command or app
-func AddCommand(c *Command) Action {
-	return actionThunk1((*Context).AddCommand, c)
+func AddCommand(c *Command, actionopt ...Action) Action {
+	return actionThunkVar2((*Context).AddCommand, c, actionopt)
 }
 
 // AddArg provides an action which adds an arg to the command or app
 // Args can also be added to a value which has been provided
 // to a value initializer (see [ProvideValueInitializer])
-func AddArg(a *Arg) Action {
-	return actionThunk1((*Context).AddArg, a)
+func AddArg(a *Arg, actionopt ...Action) Action {
+	return actionThunkVar2((*Context).AddArg, a, actionopt)
 }
 
 // AddAlias adds the specified alias to the flag or command.
@@ -1861,6 +1863,12 @@ func actionThunk1[T any](fn func(*Context, T) error, arg T) ActionFunc {
 func actionThunkVar1[T any](fn func(*Context, ...T) error, t []T) Action {
 	return ActionFunc(func(c *Context) error {
 		return fn(c, t...)
+	})
+}
+
+func actionThunkVar2[T, U any](fn func(*Context, T, ...U) error, t T, u []U) Action {
+	return ActionFunc(func(c *Context) error {
+		return fn(c, t, u...)
 	})
 }
 
