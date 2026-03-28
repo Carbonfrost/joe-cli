@@ -210,12 +210,6 @@ func groupFlagsByCategory(flags []*Flag) flagsByCategory {
 	return res
 }
 
-// Use appends actions to Uses pipeline
-func (f *Flag) Use(action Action) *Flag {
-	f.Uses = Pipeline(f.Uses).Append(action)
-	return f
-}
-
 // Synopsis contains the name of the flag, its aliases, and the value placeholder.  The text of synopsis
 // is inferred from the HelpText.  Up to one short and one long name will be used.
 func (f *Flag) Synopsis() string {

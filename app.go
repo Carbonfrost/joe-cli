@@ -187,12 +187,6 @@ func (a *App) RunContext(c context.Context, args []string) error {
 	return err
 }
 
-// Use appends actions to Uses pipeline
-func (a *App) Use(action Action) *App {
-	a.Uses = Pipeline(a.Uses).Append(action)
-	return a
-}
-
 // Command gets the command by name.  If the name is the empty string,
 // this refers to the command which backs the app once it has been initialized.
 func (a *App) Command(name string) (*Command, bool) {

@@ -65,21 +65,21 @@ func Initialized(t target) *Context {
 	app := func() *App {
 		switch f := t.(type) {
 		case *Flag:
-			f.Use(useThunk)
+			f.Uses = Pipeline(f.Uses, useThunk)
 			return &App{
 				Flags: []*Flag{
 					f,
 				},
 			}
 		case *Arg:
-			f.Use(useThunk)
+			f.Uses = Pipeline(f.Uses, useThunk)
 			return &App{
 				Args: []*Arg{
 					f,
 				},
 			}
 		case *Command:
-			f.Use(useThunk)
+			f.Uses = Pipeline(f.Uses, useThunk)
 			return &App{
 				Commands: []*Command{
 					f,

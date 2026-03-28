@@ -1796,25 +1796,6 @@ var _ = Describe("Prototype", func() {
 		Expect(value).To(BeTrue())
 	})
 
-	Describe("Use", func() {
-		It("appends to the pipeline", func() {
-			step1 := new(joeclifakes.FakeAction)
-			step2 := new(joeclifakes.FakeAction)
-			pro := &cli.Prototype{
-				Setup: cli.Setup{
-					Optional: true,
-					Uses:     step1,
-				},
-			}
-			res := pro.Use(step2)
-			Expect(res.Setup.Optional).To(BeTrue())
-			Expect(res.Setup.Uses).To(Equal(cli.ActionPipeline([]cli.Action{
-				step1,
-				step2,
-			})))
-		})
-	})
-
 	DescribeTable("value target examples", func(proto cli.Prototype, expected Fields) {
 		value := new(protoValue)
 		app := &cli.App{
@@ -1910,25 +1891,6 @@ var _ = Describe("Setup", func() {
 		})
 	})
 
-	Describe("Use", func() {
-		It("appends to the pipeline", func() {
-			before := new(joeclifakes.FakeAction)
-			step1 := new(joeclifakes.FakeAction)
-			step2 := new(joeclifakes.FakeAction)
-			setup = cli.Setup{
-				Optional: true,
-				Uses:     step1,
-				Before:   before,
-			}
-			res := setup.Use(step2)
-			Expect(res.Optional).To(BeTrue())
-			Expect(res.Uses).To(Equal(cli.ActionPipeline([]cli.Action{
-				step1,
-				step2,
-			})))
-			Expect(res.Before).To(Equal(before))
-		})
-	})
 })
 
 var _ = Describe("FlagSetup", func() {

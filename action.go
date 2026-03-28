@@ -485,11 +485,6 @@ func (s Setup) Execute(ctx context.Context) error {
 	return nil
 }
 
-func (s Setup) Use(action Action) Setup {
-	s.Uses = Pipeline(s.Uses).Append(action)
-	return s
-}
-
 // Pipeline combines various actions into a single action.  Compared to using
 // ActionPipeline directly, the actions are flattened if any nested pipelines are
 // present.
@@ -1463,11 +1458,6 @@ func (p Prototype) Execute(ctx context.Context) error {
 			commandSetupCore(true, p.copyToCommand),
 			p.Setup,
 		))
-}
-
-func (p Prototype) Use(action Action) Prototype {
-	p.Setup = p.Setup.Use(action)
-	return p
 }
 
 func (p *Prototype) copyCommonToTarget(c *Context) error {

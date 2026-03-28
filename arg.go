@@ -330,12 +330,6 @@ func (a *Arg) SetRequired(v bool) {
 	a.setInternalFlags(internalFlagRequired, v)
 }
 
-// Use appends actions to Uses pipeline
-func (a *Arg) Use(action Action) *Arg {
-	a.Uses = Pipeline(a.Uses).Append(action)
-	return a
-}
-
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
 	return sprintSynopsis(a.newSynopsis())

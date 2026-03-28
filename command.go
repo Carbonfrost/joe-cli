@@ -337,12 +337,6 @@ func (c *Command) Names() []string {
 	return append([]string{c.Name}, c.Aliases...)
 }
 
-// Use appends actions to Uses pipeline
-func (c *Command) Use(action Action) *Command {
-	c.Uses = Pipeline(c.Uses).Append(action)
-	return c
-}
-
 func (c *Command) buildSet(ctx *Context) *set {
 	binding := NewBinding(c.Flags, c.Args, ctx.Parent())
 	set := newSet(binding)
