@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.13.0 (March 28, 2026)
+
+### New Features
+
+* `Add` (7afe9f5)
+* `Requires` (d2fd10b)
+* `Error` (c375c2d)
+* `HaveLookPath` (d4563bc)
+* Introduce `expr.Do` (be79d87)
+
+### Bug fixes and improvements
+
+* Automatically copy of bind Value when a pointer (e86ec38)
+* Make `ActionBinder` action should be initializer (f75ab3d)
+* Breaking changes:
+    * Re-work `Setup` to remove `Optional`; inline within Prototype (6162ef3)
+    * Remove `Use` methods (968fc50)
+* Bug fix: define behavior of duplicate aliases; allow -? as flag name (a610332)
+* Color improvements; remove `NewBuffer` (0b3f208)
+* Chores:
+    * Update GitHub pipeline configuration (29d5651)
+    * Update dependent versions (6656d38)
+    * Lint and documentation fixes (e86ec38)
+
+
 ## v0.12.0 (March 11, 2026)
 
 ### New Features
