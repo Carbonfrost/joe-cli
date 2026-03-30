@@ -451,27 +451,17 @@ func (c *Context) ContextOf(target any) *Context {
 		return c.Parent().ContextOf(target)
 	}
 	switch name := target.(type) {
-	case *Arg, *Flag, *Command:
+	case *Command:
 		return c.newChild(target.(targetType))
-	case int:
-		return c.tryOptionContext(c.LookupArg(name))
-	case rune:
-		return c.tryOptionContext(c.LookupFlag(name))
-	case string:
-		if a, ok := c.LookupArg(name); ok {
-			return c.newChild(a)
+	case *Arg, *Flag, int, rune, string:
+		o, ok := c.lookupOption(name)
+		if !ok {
+			return nil
 		}
-		return c.tryOptionContext(c.LookupFlag(name))
+		return c.newChild(o.(option))
 	default:
 		panic(fmt.Sprintf("unexpected target type %T", target))
 	}
-}
-
-func (c *Context) tryOptionContext(target any, ok bool) *Context {
-	if !ok {
-		return nil
-	}
-	return c.newChild(target.(option))
 }
 
 // LookupCommand finds the command by name.  The name can be a string or *Command
@@ -1863,10 +1853,18 @@ func (c *Context) lookupOption(name any) (option, bool) {
 		o, ok := c.target.(option)
 		return o, ok
 	}
-	if f, ok := c.LookupFlag(name); ok {
-		return f, true
+	switch name.(type) {
+	case *Arg, int:
+		return c.LookupArg(name)
+	case *Flag, rune:
+		return c.LookupFlag(name)
+	case string:
+		if f, ok := c.LookupFlag(name); ok {
+			return f, true
+		}
+		return c.LookupArg(name)
 	}
-	return c.LookupArg(name)
+	panic(fmt.Sprintf("unexpected target type %T", name))
 }
 
 func (c *Context) option() option {
