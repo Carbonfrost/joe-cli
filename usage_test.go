@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"regexp"
 
@@ -214,6 +215,16 @@ var _ = Describe("DisplayHelpScreen", func() {
 			},
 		}
 		Expect(renderScreen(app, "demo")).To(ContainSubstring("usage: demo"))
+	})
+
+	It("returns exit code 2", func() {
+		app := &cli.App{
+			Name:   "demo",
+			Action: cli.DisplayHelpScreen(),
+			Stderr: io.Discard,
+		}
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).To(beExitCode(2))
 	})
 
 	It("uses the help template", func() {

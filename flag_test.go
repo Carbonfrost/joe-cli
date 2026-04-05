@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -264,7 +264,7 @@ var _ = Describe("Flag", func() {
 		err := app.RunContext(context.Background(), []string{"app"})
 
 		// In particular, we expect --do-not-show to be hidden
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).To(beExitCode(2))
 		Expect(capture.String()).NotTo(ContainSubstring("--do-not-show"))
 	})
 

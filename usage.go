@@ -203,7 +203,7 @@ func DisplayHelpScreen(command ...string) Action {
 
 			_ = tpl.Execute(w, data)
 			_ = w.Flush()
-			return nil
+			return Exit("", 2)
 		}),
 		))
 }

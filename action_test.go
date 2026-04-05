@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -2117,6 +2117,7 @@ var _ = Describe("PreventSetup", func() {
 						Uses:    commandSetup(t),
 					},
 				},
+				Action: func() {}, // override default help screen
 			}
 		}),
 		Entry("flag recursive", func(t func()) *cli.App {
@@ -2144,6 +2145,7 @@ var _ = Describe("PreventSetup", func() {
 						},
 					},
 				},
+				Action: func() {}, // override default help screen
 			}
 		}),
 	)

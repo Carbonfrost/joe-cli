@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 package cli_test
@@ -136,6 +136,7 @@ var _ = Describe("RunContext", func() {
 					},
 				},
 				Stderr: io.Discard,
+				Action: func() {}, // override default help screen
 			}
 			args, _ := cli.Split("app " + arguments)
 			err := app.RunContext(context.Background(), args)

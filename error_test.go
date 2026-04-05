@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -40,3 +40,9 @@ var _ = Describe("Exit", func() {
 		Entry("empty", []any{}, Equal("exited with status 1"), 1),
 	)
 })
+
+func beExitCode(c int) types.GomegaMatcher {
+	return WithTransform(func(v any) any {
+		return v.(cli.ExitCoder).ExitCode()
+	}, Equal(2))
+}
