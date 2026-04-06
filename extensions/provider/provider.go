@@ -392,13 +392,7 @@ func (m Map) LookupProvider(name string) (d Detail, ok bool) {
 }
 
 func (d Details) ProviderNames() []string {
-	keys := make([]string, len(d))
-	var i int
-	for k := range d {
-		keys[i] = k
-		i++
-	}
-	return keys
+	return slices.Collect(maps.Keys(d))
 }
 
 func (d Details) LookupProvider(name string) (Detail, bool) {
