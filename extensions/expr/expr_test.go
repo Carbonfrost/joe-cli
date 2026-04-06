@@ -12,10 +12,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/extensions/expr/exprfakes"
-	"github.com/Carbonfrost/joe-cli/joe-clifakes"
+	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -572,7 +572,7 @@ var _ = Describe("Expr", func() {
 		It("provides bindings that were selected", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
 			exp := expr.FromContext(cli.FromContext(captured), "e")
-			b := slices.Collect(exp.Bindings())
+			b := slices.Collect(exp.BindingEvaluators())
 			Expect(b).To(HaveLen(1))
 			Expect(b[0].Expr().Name).To(Equal("expr"))
 		})
