@@ -103,7 +103,7 @@ const (
 
 // ANSI terminal colors
 const (
-	Default       = ansiterm.Default
+	DefaultColor  = ansiterm.Default
 	Black         = ansiterm.Black
 	Red           = ansiterm.Red
 	Green         = ansiterm.Green
