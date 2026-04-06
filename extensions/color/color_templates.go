@@ -35,7 +35,7 @@ var (
 	}
 
 	colorNames = map[string]cli.Color{
-		"Default":       cli.Default,
+		"Default":       cli.DefaultColor,
 		"Black":         cli.Black,
 		"Red":           cli.Red,
 		"Green":         cli.Green,
@@ -143,7 +143,7 @@ func (t *templateContext) sprintForegroundColor(f cli.Color) sprinter {
 	return func(a ...any) (string, error) {
 		return t.format(
 			func(w cli.Writer) { w.SetForeground(f) },
-			func(w cli.Writer) { w.SetForeground(cli.Default) },
+			func(w cli.Writer) { w.SetForeground(cli.DefaultColor) },
 			a,
 		)
 	}
@@ -152,7 +152,7 @@ func (t *templateContext) sprintForegroundColor(f cli.Color) sprinter {
 func (t *templateContext) resetColor() func() string {
 	return func() string {
 		return support.Format(t.colorEnabled(), func(sw support.StyleWriter) {
-			sw.SetForeground(cli.Default)
+			sw.SetForeground(cli.DefaultColor)
 		})
 	}
 }
@@ -168,7 +168,7 @@ func (t *templateContext) setBackgroundColor(color string, a ...any) (string, er
 	if f, ok := colorNames[color]; ok {
 		return t.format(
 			func(w cli.Writer) { w.SetBackground(f) },
-			func(w cli.Writer) { w.SetBackground(cli.Default) },
+			func(w cli.Writer) { w.SetBackground(cli.DefaultColor) },
 			a,
 		)
 	}

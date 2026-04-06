@@ -103,7 +103,7 @@ func (c *OutputContext) overwrite(file string) {
 func (c *OutputContext) trace(category string, file string) {
 	color, ok := colors[category]
 	if !ok {
-		color = cli.Default
+		color = cli.DefaultColor
 	}
 	out := c.out
 	fmt.Fprint(out, padding[0:len(padding)-len(category)])
