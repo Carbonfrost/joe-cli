@@ -44,7 +44,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
@@ -137,18 +137,18 @@ type Expr struct {
 // Expression provides the parsed result of the expression that can be evaluated
 // with the given inputs.
 type Expression struct {
-	items []Binding
+	items []BindingEvaluator
 	args  []string
 
 	// Exprs identifies the expression operators that are allowed
 	Exprs []*Expr
 }
 
-// Binding provides the relationship between an evaluator and the evaluation
+// BindingEvaluator provides the relationship between an evaluator and the evaluation
 // context.  Optionally, the original Expr is made available.
 // A binding can support being reset if it exposes a method Reset(). Resetting
 // a binding occurs when an expression is evaluated multiple times.
-type Binding interface {
+type BindingEvaluator interface {
 	Evaluator
 	cli.Lookup
 
@@ -324,12 +324,12 @@ func (e *expressionDescription) String() string {
 	return buf.String()
 }
 
-// NewBinding creates an expression binding.  The ev parameter is how
+// NewBindingEvaluator creates an expression binding evaluator.  The ev parameter is how
 // the expression is evaluated.  The remaining arguments specify the *Expr
 // expression operator to use and optionally a Lookup.   The main use case
 // for this function is to create a custom evaluation step that is appended to
 // the expression pipeline
-func NewBinding(ev Evaluator, exprlookup ...any) Binding {
+func NewBindingEvaluator(ev Evaluator, exprlookup ...any) BindingEvaluator {
 	var (
 		expr   *Expr
 		lookup cli.Lookup = cli.LookupValues{}
@@ -840,10 +840,10 @@ func (e *Expression) evaluateCore(ctx context.Context, items ...any) error {
 	return nil
 }
 
-// Bindings enumerates all the bindings on the expression
-func (e *Expression) Bindings() iter.Seq[Binding] {
-	return func(yield func(Binding) bool) {
-		e.Walk(func(f Binding) error {
+// BindingEvaluators enumerates all the binding evaluators on the expression
+func (e *Expression) BindingEvaluators() iter.Seq[BindingEvaluator] {
+	return func(yield func(BindingEvaluator) bool) {
+		e.Walk(func(f BindingEvaluator) error {
 			if !yield(f) {
 				return errStopWalk
 			}
@@ -852,7 +852,7 @@ func (e *Expression) Bindings() iter.Seq[Binding] {
 	}
 }
 
-func (e *Expression) Walk(fn func(Binding) error) error {
+func (e *Expression) Walk(fn func(BindingEvaluator) error) error {
 	if fn == nil {
 		return nil
 	}
@@ -865,11 +865,11 @@ func (e *Expression) Walk(fn func(Binding) error) error {
 	return nil
 }
 
-func (e *Expression) Prepend(expr Binding) {
-	e.items = append([]Binding{expr}, e.items...)
+func (e *Expression) Prepend(expr BindingEvaluator) {
+	e.items = append([]BindingEvaluator{expr}, e.items...)
 }
 
-func (e *Expression) Append(expr Binding) {
+func (e *Expression) Append(expr BindingEvaluator) {
 	e.items = append(e.items, expr)
 }
 
@@ -885,7 +885,7 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func parseExpressions(exprOperands []*Expr, args []string) ([]Binding, cli.BindingMap, error) {
+func parseExpressions(exprOperands []*Expr, args []string) ([]BindingEvaluator, cli.BindingMap, error) {
 	exprs := map[string]*Expr{}
 	for _, e := range exprOperands {
 		exprs[e.Name] = e
@@ -894,7 +894,7 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]Binding, cli.Bindi
 		}
 	}
 
-	results := make([]Binding, 0)
+	results := make([]BindingEvaluator, 0)
 	all := cli.BindingMap{}
 	for len(args) > 0 {
 		arg := args[0]
