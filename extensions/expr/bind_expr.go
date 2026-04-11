@@ -12,6 +12,23 @@ type evaluatorInit struct {
 	cli.Action
 }
 
+// ActionEvaluator provides an evaluator which can also be used as an action
+type ActionEvaluator interface {
+	Evaluator
+	cli.Action
+}
+
+// NewActionEvaluator provides an evaluator which also provides an action.
+// The typical use is to implement an initializer within the action
+// that sets up the required flags and actions that the evaluator
+// depends on.
+func NewActionEvaluator(action cli.Action, eval Evaluator) ActionEvaluator {
+	return &evaluatorInit{
+		Action:    cli.ActionOf(action), // allow action to be nil
+		Evaluator: eval,
+	}
+}
+
 // BindEvaluator produces an evaluator from the bound values.
 func BindEvaluator[T any, E Evaluator](factory func(T) E, t bind.Binder[T]) Evaluator {
 	return newEvaluator(initializers(t),
