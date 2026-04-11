@@ -212,6 +212,38 @@ var _ = Describe("Details", func() {
 			Expect(ok).To(BeTrue())
 			Expect(actual).To(Equal(provider.Detail{Value: 1}))
 		})
+
+		It("generates help text from conventions", func() {
+			details := provider.Details{
+				"A": {
+					Value: &conventions{},
+				},
+				"B": {
+					Factory: &conventionsFactory{},
+				},
+			}
+			actual, _ := details.LookupProvider("A")
+			Expect(actual.HelpText).To(Equal("H"))
+
+			actual, _ = details.LookupProvider("B")
+			Expect(actual.HelpText).To(Equal("H"))
+		})
+
+		It("generates defaults from conventions", func() {
+			details := provider.Details{
+				"A": {
+					Value: &conventions{},
+				},
+				"B": {
+					Factory: &conventionsFactory{},
+				},
+			}
+			actual, _ := details.LookupProvider("A")
+			Expect(actual.Defaults).To(Equal(map[string]string{"A": "1"}))
+
+			actual, _ = details.LookupProvider("B")
+			Expect(actual.Defaults).To(Equal(map[string]string{"A": "1"}))
+		})
 	})
 })
 
@@ -747,3 +779,17 @@ type csvProvider struct {
 }
 
 type formatProvider any
+
+type conventions struct{}
+
+func (*conventions) HelpText() string            { return "H" }
+func (*conventions) Defaults() map[string]string { return map[string]string{"A": "1"} }
+
+type conventionsFactory struct{}
+
+func (*conventionsFactory) New(_ map[string]string) (any, error) {
+	return nil, nil
+}
+
+func (*conventionsFactory) HelpText() string            { return "H" }
+func (*conventionsFactory) Defaults() map[string]string { return map[string]string{"A": "1"} }

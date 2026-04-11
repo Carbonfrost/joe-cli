@@ -83,12 +83,14 @@ type Details map[string]Detail
 
 // Detail provides information about a provider
 type Detail struct {
-	// Defaults specifies the default values for the provider
+	// Defaults specifies the default values for the provider.
+	// The factory or value can provide conventional values as an alternative
+	// to specifying this value by containing a method Defaults()map[string]string
 	Defaults map[string]string
 
 	// Factory is responsible for creating the provider given the options.
 	// The value is a function, and must be one of the functions available to
-	// Factory
+	// Factory. //
 	Factory Factory
 
 	// Value is a discrete value to use for the provider.  Factory and Value
@@ -101,7 +103,17 @@ type Detail struct {
 	Aliases []string
 
 	// HelpText contains text which briefly describes the usage of the provider.
+	// The factory or value can provide conventional values as an alternative
+	// to specifying this value by containing a method HelpText()string
 	HelpText string
+}
+
+type defaultsProvider interface {
+	Defaults() map[string]string
+}
+
+type helpTextProvider interface {
+	HelpText() string
 }
 
 // Map provides a map that names the providers and their the default values.
@@ -400,14 +412,46 @@ func (d Details) LookupProvider(name string) (Detail, bool) {
 	if !ok {
 		for k, v := range d {
 			if strings.EqualFold(name, k) {
-				return v, true
+				r, ok = v, true
+				break
 			}
 			if slices.Contains(v.Aliases, name) {
-				return v, true
+				r, ok = v, true
+				break
 			}
 		}
 	}
-	return r, ok
+
+	if !ok {
+		return r, false
+	}
+
+	if len(r.Defaults) == 0 {
+		if defaults, ok := conventions(r, (defaultsProvider).Defaults); ok {
+			r.Defaults = defaults
+		}
+	}
+
+	if r.HelpText == "" {
+		if helpTExt, ok := conventions(r, (helpTextProvider).HelpText); ok {
+			r.HelpText = helpTExt
+		}
+	}
+
+	return r, true
+}
+
+func conventions[T, V any](r Detail, fn func(T) V) (V, bool) {
+	if r.Factory != nil {
+		if dp, ok := r.Factory.(T); ok {
+			return fn(dp), true
+		}
+	} else if r.Value != nil {
+		if dp, ok := r.Value.(T); ok {
+			return fn(dp), true
+		}
+	}
+	return *new(V), false
 }
 
 func (d defaultsMap) String() string {
