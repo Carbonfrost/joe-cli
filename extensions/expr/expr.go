@@ -39,6 +39,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -48,6 +49,7 @@ import (
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
+	"golang.org/x/sync/errgroup"
 )
 
 //counterfeiter:generate . Evaluator
@@ -846,6 +848,29 @@ func (e *Expression) String() string {
 
 func (e *Expression) Evaluate(ctx context.Context, items ...any) error {
 	return e.evaluateCore(ctx, items...)
+}
+
+// ExecuteParallel evaluates the expression pipeline in parallel for multiple items.
+// The jobs parameter controls the maximum number of concurrent evaluations. When jobs
+// is zero or negative, the method uses runtime.NumCPU() as the default. Context
+// propagation allows goroutines to be canceled or to time out. All errors are joined
+// and returned together.
+func (e *Expression) ExecuteParallel(ctx context.Context, jobs int, items ...any) error {
+	if jobs <= 0 {
+		jobs = runtime.NumCPU()
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(jobs)
+
+	for _, item := range items {
+		item := item // capture loop variable
+		g.Go(func() error {
+			return e.evaluateCore(ctx, item)
+		})
+	}
+
+	return g.Wait()
 }
 
 func (e *Expression) evaluateCore(ctx context.Context, items ...any) error {
