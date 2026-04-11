@@ -43,6 +43,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
@@ -140,6 +141,9 @@ type Expression struct {
 	items []BindingEvaluator
 	args  []string
 
+	parseInlineValues bool
+	nameLookupCache   map[string]*Expr
+
 	// Exprs identifies the expression operators that are allowed
 	Exprs []*Expr
 }
@@ -171,6 +175,19 @@ type composite []Evaluator
 const (
 	AlwaysTrue  = Invariant(true)
 	AlwaysFalse = Invariant(false)
+)
+
+const (
+	// ParseAllowInlineValues is placed in the Uses pipeline of the Arg that contains
+	// the expression and when present allows expressions to parse with inline arguments
+	// when either (a) the short alias is an uppercase letter or (b) the inline
+	// arguments have the equal sign. For example, if an expression -filter has
+	// the alias -l, then it is acceptable to parse -lKEY=VALUE because an
+	// equal sign is present. If the alias -L were present, then -LVALUE could
+	// be parsed. These rules are designed to avoid ambiguity because in general,
+	// ordinary expression names shouldn't use uppercase names and the equal sign
+	// is a common delimiter in arguments.
+	ParseAllowInlineValues cli.Option = cli.ReservedOption1
 )
 
 type exprsByCategory []*exprCategory
@@ -249,6 +266,13 @@ func (e *Expression) Initializer() cli.Action {
 		Name:      "expression",
 		UsageText: "<expression>",
 		NArg:      cli.TakeRemaining,
+	}, func(c *cli.Context) {
+		// Remove the inline parsing options from *Arg if it is present
+		arg := c.Arg()
+		opts := arg.Options
+		e.parseInlineValues = (opts & ParseAllowInlineValues) == ParseAllowInlineValues
+		arg.Options &^= ParseAllowInlineValues
+
 	}, func(c *cli.Context) error {
 		return c.SetDescription(&expressionDescription{
 			exp:   e,
@@ -276,7 +300,7 @@ func (e *Expression) Initializer() cli.Action {
 
 	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(_ *cli.Context) (err error) {
 		var all cli.BindingMap
-		e.items, all, err = parseExpressions(e.Exprs, e.args)
+		e.items, all, err = parseExpressions(e)
 		if err != nil {
 			return
 		}
@@ -893,14 +917,32 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func parseExpressions(exprOperands []*Expr, args []string) ([]BindingEvaluator, cli.BindingMap, error) {
-	exprs := map[string]*Expr{}
-	for _, e := range exprOperands {
-		exprs[e.Name] = e
-		for _, alias := range e.Aliases {
-			exprs[alias] = e
+func (e *Expression) findExpr(exprName string) (result *Expr, isShortInlineAlias, ok bool) {
+	if e.nameLookupCache == nil {
+		e.nameLookupCache = map[string]*Expr{}
+		for _, x := range e.Exprs {
+			e.nameLookupCache[x.Name] = x
+			for _, alias := range x.Aliases {
+				e.nameLookupCache[alias] = x
+			}
 		}
 	}
+
+	exprs := e.nameLookupCache
+	expr, ok := exprs[exprName]
+	if !ok && e.parseInlineValues {
+		if unicode.IsUpper(([]rune(exprName))[0]) || strings.Contains(exprName, "=") {
+			exprName = string([]rune(exprName)[0])
+			expr, ok = exprs[exprName]
+
+			return expr, true, ok
+		}
+	}
+	return expr, false, ok
+}
+
+func parseExpressions(e *Expression) ([]BindingEvaluator, cli.BindingMap, error) {
+	args := e.args
 
 	results := make([]BindingEvaluator, 0)
 	all := cli.BindingMap{}
@@ -908,7 +950,13 @@ func parseExpressions(exprOperands []*Expr, args []string) ([]BindingEvaluator, 
 		arg := args[0]
 		args = args[1:]
 
-		expr, ok := exprs[arg[1:]]
+		expr, isShortInline, ok := e.findExpr(arg[1:])
+
+		if isShortInline {
+			// Push back the remaining part so it can be parsed as args
+			args = append([]string{arg[2:]}, args...)
+		}
+
 		if !ok {
 			return nil, nil, unknownExpr(arg)
 		}

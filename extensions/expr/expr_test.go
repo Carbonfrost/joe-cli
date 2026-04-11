@@ -831,7 +831,69 @@ var _ = Describe("Expr", func() {
 				"arg -unknown",
 				Equal(`unknown expression: -unknown`),
 			),
+			Entry(
+				"improper inline expr",
+				"arg -offset20",
+				Equal(`unknown expression: -offset20`),
+			),
 		)
+
+		Describe("ParseAllowInlineValues", func() {
+			DescribeTable("examples", func(arguments string, expected types.GomegaMatcher) {
+				values := map[string]any{}
+
+				app := &cli.App{
+					Name: "app",
+					Action: func(c *cli.Context) {
+						expr.FromContext(c, "e").Evaluate(c, "")
+					},
+					Args: []*cli.Arg{
+						{
+							Name: "f",
+							NArg: -2,
+						},
+						{
+							Name:    "e",
+							Options: expr.ParseAllowInlineValues,
+							Value: &expr.Expression{
+								Exprs: []*expr.Expr{
+									{
+										Name: "boolean",
+										Args: []*cli.Arg{
+											{Value: new(bool)},
+										},
+										Aliases: []string{"T"},
+										Evaluate: func(c *cli.Context) {
+											values["boolean"] = c.Value(0)
+										},
+									},
+									{
+										Name: "nvp",
+										Args: []*cli.Arg{
+											{Value: new(cli.NameValue)},
+										},
+										Aliases: []string{"k"},
+										Evaluate: func(c *cli.Context) {
+											values["nvp"] = c.Value(0)
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				args, _ := cli.Split("app " + arguments)
+				err := app.RunContext(context.Background(), args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(expected)
+			},
+				Entry("uppercase", "arg -Tfalse", HaveKeyWithValue("boolean", false)),
+				Entry("name-value", "arg -kkey=value", HaveKeyWithValue("nvp", &cli.NameValue{Name: "key", Value: "value"})),
+
+				Entry("existing behavior", "arg -T false", HaveKeyWithValue("boolean", false)),
+				Entry("existing name-value behavior", "arg -k t=v", HaveKeyWithValue("nvp", &cli.NameValue{Name: "t", Value: "v"})),
+			)
+		})
 	})
 
 	Describe("visibility", func() {
