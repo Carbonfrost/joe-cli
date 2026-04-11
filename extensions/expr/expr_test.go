@@ -826,6 +826,11 @@ var _ = Describe("Expr", func() {
 				"arg -offset",
 				Equal(`expected argument`),
 			),
+			Entry(
+				"unknown expr",
+				"arg -unknown",
+				Equal(`unknown expression: -unknown`),
+			),
 		)
 	})
 
