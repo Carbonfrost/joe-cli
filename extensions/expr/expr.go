@@ -16,8 +16,8 @@
 //
 //	&cli.Arg {
 //	    Name: "expression",
-//	    Value: cli.Expression{
-//	        Exprs: []*cli.Expr{
+//	    Value: expr.Expression{
+//	        Exprs: []*expr.Expr{
 //	            {
 //	                Name: "name",
 //	                Args: cli.Args(cli.String()),
@@ -39,9 +39,9 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
@@ -220,8 +220,7 @@ const (
 )
 
 var (
-	errStopWalk            = errors.New("stop walking")
-	validIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9@#+\._\*:-]+$`)
+	errStopWalk = errors.New("stop walking")
 )
 
 func newBoundExpr(e *Expr) *boundExpr {
@@ -275,7 +274,7 @@ func (e *Expression) Initializer() cli.Action {
 
 		return finalizeExprs(e)
 
-	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) (err error) {
+	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(_ *cli.Context) (err error) {
 		var all cli.BindingMap
 		e.items, all, err = parseExpressions(e.Exprs, e.args)
 		if err != nil {
@@ -513,13 +512,14 @@ func EvaluatorOf(v any) Evaluator {
 }
 
 // Evaluate implements the Evaluator interface for Predicate
-func (p Predicate) Evaluate(c context.Context, v any, yield func(any) error) error {
+func (p Predicate) Evaluate(_ context.Context, v any, yield func(any) error) error {
 	if ok := p(v); ok {
 		return yield(v)
 	}
 	return nil
 }
 
+// Evaluate implements the Evaluator interface for Invariant
 func (i Invariant) Evaluate(_ context.Context, v any, y func(any) error) error {
 	if i {
 		return y(v)
@@ -631,34 +631,42 @@ func (e *Expr) LookupData(name string) (any, bool) {
 	return v, ok
 }
 
+// SetName sets the name of the expression
 func (e *Expr) SetName(name string) {
 	e.Name = name
 }
 
+// SetCategory sets the category of the expression
 func (e *Expr) SetCategory(name string) {
 	e.Category = name
 }
 
+// SetHelpText sets the help text of the expression
 func (e *Expr) SetHelpText(name string) {
 	e.HelpText = name
 }
 
+// SetUsageText sets the usage text of the expression
 func (e *Expr) SetUsageText(value string) {
 	e.UsageText = value
 }
 
+// SetManualText sets the manual text of the expression
 func (e *Expr) SetManualText(name string) {
 	e.ManualText = name
 }
 
+// SetDescription sets the description of the expression
 func (e *Expr) SetDescription(value string) {
 	e.Description = value
 }
 
+// SetHidden changes the visibility of the expression
 func (e *Expr) SetHidden(value bool) {
 	e.setInternalFlags(exprFlagHidden, value)
 }
 
+// SetAliases adds additional aliases
 func (e *Expr) SetAliases(a []string) {
 	e.Aliases = append(e.Aliases, a...)
 }
@@ -1000,16 +1008,13 @@ func finalizeExprs(e *Expression) error {
 	var errs []error
 
 	for i, e := range e.Exprs {
+		errs = append(errs, finalizeArgs(e.LocalArgs())...)
+
 		if e.Name == "" {
 			errs = append(errs, fmt.Errorf("expr at index #%d must have a name", i))
 			continue
 		}
-		if err := checkValidFlagIdentifier(e.Name); err != nil {
-			errs = append(errs, err)
-		} else if names[e.Name] {
-			errs = append(errs, fmt.Errorf("duplicate name used: %q", e.Name))
-		}
-		names[e.Name] = true
+		errs = append(errs, support.ValidateNames(names, e.Name, e.Aliases, nil)...)
 	}
 
 	if len(errs) > 0 {
@@ -1018,11 +1023,16 @@ func finalizeExprs(e *Expression) error {
 	return nil
 }
 
-func checkValidFlagIdentifier(name string) error {
-	if !validIdentifierPattern.MatchString(name) {
-		return fmt.Errorf("not a valid name")
+func finalizeArgs(args []*cli.Arg) (errs []error) {
+	names := map[string]bool{}
+	for j, a := range args {
+		if a.Name == "" {
+			a.Name = "_" + strconv.Itoa(1+j)
+			continue
+		}
+		errs = append(errs, support.ValidateNames(names, a.Name, nil, nil)...)
 	}
-	return nil
+	return
 }
 
 var (

@@ -133,26 +133,27 @@ var _ = Describe("Expr", func() {
 			beInvalid = MatchError(ContainSubstring("not a valid name"))
 		)
 
-		DescribeTable("undefined behavior", func(e *expr.Expr) {
+		It("implicitly names args", func() {
 			app := &cli.App{
 				Args: []*cli.Arg{
 					{
 						Value: &expr.Expression{
 							Exprs: []*expr.Expr{
-								{Name: "inuse", Aliases: []string{"alsoinuse"}},
+								{
+
+									Args: []*cli.Arg{
+										{},
+									},
+								},
 							},
 						},
-						Uses: expr.AddExpr(e),
 					},
 				},
 			}
 
-			_, err := app.Initialize(context.Background())
-			Expect(err).NotTo(HaveOccurred())
-		},
-			Entry(
-				"expr duplicates alias", &expr.Expr{Name: "alsoinuse"}),
-		)
+			_, _ = app.Initialize(context.Background())
+			Expect(app.Args[0].Value.(*expr.Expression).Exprs[0].Args[0].Name).To(Equal("_1"))
+		})
 
 		DescribeTable("errors", func(e *expr.Expr, expected types.GomegaMatcher) {
 			app := &cli.App{
@@ -179,6 +180,11 @@ var _ = Describe("Expr", func() {
 				"duplicate expr name",
 				&expr.Expr{Name: "inuse"},
 				MatchError(ContainSubstring(`duplicate name used: "inuse"`))),
+			Entry(
+				"expr duplicates alias",
+				&expr.Expr{Name: "alsoinuse"},
+				MatchError(ContainSubstring(`duplicate name used: "alsoinuse"`)),
+			),
 
 			Entry("expr with dashes", &expr.Expr{Name: "expr-dash"}, Succeed()),
 			Entry("expr with underscores", &expr.Expr{Name: "expr_under"}, Succeed()),
@@ -190,6 +196,13 @@ var _ = Describe("Expr", func() {
 			Entry("expr with special char :", &expr.Expr{Name: ":"}, Succeed()),
 			Entry("expr with spaces", &expr.Expr{Name: "expr name with spaces"}, beInvalid),
 			Entry("expr with invalid cahr", &expr.Expr{Name: "expr&expr"}, beInvalid),
+			Entry("duplicate arg name within expr", &expr.Expr{Args: cli.Args("a", new(""), "a", new(""))},
+				MatchError(ContainSubstring(`duplicate name used: "a"`))),
+			Entry(
+				"expr with invalid alias char",
+				&expr.Expr{Name: "r", Aliases: []string{"expr&expr"}},
+				MatchError(ContainSubstring(`invalid alias "expr&expr"`)),
+			),
 		)
 	})
 

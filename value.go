@@ -130,8 +130,6 @@ type valueContext struct {
 	lookup BindingLookup
 }
 
-var validIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9@#+\._\*:\?-]+$`)
-
 // Bool creates a bool value.  This is for convenience to obtain the right pointer.
 func Bool() *bool {
 	return new(bool)
@@ -577,17 +575,20 @@ func setDirect(dest any, v any) error {
 	return nil
 }
 
+// Reset resets the non-configuration values to zero
 func (v *NameValue) Reset() {
 	// Don't reset AllowFileReference because it is configuration
 	v.Name = ""
 	v.Value = ""
 }
 
+// Copy creates a shallow copy of the value
 func (v *NameValue) Copy() *NameValue {
 	res := *v
 	return &res
 }
 
+// Set sets the value from the command line text
 func (v *NameValue) Set(arg string) error {
 	if v.Name == "" {
 		v.Name, v.Value, _ = splitValuePair(arg)
@@ -695,13 +696,6 @@ func (v *valueContext) lookupValue(name string) (any, bool) {
 		return nil, false
 	}
 	return v.lookup.Interface(name)
-}
-
-func checkValidFlagIdentifier(name string) error {
-	if !validIdentifierPattern.MatchString(name) {
-		return fmt.Errorf("not a valid name")
-	}
-	return nil
 }
 
 func checkSupportedFlagType(v any) error {

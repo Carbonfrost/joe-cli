@@ -15,6 +15,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
@@ -517,6 +518,7 @@ func (c *Command) LookupData(name string) (any, bool) {
 	return v, ok
 }
 
+// SetHidden changes the visibility of the command
 func (c *Command) SetHidden(value bool) {
 	c.setInternalFlags(internalFlagHidden, value)
 }
@@ -711,10 +713,7 @@ func finalizeArgsAndFlags(c *Context) error {
 			a.Name = "_" + strconv.Itoa(1+i)
 			continue
 		}
-		if names[a.Name] {
-			errs = append(errs, fmt.Errorf("duplicate name used: %q%s", a.Name, checkPersistent(a.Name)))
-		}
-		names[a.Name] = true
+		errs = append(errs, support.ValidateNames(names, a.Name, nil, checkPersistent)...)
 	}
 
 	for i, f := range c.LocalFlags() {
@@ -722,20 +721,7 @@ func finalizeArgsAndFlags(c *Context) error {
 			errs = append(errs, fmt.Errorf("flag at index #%d must have a name", i))
 			continue
 		}
-		if err := checkValidFlagIdentifier(f.Name); err != nil {
-			errs = append(errs, err)
-		} else if names[f.Name] {
-			errs = append(errs, fmt.Errorf("duplicate name used: %q%s", f.Name, checkPersistent(f.Name)))
-		}
-		for _, a := range f.Aliases {
-			if err := checkValidFlagIdentifier(a); err != nil {
-				errs = append(errs, fmt.Errorf("invalid alias %q%s: %w", a, checkPersistent(f.Name), err))
-			} else if names[a] {
-				errs = append(errs, fmt.Errorf("duplicate name used: %q%s", a, checkPersistent(f.Name)))
-			}
-			names[a] = true
-		}
-		names[f.Name] = true
+		errs = append(errs, support.ValidateNames(names, f.Name, f.Aliases, checkPersistent)...)
 	}
 
 	if len(errs) > 0 {
