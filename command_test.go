@@ -37,6 +37,17 @@ var _ = Describe("Command", func() {
 		Expect(u).To(Equal("u"))
 	})
 
+	It("implicit args has source metadata", func() {
+		app := &cli.App{
+			Commands: []*cli.Command{{Name: "sub"}},
+		}
+
+		ctx, _ := app.Initialize(context.Background())
+		args := cli.FromContext(ctx).ContextOf("command")
+		Expect(args).NotTo(BeNil())
+		Expect(args.Matches(cli.Defines)).To(BeTrue())
+	})
+
 	It("allow arguments and sub-commands", func() {
 		// to support pastiche, reversing previous behavior to require only sub-commands
 		var t string

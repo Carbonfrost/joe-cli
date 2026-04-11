@@ -354,7 +354,10 @@ func ensureSubcommands(ctx context.Context) error {
 		}
 		return Do(ctx, AddArg(&Arg{
 			Name: "command",
-			Uses: ExecuteSubcommand(nil),
+			Uses: Pipeline(
+				ExecuteSubcommand(nil),
+				tagged,
+			),
 		}))
 	}
 	return nil
