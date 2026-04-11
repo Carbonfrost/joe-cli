@@ -1,10 +1,11 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package cli_test
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 
@@ -48,6 +49,10 @@ var _ = Describe("Option", func() {
 			Entry("DisableAutoVisibility", cli.DisableAutoVisibility, "DISABLE_AUTO_VISIBILITY"),
 			Entry("Trigger", cli.Trigger, "TRIGGER"),
 			Entry("ParseUnknownFlagsAsArgs", cli.ParseUnknownFlagsAsArgs, "PARSE_UNKNOWN_FLAGS_AS_ARGS"),
+			Entry("ReservedOption1", cli.ReservedOption1, "RESERVED_OPTION_1"),
+			Entry("ReservedOption2", cli.ReservedOption2, "RESERVED_OPTION_2"),
+			Entry("ReservedOption3", cli.ReservedOption3, "RESERVED_OPTION_3"),
+			Entry("ReservedOption4", cli.ReservedOption4, "RESERVED_OPTION_4"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 
@@ -57,10 +62,51 @@ var _ = Describe("Option", func() {
 				It("value "+strconv.Itoa(o), func() {
 					actual, err := json.Marshal(opt)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(string(actual)).To(MatchRegexp(`"[A-Z_]+"`))
+					Expect(string(actual)).To(MatchRegexp(`"[A-Z_1-9]+"`))
 				})
 			}
 		})
+	})
+
+	var _ = Describe("reserved options", func() {
+
+		DescribeTableSubtree("errors", func(o cli.Option) {
+
+			It("applies to command", func() {
+				app := &cli.App{
+					Name:    "app",
+					Options: o,
+				}
+
+				_, err := app.Initialize(context.Background())
+				Expect(err).To(HaveOccurred())
+				Expect(err.(*cli.InternalError).Path.String()).To(Equal("app"))
+				Expect(err.Error()).To(Equal(`internal error, at "app" (initial timing): cannot use reserved options`))
+			})
+
+			It("applies to option", func() {
+				app := &cli.App{
+					Name: "app",
+					Flags: []*cli.Flag{
+						{
+							Name:    "f",
+							Options: o,
+						},
+					},
+				}
+
+				_, err := app.Initialize(context.Background())
+				Expect(err).To(HaveOccurred())
+				Expect(err.(*cli.InternalError).Path.String()).To(Equal("app -f"))
+				Expect(err.Error()).To(Equal(`internal error, at "app -f" (initial timing): cannot use reserved options`))
+			})
+
+		},
+			Entry("ReservedOption1", cli.ReservedOption1),
+			Entry("ReservedOption2", cli.ReservedOption2),
+			Entry("ReservedOption3", cli.ReservedOption3),
+			Entry("ReservedOption4", cli.ReservedOption4),
+		)
 	})
 })
 

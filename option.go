@@ -197,7 +197,19 @@ const (
 	// flag-like syntax specially.
 	ParseUnknownFlagsAsArgs
 
+	// ReservedOption1 provides an option which is reserved. This value
+	// can be used within extensions to denote additional options that are
+	// applied within the scope of the extension. The extension or client must remove the
+	// reserved option within its handler if it has significance. In the main package, this
+	// option cannot be present on any target.
+	ReservedOption1
+	ReservedOption2
+	ReservedOption3
+	ReservedOption4
+
 	maxOption
+
+	reservedOptionMask = ReservedOption1 | ReservedOption2 | ReservedOption3 | ReservedOption4
 
 	// None represents no options
 	None Option = 0
@@ -262,6 +274,10 @@ var (
 		ImpliedAction:           setInternalFlag(internalFlagImpliedAction),
 		Trigger:                 setInternalFlag(internalFlagTriggerRequested),
 		ParseUnknownFlagsAsArgs: setInternalFlag(internalFlagParseUnknownFlagsAsArgs),
+		ReservedOption1:         ActionFunc(nil), // Reserved options are enforced in the default pipelines
+		ReservedOption2:         ActionFunc(nil),
+		ReservedOption3:         ActionFunc(nil),
+		ReservedOption4:         ActionFunc(nil),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -290,6 +306,10 @@ var (
 		DisableAutoVisibility:   "DISABLE_AUTO_VISIBILITY",
 		Trigger:                 "TRIGGER",
 		ParseUnknownFlagsAsArgs: "PARSE_UNKNOWN_FLAGS_AS_ARGS",
+		ReservedOption1:         "RESERVED_OPTION_1",
+		ReservedOption2:         "RESERVED_OPTION_2",
+		ReservedOption3:         "RESERVED_OPTION_3",
+		ReservedOption4:         "RESERVED_OPTION_4",
 	}
 )
 
@@ -646,6 +666,16 @@ func sortedExprsOpt(c *Context) error {
 	}
 
 	exp.SortUsage()
+	return nil
+}
+
+func enforceReservedOptions(c *Context) error {
+	if c.target.options() != nil {
+		opts := *c.target.options()
+		if (opts & reservedOptionMask) > 0 {
+			return c.internalError(fmt.Errorf("cannot use reserved options"))
+		}
+	}
 	return nil
 }
 

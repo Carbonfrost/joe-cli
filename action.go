@@ -331,6 +331,7 @@ var (
 			ActionFunc(initializeSubcommands),
 			ActionFunc(initializeValueTargets),
 			ActionFunc(finalizeArgsAndFlags),
+			ActionFunc(enforceReservedOptions),
 			ActionFunc(copyContextToParent),
 		),
 		Action: actions(
@@ -376,6 +377,7 @@ var (
 			actionFunc(setupOptionFromEnv),
 			ActionFunc(initializeValueTargets),
 			ActionFunc(checkForSupportedFlagType),
+			ActionFunc(enforceReservedOptions),
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
 		),
 		Before: beforePipeline{
