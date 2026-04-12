@@ -245,6 +245,7 @@ const (
 	internalFlagVisibleExplicitlyRequested
 	internalFlagTriggerRequested
 	internalFlagParseUnknownFlagsAsArgs
+	internalFlagEachOccurrence
 )
 
 var (
@@ -265,7 +266,7 @@ var (
 		Merge:                   setInternalFlag(internalFlagMerge | internalFlagMergeExplicitlyRequested),
 		RightToLeft:             setInternalFlag(internalFlagRightToLeft),
 		PreventSetup:            ActionOf((*Context).PreventSetup),
-		EachOccurrence:          ActionFunc(eachOccurrenceOpt),
+		EachOccurrence:          setInternalFlag(internalFlagEachOccurrence),
 		AllowFileReference:      actionFunc(allowFileReferenceOpt),
 		FileReference:           actionFunc(fileReferenceOpt),
 		SortedFlags:             Before(ActionFunc(sortedFlagsOpt)),
@@ -466,6 +467,10 @@ func (f internalFlags) parseUnknownFlagsAsArgs() bool {
 	return f&internalFlagParseUnknownFlagsAsArgs == internalFlagParseUnknownFlagsAsArgs
 }
 
+func (f internalFlags) eachOccurrence() bool {
+	return f&internalFlagEachOccurrence == internalFlagEachOccurrence
+}
+
 func (f internalFlags) toRaw() RawParseFlag {
 	var flags RawParseFlag
 	if f.skipFlagParsing() {
@@ -597,8 +602,8 @@ func noOption(c *Context) error {
 	}))
 }
 
-func eachOccurrenceOpt(c1 *Context) error {
-	return c1.At(ActionTiming, middlewareFunc(func(c *Context, next Action) error {
+func eachOccurrenceOpt() middlewareFunc {
+	return middlewareFunc(func(c *Context, next Action) error {
 		opt := c.option()
 		mini := &wrapOccurrenceContext{
 			optionContext: c.internal.(*optionContext),
@@ -636,7 +641,7 @@ func eachOccurrenceOpt(c1 *Context) error {
 			}
 		}
 		return nil
-	}))
+	})
 }
 
 func allowFileReferenceOpt(c context.Context) error {

@@ -290,7 +290,7 @@ var (
 	//
 	// _Deferred pipelines_ accumulate actions that were registered in previous
 	//    steps in the flow, including possibly from other targets.  Note that
-	//    executeDeferredPipeline occurs BEFORE user pipelines because the user
+	//    deferred pipelines occur BEFORE user pipelines because the user
 	//    cannot re-entrantly queue additional deferrals at the particular timing
 	//    anyway.  (Said another way and by example, calling Before() within a
 	//    Before action just invokes it immediately rather than try queueing it.)
@@ -307,8 +307,7 @@ var (
 				),
 			),
 			actionFunc(preventSetupIfPresent),
-			executeDeferredPipeline(InitialTiming),
-			executeUserPipeline(InitialTiming),
+			executePipelines(InitialTiming),
 			actionFunc(applyUserOptions),
 			ActionFunc(applyImplicitVisibility),
 			IfMatch(RootCommand,
@@ -332,6 +331,7 @@ var (
 			ActionFunc(initializeValueTargets),
 			ActionFunc(finalizeArgsAndFlags),
 			ActionFunc(enforceReservedOptions),
+			At(ActionTiming, actionFunc(triggerRobustParsingAndCompletion)),
 			ActionFunc(copyContextToParent),
 		),
 		Action: actions(
@@ -339,9 +339,7 @@ var (
 			ActionFunc(triggerValueTargets),
 			IfMatch(subcommandDidNotExecute,
 				actions(
-					executeDeferredPipeline(ActionTiming),
-					actionFunc(triggerRobustParsingAndCompletion),
-					executeUserPipeline(ActionTiming),
+					executePipelines(ActionTiming),
 				),
 			),
 		),
@@ -349,8 +347,7 @@ var (
 			nil,
 			actions(
 				actionFunc(executeBeforeHooks),
-				executeDeferredPipeline(BeforeTiming),
-				executeUserPipeline(BeforeTiming),
+				executePipelines(BeforeTiming),
 				ActionFunc(triggerBeforeOptions),
 				ActionFunc(triggerBeforeValueTargets),
 			),
@@ -358,8 +355,7 @@ var (
 		},
 		After: actions(
 			actionFunc(executeAfterHooks),
-			executeDeferredPipeline(AfterTiming),
-			executeUserPipeline(AfterTiming),
+			executePipelines(AfterTiming),
 			ActionFunc(triggerAfterOptions),
 			ActionFunc(triggerAfterValueTargets),
 			ActionFunc(failWithContextError),
@@ -369,8 +365,7 @@ var (
 	defaultOption = actionPipelines{
 		Initializers: actions(
 			actionFunc(preventSetupIfPresent),
-			executeDeferredPipeline(InitialTiming),
-			executeUserPipeline(InitialTiming),
+			executePipelines(InitialTiming),
 			actionFunc(applyUserOptions),
 			ActionFunc(applyImplicitVisibility),
 			actionFunc(setupValueInitializer),
@@ -382,8 +377,7 @@ var (
 		),
 		Before: beforePipeline{
 			actualBeforeIndexBeforeTiming: actions(
-				executeDeferredPipeline(BeforeTiming),
-				executeUserPipeline(BeforeTiming),
+				executePipelines(BeforeTiming),
 				ActionFunc(triggerBeforeValueTargets),
 			),
 			actualBeforeIndexJustBeforeTiming: actions(
@@ -391,20 +385,18 @@ var (
 			),
 		},
 		Action: actions(
-			actionFunc(executeOptionPipeline),
+			executePipelines(ActionTiming),
 			ActionFunc(triggerValueTargets),
 		),
 		After: actions(
-			executeDeferredPipeline(AfterTiming),
-			executeUserPipeline(AfterTiming),
+			executePipelines(AfterTiming),
 			ActionFunc(triggerAfterValueTargets),
 		),
 	}
 
 	defaultValue = actionPipelines{
 		Initializers: actions(
-			executeDeferredPipeline(InitialTiming),
-			executeUserPipeline(InitialTiming),
+			executePipelines(InitialTiming),
 			ActionFunc(applyImplicitVisibility),
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(finalizeArgsAndFlags),
@@ -413,20 +405,17 @@ var (
 		Before: beforePipeline{
 			nil,
 			actions(
-				executeDeferredPipeline(BeforeTiming),
-				executeUserPipeline(BeforeTiming),
+				executePipelines(BeforeTiming),
 				ActionFunc(triggerBeforeOptions),
 			),
 			nil,
 		},
 		Action: actions(
 			ActionFunc(triggerOptions),
-			executeDeferredPipeline(ActionTiming),
-			executeUserPipeline(ActionTiming),
+			executePipelines(ActionTiming),
 		),
 		After: actions(
-			executeDeferredPipeline(AfterTiming),
-			executeUserPipeline(AfterTiming),
+			executePipelines(AfterTiming),
 			ActionFunc(triggerAfterOptions),
 		),
 	}
@@ -1722,15 +1711,8 @@ func (p *actionPipelines) add(t Timing, h Action) {
 		p.Before[actualIndex] = Pipeline(p.Before[actualIndex], h)
 
 	case ActionTiming:
-		// As a rule, middleware wraps the existing Action pipeline.
-		// This solves for when middleware was added in the Uses or Before
-		// pipelines.  This may place middleware in the wrong nesting but
-		// hopefully most middleware is designed to work without ordering
-		if _, ok := h.(Middleware); ok {
-			p.Action = Pipeline(h, p.Action)
-		} else {
-			p.Action = Pipeline(p.Action, h)
-		}
+		p.Action = Pipeline(p.Action, h)
+
 	case AfterTiming:
 		p.After = Pipeline(p.After, h)
 	default:

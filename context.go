@@ -2190,15 +2190,16 @@ func executeAfterHooks(c context.Context) error {
 	return execute(c, actionFunc(h.executeAfterHooks))
 }
 
-func executeDeferredPipeline(at Timing) actionFunc {
-	return func(c context.Context) error {
-		return execute(c, FromContext(c).target.uses().pipeline(at))
-	}
-}
+func executePipelines(at Timing) ActionFunc {
+	return func(c *Context) error {
+		deferred := c.target.uses().pipeline(at)
+		user := c.target.pipeline(at)
+		pp := Pipeline(deferred, user)
 
-func executeUserPipeline(at Timing) actionFunc {
-	return func(c context.Context) error {
-		return execute(c, ActionOf(FromContext(c).target.pipeline(at)))
+		if c.target.internalFlags().eachOccurrence() {
+			pp = Pipeline(eachOccurrenceOpt(), pp)
+		}
+		return execute(c, pp)
 	}
 }
 
@@ -2274,11 +2275,6 @@ func checkForSupportedFlagType(c *Context) error {
 		return c.internalError(err)
 	}
 	return nil
-}
-
-func executeOptionPipeline(ctx context.Context) error {
-	target := FromContext(ctx).target
-	return Do(ctx, Pipeline(target.uses().pipeline(ActionTiming), target.pipeline(ActionTiming)))
 }
 
 func findValueTargetByName(items []*valueTarget, name string) (*valueTarget, bool) {

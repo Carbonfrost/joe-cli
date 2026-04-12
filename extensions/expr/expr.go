@@ -282,6 +282,16 @@ func (e *Expression) Initializer() cli.Action {
 		})
 
 	}, func(c *cli.Context) error {
+		// Set up the expression set early so that events related to Expr can access it without
+		// special checks
+		for _, sub := range e.Exprs {
+			var all cli.BindingMap
+			es := newExprSet(cli.NewBinding(nil, sub.Args, nil), all)
+			sub.exprSet = es
+		}
+		return nil
+
+	}, func(c *cli.Context) error {
 		for _, sub := range e.Exprs {
 			// As a special case, the evaluator can implement Action
 			// and be treated as part of the initialization pipeline.
@@ -310,8 +320,7 @@ func (e *Expression) Initializer() cli.Action {
 		for _, sub := range e.Exprs {
 			// Provide a view of the binding map that is global
 			// to each of the Exprs
-			es := newExprSet(cli.NewBinding(nil, sub.Args, nil), all)
-			sub.exprSet = es
+			sub.exprSet.BindingMap = all
 		}
 
 		for _, eb := range e.items {
