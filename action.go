@@ -64,10 +64,6 @@ type Middleware interface {
 	ExecuteWithNext(context.Context, Action) error
 }
 
-// ActionPipeline represents an action composed of several steps.  To create
-// this value, use the Pipeline function
-type ActionPipeline []Action
-
 // Setup provides simple initialization, typically used in Uses pipeline.  The Setup action
 // will add the specified actions to the Before, main, and After action and run
 // the Uses action immediately.
@@ -197,18 +193,13 @@ type withTimingWrapper struct {
 	t Timing
 }
 
-type cons struct {
-	action Action
-	next   *cons
-}
-
 type middlewareFunc func(context.Context, Action) error
 
 // MiddlewareFunc provides the basic function for middleware
 type MiddlewareFunc func(*Context, Action) error
 
 // beforePipeline has sub-timings, defined in actualBeforeIndex map
-type beforePipeline [actualBeforeIndexMaxValue]ActionPipeline
+type beforePipeline [actualBeforeIndexMaxValue]Action
 
 type panicData struct {
 	recovered string
@@ -464,40 +455,118 @@ func init() {
 // Execute executes the Setup, which assigns the various parts to their
 // pipelines
 func (s Setup) Execute(ctx context.Context) error {
-	c := FromContext(ctx)
-	if s.Uses != nil {
-		if err := c.act(s.Uses, InitialTiming, false); err != nil {
-			return err
+	return s.Pipeline().Execute(ctx)
+}
+
+// Pipeline converts the setup into a pipeline
+func (s Setup) Pipeline() Action {
+	return Pipeline(
+		atRare(InitialTiming, s.Uses),
+		atRare(BeforeTiming, s.Before),
+		atRare(ActionTiming, s.Action),
+		atRare(AfterTiming, s.After),
+	)
+}
+
+func atRare(t Timing, v any) Action {
+	if v == nil {
+		return nil
+	}
+	return At(t, ActionOf(v))
+}
+
+// internal type so we can flatten nested pipelines
+type pipeline struct {
+	actions []Action
+}
+
+func (p pipeline) Execute(ctx context.Context) error {
+	return toCons(p.actions).Execute(ctx)
+}
+
+func flatten(actions []Action) []Action {
+	var result []Action
+
+	for _, a := range actions {
+		switch v := a.(type) {
+		case pipeline:
+			result = append(result, flatten(v.actions)...)
+		case nil:
+			continue
+		default:
+			result = append(result, a)
 		}
 	}
-	if s.Before != nil {
-		if err := c.Before(ActionOf(s.Before)); err != nil {
-			return err
+
+	return result
+}
+
+func toCons(actions []Action) Action {
+	if len(actions) == 0 {
+		return ActionOf(nil)
+	}
+
+	// Start from the last action and wrap backwards
+	var next Action = actions[len(actions)-1]
+	for i := len(actions) - 2; i >= 0; i-- {
+		current := ActionOf(actions[i])
+
+		if mw, ok := current.(Middleware); ok {
+			next = middlewareCons{
+				mw:   mw,
+				next: next,
+			}
+		} else {
+			next = cons{
+				current: current,
+				next:    next,
+			}
 		}
 	}
-	if err := c.Action(ActionOf(s.Action)); err != nil {
+
+	return next
+}
+
+type middlewareCons struct {
+	mw   Middleware
+	next Action
+}
+
+func (m middlewareCons) Execute(ctx context.Context) error {
+	return m.mw.ExecuteWithNext(ctx, m.next)
+}
+
+type cons struct {
+	current Action
+	next    Action
+}
+
+func (s cons) Execute(ctx context.Context) error {
+	if err := s.current.Execute(ctx); err != nil {
 		return err
 	}
-	if err := c.After(ActionOf(s.After)); err != nil {
-		return err
-	}
-	return nil
+	return s.next.Execute(ctx)
 }
 
 // Pipeline combines various actions into a single action.  Compared to using
 // ActionPipeline directly, the actions are flattened if any nested pipelines are
 // present.
-func Pipeline(actions ...any) ActionPipeline {
-	myActions := make([]Action, 0, len(actions))
-	for _, a := range actions {
-		if pipe, ok := a.(ActionPipeline); ok {
-			myActions = append(myActions, pipe.flatten()...)
-			continue
-		}
-		myActions = append(myActions, ActionOf(a))
+func Pipeline(actions ...any) Action {
+	if len(actions) == 0 {
+		return ActionOf(nil)
 	}
 
-	return myActions
+	myActions := make([]Action, len(actions))
+	for i, a := range actions {
+		myActions[i] = ActionOf(a)
+	}
+
+	return pipelineActions(myActions)
+}
+
+func pipelineActions(actions []Action) Action {
+	flat := flatten(actions)
+	return pipeline{actions: flat}
 }
 
 // Do invokes the actions with the given context
@@ -582,6 +651,12 @@ func Initializer(a Action) Action {
 
 // At wraps an action and causes it to execute at the given timing.
 func At(t Timing, a Action) Action {
+	if t == ImplicitValueTiming {
+		a = Before(Pipeline(
+			setInternalFlag(internalFlagImplicitTimingActive),
+			a,
+			unsetInternalFlag(internalFlagImplicitTimingActive)))
+	}
 	return withTimingWrapper{a, t}
 }
 
@@ -612,6 +687,8 @@ func ActionOf(item any) Action {
 	switch a := item.(type) {
 	case nil:
 		return emptyAction
+	case []Action:
+		return pipelineActions(a)
 	case func(*Context) error:
 		return ActionFunc(a)
 	case Action:
@@ -705,7 +782,7 @@ func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) 
 			proto = fn(val)
 		}
 
-		return c.AddFlag(nil, accessory(c, proto, name).Append(actionopt...))
+		return c.AddFlag(nil, accessory(c, proto, name, actionopt...))
 	})
 }
 
@@ -718,11 +795,11 @@ func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) 
 // named "files", then the accessory flag would be named --files-recursive.
 func Accessory0(name string, actionopt ...Action) Action {
 	return actionFunc(func(c context.Context) error {
-		return Do(c, AddFlag(nil, accessory(c, nil, name).Append(actionopt...)))
+		return Do(c, AddFlag(nil, accessory(c, nil, name, actionopt...)))
 	})
 }
 
-func accessory(ctx context.Context, proto Action, name string) ActionPipeline {
+func accessory(ctx context.Context, proto Action, name string, actionopt ...Action) Action {
 	c := FromContext(ctx)
 	var (
 		dep = withoutDecorators(c.Name())
@@ -743,7 +820,7 @@ func accessory(ctx context.Context, proto Action, name string) ActionPipeline {
 			}
 		}()
 	)
-	return Pipeline(Data("DependentFlag", dep), proto, ensureCategory, ensureName)
+	return Pipeline(Data("DependentFlag", dep), proto, ensureCategory, ensureName, actions(actionopt...))
 }
 
 // Enum provides validation that a particular flag or arg value matches a given set of
@@ -1445,6 +1522,14 @@ func unwrapPrintFunc3[T, U any](f func(*Context, T, U, ...any) (int, error), t T
 	}
 }
 
+// actual coalesces synthetic timing into the actual timing category
+func (t Timing) actual() Timing {
+	if t > syntheticTiming {
+		return BeforeTiming
+	}
+	return t
+}
+
 func (t Timing) Matches(ctx context.Context) bool {
 	c := FromContext(ctx)
 	switch t {
@@ -1486,23 +1571,28 @@ func (t Timing) Describe() string {
 	return timingLabels[t][0]
 }
 
+// Execute implements the Action interface
 func (p Prototype) Execute(ctx context.Context) error {
-	return Do(ctx,
-		Pipeline(
-			p.copyCommonToTarget,
-			p.copyToFlag,
-			p.copyToArg,
-			p.copyToValue,
-			commandSetupCore(true, p.copyToCommand),
+	return p.Pipeline().Execute(ctx)
+}
 
-			// Only apply pipelines if initializing
-			IfMatch(InitialTiming, Setup{
-				Uses:   p.Uses,
-				Action: p.Action,
-				After:  p.After,
-				Before: p.Before,
-			}),
-		))
+// Pipeline converts the prototype to a pipeline
+func (p Prototype) Pipeline() Action {
+	return Pipeline(
+		p.copyCommonToTarget,
+		p.copyToFlag,
+		p.copyToArg,
+		p.copyToValue,
+		commandSetupCore(true, p.copyToCommand),
+
+		// Only apply pipelines if initializing
+		IfMatch(InitialTiming, Setup{
+			Uses:   p.Uses,
+			Action: p.Action,
+			After:  p.After,
+			Before: p.Before,
+		}),
+	)
 }
 
 func (p *Prototype) copyCommonToTarget(c *Context) error {
@@ -1638,74 +1728,6 @@ func (af actionFunc) Execute(ctx context.Context) error {
 	return af(ctx)
 }
 
-// Append appends actions to the pipeline
-func (p ActionPipeline) Append(x ...Action) ActionPipeline {
-	return append(p, x...)
-}
-
-// Prepend prepends actions to the pipeline
-func (p ActionPipeline) Prepend(x ...Action) ActionPipeline {
-	return append(x, p...)
-}
-
-// Execute the pipeline by calling each action successively
-func (p ActionPipeline) Execute(c context.Context) (err error) {
-	if p == nil {
-		return nil
-	}
-	return p.toCons().Execute(c)
-}
-
-func (p ActionPipeline) flatten() []Action {
-	if !p.anyNested() {
-		return p
-	}
-
-	result := make([]Action, 0, len(p))
-	for _, a := range p {
-		if n, ok := a.(ActionPipeline); ok {
-			result = append(result, n.flatten()...)
-			continue
-		}
-		result = append(result, a)
-	}
-	return result
-}
-
-func (p ActionPipeline) anyNested() bool {
-	for _, i := range p {
-		if _, ok := i.(ActionPipeline); ok {
-			return true
-		}
-	}
-	return false
-}
-
-func (p ActionPipeline) toCons() *cons {
-	var head *cons
-	for i := len(p) - 1; i >= 0; i-- {
-		head = &cons{
-			action: p[i],
-			next:   head,
-		}
-	}
-	return head
-}
-
-func (o *cons) Execute(c context.Context) error {
-	if o == nil {
-		return nil
-	}
-	if m, ok := o.action.(Middleware); ok {
-		return m.ExecuteWithNext(c, o.next)
-	}
-
-	if err := execute(c, o.action); err != nil {
-		return err
-	}
-	return execute(c, o.next)
-}
-
 func (p *actionPipelines) add(t Timing, h Action) {
 	switch t {
 	case InitialTiming:
@@ -1742,19 +1764,24 @@ func (p *actionPipelines) pipeline(t Timing) Action {
 
 func (w withTimingWrapper) Execute(ctx context.Context) error {
 	c := FromContext(ctx)
-	if w.t == ImplicitValueTiming {
-		return c.act(Pipeline(
-			setInternalFlag(internalFlagImplicitTimingActive),
-			w.Action,
-			unsetInternalFlag(internalFlagImplicitTimingActive),
-		), BeforeTiming, false)
-	}
 
-	return c.act(w.Action, w.t, false)
+	// For the purposes of determining whether we can run this action,
+	// remove synthetic timing
+	desired := w.t
+	actual := desired.actual()
+	switch {
+	case c.timing < actual:
+		c.target.appendAction(desired, w.Action)
+		return nil
+	case c.timing == actual:
+		return execute(c, w.Action)
+	default: // c.timing > actual:
+		return c.internalError(ErrTimingTooLate)
+	}
 }
 
 func (b beforePipeline) Execute(c context.Context) error {
-	return ActionPipeline(slices.Concat(b[:]...)).Execute(c)
+	return pipelineActions(slices.Concat(b[:])).Execute(c)
 }
 
 func (i *hooksSupport) hook(at Timing, a Action) error {
@@ -1852,9 +1879,8 @@ func setData(data map[string]any, name string, v any) map[string]any {
 	return data
 }
 
-// actions provides a pipeline without flattening
-func actions(actions ...Action) ActionPipeline {
-	return ActionPipeline(actions)
+func actions(actions ...Action) Action {
+	return pipelineActions(actions)
 }
 
 func emptyActionImpl(*Context) error {
@@ -1901,6 +1927,7 @@ func execute(c context.Context, af Action) error {
 }
 
 func doThenExit(a Action) Action {
+	a = ActionOf(a) // prevent nil
 	return actionFunc(func(c context.Context) error {
 		err := a.Execute(c)
 		if err != nil {
@@ -1922,6 +1949,5 @@ var (
 	_ Action   = Setup{}
 	_ Action   = Prototype{}
 	_ Action   = beforePipeline{}
-	_ Action   = (*cons)(nil)
 	_ hookable = (*hooksSupport)(nil)
 )

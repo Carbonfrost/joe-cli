@@ -958,29 +958,6 @@ func (c *Context) Use(action Action) error {
 	return c.At(InitialTiming, action)
 }
 
-func (c *Context) act(v any, desired Timing, optional bool) error {
-	// For the purposes of determining whether we can run this action,
-	// remove synthetic timing
-	actual := desired
-	if desired > syntheticTiming {
-		actual = BeforeTiming
-	}
-	if c.timing < actual {
-		c.target.appendAction(desired, ActionOf(v))
-		return nil
-	}
-	if c.timing == actual {
-		return ActionOf(v).Execute(c)
-	}
-	if optional {
-		return nil
-	}
-	if c.timing > actual {
-		return c.internalError(ErrTimingTooLate)
-	}
-	return nil
-}
-
 // Target retrieves the target of the context, which is *App, *Command, *Flag, *Arg,
 // or *Expr
 func (c *Context) Target() any {
@@ -1402,7 +1379,7 @@ func (c *Context) ProvideValueInitializer(v any, name string, actionopt ...Actio
 		return c.internalError(errCantHook)
 	}
 
-	adapter := newValueTarget(v, name, ActionPipeline(actionopt))
+	adapter := newValueTarget(v, name, pipelineActions(actionopt))
 	h.addValueTarget(adapter)
 	return nil
 }

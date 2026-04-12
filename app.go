@@ -430,7 +430,7 @@ func setupExtensionUsings(c *Context) error {
 		globals.RLock()
 		defer globals.RUnlock()
 
-		return ActionPipeline(slices.Clone(globals.uses))
+		return pipelineActions(slices.Clone(globals.uses))
 	}()
 	return c.Do(pipe)
 }

@@ -98,3 +98,7 @@ func Initialized(t target) *Context {
 func DefaultFS() fs.FS {
 	return newDefaultFS(os.Stdin, NewWriter(os.Stdout))
 }
+
+func PipelineContents(v Action) []Action {
+	return v.(pipeline).actions
+}

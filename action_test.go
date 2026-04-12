@@ -1341,6 +1341,16 @@ var _ = Describe("ActionOf", func() {
 		Expect(act.Execute(context.Background())).To(MatchError("e"))
 	})
 
+	It("supports []Action as action", func() {
+		f1 := new(joeclifakes.FakeAction)
+		f2 := new(joeclifakes.FakeAction)
+		act := cli.ActionOf([]cli.Action{f1, f2})
+
+		act.Execute(context.Background())
+		Expect(f1.ExecuteCallCount()).To(Equal(1))
+		Expect(f2.ExecuteCallCount()).To(Equal(1))
+	})
+
 	It("invokes the context action", func() {
 		ctx := &cli.Context{}
 		var called int
@@ -1485,7 +1495,7 @@ var _ = Describe("Pipeline", func() {
 		act1 := new(joeclifakes.FakeAction)
 		act2 := new(joeclifakes.FakeAction)
 
-		pipe := cli.Pipeline().Append(act1).Append(act2)
+		pipe := cli.Pipeline(act1, act2)
 		pipe.Execute(&cli.Context{})
 
 		Expect(act1.ExecuteCallCount()).To(Equal(1))
@@ -1496,7 +1506,7 @@ var _ = Describe("Pipeline", func() {
 		act1 := new(joeclifakes.FakeMiddleware)
 		act2 := new(joeclifakes.FakeAction)
 
-		pipe := cli.Pipeline().Append(act1).Append(act2)
+		pipe := cli.Pipeline(act1, act2)
 		pipe.Execute(&cli.Context{})
 
 		Expect(act1.ExecuteWithNextCallCount()).To(Equal(1))
@@ -1510,7 +1520,7 @@ var _ = Describe("Pipeline", func() {
 			return a.Execute(context.Background())
 		}
 
-		pipe := cli.Pipeline().Append(act1).Append(act2)
+		pipe := cli.Pipeline(act1, act2)
 		pipe.Execute(&cli.Context{})
 
 		Expect(act2.ExecuteCallCount()).To(Equal(1))
@@ -1528,7 +1538,7 @@ var _ = Describe("Pipeline", func() {
 			return nil
 		}
 
-		pipe := cli.Pipeline().Append(act1).Append(act2).Append(act3)
+		pipe := cli.Pipeline(act1, act2, act3)
 		pipe.Execute(&cli.Context{})
 
 		Expect(act3.ExecuteCallCount()).To(Equal(1))
@@ -1537,37 +1547,24 @@ var _ = Describe("Pipeline", func() {
 	It("appends to the pipeline in order", func() {
 		calls := trackCalls()
 		makeAction := calls.makeAction
-		pipe := cli.Pipeline().Append(makeAction("1"), makeAction("2"), makeAction("3"))
+		pipe := cli.Pipeline(makeAction("1"), makeAction("2"), makeAction("3"))
 		pipe.Execute(context.Background())
 
 		Expect(calls.called).To(Equal([]string{"1", "2", "3"}))
 	})
 
-	It("prepends to the pipeline in order", func() {
-		calls := trackCalls()
-		makeAction := calls.makeAction
-		pipe := cli.Pipeline(makeAction("_")).Prepend(makeAction("1"), makeAction("2"), makeAction("3"))
-		pipe.Execute(context.Background())
-
-		Expect(calls.called).To(Equal([]string{"1", "2", "3", "_"}))
-	})
-
 	It("flattens nested pipelines and invokes in order", func() {
 		calls := trackCalls()
 		makeAction := calls.makeAction
-
-		var act1 cli.ActionPipeline
+		var act1 cli.Action
 		act2 := makeAction("2")
 		act1a := makeAction("1a")
 		act1b := makeAction("1b")
-
-		act1 = cli.ActionPipeline([]cli.Action{act1a, act1b})
-
-		pipe := cli.Pipeline(cli.ActionPipeline([]cli.Action{act1, act2}))
+		act1 = cli.Pipeline(act1a, act1b)
+		pipe := cli.Pipeline(cli.Pipeline(act1, act2))
 		pipe.Execute(context.Background())
-
 		Expect(calls.called).To(Equal([]string{"1a", "1b", "2"}))
-		Expect(pipe).To(HaveLen(3))
+		Expect(cli.PipelineContents(pipe)).To(HaveLen(3))
 	})
 })
 

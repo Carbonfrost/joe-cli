@@ -360,7 +360,7 @@ func (m FeatureMap[T]) Pipeline(values T) Action {
 	if len(parts) == 0 {
 		return ActionOf(nil)
 	}
-	return ActionPipeline(parts)
+	return pipelineActions(parts)
 }
 
 func (f internalFlags) hidden() bool {

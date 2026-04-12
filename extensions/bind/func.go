@@ -367,7 +367,7 @@ func Initializers(binders ...any) cli.Action {
 }
 
 func initializers(binders ...any) cli.Action {
-	var uses, setters []cli.Action
+	var uses, setters []any
 	for index, binder := range binders {
 		if b, ok := binder.(binderImpliedName); ok {
 			setters = append(setters, willSetImpliedName(b, index))
@@ -377,9 +377,9 @@ func initializers(binders ...any) cli.Action {
 		}
 	}
 
-	return cli.ActionPipeline(setters).Append(cli.Prototype{
-		Uses: cli.ActionPipeline(uses),
-	})
+	return cli.Pipeline(append(setters, cli.Prototype{
+		Uses: cli.Pipeline(uses...),
+	})...)
 }
 
 func willSetImpliedName(b binderImpliedName, index int) cli.ActionFunc {
