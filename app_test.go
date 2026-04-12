@@ -252,6 +252,34 @@ var _ = Describe("App", func() {
 		})
 	})
 
+	Describe("Initialize", func() {
+
+		It("invokes uses pipeline", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Name: "app",
+				Uses: act,
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(act.ExecuteCallCount()).To(Equal(1))
+		})
+
+		It("returns the initialized context", func() {
+			value := new(struct{})
+			app := &cli.App{
+				Name: "app",
+				Uses: cli.Pipeline(
+					cli.WithContextValue(privateKey("a"), value),
+					cli.WithContextValue(privateKey("b"), value),
+				),
+			}
+
+			ctx, _ := app.Initialize(context.Background())
+			Expect(ctx.Value(privateKey("a"))).To(Equal(value))
+			Expect(ctx.Value(privateKey("b"))).To(Equal(value))
+		})
+	})
+
 	Describe("NewApp", func() {
 
 		It("runs default app pipeline (such as setting up app version flag)", func() {

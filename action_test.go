@@ -194,6 +194,135 @@ var _ = Describe("timings", func() {
 			})
 		})
 
+		Context("WithContextValue", func() {
+
+			BeforeEach(func() {
+				uses = nil
+				arguments = []string{"app"}
+				before = cli.WithContextValue(privateKey("mykey"), "context value")
+			})
+
+			It("WithContextValue can set and retrieve context value via Value", func() {
+				Expect(captured.Value(privateKey("mykey"))).To(BeIdenticalTo("context value"))
+			})
+
+			Context("when defined on the app", func() {
+
+				var (
+					beforeFlag, afterFlag, flagAct             string
+					beforeCommand, afterCommand, actionCommand string
+				)
+
+				BeforeEach(func() {
+					arguments = []string{"app", "non", "--flag=0"}
+					before = cli.WithContextValue(privateKey("app"), "has value")
+					flags = []*cli.Flag{
+						{
+							Name:   "flag",
+							Before: contextCapturer(privateKey("app"), &beforeFlag),
+							After:  contextCapturer(privateKey("app"), &afterFlag),
+							Action: contextCapturer(privateKey("app"), &flagAct),
+						},
+					}
+					commands = []*cli.Command{
+						{
+							Name:   "non",
+							Before: contextCapturer(privateKey("app"), &beforeCommand),
+							Action: contextCapturer(privateKey("app"), &actionCommand),
+							After:  contextCapturer(privateKey("app"), &afterCommand),
+						},
+					}
+				})
+
+				It("makes value available to before flag action", func() {
+					Expect(beforeFlag).To(Equal("has value"))
+				})
+
+				It("makes value available to after flag action", func() {
+					Expect(afterFlag).To(Equal("has value"))
+				})
+
+				It("makes value available to flag action", func() {
+					Expect(flagAct).To(Equal("has value"))
+				})
+
+				It("makes value available to sub-command before action", func() {
+					Expect(beforeCommand).To(Equal("has value"))
+				})
+
+				It("makes value available to sub-command action", func() {
+					Expect(actionCommand).To(Equal("has value"))
+				})
+
+				It("makes value available to sub-command after action", func() {
+					Expect(afterCommand).To(Equal("has value"))
+				})
+			})
+
+			Context("when defined on a command", func() {
+
+				var (
+					afterUses                               string
+					beforeFlag, afterFlag, flagAct          string
+					beforeCommand, afterCommand, commandAct string
+				)
+
+				BeforeEach(func() {
+					arguments = []string{"app", "sub", "--flag=0"}
+					flags = nil
+					commands = []*cli.Command{
+						{
+							Name: "sub",
+							Uses: cli.Pipeline(
+								cli.WithContextValue(privateKey("command"), "context value"),
+								contextCapturer(privateKey("command"), &afterUses),
+							),
+							Before: contextCapturer(privateKey("command"), &beforeCommand),
+							After:  contextCapturer(privateKey("command"), &afterCommand),
+							Action: contextCapturer(privateKey("command"), &commandAct),
+							Flags: []*cli.Flag{
+								{
+									Name:   "flag",
+									Before: contextCapturer(privateKey("command"), &beforeFlag),
+									Action: contextCapturer(privateKey("command"), &flagAct),
+									After:  contextCapturer(privateKey("command"), &afterFlag),
+								},
+							},
+						},
+					}
+				})
+
+				It("makes value available to subsequent uses", func() {
+					Expect(afterUses).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to before", func() {
+					Expect(beforeCommand).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to after", func() {
+					Expect(afterCommand).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to command action", func() {
+					Expect(commandAct).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to before flag action", func() {
+					Expect(beforeFlag).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to after flag action", func() {
+					Expect(afterFlag).To(BeIdenticalTo("context value"))
+				})
+
+				It("makes value available to flag action", func() {
+					Expect(flagAct).To(BeIdenticalTo("context value"))
+				})
+
+			})
+		})
+
 		Context("SetValue", func() {
 
 			BeforeEach(func() {
@@ -443,8 +572,8 @@ var _ = Describe("timings", func() {
 
 	Describe("initialization", func() {
 		var (
-			captured    *cli.Context
-			initializer cli.Action
+			captured               *cli.Context
+			initializer, actionApp cli.Action
 		)
 		JustBeforeEach(func() {
 			act := new(joeclifakes.FakeAction)
@@ -454,7 +583,7 @@ var _ = Describe("timings", func() {
 					{
 						Name:   "sub",
 						Uses:   initializer,
-						Action: act,
+						Action: cli.Pipeline(act, actionApp),
 					},
 				},
 			}
@@ -520,6 +649,7 @@ var _ = Describe("timings", func() {
 				Expect(captured.Aliases()).To(Equal([]string{"a", "c"}))
 			})
 		})
+
 	})
 
 	It("ensures that validation runs before other Before funcs", func() {
@@ -1544,6 +1674,21 @@ var _ = Describe("Pipeline", func() {
 		Expect(act3.ExecuteCallCount()).To(Equal(1))
 	})
 
+	It("applies context value", func() {
+		act := new(joeclifakes.FakeAction)
+		value := new(struct{})
+
+		pipe := cli.Pipeline(cli.WithContextValue(privateKey("c"), value), act)
+		c := &cli.Context{}
+		c.SetContext(context.Background())
+		pipe.Execute(c)
+
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+
+		ctx := act.ExecuteArgsForCall(0)
+		Expect(ctx.Value(privateKey("c"))).To(Equal(value))
+	})
+
 	It("appends to the pipeline in order", func() {
 		calls := trackCalls()
 		makeAction := calls.makeAction
@@ -1974,6 +2119,23 @@ var _ = Describe("Prototype", func() {
 		Expect(value).To(BeTrue())
 	})
 
+	It("ensures middleware handling", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: &cli.Prototype{
+				Uses: cli.Pipeline(
+					cli.WithContextValue(privateKey("o"), "s"),
+				),
+			},
+			Action: act,
+		}
+		args, _ := cli.Split("app")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		value := act.ExecuteArgsForCall(0).Value(privateKey("o"))
+		Expect(value).To(Equal("s"))
+	})
+
 	It("does not generate errors at invalid timing", func() {
 
 		app := &cli.App{
@@ -2065,6 +2227,42 @@ var _ = Describe("Setup", func() {
 		Expect(errors.Unwrap(err)).To(Equal(cli.ErrTimingTooLate))
 		Expect(err.(*cli.InternalError).Path.String()).To(Equal("app"))
 		Expect(err.Error()).To(Equal(`internal error, at "app" (action timing): too late for requested action timing`))
+	})
+
+	It("ensures middleware handling", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: &cli.Setup{
+				Uses: cli.Pipeline(
+					// This nested pipeline needs to propagate its middleware
+					cli.WithContextValue(privateKey("o"), "s"),
+				),
+			},
+			Action: act,
+		}
+		args, _ := cli.Split("app")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		value := act.ExecuteArgsForCall(0).Value(privateKey("o"))
+		Expect(value).To(Equal("s"))
+	})
+
+	It("ensures middleware handling", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Uses: cli.Pipeline(
+				&cli.Setup{
+					// This nested pipeline needs to propagate its middleware
+					Uses: cli.WithContextValue(privateKey("o"), "s"),
+				},
+			),
+			Action: act,
+		}
+		args, _ := cli.Split("app")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		value := act.ExecuteArgsForCall(0).Value(privateKey("o"))
+		Expect(value).To(Equal("s"))
 	})
 })
 
@@ -3351,4 +3549,12 @@ func (t *callTracker) makeAction(name string) cli.Action {
 		return nil
 	}
 	return fa
+}
+
+func contextCapturer(key any, s *string) cli.ActionFunc {
+	*s = ""
+	return func(c *cli.Context) error {
+		*s, _ = c.Value(key).(string)
+		return nil
+	}
 }

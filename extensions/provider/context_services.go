@@ -27,7 +27,7 @@ func init() {
 }
 
 func registerServices() cli.Action {
-	return cli.ContextValue(servicesKey, &ContextServices{
+	return cli.WithContextValue(servicesKey, &ContextServices{
 		registries: map[string]*Registry{},
 	})
 }

@@ -387,11 +387,17 @@ func (r *Registry) New(name string, opts map[string]string) (any, error) {
 	return nil, fmt.Errorf("provider %q must define either Factory or Value", name)
 }
 
+// Execute implements the action interface
 func (r *Registry) Execute(c context.Context) error {
-	return cli.Do(c, cli.Before(cli.ActionFunc(func(c1 *cli.Context) error {
+	return r.Pipeline().Execute(c)
+}
+
+// Pipeline converts the registry into a pipeline
+func (r *Registry) Pipeline() cli.Action {
+	return cli.Before(cli.ActionFunc(func(c1 *cli.Context) error {
 		Services(c1).registries[r.Name] = r
 		return nil
-	})))
+	}))
 }
 
 func (m Map) ProviderNames() []string {

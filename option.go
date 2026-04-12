@@ -352,7 +352,12 @@ func unmarshalText(token string) Option {
 
 // Execute treats the options as if an action
 func (o Option) Execute(c context.Context) (err error) {
-	return builtinOptions.Pipeline(o).Execute(c)
+	return o.Pipeline().Execute(c)
+}
+
+// Pipeline converts the option into a pipeline
+func (o Option) Pipeline() Action {
+	return builtinOptions.Pipeline(o)
 }
 
 func (m FeatureMap[T]) Pipeline(values T) Action {

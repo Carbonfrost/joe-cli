@@ -425,14 +425,16 @@ func setupDefaultTemplates(c *Context) error {
 	return nil
 }
 
-func setupExtensionUsings(c *Context) error {
-	pipe := func() Action {
-		globals.RLock()
-		defer globals.RUnlock()
+func setupExtensionUsings() Action {
+	return pipelineFunc(func(_ context.Context) pipeline {
+		pipe := func() Action {
+			globals.RLock()
+			defer globals.RUnlock()
 
-		return pipelineActions(slices.Clone(globals.uses))
-	}()
-	return c.Do(pipe)
+			return pipelineActions(slices.Clone(globals.uses))
+		}()
+		return Pipeline(pipe, ActionFunc(copyContextToOrigin)).(pipeline)
+	})
 }
 
 func optionalCommand(name string, cmd Action) Action {

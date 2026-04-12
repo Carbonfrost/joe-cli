@@ -97,6 +97,11 @@ func (w *Workspace) Apply(opts ...WorkspaceOption) {
 	}
 }
 
+// Pipeline obtains the pipeline for initializing the workspace
+func (w *Workspace) Pipeline() cli.Action {
+	return w.Action
+}
+
 func withDefaultAction(w *Workspace) *Workspace {
 	w.Action = cli.Pipeline(
 		ContextValue(w),
@@ -128,7 +133,7 @@ func tryWorkspaceFromContext(ctx context.Context) (*Workspace, error) {
 // ContextValue provides an action that sets the given value into the context.
 // The only supported type is *Workspace.
 func ContextValue(v contextValue) cli.Action {
-	return cli.ContextValue(keyFor(v), v)
+	return cli.WithContextValue(keyFor(v), v)
 }
 
 // SetupWorkspace provides the action that sets up the workspace, which locks in

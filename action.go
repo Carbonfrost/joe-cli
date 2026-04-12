@@ -34,12 +34,24 @@ type actionFunc func(context.Context) error
 
 // Action represents the building block of the various actions
 // to perform when an app, command, flag, or argument is being evaluated.
+// In order for actions to properly handle middleware and pipelines, they
+// must be units whenever aggregation happens. To denote this,
+// an Action may implement interface { Pipeline()Action }, which returns
+// the result of calling the Pipeline method for the action and guarantees
+// a result that is in units. Custom implementations of Action which are composites of
+// other actions should implement this method.
 type Action interface {
 
 	// Execute will execute the action.  If the action returns an error, this
 	// may cause subsequent actions in the pipeline not to be run and cause
 	// the app to exit with an error exit status.
 	Execute(context.Context) error
+}
+
+// pipeliner is the convention mentioned in the Action overview which
+// can produce a pipeline where necessary
+type pipeliner interface {
+	Pipeline() Action
 }
 
 // legacyAction uses *Context instead of context.Context in the Execute func.
@@ -193,6 +205,11 @@ type withTimingWrapper struct {
 	t Timing
 }
 
+type withTimingMWWrapper struct {
+	Middleware
+	t Timing
+}
+
 type middlewareFunc func(context.Context, Action) error
 
 // MiddlewareFunc provides the basic function for middleware
@@ -316,7 +333,7 @@ var (
 					optionalCommand("version", PrintVersion()),
 					optionalFlag("version", PrintVersion()),
 					actionFunc(setupCompletion),
-					ActionFunc(setupExtensionUsings),
+					setupExtensionUsings(),
 				),
 			),
 			actionFunc(ensureSubcommands),
@@ -338,14 +355,12 @@ var (
 			),
 		),
 		Before: beforePipeline{
-			nil,
-			actions(
+			actualBeforeIndexBeforeTiming: actions(
 				actionFunc(executeBeforeHooks),
 				executePipelines(BeforeTiming),
 				ActionFunc(triggerBeforeOptions),
 				ActionFunc(triggerBeforeValueTargets),
 			),
-			nil,
 		},
 		After: actions(
 			actionFunc(executeAfterHooks),
@@ -397,12 +412,10 @@ var (
 			ActionFunc(copyFlagsFromValueTarget),
 		),
 		Before: beforePipeline{
-			nil,
-			actions(
+			actualBeforeIndexBeforeTiming: actions(
 				executePipelines(BeforeTiming),
 				ActionFunc(triggerBeforeOptions),
 			),
-			nil,
 		},
 		Action: actions(
 			ActionFunc(triggerOptions),
@@ -472,7 +485,13 @@ func atRare(t Timing, v any) Action {
 	if v == nil {
 		return nil
 	}
-	return At(t, ActionOf(v))
+
+	return At(t, Pipeline(
+		v,
+
+		// TODO Seems like a hack to workaround middleware not working from nested prototypes
+		copyContextToOrigin,
+	))
 }
 
 // internal type so we can flatten nested pipelines
@@ -481,7 +500,22 @@ type pipeline struct {
 }
 
 func (p pipeline) Execute(ctx context.Context) error {
-	return toCons(p.actions).Execute(ctx)
+	return toCons(ctx, p.actions).Execute(ctx)
+}
+
+type simplePipeline []Action
+
+func (p simplePipeline) Execute(ctx context.Context) error {
+	for _, a := range p {
+		if err := execute(ctx, a); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p simplePipeline) Pipeline() Action {
+	return pipeline{actions: p}
 }
 
 func flatten(actions []Action) []Action {
@@ -491,6 +525,8 @@ func flatten(actions []Action) []Action {
 		switch v := a.(type) {
 		case pipeline:
 			result = append(result, flatten(v.actions)...)
+		case pipeliner:
+			result = append(result, flatten([]Action{v.Pipeline()})...)
 		case nil:
 			continue
 		default:
@@ -501,13 +537,31 @@ func flatten(actions []Action) []Action {
 	return result
 }
 
-func toCons(actions []Action) Action {
+func toCons(ctx context.Context, actions []Action) Action {
 	if len(actions) == 0 {
 		return ActionOf(nil)
 	}
 
-	// Start from the last action and wrap backwards
-	var next Action = actions[len(actions)-1]
+	// As an optimization, look for pipelineFunc before copying
+	if slices.ContainsFunc(actions, func(a Action) bool {
+		_, ok := a.(pipelineFunc)
+		return ok
+	}) {
+		actual := make([]Action, 0, len(actions))
+		for _, a := range actions {
+			if pf, ok := a.(pipelineFunc); ok {
+				actual = append(actual, flatten(pf(ctx).actions)...)
+			} else {
+				actual = append(actual, a)
+			}
+		}
+		actions = actual
+	}
+
+	// Generation of middleware traces backward from the end so that the next pointer
+	// is available for middleware or the general case. This is a singly linked list.
+	var hasMiddleware bool
+	next := actions[len(actions)-1]
 	for i := len(actions) - 2; i >= 0; i-- {
 		current := ActionOf(actions[i])
 
@@ -516,6 +570,19 @@ func toCons(actions []Action) Action {
 				mw:   mw,
 				next: next,
 			}
+			hasMiddleware = true
+		} else if c, ok := current.(*cons); ok {
+			// When present, *cons is a label which is updated to the correct
+			// references so that it can be named within middleware (see IfMatch, the only
+			// case where this pertains)
+			c.next = next
+
+			next = cons{
+				current: emptyAction,
+				next:    next,
+			}
+
+			hasMiddleware = true
 		} else {
 			next = cons{
 				current: current,
@@ -524,7 +591,19 @@ func toCons(actions []Action) Action {
 		}
 	}
 
-	return next
+	if hasMiddleware {
+		return next
+	}
+
+	return simplePipeline(actions)
+}
+
+// pipelineFunc is a special pipeline that is computed within the
+// final steps before executing a pipeline.
+type pipelineFunc func(context.Context) pipeline
+
+func (pipelineFunc) Execute(context.Context) error {
+	panic("unexpected call to sentinel type")
 }
 
 type middlewareCons struct {
@@ -548,9 +627,11 @@ func (s cons) Execute(ctx context.Context) error {
 	return s.next.Execute(ctx)
 }
 
-// Pipeline combines various actions into a single action.  Compared to using
-// ActionPipeline directly, the actions are flattened if any nested pipelines are
-// present.
+// Pipeline combines various actions into a single action.
+// The result is a pipeline, a sequence of actions atomized into units.
+// In particular, pipelines are "flattened" when they contain other pipelines,
+// and clients must identify whenever actions require conversion into pipelines
+// (see docs for Action)
 func Pipeline(actions ...any) Action {
 	if len(actions) == 0 {
 		return ActionOf(nil)
@@ -564,7 +645,7 @@ func Pipeline(actions ...any) Action {
 	return pipelineActions(myActions)
 }
 
-func pipelineActions(actions []Action) Action {
+func pipelineActions(actions []Action) pipeline {
 	flat := flatten(actions)
 	return pipeline{actions: flat}
 }
@@ -657,6 +738,9 @@ func At(t Timing, a Action) Action {
 			a,
 			unsetInternalFlag(internalFlagImplicitTimingActive)))
 	}
+	if mw, ok := a.(Middleware); ok {
+		return withTimingMWWrapper{mw, t}
+	}
 	return withTimingWrapper{a, t}
 }
 
@@ -734,13 +818,42 @@ func ActionOf(item any) Action {
 
 // ContextValue provides an action which updates the context with a
 // value.
+//
+// Deprecated: Use WithContextValue middleware instead
 func ContextValue(key, value any) Action {
 	return actionThunk2((*Context).SetContextValue, key, value)
 }
 
 // SetContext provides an action which sets the context
+//
+// Deprecated: Use WithContext middleware instead to avoid mutation
 func SetContext(ctx context.Context) Action {
 	return actionThunk1((*Context).SetContext, ctx)
+}
+
+// WithContext provides middleware that wraps the context for subsequent actions
+func WithContext(fn func(context.Context) context.Context) Middleware {
+	return MiddlewareFunc(func(c *Context, next Action) error {
+		newCtx := fn(c.Context())
+		wrapped := c.withWrappedContext(newCtx)
+		return Do(wrapped, next)
+	})
+}
+
+// WithContextValue provides middleware for adding values
+func WithContextValue(key, value any) Middleware {
+	return WithContext(func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, key, value)
+	})
+}
+
+// withWrappedContext creates a shallow copy with a different ref
+// Used internally by middleware to propagate context without mutation
+func (c *Context) withWrappedContext(ctx context.Context) *Context {
+	wrapped := *c
+	wrapped.origin = c // specifies where the copy was created
+	wrapped.ref = ctx
+	return &wrapped
 }
 
 // Timeout provides an action which adds a timeout to the context.
@@ -1230,16 +1343,58 @@ func IfMatch(f ContextFilter, then Action, elseopt ...Action) Action {
 	if f == nil {
 		return then
 	}
-	return actionFunc(func(c context.Context) error {
-		if f.Matches(c) {
-			return Do(c, then)
-		}
-		if len(elseopt) == 0 {
-			return nil
-		}
+	return &ifMatchNode{
+		f:         f,
+		then:      ActionOf(then),
+		otherwise: ActionOf(elseopt),
+	}
+}
 
-		return Do(c, elseopt[0])
-	})
+type ifMatchNode struct {
+	f         ContextFilter
+	then      Action
+	otherwise Action
+}
+
+func (i *ifMatchNode) Execute(ctx context.Context) error {
+	return i.Pipeline().Execute(ctx)
+}
+
+func (i *ifMatchNode) Pipeline() Action {
+	var value bool
+	var endLabel = newLabelCons()
+	var otherwiseLabel = newLabelCons()
+
+	// This implements a simple program with middleware which branches
+	// to the corresponding label depending upon whether the condition (cached) matches.
+	// This is necessary to support pipeline aggregation properly when it contains middleware.
+	return Pipeline(
+		middlewareFunc(func(c context.Context, next Action) error {
+			value = i.f.Matches(c)
+			if value {
+				return next.Execute(c)
+			}
+			return otherwiseLabel.Execute(c)
+		}),
+		i.then,
+
+		middlewareFunc(func(c context.Context, next Action) error {
+			if value {
+				return endLabel.Execute(c)
+			}
+			return nil
+		}),
+		otherwiseLabel,
+		i.otherwise,
+		endLabel,
+	)
+}
+
+func newLabelCons() *cons {
+	return &cons{
+		current: emptyAction,
+		next:    emptyAction,
+	}
 }
 
 // Assert provides an action that returns an error if the context filter does not
@@ -1780,6 +1935,28 @@ func (w withTimingWrapper) Execute(ctx context.Context) error {
 	}
 }
 
+func (w withTimingMWWrapper) Execute(ctx context.Context) error {
+	return w.ExecuteWithNext(ctx, nil)
+}
+
+func (w withTimingMWWrapper) ExecuteWithNext(ctx context.Context, next Action) error {
+	c := FromContext(ctx)
+
+	// For the purposes of determining whether we can run this action,
+	// remove synthetic timing
+	desired := w.t
+	actual := desired.actual()
+	switch {
+	case c.timing < actual:
+		c.target.appendAction(desired, w.Middleware)
+		return nil
+	case c.timing == actual:
+		return w.Middleware.ExecuteWithNext(ctx, next)
+	default: // c.timing > actual:
+		return c.internalError(ErrTimingTooLate)
+	}
+}
+
 func (b beforePipeline) Execute(c context.Context) error {
 	return pipelineActions(slices.Concat(b[:])).Execute(c)
 }
@@ -1837,15 +2014,18 @@ func (m middlewareFunc) ExecuteWithNext(ctx context.Context, a Action) error {
 	return m(ctx, a)
 }
 
+// Execute provides the implementation of the Action interface
 func (m MiddlewareFunc) Execute(c context.Context) error {
 	return m.ExecuteWithNext(c, nil)
 }
 
+// ExecuteWithNext provides the implementation of the middleware interface
 func (m MiddlewareFunc) ExecuteWithNext(ctx context.Context, a Action) error {
 	c := FromContext(ctx)
 	return m(c, a)
 }
 
+// Execute provides the implementation of the Action interface
 func (v ValidatorFunc) Execute(ctx context.Context) error {
 	return Do(ctx, At(ValidatorTiming, ActionFunc(func(c *Context) error {
 		occur := c.RawOccurrences("")
@@ -1857,6 +2037,7 @@ func (v ValidatorFunc) Execute(ctx context.Context) error {
 	})))
 }
 
+// Execute provides the implementation of the Action interface
 func (t TransformFunc) Execute(ctx context.Context) error {
 	return Do(ctx, Transform(t))
 }
@@ -1945,9 +2126,10 @@ func bind[V any](fn func(V) error) Action {
 }
 
 var (
-	_ Action   = withTimingWrapper{}
-	_ Action   = Setup{}
-	_ Action   = Prototype{}
-	_ Action   = beforePipeline{}
-	_ hookable = (*hooksSupport)(nil)
+	_ Action     = withTimingWrapper{}
+	_ Middleware = withTimingMWWrapper{}
+	_ Action     = Setup{}
+	_ Action     = Prototype{}
+	_ Action     = beforePipeline{}
+	_ hookable   = (*hooksSupport)(nil)
 )

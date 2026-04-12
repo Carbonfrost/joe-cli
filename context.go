@@ -54,6 +54,7 @@ type Context struct {
 	request  *CompletionRequest
 
 	parent *Context
+	origin *Context
 	ref    context.Context
 }
 
@@ -218,12 +219,16 @@ func (c *Context) Context() context.Context {
 }
 
 // SetContext sets the context
+//
+// Deprecated: Use WithContext middleware instead to avoid mutation
 func (c *Context) SetContext(ctx context.Context) error {
 	c.ref = ctx
 	return nil
 }
 
 // SetContextValue updates the context with a value.
+//
+// Deprecated: Use WithContextValue middleware instead
 func (c *Context) SetContextValue(key, value any) error {
 	return c.SetContext(context.WithValue(c.Context(), key, value))
 }
@@ -457,7 +462,7 @@ func (c *Context) ContextOf(target any) *Context {
 		if !ok {
 			return nil
 		}
-		return c.newChild(o.(option))
+		return c.newChild(o)
 	default:
 		panic(fmt.Sprintf("unexpected target type %T", target))
 	}
@@ -2152,17 +2157,20 @@ func executeAfterHooks(c context.Context) error {
 	return execute(c, actionFunc(h.executeAfterHooks))
 }
 
-func executePipelines(at Timing) ActionFunc {
-	return func(c *Context) error {
+func executePipelines(at Timing) Action {
+	return pipelineFunc(func(ctx context.Context) pipeline {
+		c := FromContext(ctx)
 		deferred := c.target.uses().pipeline(at)
 		user := c.target.pipeline(at)
-		pp := Pipeline(deferred, user)
 
+		var actions []any
 		if c.target.internalFlags().eachOccurrence() {
-			pp = Pipeline(eachOccurrenceOpt(), pp)
+			actions = []any{eachOccurrenceOpt()}
 		}
-		return execute(c, pp)
-	}
+
+		actions = append(actions, deferred, user, ActionFunc(copyContextToOrigin))
+		return Pipeline(actions...).(pipeline)
+	})
 }
 
 func triggerOptions(ctx *Context) error {

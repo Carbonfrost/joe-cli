@@ -367,6 +367,7 @@ func (f *Format) apply(tc *tableContext) {
 	}
 }
 
+// Pipeline converts the feature into a pipeline
 func (f Feature) Pipeline() cli.Action {
 	if f == 0 {
 		f = AllFeatures
@@ -374,8 +375,14 @@ func (f Feature) Pipeline() cli.Action {
 	return featureMap.Pipeline(f)
 }
 
+// Execute implements the action interface
 func (o Options) Execute(c context.Context) error {
-	return cli.FromContext(c).Do(o.Features.Pipeline())
+	return o.Pipeline().Execute(c)
+}
+
+// Pipeline converts the options into a pipeline
+func (o Options) Pipeline() cli.Action {
+	return o.Features.Pipeline()
 }
 
 func (p *porcelainContext) Row() string {

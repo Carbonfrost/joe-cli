@@ -93,11 +93,13 @@ func (r *Root) DryRunFlag() cli.Prototype {
 	}
 }
 
+// Execute implements the action interface
 func (r *Root) Execute(ctx context.Context) error {
-	return cli.Do(ctx, r.pipeline())
+	return r.Pipeline().Execute(ctx)
 }
 
-func (r *Root) pipeline() cli.Action {
+// Pipeline converts the root into a pipeline
+func (r *Root) Pipeline() cli.Action {
 	return cli.Pipeline(
 		cli.Prototype{
 			Uses: cli.AddFlags([]*cli.Flag{
