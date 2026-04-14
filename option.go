@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -602,8 +602,8 @@ func noOption(c *Context) error {
 	}))
 }
 
-func eachOccurrenceOpt() middlewareFunc {
-	return middlewareFunc(func(c *Context, next Action) error {
+func eachOccurrenceOpt() MiddlewareFunc {
+	return MiddlewareFunc(func(c *Context, next Action) error {
 		opt := c.option()
 		mini := &wrapOccurrenceContext{
 			optionContext: c.internal.(*optionContext),

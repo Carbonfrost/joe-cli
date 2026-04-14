@@ -1178,6 +1178,7 @@ var _ = Describe("ActionOf", func() {
 		Entry("func() error", func() error { act(); return nil }),
 		Entry("middleware: func(Action) Action", func(cli.Action) cli.Action { act(); return nil }),
 		Entry("middleware: func(*cli.Context, Action) error", func(*cli.Context, cli.Action) error { act(); return nil }),
+		Entry("middleware: func(context.Context, Action) error", func(context.Context, cli.Action) error { act(); return nil }),
 		Entry("legacy action", &legacy{act}),
 	)
 

@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -202,7 +202,10 @@ type cons struct {
 	next   *cons
 }
 
-type middlewareFunc func(*Context, Action) error
+type middlewareFunc func(context.Context, Action) error
+
+// MiddlewareFunc provides the basic function for middleware
+type MiddlewareFunc func(*Context, Action) error
 
 // beforePipeline has sub-timings, defined in actualBeforeIndex map
 type beforePipeline [actualBeforeIndexMaxValue]ActionPipeline
@@ -637,9 +640,11 @@ func ActionOf(item any) Action {
 			return nil
 		})
 	case func(*Context, Action) error:
+		return MiddlewareFunc(a)
+	case func(context.Context, Action) error:
 		return middlewareFunc(a)
 	case func(Action) Action:
-		return middlewareFunc(func(c *Context, next Action) error {
+		return middlewareFunc(func(c context.Context, next Action) error {
 			return Do(c, a(next))
 		})
 	case error:
@@ -1802,6 +1807,14 @@ func (m middlewareFunc) Execute(c context.Context) error {
 }
 
 func (m middlewareFunc) ExecuteWithNext(ctx context.Context, a Action) error {
+	return m(ctx, a)
+}
+
+func (m MiddlewareFunc) Execute(c context.Context) error {
+	return m.ExecuteWithNext(c, nil)
+}
+
+func (m MiddlewareFunc) ExecuteWithNext(ctx context.Context, a Action) error {
 	c := FromContext(ctx)
 	return m(c, a)
 }
