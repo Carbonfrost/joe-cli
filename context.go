@@ -1627,19 +1627,12 @@ func (c *Context) setTiming(t Timing) *Context {
 
 func triggerOptionsHO(t Timing, on func(*Context) error) ActionFunc {
 	return func(ctx *Context) error {
-		for _, f := range ctx.Flags() {
-			if f.internalFlags().persistent() {
-				// This is a persistent flag that was cloned into the flag set of the current
-				// command; don't process it again
-				continue
-			}
-
+		for _, f := range ctx.LocalFlags() {
 			err := on(ctx.newChild(f).setTiming(t))
 			if err != nil {
 				return err
 			}
 		}
-
 		for _, f := range ctx.LocalArgs() {
 			err := on(ctx.newChild(f).setTiming(t))
 			if err != nil {

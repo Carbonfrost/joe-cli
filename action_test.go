@@ -645,6 +645,43 @@ var _ = Describe("Uses", func() {
 				},
 			}
 		}),
+		Entry("persistent flag", "app c -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  h,
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+					},
+				},
+			}
+		}),
+		Entry("persistent flag 2", "app c d -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  h,
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+						Subcommands: []*cli.Command{
+							{
+								Name: "d",
+							},
+						},
+					},
+				},
+			}
+		}),
 	)
 
 	Context("concurrent modifications", func() {
@@ -1034,6 +1071,43 @@ var _ = Describe("Before", func() {
 				},
 			}
 		}),
+		Entry("persistent flag", "app c -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  cli.Before(h),
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+					},
+				},
+			}
+		}),
+		Entry("persistent flag 2", "app c d -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  cli.Before(h),
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+						Subcommands: []*cli.Command{
+							{
+								Name: "d",
+							},
+						},
+					},
+				},
+			}
+		}),
 	)
 })
 
@@ -1148,6 +1222,80 @@ var _ = Describe("After", func() {
 						Name:  "f",
 						Value: cli.Bool(),
 						Uses:  cli.After(h),
+					},
+				},
+			}
+		}),
+		Entry("local flag", "app c -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+						Flags: []*cli.Flag{
+							{
+								Name:  "f",
+								Value: cli.Bool(),
+								Uses:  cli.After(h),
+							},
+						},
+					},
+				},
+			}
+		}),
+		Entry("local flag 2", "app c d -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+						Subcommands: []*cli.Command{
+							{
+								Name: "d",
+								Flags: []*cli.Flag{
+									{
+										Name:  "f",
+										Value: cli.Bool(),
+										Uses:  cli.After(h),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+		}),
+		Entry("persistent flag", "app c -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  cli.After(h),
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+					},
+				},
+			}
+		}),
+		Entry("persistent flag 2", "app c d -f", func(h cli.Action) *cli.App {
+			return &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: cli.Bool(),
+						Uses:  cli.After(h),
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "c",
+						Subcommands: []*cli.Command{
+							{
+								Name: "d",
+							},
+						},
 					},
 				},
 			}
