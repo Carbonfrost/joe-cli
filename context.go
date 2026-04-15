@@ -53,9 +53,8 @@ type Context struct {
 	timing   Timing
 	request  *CompletionRequest
 
-	parent    *Context
-	pathCache ContextPath
-	ref       context.Context
+	parent *Context
+	ref    context.Context
 }
 
 // WalkFunc provides the callback for the Walk function
@@ -1120,20 +1119,13 @@ func (c *Context) Path() ContextPath {
 	if c == nil {
 		return nil
 	}
-	if len(c.pathCache) == 0 {
-		c.pathCache = c.pathSlow()
-	}
-	return c.pathCache
-}
-
-func (c *Context) pathSlow() ContextPath {
 	res := make([]string, 0)
 	c.lineageFunc(func(ctx *Context) {
 		res = append(res, ctx.Name())
 	})
 
 	// Reverse to get the proper order, and remove the root context if present
-	res = reverse(res)
+	slices.Reverse(res)
 	if res[0] == "" {
 		res = res[1:]
 	}
@@ -2230,13 +2222,6 @@ func hasSeenImplied(f option, parent target) bool {
 		return f.internalFlags().impliedAction() || parent.internalFlags().impliedAction()
 	}
 	return false
-}
-
-func reverse(arr []string) []string {
-	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
-		arr[i], arr[j] = arr[j], arr[i]
-	}
-	return arr
 }
 
 func setupValueInitializer(c context.Context) error {
