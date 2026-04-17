@@ -1247,8 +1247,10 @@ func IfMatch(f ContextFilter, then Action, elseopt ...Action) Action {
 // Describe() or String() that returns a string, it is consulted in order to produce the error
 // message; otherwise, a generic error is returned.   Compare to IfMatch.
 func Assert(filter ContextFilter, a Action) Action {
-	return actionFunc(func(ctx context.Context) error {
-		if !filter.Matches(ctx) {
+	return IfMatch(
+		filter,
+		a,
+		actionFunc(func(ctx context.Context) error {
 			var desc string
 			if d, ok := filter.(interface{ Describe() string }); ok {
 				desc = d.Describe()
@@ -1260,9 +1262,7 @@ func Assert(filter ContextFilter, a Action) Action {
 				return c.internalError(fmt.Errorf("context must be %s", desc))
 			}
 			return errAssertFailed
-		}
-		return Do(ctx, a)
-	})
+		}))
 }
 
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
