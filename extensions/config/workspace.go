@@ -65,12 +65,6 @@ type workspaceOption struct {
 	applyFn     func(*Workspace)
 }
 
-type key string
-
-type contextValue interface {
-	contextValueSigil()
-}
-
 // SkipFile is returned by the walker function to indicate a file should not
 // be returned during the workspace scan
 var SkipFile = errors.New("skip this file")
@@ -79,8 +73,6 @@ var SkipFile = errors.New("skip this file")
 var DefaultWorkspaceFinder WorkspaceFinder = new(defaultWorkspaceFinder)
 
 var errWorkspaceNotFound = fmt.Errorf("workspace not found")
-
-const workspaceKey key = "workspace"
 
 // NewWorkspace creates a workspace with the default action, which registers the
 // flags and adds the workspace to the context.
@@ -116,18 +108,11 @@ func withDefaultAction(w *Workspace) *Workspace {
 
 // WorkspaceFromContext gets the Workspace from the context otherwise panics
 func WorkspaceFromContext(ctx context.Context) *Workspace {
-	res, err := tryWorkspaceFromContext(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return res
+	return fromContext[*Workspace](ctx)
 }
 
 func tryWorkspaceFromContext(ctx context.Context) (*Workspace, error) {
-	if res, ok := ctx.Value(workspaceKey).(*Workspace); ok {
-		return res, nil
-	}
-	return nil, failedMust(workspaceKey)
+	return tryFromContext[*Workspace](ctx)
 }
 
 // ContextValue provides an action that sets the given value into the context.
@@ -387,19 +372,6 @@ func (defaultWorkspaceFinder) FindWorkspacePath(c context.Context, f fs.FS, cwd 
 		}
 	}
 	return "", errWorkspaceNotFound
-}
-
-func failedMust(k key) error {
-	return fmt.Errorf("expected %s value not present in context", k)
-}
-
-func keyFor(v contextValue) key {
-	switch v.(type) {
-	case *Workspace:
-		return workspaceKey
-	default:
-		panic(fmt.Errorf("unexpected type for context: %T", v))
-	}
 }
 
 func actualFS(ctx context.Context) fs.FS {
