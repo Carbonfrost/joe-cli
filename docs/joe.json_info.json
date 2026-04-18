@@ -1,0 +1,145 @@
+{
+    "name": "joe",
+    "commands": [
+        {
+            "name": "new",
+            "subcommands": [
+                {
+                    "name": "app",
+                    "flags": [
+                        {
+                            "name": "color",
+                            "helpText": "Activate the color extension"
+                        },
+                        {
+                            "name": "http",
+                            "helpText": "Add a dependency on joe-cli-http"
+                        },
+                        {
+                            "name": "table",
+                            "helpText": "Activate the table extension"
+                        },
+                        {
+                            "name": "app-version",
+                            "aliases": [
+                                "V"
+                            ],
+                            "helpText": "Set the version string"
+                        },
+                        {
+                            "name": "comment",
+                            "aliases": [
+                                "c"
+                            ],
+                            "helpText": "Set the comment string"
+                        },
+                        {
+                            "name": "help-text",
+                            "helpText": "Set the help text string"
+                        },
+                        {
+                            "name": "name",
+                            "aliases": [
+                                "n"
+                            ],
+                            "helpText": "Name of the new app"
+                        },
+                        {
+                            "name": "license",
+                            "helpText": "Activate the license flag"
+                        }
+                    ],
+                    "helpText": "Create a new app"
+                }
+            ],
+            "args": [
+                {
+                    "name": "command",
+                    "usageText": "\u003ccommand\u003e [\u003cargs\u003e]",
+                    "options": "DISABLE_SPLITTING",
+                    "data": {
+                        "Source": "github.com/Carbonfrost/joe-cli"
+                    }
+                }
+            ],
+            "helpText": "Generate apps, commands, etc. based on a template"
+        },
+        {
+            "name": "init",
+            "helpText": "Initialize the current Go module for use with Joe-cli"
+        },
+        {
+            "name": "help",
+            "aliases": [
+                "h"
+            ],
+            "args": [
+                {
+                    "name": "command"
+                }
+            ],
+            "helpText": "Display help for a command",
+            "options": "EXITS",
+            "data": {
+                "Source": "github.com/Carbonfrost/joe-cli"
+            }
+        },
+        {
+            "name": "version",
+            "helpText": "Print the build version then exit",
+            "options": "EXITS",
+            "data": {
+                "Source": "github.com/Carbonfrost/joe-cli"
+            }
+        }
+    ],
+    "flags": [
+        {
+            "name": "force",
+            "helpText": "Overwrite files and accept all prompts"
+        },
+        {
+            "name": "dry-run",
+            "helpText": "Display what commands will be run without actually executing them"
+        },
+        {
+            "name": "help",
+            "aliases": [
+                "h"
+            ],
+            "helpText": "Display this help screen then exit",
+            "options": "EXITS",
+            "data": {
+                "Source": "github.com/Carbonfrost/joe-cli"
+            }
+        },
+        {
+            "name": "version",
+            "helpText": "Print the build version then exit",
+            "options": "EXITS",
+            "data": {
+                "Source": "github.com/Carbonfrost/joe-cli"
+            }
+        },
+        {
+            "name": "zsh-completion",
+            "options": "HIDDEN, EXITS",
+            "data": {
+                "Source": "github.com/Carbonfrost/joe-cli"
+            }
+        }
+    ],
+    "args": [
+        {
+            "name": "command",
+            "usageText": "\u003ccommand\u003e [\u003cargs\u003e]",
+            "options": "DISABLE_SPLITTING",
+            "data": {
+                "Source": "github.com/Carbonfrost/joe-cli"
+            }
+        }
+    ],
+    "helpText": "Easily generate a new Joe-cli app or utility",
+    "version": "(devel)",
+    "buildDate": "2026-04-17T22:43:01.623598508-07:00"
+}

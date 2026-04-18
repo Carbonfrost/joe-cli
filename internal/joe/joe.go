@@ -1,4 +1,4 @@
-// Copyright 2022 The Joe-cli Authors. All rights reserved.
+// Copyright 2022, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -20,7 +20,7 @@ func NewApp() *cli.App {
 	return &cli.App{
 		Name:     "joe",
 		HelpText: "Easily generate a new Joe-cli app or utility",
-		Version:  internal.Version,
+		Version:  build.Version,
 		Flags: []*cli.Flag{
 			{
 				Name:     "force",

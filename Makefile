@@ -1,6 +1,7 @@
-# Copyright 2025 The Joe-cli Authors. All rights reserved.
+# Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
+
 -include eng/Makefile
 
 .DEFAULT_GOAL = build
@@ -45,3 +46,6 @@ coverage:
 
 coveragereport: coverage
 	$(Q) go tool cover -html=coverage.txt
+
+json_info:
+	@ go run -tags json_info ./cmd/joe > docs/joe.json_info.json
