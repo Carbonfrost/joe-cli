@@ -320,16 +320,6 @@ func (a Arg) actualArgCounter() ArgCounter {
 	return argCounterImpliedFromValue(a.Value, false)
 }
 
-// SetHidden causes the argument to be hidden from the help screen
-func (a *Arg) SetHidden(v bool) {
-	a.setInternalFlags(internalFlagHidden, v)
-}
-
-// SetRequired will indicate that the argument is required.
-func (a *Arg) SetRequired(v bool) {
-	a.setInternalFlags(internalFlagRequired, v)
-}
-
 // Synopsis contains the value placeholder
 func (a *Arg) Synopsis() string {
 	return sprintSynopsis(a.newSynopsis())
@@ -374,14 +364,11 @@ func (a *Arg) value() any {
 	return a.Value
 }
 
-// SetData sets the specified metadata on the arg.  When v is nil, the corresponding
-// metadata is deleted
-func (a *Arg) SetData(name string, v any) {
+func (a *Arg) setData(name string, v any) {
 	a.Data = setData(a.Data, name, v)
 }
 
-// LookupData obtains the data if it exists
-func (a *Arg) LookupData(name string) (any, bool) {
+func (a *Arg) lookupData(name string) (any, bool) {
 	v, ok := a.Data[name]
 	return v, ok
 }

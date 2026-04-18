@@ -152,9 +152,9 @@ type hookable interface {
 }
 
 type target interface {
-	SetHidden(bool)
-	SetData(name string, v any)
-	LookupData(name string) (any, bool)
+	setHidden(bool)
+	setData(name string, v any)
+	lookupData(name string) (any, bool)
 
 	uses() *actionPipelines
 	options() *Option
@@ -1861,7 +1861,7 @@ func (p *Prototype) copyToValue(c *Context) error {
 		o.setDescription(p.Description)
 	}
 	for k, v := range p.Data {
-		o.SetData(k, v)
+		o.setData(k, v)
 	}
 	o.setAliases(p.Aliases)
 	p.Options.Execute(c)
@@ -2004,6 +2004,14 @@ func (i *internalFlagsSupport) setInternalFlags(f internalFlags, v bool) {
 
 func (i *internalFlagsSupport) internalFlags() internalFlags {
 	return i.flags
+}
+
+func (i *internalFlagsSupport) setHidden(v bool) {
+	i.setInternalFlags(internalFlagHidden, v)
+}
+
+func (i *internalFlagsSupport) setRequired(v bool) {
+	i.setInternalFlags(internalFlagRequired, v)
 }
 
 func (m middlewareFunc) Execute(c context.Context) error {

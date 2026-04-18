@@ -504,7 +504,7 @@ func splitOptionsHO(opts Option, fn func(Option)) {
 }
 
 func hiddenOption(c *Context) error {
-	c.target.SetHidden(true)
+	c.target.setHidden(true)
 	return nil
 }
 
@@ -515,7 +515,7 @@ func visibleOption(c *Context) error {
 }
 
 func requiredOption(c *Context) error {
-	c.option().SetRequired(true)
+	c.option().setRequired(true)
 	return nil
 }
 

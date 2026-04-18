@@ -2959,7 +2959,7 @@ var _ = Describe("Customize", func() {
 				{
 					Name: "flag",
 					Uses: cli.Customize("", cli.FlagSetup(func(f *cli.Flag) {
-						f.SetData("ok", "2")
+						f.Data = map[string]any{"ok": "2"}
 					})),
 				},
 			},

@@ -169,7 +169,7 @@ type option interface {
 	Occurrences() int
 	Seen() bool
 	Set(any) error
-	SetRequired(bool)
+	setRequired(bool)
 
 	reset()
 	actualArgCounter() ArgCounter
@@ -217,7 +217,7 @@ func (f *Flag) Synopsis() string {
 }
 
 func (f *Flag) cacheSynopsis(syn *synopsis.Flag) *synopsis.Flag {
-	f.SetData(synopsisKey, syn)
+	f.setData(synopsisKey, syn)
 	return syn
 }
 
@@ -234,14 +234,11 @@ func (f *Flag) newSynopsis() *synopsis.Flag {
 	return synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
 }
 
-// SetData sets the specified metadata on the flag.  When v is nil, the corresponding
-// metadata is deleted
-func (f *Flag) SetData(name string, v any) {
+func (f *Flag) setData(name string, v any) {
 	f.Data = setData(f.Data, name, v)
 }
 
-// LookupData obtains the data if it exists
-func (f *Flag) LookupData(name string) (any, bool) {
+func (f *Flag) lookupData(name string) (any, bool) {
 	v, ok := f.Data[name]
 	return v, ok
 }
@@ -489,16 +486,6 @@ func (f *Flag) SetOccurrence(values ...string) error {
 func (f *Flag) SetOccurrenceData(v any) error {
 	f.nextOccur()
 	return SetData(f.Value, v)
-}
-
-// SetHidden causes the flag to be hidden
-func (f *Flag) SetHidden(v bool) {
-	f.setInternalFlags(internalFlagHidden, v)
-}
-
-// SetRequired causes the flag to be required
-func (f *Flag) SetRequired(v bool) {
-	f.setInternalFlags(internalFlagRequired, v)
 }
 
 func (f *Flag) name() string {

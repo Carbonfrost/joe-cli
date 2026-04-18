@@ -245,11 +245,6 @@ func (a *App) createRoot() *Command {
 	return cmd
 }
 
-// SetData sets the specified metadata on the app
-func (a *App) SetData(name string, v any) {
-	a.Data = setData(a.Data, name, v)
-}
-
 func (a *App) runContextCore(c context.Context, args []string) (context.Context, error) {
 	ctx, err := a.Initialize(c)
 	if err != nil {

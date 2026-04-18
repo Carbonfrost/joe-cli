@@ -510,20 +510,13 @@ func (c *Command) newSynopsis() *synopsis.Command {
 	)
 }
 
-// SetData sets the specified metadata on the command
-func (c *Command) SetData(name string, v any) {
+func (c *Command) setData(name string, v any) {
 	c.Data = setData(c.Data, name, v)
 }
 
-// LookupData obtains the data if it exists
-func (c *Command) LookupData(name string) (any, bool) {
+func (c *Command) lookupData(name string) (any, bool) {
 	v, ok := c.Data[name]
 	return v, ok
-}
-
-// SetHidden changes the visibility of the command
-func (c *Command) SetHidden(value bool) {
-	c.setInternalFlags(internalFlagHidden, value)
 }
 
 func (c *Command) setCategory(name string) {
