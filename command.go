@@ -624,36 +624,15 @@ func initializeFlagsArgs(ctx *Context) error {
 	for anyFlags || anyArgs {
 		flags := ctx.LocalFlags()[flagStart:]
 		flagStart = len(ctx.LocalFlags())
-
-		for _, sub := range flags {
-			if sub.internalFlags().initialized() {
-				continue
-			}
-
-			originalName := sub.Name
-			err := ctx.newChild(sub).initialize()
-			if err != nil {
-				return err
-			}
-			// The name has changed, so hooks need to run again
-			// on the flag
-			if sub.Name != originalName {
-				ctx.newChild(sub).reinitialize()
-			}
+		if err := initializeChildren(ctx, flags); err != nil {
+			return err
 		}
 		anyFlags = len(flags) > 0
 
 		args := ctx.LocalArgs()[argStart:]
 		argStart = len(ctx.LocalArgs())
-
-		for _, sub := range args {
-			if sub.internalFlags().initialized() {
-				continue
-			}
-			err := ctx.newChild(sub).initialize()
-			if err != nil {
-				return err
-			}
+		if err := initializeChildren(ctx, args); err != nil {
+			return err
 		}
 		anyArgs = len(args) > 0
 	}
@@ -663,21 +642,36 @@ func initializeFlagsArgs(ctx *Context) error {
 
 func initializeSubcommands(ctx *Context) error {
 	cmd := ctx.target.(*Command)
-	for _, sub := range cmd.Subcommands {
+	anySubcommands := true
+	var subcommandStart int
+
+	for anySubcommands {
+		subs := cmd.Subcommands[subcommandStart:]
+		subcommandStart = len(cmd.Subcommands)
+		if err := initializeChildren(ctx, subs); err != nil {
+			return err
+		}
+		anySubcommands = len(subs) > 0
+	}
+	return nil
+}
+
+func initializeChildren[T target](ctx *Context, subs []T) error {
+	for _, sub := range subs {
 		if sub.internalFlags().initialized() {
-			continue
+			return nil
 		}
 
-		originalName := sub.Name
+		originalName := sub.contextName()
 		err := ctx.newChild(sub).initialize()
 		if err != nil {
 			return err
 		}
-
 		// The name has changed, so hooks need to run again
 		// on the flag
-		if sub.Name != originalName {
-			ctx.newChild(sub).reinitialize()
+		if sub.contextName() != originalName {
+			// TODO: These errors might have to propagate
+			_ = ctx.newChild(sub).reinitialize()
 		}
 	}
 	return nil

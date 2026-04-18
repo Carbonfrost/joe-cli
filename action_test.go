@@ -819,22 +819,44 @@ var _ = Describe("Uses", func() {
 		// When a flag, etc. is added during our initialization pass, we also
 		// process its initialization
 
-		DescribeTable("new values are initialized",
+		DescribeTableSubtree("new values are initialized on commands",
 			func(uses func(cli.Action) cli.Action) {
-				act := new(joeclifakes.FakeAction)
-				app := &cli.App{
-					Flags: []*cli.Flag{
-						{Name: "1"},
-						{Name: "2"},
-					},
-					Args: []*cli.Arg{
-						{Name: "A"},
-					},
-					Uses:   uses(act),
-					Stderr: io.Discard,
-				}
-				_ = app.RunContext(context.Background(), []string{"app"})
-				Expect(act.ExecuteCallCount()).To(Equal(1))
+				It("on app", func() {
+					act := new(joeclifakes.FakeAction)
+					app := &cli.App{
+						Flags: []*cli.Flag{
+							{Name: "1"},
+							{Name: "2"},
+						},
+						Args: []*cli.Arg{
+							{Name: "A"},
+						},
+						Uses:   uses(act),
+						Stderr: io.Discard,
+					}
+					_ = app.RunContext(context.Background(), []string{"app"})
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				})
+
+				It("on sub-command", func() {
+					act := new(joeclifakes.FakeAction)
+					app := &cli.App{
+						Flags: []*cli.Flag{
+							{Name: "1"},
+							{Name: "2"},
+						},
+						Args: []*cli.Arg{
+							{Name: "A"},
+						},
+						Commands: []*cli.Command{
+							{Name: "C", Uses: uses(act)},
+						},
+						Stderr: io.Discard,
+					}
+					_ = app.RunContext(context.Background(), []string{"app"})
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				})
+
 			},
 			Entry("add Flag to end", func(act cli.Action) cli.Action {
 				return cli.AddFlag(&cli.Flag{Name: "f", Uses: act})
@@ -851,6 +873,168 @@ var _ = Describe("Uses", func() {
 					return nil
 				})
 			}),
+			Entry("add Arg at beginning", func(act cli.Action) cli.Action {
+				return cli.ActionFunc(func(c *cli.Context) error {
+					c.Command().Args = append([]*cli.Arg{{Name: "f", Uses: act}}, c.Command().Args...)
+					return nil
+				})
+			}),
+		)
+
+		DescribeTable("new values are initialized on sub-commands",
+			func(uses func(cli.Action) cli.Action) {
+				act := new(joeclifakes.FakeAction)
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "1"},
+						{Name: "2"},
+					},
+					Args: []*cli.Arg{
+						{Name: "A"},
+					},
+					Commands: []*cli.Command{
+						{Name: "C", Uses: uses(act)},
+					},
+					Stderr: io.Discard,
+				}
+				_ = app.RunContext(context.Background(), []string{"app"})
+				Expect(act.ExecuteCallCount()).To(Equal(1))
+			},
+
+			Entry("add Command to parent", func(act cli.Action) cli.Action {
+				return cli.ActionFunc(func(c *cli.Context) error {
+					c.Parent().AddCommand(&cli.Command{Name: "f", Uses: act})
+					return nil
+				})
+			}),
+		)
+
+		DescribeTableSubtree("new values are initialized on flags or args",
+			func(uses func(cli.Action) cli.Action) {
+
+				It("supported on peer flag level", func() {
+					act := new(joeclifakes.FakeAction)
+					app := &cli.App{
+						Flags: []*cli.Flag{
+							{Name: "1"},
+							{Name: "2"},
+							{Name: "3", Uses: uses(act)},
+						},
+						Args: []*cli.Arg{
+							{Name: "A"},
+						},
+						Stderr: io.Discard,
+					}
+					_ = app.RunContext(context.Background(), []string{"app"})
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				})
+
+				It("supported on peer arg level", func() {
+					act := new(joeclifakes.FakeAction)
+					app := &cli.App{
+						Flags: []*cli.Flag{
+							{Name: "1"},
+							{Name: "2"},
+						},
+						Args: []*cli.Arg{
+							{Name: "A"},
+							{Name: "B", Uses: uses(act)},
+						},
+						Stderr: io.Discard,
+					}
+					_ = app.RunContext(context.Background(), []string{"app"})
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				})
+
+			},
+			Entry("add Flag to end", func(act cli.Action) cli.Action {
+				return cli.AddFlag(&cli.Flag{Name: "f", Uses: act})
+			}),
+			Entry("add Arg to end", func(act cli.Action) cli.Action {
+				return cli.AddArg(&cli.Arg{Name: "f", Uses: act})
+			}),
+			Entry("add Command to end", func(act cli.Action) cli.Action {
+				return cli.AddCommand(&cli.Command{Name: "f", Uses: act})
+			}),
+
+			// adding a flag at the beginning is not allowed in either flags or args
+		)
+
+		DescribeTableSubtree("new values are initialized on flags or args",
+			func(uses func(cli.Action) cli.Action) {
+
+				It("supported on peer flag level", func() {
+					act := new(joeclifakes.FakeAction)
+					app := &cli.App{
+						Flags: []*cli.Flag{
+							{Name: "1"},
+							{Name: "2"},
+							{Name: "3"},
+						},
+						Args: []*cli.Arg{
+							{Name: "A"},
+						},
+						Commands: []*cli.Command{
+							{Name: "R", Uses: uses(act)},
+						},
+						Stderr: io.Discard,
+					}
+					_ = app.RunContext(context.Background(), []string{"app"})
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				})
+
+				It("supported on peer arg level", func() {
+					act := new(joeclifakes.FakeAction)
+					app := &cli.App{
+						Flags: []*cli.Flag{
+							{Name: "1"},
+							{Name: "2"},
+						},
+						Args: []*cli.Arg{
+							{Name: "A"},
+							{Name: "B", Uses: uses(act)},
+						},
+						Stderr: io.Discard,
+					}
+					_ = app.RunContext(context.Background(), []string{"app"})
+					Expect(act.ExecuteCallCount()).To(Equal(1))
+				})
+
+			},
+			Entry("add Flag to end", func(act cli.Action) cli.Action {
+				return cli.AddFlag(&cli.Flag{Name: "f", Uses: act})
+			}),
+			Entry("add Arg to end", func(act cli.Action) cli.Action {
+				return cli.AddArg(&cli.Arg{Name: "f", Uses: act})
+			}),
+			Entry("add Command to end", func(act cli.Action) cli.Action {
+				return cli.AddCommand(&cli.Command{Name: "f", Uses: act})
+			}),
+
+			// adding a flag at the beginning is not allowed in either flags or args
+		)
+
+		DescribeTable("new values are initialized on flags",
+			func(uses func(cli.Action) cli.Action) {
+
+				act := new(joeclifakes.FakeAction)
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "1"},
+						{Name: "2"},
+						{Name: "3", Uses: uses(act)},
+					},
+					Args: []*cli.Arg{
+						{Name: "A"},
+						{Name: "B"},
+					},
+					Stderr: io.Discard,
+				}
+				_ = app.RunContext(context.Background(), []string{"app"})
+				Expect(act.ExecuteCallCount()).To(Equal(1))
+
+			},
+			// Allowed on flags (but NOT on args)
 			Entry("add Arg at beginning", func(act cli.Action) cli.Action {
 				return cli.ActionFunc(func(c *cli.Context) error {
 					c.Command().Args = append([]*cli.Arg{{Name: "f", Uses: act}}, c.Command().Args...)
