@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.14.0 (April 18, 2026)
+
+### New Features
+
+* Introduce `WithContext`, `WithContextValue` (3e1669d)
+* `NewActionEvaluator` (2118a92)
+* Reserved options (a2af267)
+* Configuration extension:
+    * Initial configuration store interface (461f989)
+* Expr extension
+    * Introduce `ExecuteParallel` (8ac8b4f)
+    * `ParseAllowInlineValues` (8b6aef6)
+* `MiddlewareFunc` (3e7f144)
+* Provider conventions for help text and defaults (54affd5)
+
+### Bug fixes and improvements
+
+* Rename `Default` to `DefaultColor` (ca88bac)
+* Ensure source metadata on sub-command arguments (30ecaf9)
+* Simplify `ContextOf` to re-use lookup (44e0248)
+* Bug fix: `DisplayHelpScreen` exit code (a7243a8)
+* Bug fix: ensure `After` flag pipeline runs for persistent flags (c61dce2)
+* Expose joe cmd metadata (bf5c556)
+* Expr extension:
+    * Parsing error tests (fe1b9fc)
+    * Improve duplicate, invalid, default naming (d5eb3e9)
+    * Rename `Binding` to `BindingEvaluator` (18ffbfa)
+* Rework `Assert` in terms of `IfMatch` (97e8260)
+* Rework of internal pipelines plumbing:
+    * Pipelines simplification, remove APIs (89c05b6)
+    * Rework deferred and user pipelines (f3f5275)
+* Remove path cache from context (f8e4101)
+* Additional tests: allow reinitialization in additional contexts (25448c6)
+* Chores:
+    * Modernizations: map.Keys (aa91d8a)
+    * Update dependent versions (18e9fd6)
+
+
 ## v0.13.0 (March 28, 2026)
 
 ### New Features
