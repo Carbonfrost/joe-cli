@@ -94,13 +94,7 @@ func (b *exactBinder[V]) Bind(_ context.Context) (V, error) {
 }
 
 func (b *exactBinder[V]) Initializer() cli.Action {
-	return cli.ActionFunc(func(c *cli.Context) error {
-		ctx := c.ContextOf(b.name())
-		if ctx == nil {
-			return nil
-		}
-		return ctx.Do(&cli.Prototype{Value: new(bool)})
-	})
+	return b.boolFlag()
 }
 
 // ActionBinder provides a binder which can also be used as an action
@@ -171,6 +165,16 @@ func (b *binderSupport[_]) name() any {
 	return b.impliedName
 }
 
+func (b *binderSupport[_]) boolFlag() cli.Action {
+	return cli.ActionFunc(func(c *cli.Context) error {
+		ctx := c.ContextOf(b.name())
+		if ctx == nil {
+			return nil
+		}
+		return ctx.Do(&cli.Prototype{Value: new(bool)})
+	})
+}
+
 func (b *binder[V]) Bind(c context.Context) (V, error) {
 	return b.lookupValue(cli.FromContext(c), b.binderSupport.name()), nil
 }
@@ -212,6 +216,27 @@ func Exact[T any](valopt ...T) Binder[T] {
 		panic("expected 0 or 1 args for valopt")
 	}
 	return wrapWithComposite(&exactBinder[T]{v: valopt[0]}).(Binder[T])
+}
+
+// Occurrences provides a binder which sets the value according to the number
+// of occurrences of the flag.
+func Occurrences[T any](name string, value T, valuesopt ...T) Binder[T] {
+	values := append([]T{value}, valuesopt...)
+	return wrapWithComposite(&occurrencesBinder[T]{values: values}).(Binder[T])
+}
+
+type occurrencesBinder[V any] struct {
+	binderSupport[V]
+	values []V
+}
+
+func (b *occurrencesBinder[V]) Bind(c context.Context) (V, error) {
+	occurs := cli.FromContext(c).Occurrences(b.name())
+	return b.values[min(occurs, len(b.values)-1)], nil
+}
+
+func (b *occurrencesBinder[V]) Initializer() cli.Action {
+	return b.boolFlag()
 }
 
 // Value obtains a binder that obtains a value from the context. If the name is
@@ -713,6 +738,7 @@ func wrapWithComposite[V any](in binderSupportInterface[V]) any {
 var (
 	_ binderSupportInterface[any] = (*binder[any])(nil)
 	_ binderSupportInterface[any] = (*exactBinder[any])(nil)
+	_ binderSupportInterface[any] = (*occurrencesBinder[any])(nil)
 	_ Binder[*cli.File]           = (*FileBinder)(nil)
 	_ Binder[bool]                = (*BoolBinder)(nil)
 )

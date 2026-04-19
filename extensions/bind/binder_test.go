@@ -451,6 +451,59 @@ var _ = Describe("Exact", func() {
 
 })
 
+var _ = Describe("Occurrences", func() {
+
+	Describe("intitializer", func() {
+
+		It("implicitly sets the type of the flag", func() {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "v",
+						Uses: bind.Call(callFactory(new(0)), bind.Occurrences("", 1)),
+					},
+				},
+			}
+
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(app.Flags[0].Value).To(Equal(new(false)))
+		})
+	})
+
+	It("invokes bind func with value from flag", func() {
+		var value1, value2 int
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "m",
+					Uses: bind.Call(callFactory(&value1), bind.Occurrences("", 33)),
+				},
+				{
+					Name: "n",
+					Uses: bind.Call(callFactory(&value2), bind.Occurrences("n", 39)),
+				},
+			},
+		}
+		args, _ := cli.Split("app -mn")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value1).To(Equal(33))
+		Expect(value2).To(Equal(39))
+	})
+
+	Describe("composite binder types", func() {
+		DescribeTable("examples", func(binder any, expected types.GomegaMatcher) {
+			Expect(binder).To(expected)
+		},
+			Entry("File", bind.Occurrences("", new(cli.File)), BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("Boolean", bind.Occurrences("", true), BeAssignableToTypeOf(new(bind.BoolBinder))),
+			Entry("NameValue", bind.Occurrences("", new(cli.NameValue)), BeAssignableToTypeOf(new(bind.NameValueBinder))),
+		)
+	})
+
+})
+
 var _ = Describe("Value", func() {
 
 	DescribeTable("examples", func(fn any) {
