@@ -106,14 +106,18 @@ type Detail struct {
 	// The factory or value can provide conventional values as an alternative
 	// to specifying this value by containing a method HelpText()string
 	HelpText string
-}
 
-type defaultsProvider interface {
-	Defaults() map[string]string
-}
+	// ManualText provides the text shown in the manual.  The default templates don't use this value
+	ManualText string
 
-type helpTextProvider interface {
-	HelpText() string
+	// UsageText provides the usage for the provider.  If left blank, a succinct synopsis
+	// is generated from the type of the provider's value
+	UsageText string
+
+	// Description provides a long description for the provider.  The long description is
+	// not used in any templates by default.  The type of Description should be string or
+	// fmt.Stringer.  Refer to func Description for details.
+	Description any
 }
 
 // Map provides a map that names the providers and their the default values.
@@ -432,6 +436,17 @@ func (d Details) LookupProvider(name string) (Detail, bool) {
 		return r, false
 	}
 
+	// These types must be declared because satisfy and printf analyzer cannot resolve
+	// anonymous generic interfaces, see golang/go#77625
+	type (
+		descriptionTextProvider interface{ Description() string }
+		descriptionProvider     interface{ Description() any }
+		defaultsProvider        interface{ Defaults() map[string]string }
+		helpTextProvider        interface{ HelpText() string }
+		manualTextProvider      interface{ ManualText() string }
+		usageTextProvider       interface{ UsageText() string }
+	)
+
 	if len(r.Defaults) == 0 {
 		if defaults, ok := conventions(r, (defaultsProvider).Defaults); ok {
 			r.Defaults = defaults
@@ -439,8 +454,28 @@ func (d Details) LookupProvider(name string) (Detail, bool) {
 	}
 
 	if r.HelpText == "" {
-		if helpTExt, ok := conventions(r, (helpTextProvider).HelpText); ok {
-			r.HelpText = helpTExt
+		if helpText, ok := conventions(r, (helpTextProvider).HelpText); ok {
+			r.HelpText = helpText
+		}
+	}
+
+	if r.ManualText == "" {
+		if manualText, ok := conventions(r, (manualTextProvider).ManualText); ok {
+			r.ManualText = manualText
+		}
+	}
+
+	if r.UsageText == "" {
+		if usageText, ok := conventions(r, (usageTextProvider).UsageText); ok {
+			r.UsageText = usageText
+		}
+	}
+
+	if r.Description == "" {
+		if description, ok := conventions(r, (descriptionTextProvider).Description); ok {
+			r.Description = description
+		} else if description, ok := conventions(r, (descriptionProvider).Description); ok {
+			r.Description = description
 		}
 	}
 
