@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
 )
 
@@ -65,6 +66,23 @@ var (
 	}
 )
 
+// Options provides the options for the configuration system
+type Options struct {
+	Profile string
+}
+
+// SetProfile sets up the profile and provides reasonable defaults for initializing
+// a flag.
+func SetProfile(name ...string) cli.Action {
+	return cli.Pipeline(
+		&cli.Prototype{
+			Name:     "profile",
+			HelpText: "Use the specified configuration profile by NAME",
+		},
+		bind.Action(WithProfile, bind.Exact(name...)),
+	)
+}
+
 // FromContext retrieves the configuration store from the context
 func FromContext(ctx context.Context) *Config {
 	return fromContext[*Config](ctx)
@@ -101,6 +119,7 @@ func keyFor(v contextValue) key {
 
 // Option defines an option for initialization of the configuration.
 type Option interface {
+	cli.Action
 	apply(*Config)
 }
 
@@ -110,18 +129,36 @@ func (f optionFunc) apply(c *Config) {
 	f(c)
 }
 
+func (f optionFunc) Execute(c context.Context) error {
+	f(FromContext(c))
+	return nil
+}
+
 // Config provides the configuration system, typically retrieved from the context.
 type Config struct {
 	// Action specifies the action which defines the action to run when this value
 	// is added to a pipeline. Typically, this is an initializer set via WithDefaultAction
 	cli.Action
 
-	store Store
+	store   Store
+	options Options
 }
 
 // Pipeline retrieves the configuration action as a pipeline
 func (c *Config) Pipeline() cli.Action {
 	return cli.Pipeline(c.Action)
+}
+
+// Profile retrieves the profile name
+func (c *Config) Profile() string {
+	return c.options.Profile
+}
+
+// WithProfile sets the profile name
+func WithProfile(name string) Option {
+	return optionFunc(func(c *Config) {
+		c.options.Profile = name
+	})
 }
 
 // New creates a new configuration within the context
