@@ -7,8 +7,10 @@ package cli
 import (
 	"context"
 	"fmt"
+	"iter"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"text/template"
 )
@@ -175,47 +177,87 @@ func setupRobustParsingMode(c *Context) {
 	c.target.setInternalFlags(internalFlagRobustParseModeEnabled, true)
 }
 
-// CompletionValues provides the context-specific completion values for
+func completionToken(v any) CompletionItem {
+	var helpText string
+	if ht, ok := v.(interface{ HelpText() string }); ok {
+		helpText = ht.HelpText()
+	}
+	return CompletionItem{
+		Type:     CompletionTypeToken,
+		HelpText: helpText,
+		Value:    fmt.Sprint(v),
+	}
+}
+
+// TokenGeneratorCompletion generates a list of tokens as completion results.
+func TokenGeneratorCompletion[T any](fn func(*Context) []T) Completion {
+	return CompletionFunc(func(c *Context) []CompletionItem {
+		items := fn(c)
+		return filterCompletionOnContext(
+			c,
+			func(yield func(CompletionItem) bool) {
+				for _, s := range items {
+					if !yield(completionToken(s)) {
+						return
+					}
+				}
+			})
+	})
+}
+
+// ValueCompletion provides the context-specific completion values for
 // the given strings.  This can be specified as the Completion for flags
 // or args.  For flags, the name of the flag is automatically
 // prefixed to the completion value using valid syntax.
-func CompletionValues(values ...string) Completion {
+func ValueCompletion[T any](values ...T) Completion {
 	return CompletionFunc(func(c *Context) []CompletionItem {
-		switch o := c.Target().(type) {
-		case *Flag:
-			res := make([]CompletionItem, 0, len(values))
-
-			if c.CompletionRequest().Incomplete == "" {
+		return filterCompletionOnContext(
+			c,
+			func(yield func(CompletionItem) bool) {
 				for _, v := range values {
-					res = append(res, CompletionItem{Value: v})
-				}
-				return res
-			}
-			for _, n := range o.synopsis().Names {
-				var prefix string
-				if len(n) == 2 { // as in -s short names
-					prefix = n // Force run-in style, which is most compatible
-				} else {
-					prefix = n + "="
-				}
-				for _, a := range values {
-					v := prefix + a
-					if strings.HasPrefix(v, c.CompletionRequest().Incomplete) {
-						res = append(res, CompletionItem{Value: v})
+					if !yield(completionToken(v)) {
+						return
 					}
 				}
+			},
+		)
+	})
+}
+
+func filterCompletionOnContext(c *Context, values iter.Seq[CompletionItem]) []CompletionItem {
+	incompletePart := c.CompletionRequest().Incomplete
+	if incompletePart == "" {
+		return slices.Collect(values)
+	}
+
+	if o, ok := c.Target().(*Flag); ok {
+		res := make([]CompletionItem, 0)
+		for _, n := range o.synopsis().Names {
+			var prefix string
+			if len(n) == 2 { // as in -s short names
+				prefix = n // Force run-in style, which is most compatible
+			} else {
+				prefix = n + "="
 			}
-			return res
-		default:
-			res := make([]CompletionItem, 0, len(values))
-			for _, v := range values {
-				if strings.HasPrefix(v, c.CompletionRequest().Incomplete) {
-					res = append(res, CompletionItem{Value: v})
+			for a := range values {
+				v := prefix + a.Value
+				if strings.HasPrefix(v, incompletePart) {
+					item := a
+					item.Value = v
+					res = append(res, item)
 				}
 			}
-			return res
 		}
-	})
+		return res
+	}
+
+	res := make([]CompletionItem, 0)
+	for v := range values {
+		if strings.HasPrefix(v.Value, incompletePart) {
+			res = append(res, v)
+		}
+	}
+	return res
 }
 
 // Complete considers the given arguments and completion request to determine

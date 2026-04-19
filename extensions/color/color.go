@@ -190,7 +190,7 @@ func flagWithMode(c *cli.Context) error {
 			SetMode(),
 			tagged,
 		),
-		Completion: cli.CompletionValues("auto", "always", "never"),
+		Completion: cli.ValueCompletion("auto", "always", "never"),
 		HelpText:   helpText,
 	})
 }

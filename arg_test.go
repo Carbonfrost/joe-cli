@@ -542,7 +542,7 @@ var _ = Describe("Arg", func() {
 		),
 		Entry(
 			"SetCompletion",
-			cli.SetCompletion(cli.CompletionValues("ok")),
+			cli.SetCompletion(cli.ValueCompletion("ok")),
 			MatchFields(IgnoreExtras, Fields{"Completion": Not(BeNil())}),
 		),
 	)

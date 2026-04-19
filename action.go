@@ -955,7 +955,7 @@ func Enum(options ...string) Action {
 
 	return &Prototype{
 		UsageText:  usageText,
-		Completion: CompletionValues(options...),
+		Completion: ValueCompletion(options...),
 		Uses: Setup{ // Wrapped in Setup because the pipeline is required
 			Uses: ValidatorFunc(func(raw []string) error {
 				for _, occur := range raw {

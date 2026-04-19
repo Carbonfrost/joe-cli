@@ -38,7 +38,7 @@ var _ = Describe("Complete", func() {
 			},
 			Flags: []*cli.Flag{
 				{Name: "flag", Aliases: []string{"f"}, Value: new(bool)},
-				{Name: "long", Aliases: []string{"l"}, HelpText: "has help text", Completion: cli.CompletionValues("a")},
+				{Name: "long", Aliases: []string{"l"}, HelpText: "has help text", Completion: cli.ValueCompletion("a")},
 			},
 			Action: func() {},
 		}
@@ -97,7 +97,7 @@ var _ = Describe("Complete", func() {
 	)
 
 	var (
-		rosesAndViolets = cli.CompletionValues("roses", "violets")
+		rosesAndViolets = cli.ValueCompletion("roses", "violets")
 	)
 
 	DescribeTable("flag examples", func(arguments string, incomplete string, completion cli.Completion, expected types.GomegaMatcher) {
