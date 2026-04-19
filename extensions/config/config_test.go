@@ -40,7 +40,7 @@ var _ = Describe("Config", func() {
 			func(v any, lookup func(*config.Config) any, expected types.GomegaMatcher) {
 
 				It("delegates to store nominal", func() {
-					lk := config.New(config.WithStore(cli.LookupValues{"a": v}))
+					lk := config.New(config.WithStore(alwaysHas{cli.LookupValues{"a": v}}))
 					Expect(lookup(lk)).To(expected)
 					Expect(lk.Value("a")).To(expected)
 				})
@@ -207,3 +207,11 @@ var _ = Describe("Config", func() {
 	})
 
 })
+
+type alwaysHas struct {
+	cli.Lookup
+}
+
+func (alwaysHas) Has(string) bool {
+	return true
+}

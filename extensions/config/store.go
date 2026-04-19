@@ -15,6 +15,7 @@ import (
 // a "dig" algorithm to traverse hierarchical names.
 type Store interface {
 	cli.Lookup
+	Has(name string) bool
 }
 
 // Loader loads the configuration system

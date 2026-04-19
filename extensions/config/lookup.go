@@ -159,4 +159,9 @@ func (c *Config) Value(name any) any {
 	return c.Store().Value(name)
 }
 
-var _ cli.Lookup = (*Config)(nil)
+// Has determines whether the configuration value exists
+func (c *Config) Has(name string) bool {
+	return c.Store().Has(name)
+}
+
+var _ Store = (*Config)(nil)
