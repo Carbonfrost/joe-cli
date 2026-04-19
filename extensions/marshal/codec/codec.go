@@ -10,7 +10,24 @@ import (
 	"io"
 )
 
+// Interface defines the interface for reading and writing from data
 type Interface interface {
 	MarshalWrite(w io.Writer, in any) error
 	UnmarshalRead(r io.Reader, out any) error
+}
+
+// Option implements options for codecs
+type Option interface {
+	apply(Interface) error
+}
+
+// WithOptions applies options to the given codec
+func WithOptions(i Interface, opts ...Option) (Interface, error) {
+	for _, o := range opts {
+		err := o.apply(i)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return i, nil
 }
