@@ -149,12 +149,8 @@ func (b *binderSupport[_]) SetName(name any) {
 }
 
 func (b *binderSupport[V]) Initializer() cli.Action {
-	return cli.ActionFunc(func(c *cli.Context) error {
-		ctx := c.ContextOf(b.name())
-		if ctx == nil {
-			return nil
-		}
-		return ctx.Do(&cli.Prototype{Value: support.BindSupportedValue(new(V))})
+	return b.prototypeThunk(func() *cli.Prototype {
+		return &cli.Prototype{Value: support.BindSupportedValue(new(V))}
 	})
 }
 
@@ -166,12 +162,16 @@ func (b *binderSupport[_]) name() any {
 }
 
 func (b *binderSupport[_]) boolFlag() cli.Action {
-	return cli.ActionFunc(func(c *cli.Context) error {
-		ctx := c.ContextOf(b.name())
-		if ctx == nil {
-			return nil
-		}
-		return ctx.Do(&cli.Prototype{Value: new(bool)})
+	return b.prototypeThunk(func() *cli.Prototype {
+		return &cli.Prototype{Value: new(bool)}
+	})
+}
+
+func (b *binderSupport[V]) prototypeThunk(fn func() *cli.Prototype) cli.Action {
+	// This additional thunk is needed so that the b.name() is captured at the right
+	// moement
+	return cli.ActionOf(func(ctx context.Context) error {
+		return cli.Do(ctx, cli.WithContextOf(b.name(), fn()))
 	})
 }
 

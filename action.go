@@ -856,6 +856,17 @@ func (c *Context) withWrappedContext(ctx context.Context) *Context {
 	return &wrapped
 }
 
+// WithContextOf provides middleware that wraps the context for subsequent actions
+func WithContextOf(name any, a Action) Action {
+	return ActionFunc(func(c *Context) error {
+		ctx := c.ContextOf(name)
+		if ctx == nil {
+			return nil
+		}
+		return ctx.Do(a)
+	})
+}
+
 // Timeout provides an action which adds a timeout to the context.
 func Timeout(timeout time.Duration) Action {
 	return Before(ActionFunc(func(c1 *Context) error {
