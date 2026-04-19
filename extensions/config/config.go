@@ -78,6 +78,9 @@ func SetProfile(name ...string) cli.Action {
 		&cli.Prototype{
 			Name:     "profile",
 			HelpText: "Use the specified configuration profile by NAME",
+			Completion: cli.TokenGeneratorCompletion(func(c *cli.Context) []string {
+				return FromContext(c).FindProfileNames(c)
+			}),
 		},
 		bind.Action(WithProfile, bind.Exact(name...)),
 	)
@@ -140,8 +143,9 @@ type Config struct {
 	// is added to a pipeline. Typically, this is an initializer set via WithDefaultAction
 	cli.Action
 
-	store   Store
-	options Options
+	store    Store
+	options  Options
+	location Location
 }
 
 // Pipeline retrieves the configuration action as a pipeline
@@ -181,6 +185,34 @@ func (c *Config) Apply(opts ...Option) {
 	}
 }
 
+// Paths resolves the file paths for config
+func (c *Config) Paths(ctx context.Context) ([]string, error) {
+	return c.location.Paths(ctx)
+}
+
+// Resolve determines the locations of config in terms of idiomaitic locations, if available
+func (c *Config) Resolve(opts Options) ([]IdiomaticLocation, error) {
+	if i, ok := c.location.(IdiomaticLocationProvider); ok {
+		return i.Resolve(opts)
+	}
+	return nil, nil
+}
+
+// FindProfileNames detects the profiles
+func (c *Config) FindProfileNames(ctx context.Context) []string {
+	if i, ok := c.location.(IdiomaticLocationProvider); ok {
+		return i.FindProfileNames(ctx)
+	}
+	return nil
+}
+
+// WithLocation sets the configuration location to use
+func WithLocation(l Location) Option {
+	return optionFunc(func(c *Config) {
+		c.location = l
+	})
+}
+
 // WithStore sets the configuration store to use
 func WithStore(s Store) Option {
 	return optionFunc(func(c *Config) {
@@ -212,3 +244,5 @@ func FlagsAndArgs() cli.Action {
 }
 
 func (*Config) contextValueSigil() {}
+
+var _ IdiomaticLocationProvider = (*Config)(nil)

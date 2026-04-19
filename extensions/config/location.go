@@ -23,6 +23,18 @@ type IdiomaticLocation interface {
 	Layer() Layer
 }
 
+// IdiomaticLocationProvider provides an interface for how idiomatic locations
+// are detected
+type IdiomaticLocationProvider interface {
+	Location
+
+	// Resolve determines the locations
+	Resolve(Options) ([]IdiomaticLocation, error)
+
+	// FindProfileNames locates available profile names
+	FindProfileNames(context.Context) []string
+}
+
 // Layer identifies layers in the configuration system
 type Layer int
 
