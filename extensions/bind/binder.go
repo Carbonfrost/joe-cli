@@ -623,6 +623,16 @@ func (f *FileBinder) Base() Binder[string] {
 	return then(f, (*cli.File).Base)
 }
 
+// OpenReader obtains a reader for the file
+func (f *FileBinder) OpenReader() Binder[io.Reader] {
+	return then(f, (*cli.File).OpenReader)
+}
+
+// CreateWriter obtains a writer for the file
+func (f *FileBinder) CreateWriter() Binder[io.Writer] {
+	return then(f, (*cli.File).CreateWriter)
+}
+
 // NameValueBinder provides a binder for [cli.NameValue]
 type NameValueBinder struct {
 	binderSupportInterface[*cli.NameValue]

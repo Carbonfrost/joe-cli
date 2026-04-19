@@ -6,6 +6,7 @@ package bind_test
 
 import (
 	"context"
+	"io"
 	"io/fs"
 	"math/big"
 	"net"
@@ -221,6 +222,7 @@ var _ = Describe("FileBinder", func() {
 		var (
 			exists                   bool
 			dir, ext, name, basename string
+			dataReader               io.Reader
 		)
 
 		app := &cli.App{
@@ -234,6 +236,7 @@ var _ = Describe("FileBinder", func() {
 						bind.Call(callFactory(&ext), bind.File().Ext()),
 						bind.Call(callFactory(&dir), bind.File().Dir()),
 						bind.Call(callFactory(&exists), bind.File().Exists()),
+						bind.Call(callFactory(&dataReader), bind.File().OpenReader()),
 					),
 				},
 			},
@@ -251,6 +254,9 @@ var _ = Describe("FileBinder", func() {
 		Expect(ext).To(Equal(".txt"))
 		Expect(dir).To(Equal("V"))
 		Expect(exists).To(BeTrue())
+
+		data, _ := io.ReadAll(dataReader)
+		Expect(string(data)).To(Equal("data"))
 	})
 })
 

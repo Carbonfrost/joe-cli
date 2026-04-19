@@ -281,6 +281,40 @@ func (f *File) setupOptionRequireFS(c *Context) error {
 	return nil
 }
 
+// OpenReader gets the reader for the file
+func (f *File) OpenReader() io.Reader {
+	r, err := f.Open()
+	if err != nil {
+		return errOnFirstReader{err}
+	}
+	return r
+}
+
+type errOnFirstReader struct {
+	err error
+}
+
+func (e errOnFirstReader) Read([]byte) (int, error) {
+	return -1, e.err
+}
+
+// CreateWriter gets the writer for the file
+func (f *File) CreateWriter() io.Writer {
+	r, err := f.Create()
+	if err != nil {
+		return errOnFirstWriter{err}
+	}
+	return r.(io.Writer)
+}
+
+type errOnFirstWriter struct {
+	err error
+}
+
+func (e errOnFirstWriter) Write([]byte) (int, error) {
+	return -1, e.err
+}
+
 // Set argument value; can call repeatedly
 func (f *FileSet) Set(arg string) error {
 	if f.Files == nil {
