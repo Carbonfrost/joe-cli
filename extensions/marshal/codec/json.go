@@ -9,7 +9,9 @@ import (
 	"io"
 )
 
-type jsonCodec struct{}
+type jsonCodec struct {
+	disallowUnknownFields bool
+}
 
 func NewJSONCodec() Interface {
 	return &jsonCodec{}
@@ -20,7 +22,14 @@ func (*jsonCodec) MarshalWrite(w io.Writer, in any) error {
 	return e.Encode(in)
 }
 
-func (*jsonCodec) UnmarshalRead(r io.Reader, out any) error {
+func (j *jsonCodec) UnmarshalRead(r io.Reader, out any) error {
 	e := json.NewDecoder(r)
+	if j.disallowUnknownFields {
+		e.DisallowUnknownFields()
+	}
 	return e.Decode(out)
+}
+
+func (j *jsonCodec) DisallowUnknownFields() {
+	j.disallowUnknownFields = true
 }

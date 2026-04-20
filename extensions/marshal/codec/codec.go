@@ -7,6 +7,7 @@
 package codec
 
 import (
+	"errors"
 	"io"
 )
 
@@ -30,4 +31,31 @@ func WithOptions(i Interface, opts ...Option) (Interface, error) {
 		}
 	}
 	return i, nil
+}
+
+type commonInterfaceOptioner interface {
+	DisallowUnknownFields()
+}
+
+// DisallowUnknownFields affects unmarshaling and prevents unknown fields from
+// being specified.
+func DisallowUnknownFields() Option {
+	return booleanOption((commonInterfaceOptioner).DisallowUnknownFields)
+}
+
+func booleanOption[C any](fn func(C)) Option {
+	return optionFunc(func(i Interface) error {
+		c, ok := i.(C)
+		if !ok {
+			return errors.ErrUnsupported
+		}
+		fn(c)
+		return nil
+	})
+}
+
+type optionFunc func(i Interface) error
+
+func (o optionFunc) apply(i Interface) error {
+	return o(i)
 }

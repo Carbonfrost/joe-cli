@@ -54,3 +54,9 @@ func (c Codec) New(opts ...codec.Option) (codec.Interface, error) {
 func (c Codec) String() string {
 	return codecNames[c]
 }
+
+// DisallowUnknownFields affects unmarshaling and prevents unknown fields from
+// being specified.
+func DisallowUnknownFields() codec.Option {
+	return codec.DisallowUnknownFields()
+}

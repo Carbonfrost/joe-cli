@@ -9,6 +9,7 @@ import (
 )
 
 type tomlCodec struct {
+	disallowUnknownFields bool
 }
 
 func init() {
@@ -25,7 +26,15 @@ func (*tomlCodec) MarshalWrite(w io.Writer, in any) error {
 	return e.Encode(in)
 }
 
-func (*tomlCodec) UnmarshalRead(r io.Reader, out any) error {
-	e := toml.NewDecoder(r)
-	return e.Decode(out)
+func (t *tomlCodec) UnmarshalRead(r io.Reader, out any) error {
+	d := toml.NewDecoder(r)
+
+	if t.disallowUnknownFields {
+		d.DisallowUnknownFields()
+	}
+	return d.Decode(out)
+}
+
+func (t *tomlCodec) DisallowUnknownFields() {
+	t.disallowUnknownFields = true
 }
