@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.14.1 (April 20, 2026)
+
+### New Features
+
+* `WithContextOf` (b9f7b86)
+* Add support for reading, writer convenience methods on `File` (e49adf2)
+* Completion to support token generation, rename `ValueCompletion` for consistency (97ebdfe)
+* Codec extension:
+    * `DisallowUnknownFields` (c06881b)
+    * TOML codec and codec registration (cc8e08b)
+* Bind extension:
+    * `Occurrences` (aa5a706)
+* Config extension:
+    * Update `Store` to include `Has` (142c060)
+    * Set profile as an option (3ca1f24)
+    * Lookup, constructor, context-bound API (e95e146)
+    * `IdiomaticLocationProvider` (6f0d847)
+* Provider extension:
+    * Additional text conventions (18cbf60)
+
+### Bug fixes and improvements
+
+* Breaking changes:
+    * Remove simple delegates for data and internal flags (7095e7a)
+
+
 ## v0.14.0 (April 18, 2026)
 
 ### New Features
