@@ -60,10 +60,7 @@ type WorkspaceFinder interface {
 
 type defaultWorkspaceFinder int
 
-type workspaceOption struct {
-	initializer cli.Action
-	applyFn     func(*Workspace)
-}
+type workspaceOption func(*Workspace) error
 
 // SkipFile is returned by the walker function to indicate a file should not
 // be returned during the workspace scan
@@ -100,7 +97,7 @@ func withDefaultAction(w *Workspace) *Workspace {
 		SetupWorkspace(),
 		cli.AddFlags([]*cli.Flag{
 			{Uses: SetWorkingDir()},
-			{Uses: WithConfigDir()},
+			{Uses: SetConfigDir()},
 		}...),
 	)
 	return w
@@ -151,28 +148,30 @@ func SetWorkingDir(diropt ...string) cli.Action {
 
 // WithConfigDir sets the workspace config directory. This can be used as an option to
 // NewWorkspace or Workspace.Apply, but when it is, the diropt must be specified.
-// It can also be used as an Action. When it is used within the Uses pipeline,
+// It can also be used as an Action.
+func WithConfigDir(dir string) WorkspaceOption {
+	return workspaceOption(func(w *Workspace) error {
+		w.configDir = dir
+		return nil
+	})
+}
+
+// SetConfigDir sets the workspace config directory as an action.
+// When it is used within the Uses pipeline,
 // it initializes reasonable defaults for a flag and will set the directory within
 // the workspace in the Before timing. The flag will either use the
 // directory specified by diropt or its own value if diropt is not specified.
-func WithConfigDir(diropt ...string) WorkspaceOption {
-	return workspaceOption{
-		initializer: cli.Pipeline(
-			cli.Prototype{
-				Name:     "config-dir",
-				HelpText: "Set the path to the configuration DIRECTORY",
-			},
-			func(c *cli.Context) {
-				c.SetName(appName(c) + "-dir")
-			},
-			bind.BeforeCall2(
-				(*Workspace).setConfigDir,
-				bind.FromContext(WorkspaceFromContext),
-				bind.Exact(diropt...),
-			),
-		),
-		applyFn: applyOption((*Workspace).setConfigDir, "diropt", diropt...),
-	}
+func SetConfigDir(diropt ...string) cli.Action {
+	return cli.Pipeline(
+		cli.Prototype{
+			Name:     "config-dir",
+			HelpText: "Set the path to the configuration DIRECTORY",
+		},
+		func(c *cli.Context) {
+			c.SetName(appName(c) + "-dir")
+		},
+		bind.Before(WithConfigDir, bind.Exact(diropt...)),
+	)
 }
 
 func applyOption[T any](f func(*Workspace, T) error, name string, opt ...T) func(*Workspace) {
@@ -187,17 +186,11 @@ func applyOption[T any](f func(*Workspace, T) error, name string, opt ...T) func
 }
 
 func (w workspaceOption) apply(ws *Workspace) {
-	w.applyFn(ws)
+	w(ws)
 }
 
 func (w workspaceOption) Execute(c context.Context) error {
-	if w.initializer != nil {
-		return cli.Do(c, w.initializer)
-	}
-
-	return cli.Do(c, cli.Before(cli.ActionOf(func(c1 context.Context) {
-		w.apply(WorkspaceFromContext(c1))
-	})))
+	return w(WorkspaceFromContext(c))
 }
 
 // Dir gets the workspace directory, which is the root of all content in
@@ -245,32 +238,29 @@ type WorkspaceFileLoaderFunc func(root fs.FS, name string, d fs.DirEntry) (any, 
 
 // WithFileLoader is an option that determines how to read files in a workspace.
 func WithFileLoader(loader WorkspaceFileLoaderFunc) WorkspaceOption {
-	return workspaceOption{
-		applyFn: func(w *Workspace) {
-			w.loader = loader
-		},
-	}
+	return workspaceOption(func(w *Workspace) error {
+		w.loader = loader
+		return nil
+	})
 
 }
 
 // WithFinder is an option that determines how to finder the workspace
 func WithFinder(finder WorkspaceFinder) WorkspaceOption {
-	return workspaceOption{
-		applyFn: func(w *Workspace) {
-			w.finder = finder
-		},
-	}
+	return workspaceOption(func(w *Workspace) error {
+		w.finder = finder
+		return nil
+	})
 
 }
 
 // WithFS specifies the file system to use for the workspace. By default, the workspace
 // with use [os.DirFS] corresponding to the workspace directory.
 func WithFS(f fs.FS) WorkspaceOption {
-	return workspaceOption{
-		applyFn: func(w *Workspace) {
-			w.f = f
-		},
-	}
+	return workspaceOption(func(w *Workspace) error {
+		w.f = f
+		return nil
+	})
 }
 
 // WithWalkDirFunc specifies the function that walks the directory for files.
@@ -279,11 +269,10 @@ func WithFS(f fs.FS) WorkspaceOption {
 // return SkipFile introduced by this package to indicate that a file is skipped
 // in the result of the [Workspace.Files] and [Workspace.LoadFiles] methods.
 func WithWalkDirFunc(fn fs.WalkDirFunc) WorkspaceOption {
-	return workspaceOption{
-		applyFn: func(w *Workspace) {
-			w.walkDirFunc = fn
-		},
-	}
+	return workspaceOption(func(w *Workspace) error {
+		w.walkDirFunc = fn
+		return nil
+	})
 }
 
 // Files enumerates all files in the workspace which match the filters.
@@ -353,11 +342,6 @@ func (w *Workspace) walkDir(fn fs.WalkDirFunc, diropt ...string) error {
 
 		return fn(name, d, err)
 	})
-}
-
-func (w *Workspace) setConfigDir(value string) error {
-	w.configDir = value
-	return nil
 }
 
 func (*Workspace) contextValueSigil() {}
