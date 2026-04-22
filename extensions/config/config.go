@@ -68,7 +68,12 @@ var (
 
 // Options provides the options for the configuration system
 type Options struct {
+
+	// Profile names the profile to load
 	Profile string
+
+	// AdditionalFiles specifies additional configuration files to load
+	AdditionalFiles []string
 }
 
 // SetProfile sets up the profile and provides reasonable defaults for initializing
@@ -83,6 +88,17 @@ func SetProfile(name ...string) cli.Action {
 			}),
 		},
 		bind.Action(WithProfile, bind.Exact(name...)),
+	)
+}
+
+// SetAdditionalFile sets an additional file in the configuration
+func SetAdditionalFile(filename ...*cli.File) cli.Action {
+	return cli.Pipeline(
+		&cli.Prototype{
+			Name:     "config-file",
+			HelpText: "Load additional configuration FILE",
+		},
+		bind.Action(AddAdditionalFile, bind.Exact(filename...).(*bind.FileBinder).Name()),
 	)
 }
 
@@ -156,6 +172,13 @@ func (c *Config) Pipeline() cli.Action {
 // Profile retrieves the profile name
 func (c *Config) Profile() string {
 	return c.options.Profile
+}
+
+// AddAdditionalFile adds an additional file to load
+func AddAdditionalFile(filename string) Option {
+	return optionFunc(func(c *Config) {
+		c.options.AdditionalFiles = append(c.options.AdditionalFiles, filename)
+	})
 }
 
 // WithProfile sets the profile name
@@ -240,7 +263,10 @@ func WithDefaultAction() Option {
 // FlagsAndArgs is an action which provides the default flags to the application.
 // Despite its name, which is conventianal, this action provides no args.
 func FlagsAndArgs() cli.Action {
-	return cli.AddFlags([]*cli.Flag{}...)
+	return cli.AddFlags([]*cli.Flag{
+		{Uses: SetProfile()},
+		{Uses: SetAdditionalFile()},
+	}...)
 }
 
 func (*Config) contextValueSigil() {}
