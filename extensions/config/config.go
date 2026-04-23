@@ -198,6 +198,9 @@ func New(opts ...Option) *Config {
 
 // Store provides the configuration store
 func (c *Config) Store() Store {
+	if c == nil || c.store == nil {
+		return empty
+	}
 	return c.store
 }
 

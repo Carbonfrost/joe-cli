@@ -7,7 +7,7 @@ package config
 import (
 	"context"
 
-	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli"
 )
 
 // Store provides configuration storage based on the Lookup interface.
@@ -15,10 +15,18 @@ import (
 // a "dig" algorithm to traverse hierarchical names.
 type Store interface {
 	cli.Lookup
-	Has(name string) bool
+	Has(name any) bool
 }
 
 // Loader loads the configuration system
 type Loader interface {
 	Load(context.Context) (Store, error)
+}
+
+type emptyStore struct{ cli.Lookup }
+
+var empty = emptyStore{cli.EmptyLookup}
+
+func (emptyStore) Has(any) bool {
+	return false
 }

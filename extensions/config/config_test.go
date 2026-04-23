@@ -34,6 +34,36 @@ var _ = Describe("Config", func() {
 		}).NotTo(Panic())
 	})
 
+	Describe("Store", func() {
+
+		It("returns empty store when Config is nil", func() {
+			var c *config.Config
+			store := c.Store()
+			Expect(store).NotTo(BeNil())
+			Expect(store.Has("anything")).To(BeFalse())
+			Expect(store.String("anything")).To(Equal(""))
+			Expect(store.Int("anything")).To(Equal(0))
+		})
+
+		It("returns empty store when store is nil", func() {
+			c := &config.Config{}
+			store := c.Store()
+			Expect(store).NotTo(BeNil())
+			Expect(store.Has("anything")).To(BeFalse())
+			Expect(store.String("anything")).To(Equal(""))
+			Expect(store.Int("anything")).To(Equal(0))
+		})
+
+		It("returns actual store when set", func() {
+			c := config.New(config.WithStore(alwaysHas{cli.LookupValues{"key": "value"}}))
+			store := c.Store()
+			Expect(store).NotTo(BeNil())
+			Expect(store.Has("key")).To(BeTrue())
+			Expect(store.String("key")).To(Equal("value"))
+		})
+
+	})
+
 	var _ = Describe("Lookup", func() {
 
 		DescribeTableSubtree("examples",
@@ -212,6 +242,6 @@ type alwaysHas struct {
 	cli.Lookup
 }
 
-func (alwaysHas) Has(string) bool {
+func (alwaysHas) Has(any) bool {
 	return true
 }

@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -78,6 +78,11 @@ type Lookup interface {
 	// Interface returns the raw value without dereferencing and whether it exists
 	Interface(name any) (any, bool)
 }
+
+// EmptyLookup provides a lookup that contains no values
+const EmptyLookup emptyLookup = iota
+
+type emptyLookup int
 
 // LookupValues provides a Lookup backed by a map
 type LookupValues map[string]any
@@ -434,6 +439,36 @@ func (c LookupFunc) lookupValue(name string) (any, bool) {
 	}
 	return c(name)
 }
+
+func (emptyLookup) Bool(any) bool               { return false }
+func (emptyLookup) File(any) *File              { return nil }
+func (emptyLookup) FileSet(any) *FileSet        { return nil }
+func (emptyLookup) Float32(any) float32         { return 0 }
+func (emptyLookup) Float64(any) float64         { return 0 }
+func (emptyLookup) Int(any) int                 { return 0 }
+func (emptyLookup) Int16(any) int16             { return 0 }
+func (emptyLookup) Int32(any) int32             { return 0 }
+func (emptyLookup) Int64(any) int64             { return 0 }
+func (emptyLookup) Int8(any) int8               { return 0 }
+func (emptyLookup) Duration(any) time.Duration  { return 0 }
+func (emptyLookup) List(any) []string           { return nil }
+func (emptyLookup) Map(any) map[string]string   { return nil }
+func (emptyLookup) NameValue(any) *NameValue    { return nil }
+func (emptyLookup) NameValues(any) []*NameValue { return nil }
+func (emptyLookup) String(any) string           { return "" }
+func (emptyLookup) Uint(any) uint               { return 0 }
+func (emptyLookup) Uint16(any) uint16           { return 0 }
+func (emptyLookup) Uint32(any) uint32           { return 0 }
+func (emptyLookup) Uint64(any) uint64           { return 0 }
+func (emptyLookup) Uint8(any) uint8             { return 0 }
+func (emptyLookup) URL(any) *url.URL            { return nil }
+func (emptyLookup) Regexp(any) *regexp.Regexp   { return nil }
+func (emptyLookup) IP(any) net.IP               { return nil }
+func (emptyLookup) BigInt(any) *big.Int         { return nil }
+func (emptyLookup) BigFloat(any) *big.Float     { return nil }
+func (emptyLookup) Bytes(any) []byte            { return nil }
+func (emptyLookup) Interface(any) (any, bool)   { return nil, false }
+func (emptyLookup) Value(any) any               { return nil }
 
 func nameToString(name any) string {
 	switch v := name.(type) {

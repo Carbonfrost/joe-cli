@@ -160,7 +160,7 @@ func (c *Config) Value(name any) any {
 }
 
 // Has determines whether the configuration value exists
-func (c *Config) Has(name string) bool {
+func (c *Config) Has(name any) bool {
 	return c.Store().Has(name)
 }
 
