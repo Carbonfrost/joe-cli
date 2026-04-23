@@ -378,11 +378,11 @@ var _ = Describe("DisplayHelpScreen", func() {
 			&cli.App{
 				Options: cli.SortedCommands,
 				Commands: []*cli.Command{
-					{Name: "z,"},
-					{Name: "d,"},
+					{Name: "z_"},
+					{Name: "d_"},
 				},
 			},
-			MatchRegexp(`(?s)d,.*z,`)),
+			MatchRegexp(`(?s)d_.*z_`)),
 
 		Entry("display sorted exprs",
 			&cli.App{

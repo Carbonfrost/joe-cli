@@ -2665,6 +2665,7 @@ var _ = Describe("PreventSetup", func() {
 				Stderr:  io.Discard,
 				Commands: []*cli.Command{
 					{
+						Name: "c_",
 						Flags: []*cli.Flag{
 							{
 								Name: "f",

@@ -729,6 +729,29 @@ func finalizeArgsAndFlags(c *Context) error {
 	return nil
 }
 
+func finalizeSubcommands(c *Context) error {
+	// Set up default names for args; generate an error for unnamed flags; generate
+	// an error for duplicative names
+	names := map[string]bool{}
+	var errs []error
+	for _, name := range c.Path() {
+		names[name] = true
+	}
+
+	for i, c := range c.LocalCommands() {
+		if c.Name == "" {
+			errs = append(errs, fmt.Errorf("command at index #%d must have a name", i))
+			continue
+		}
+		errs = append(errs, support.ValidateNames(names, c.Name, c.Aliases, nil)...)
+	}
+
+	if len(errs) > 0 {
+		return c.internalError(fmt.Errorf("errors initializing command: %w", errors.Join(errs...)))
+	}
+	return nil
+}
+
 func getGroup(f *Flag) synopsis.OptionGroup {
 	if f.internalFlags().hidden() {
 		return synopsis.Hidden

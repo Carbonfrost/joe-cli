@@ -434,6 +434,10 @@ func setupExtensionUsings() Action {
 
 func optionalCommand(name string, cmd Action) Action {
 	return IfMatch(HasCommand(name), nil, ActionFunc(func(c *Context) error {
+		if c.SkipImplicitSetup() {
+			return nil
+		}
+
 		app := c.Command()
 		if len(app.Subcommands) > 0 {
 			return c.AddCommand(&Command{

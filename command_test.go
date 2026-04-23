@@ -667,7 +667,14 @@ var _ = Describe("Command", func() {
 			Expect(app.Args[0].Name).To(Equal("_1"))
 		})
 
-		var addFlagOrArg = func(option any) cli.Action {
+		It("implicitly names app", func() {
+			app := &cli.App{}
+
+			_ = app.RunContext(context.Background(), []string{"app"})
+			Expect(app.Name).NotTo(BeEmpty())
+		})
+
+		var addChild = func(option any) cli.Action {
 			return cli.Add(option)
 		}
 
@@ -683,16 +690,23 @@ var _ = Describe("Command", func() {
 				Args: []*cli.Arg{
 					{Name: "arg"},
 				},
-				Uses: addFlagOrArg(option),
+				Commands: []*cli.Command{
+					{Name: "command", Aliases: []string{"alias"}},
+				},
+				Uses: addChild(option),
 			}
 
 			_, err := app.Initialize(context.Background())
 			Expect(err).To(expected)
 		},
 			Entry(
-				"no name",
+				"no flag name",
 				&cli.Flag{},
 				MatchError(ContainSubstring("flag at index #1 must have a name"))),
+			Entry(
+				"no command name",
+				&cli.Command{},
+				MatchError(ContainSubstring("command at index #1 must have a name"))),
 			Entry(
 				"duplicate flag name",
 				&cli.Flag{Name: "inuse"},
@@ -701,6 +715,10 @@ var _ = Describe("Command", func() {
 				"duplicate arg name",
 				&cli.Arg{Name: "arg"},
 				MatchError(ContainSubstring(`duplicate name used: "arg"`))),
+			Entry(
+				"duplicate command name",
+				&cli.Command{Name: "command"},
+				MatchError(ContainSubstring(`duplicate name used: "command"`))),
 			Entry(
 				"arg duplicates flag name",
 				&cli.Arg{Name: "inuse"},
@@ -713,6 +731,10 @@ var _ = Describe("Command", func() {
 				"flag duplicates flag alias",
 				&cli.Flag{Name: "alsoinuse"},
 				MatchError(ContainSubstring(`duplicate name used: "alsoinuse"`))),
+			Entry(
+				"command duplicates command alias",
+				&cli.Command{Name: "alias"},
+				MatchError(ContainSubstring(`duplicate name used: "alias"`))),
 
 			Entry("flag with dashes", &cli.Flag{Name: "flag-dash"}, Succeed()),
 			Entry("flag with underscores", &cli.Flag{Name: "flag_under"}, Succeed()),

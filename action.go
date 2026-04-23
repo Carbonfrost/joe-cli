@@ -341,6 +341,7 @@ var (
 			ActionFunc(initializeSubcommands),
 			ActionFunc(initializeValueTargets),
 			ActionFunc(finalizeArgsAndFlags),
+			ActionFunc(finalizeSubcommands),
 			ActionFunc(enforceReservedOptions),
 			At(ActionTiming, actionFunc(triggerRobustParsingAndCompletion)),
 			ActionFunc(copyContextToParent),
