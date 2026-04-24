@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -99,11 +99,13 @@ const (
 // CompletionRequest gets the completion request from the
 // context if a completion is being requested.
 func (c *Context) CompletionRequest() *CompletionRequest {
-	return c.request
+	data, _ := c.LookupData(completionRequestKey)
+	result, _ := data.(*CompletionRequest)
+	return result
 }
 
 func (c *Context) clearCompletionRequest() {
-	c.request = nil
+	c.SetData(completionRequestKey, nil)
 }
 
 func newCompletionData(c *Context) *completionData {
@@ -273,7 +275,7 @@ func (c *Context) complete(args []string, incomplete string, re *robustParseResu
 		Bindings:   re.bindings,
 		Err:        re.err,
 	}
-	c.request = cc
+	c.SetData(completionRequestKey, cc)
 	defer c.clearCompletionRequest()
 
 	return c.target.completion().Complete(c)

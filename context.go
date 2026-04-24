@@ -51,7 +51,6 @@ type Context struct {
 	internal internalContext
 	target   target
 	timing   Timing
-	request  *CompletionRequest
 
 	parent *Context
 	origin *Context
@@ -110,7 +109,8 @@ type contextPathPattern struct {
 type contextKeyType struct{}
 
 const (
-	synopsisKey = "_Synopsis"
+	synopsisKey          = "_Synopsis"
+	completionRequestKey = "_CompletionRequest"
 )
 
 var (
@@ -1680,7 +1680,6 @@ func (c *Context) copy(newTarget target, t internalContext) *Context {
 		internal:   t,
 		target:     newTarget,
 		parent:     c,
-		request:    c.request,
 		lookupCore: newLookupCore(t, c),
 	}
 }
