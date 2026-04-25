@@ -153,18 +153,20 @@ func DisplayHelpScreen(command ...string) Action {
 	return Pipeline(
 		&Prototype{
 			Name:     "help",
-			Aliases:  []string{"h"},
 			Options:  Exits,
 			HelpText: "Display this help screen then exit",
 			Value:    new(bool),
-			Uses: IfMatch(AnyCommand, Pipeline(
-				HelpText("Display help for a command"),
-				AddArg(&Arg{
-					Name:  "command",
-					Value: List(),
-					NArg:  -1,
-				}),
-			)),
+			Uses: Pipeline(
+				OptionalAlias("h"),
+				IfMatch(AnyCommand, Pipeline(
+					HelpText("Display help for a command"),
+					AddArg(&Arg{
+						Name:  "command",
+						Value: List(),
+						NArg:  -1,
+					}),
+				)),
+			),
 		},
 		At(ActionTiming, ActionFunc(func(c *Context) error {
 			ctxt, path, err := findCommandToDisplayHelpFor(c, command)
