@@ -264,7 +264,8 @@ const (
 )
 
 const (
-	panicDataKey = "__PanicData"
+	panicDataKey           = "__PanicData"
+	optionalAliasesDataKey = "__OptionalAliases"
 )
 
 const (
@@ -1073,6 +1074,19 @@ func Alias(a ...string) Action {
 	return actionThunkVar1((*Context).AddAlias, a)
 }
 
+// OptionalAlias adds an alias to a flag or command only if the name has not been
+// defined yet. This action is added to the Uses pipeline, and the insertion of
+// the alias happens during finalization of args and flags.
+func OptionalAlias(a ...string) Action {
+	return ActionFunc(func(c *Context) error {
+		optionalAliases, _ := c.target().lookupData(optionalAliasesDataKey)
+		aliases, _ := optionalAliases.([]string)
+		aliases = append(aliases, a...)
+		c.SetData(optionalAliasesDataKey, aliases)
+		return nil
+	})
+}
+
 // Description sets the description of a command, flag, or expression.  This handler is generally
 // set up inside a Uses pipeline.  The type should be string or fmt.Stringer
 // Consider implementing a custom Stringer value that defers calculation of the description if the
@@ -1204,11 +1218,6 @@ func AddCommand(c *Command, actionopt ...Action) Action {
 // to a value initializer (see [ProvideValueInitializer])
 func AddArg(a *Arg, actionopt ...Action) Action {
 	return actionThunkVar2((*Context).AddArg, a, actionopt)
-}
-
-// AddAlias adds the specified alias to the flag or command.
-func AddAlias(a string) Action {
-	return Alias(a)
 }
 
 // RemoveArg provides an action which removes an arg from the command or app.

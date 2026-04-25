@@ -713,6 +713,17 @@ func finalizeArgsAndFlags(c *Context) error {
 		errs = append(errs, support.ValidateNames(names, f.Name, f.Aliases, checkPersistent)...)
 	}
 
+	for _, f := range c.LocalFlags() {
+		if optionalAliases, ok := f.Data[optionalAliasesDataKey].([]string); ok {
+			for _, alias := range optionalAliases {
+				if !names[alias] {
+					f.Aliases = append(f.Aliases, alias)
+				}
+			}
+			delete(f.Data, optionalAliasesDataKey)
+		}
+	}
+
 	if len(errs) > 0 {
 		return c.internalError(fmt.Errorf("errors initializing command: %w", errors.Join(errs...)))
 	}
@@ -734,6 +745,17 @@ func finalizeSubcommands(c *Context) error {
 			continue
 		}
 		errs = append(errs, support.ValidateNames(names, c.Name, c.Aliases, nil)...)
+	}
+
+	for _, c := range c.LocalCommands() {
+		if optionalAliases, ok := c.Data[optionalAliasesDataKey].([]string); ok {
+			for _, alias := range optionalAliases {
+				if !names[alias] {
+					c.Aliases = append(c.Aliases, alias)
+				}
+			}
+			delete(c.Data, optionalAliasesDataKey)
+		}
 	}
 
 	if len(errs) > 0 {

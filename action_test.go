@@ -615,7 +615,7 @@ var _ = Describe("timings", func() {
 		Context("Named", func() {
 			BeforeEach(func() {
 				initializer = cli.Pipeline(
-					cli.AddAlias("sub"), // so that the invocation 'app sub' still works
+					cli.Alias("sub"), // so that the invocation 'app sub' still works
 					cli.Named("subcommand"),
 				)
 			})
@@ -742,6 +742,174 @@ var _ = Describe("At", func() {
 			"before actually AFTER",
 			"implicitValue actually AFTER",
 		}))
+	})
+})
+
+var _ = Describe("OptionalAlias", func() {
+
+	Describe("command aliases", func() {
+
+		It("adds alias when name is not already defined", func() {
+			var command1, command2 *cli.Command
+			app := &cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "status",
+						Uses: cli.OptionalAlias("s"),
+					},
+					{
+						Name: "version",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					command1, _ = c.LookupCommand("status")
+					command2, _ = c.LookupCommand("version")
+					return nil
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(command1.Aliases).To(ContainElement("s"))
+			Expect(command2.Aliases).To(BeEmpty())
+		})
+
+		It("does not add alias when name is already defined", func() {
+			var command1, command2 *cli.Command
+			app := &cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "status",
+						Uses: cli.OptionalAlias("s"),
+					},
+					{
+						Name: "s", // This conflicts with the optional alias
+					},
+				},
+				Action: func(c *cli.Context) error {
+					command1, _ = c.LookupCommand("status")
+					command2, _ = c.LookupCommand("s")
+					return nil
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(command1.Aliases).NotTo(ContainElement("v"))
+			Expect(command2.Name).To(Equal("s"))
+		})
+
+		It("does not add optional alias when it conflicts with existing alias", func() {
+			var command1, command2 *cli.Command
+			app := &cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "status",
+						Uses: cli.OptionalAlias("x"),
+					},
+					{
+						Name:    "version",
+						Aliases: []string{"x"},
+					},
+				},
+				Action: func(c *cli.Context) error {
+					command1, _ = c.LookupCommand("status")
+					command2, _ = c.LookupCommand("version")
+					return nil
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(command1.Aliases).NotTo(ContainElement("x"))
+			Expect(command2.Aliases).To(ContainElement("x"))
+		})
+	})
+
+	Describe("flag aliases", func() {
+
+		It("adds alias when name is not already defined", func() {
+			var flag1, flag2 *cli.Flag
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name: "verbose",
+						Uses: cli.OptionalAlias("v"),
+					},
+					{
+						Name: "version",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					flag1, _ = c.LookupFlag("verbose")
+					flag2, _ = c.LookupFlag("version")
+					return nil
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(flag1.Aliases).To(ContainElement("v"))
+			Expect(flag2.Aliases).To(BeEmpty())
+		})
+
+		It("does not add alias when name is already defined", func() {
+			var flag1, flag2 *cli.Flag
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name: "verbose",
+						Uses: cli.OptionalAlias("v"),
+					},
+					{
+						Name: "v", // This conflicts with the optional alias
+					},
+				},
+				Action: func(c *cli.Context) error {
+					flag1, _ = c.LookupFlag("verbose")
+					flag2, _ = c.LookupFlag("v")
+					return nil
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(flag1.Aliases).NotTo(ContainElement("v"))
+			Expect(flag2.Name).To(Equal("v"))
+		})
+
+		It("does not add optional alias when it conflicts with existing alias", func() {
+			var flag1, flag2 *cli.Flag
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name: "verbose",
+						Uses: cli.OptionalAlias("x"),
+					},
+					{
+						Name:    "version",
+						Aliases: []string{"x"},
+					},
+				},
+				Action: func(c *cli.Context) error {
+					flag1, _ = c.LookupFlag("verbose")
+					flag2, _ = c.LookupFlag("version")
+					return nil
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(flag1.Aliases).NotTo(ContainElement("x"))
+			Expect(flag2.Aliases).To(ContainElement("x"))
+		})
+
 	})
 })
 
@@ -2985,7 +3153,7 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes the built-in version flag",
-			cli.Customize("-version", cli.AddAlias("V")),
+			cli.Customize("-version", cli.Alias("V")),
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				flag, _ := root.Flag("version")
@@ -2993,7 +3161,7 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes the built-in help flag",
-			cli.Customize("-help", cli.AddAlias("?")),
+			cli.Customize("-help", cli.Alias("?")),
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				flag, _ := root.Flag("help")
@@ -3001,7 +3169,7 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes the built-in version command",
-			cli.Customize("version", cli.AddAlias("V")),
+			cli.Customize("version", cli.Alias("V")),
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				cmd, _ := root.Command("version")
@@ -3009,7 +3177,7 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes the built-in help command",
-			cli.Customize("help", cli.AddAlias("?")),
+			cli.Customize("help", cli.Alias("?")),
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				cmd, _ := root.Command("help")
