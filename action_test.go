@@ -1693,7 +1693,7 @@ var _ = Describe("ActionOf", func() {
 			}).NotTo(Panic())
 
 			called = false
-			handler.Execute(&cli.Context{})
+			handler.Execute(newStubContext())
 			Expect(called).To(BeTrue())
 		},
 		Entry("func(*cli.Context) error", func(*cli.Context) error { act(); return nil }),
@@ -1729,7 +1729,7 @@ var _ = Describe("ActionOf", func() {
 	})
 
 	It("invokes the context action", func() {
-		ctx := &cli.Context{}
+		ctx := newStubContext()
 		var called int
 		handlers := []cli.Action{
 			cli.ActionOf(func(c context.Context) {
@@ -1873,7 +1873,7 @@ var _ = Describe("Pipeline", func() {
 		act2 := new(joeclifakes.FakeAction)
 
 		pipe := cli.Pipeline(act1, act2)
-		pipe.Execute(&cli.Context{})
+		pipe.Execute(newStubContext())
 
 		Expect(act1.ExecuteCallCount()).To(Equal(1))
 		Expect(act2.ExecuteCallCount()).To(Equal(1))
@@ -1884,7 +1884,7 @@ var _ = Describe("Pipeline", func() {
 		act2 := new(joeclifakes.FakeAction)
 
 		pipe := cli.Pipeline(act1, act2)
-		pipe.Execute(&cli.Context{})
+		pipe.Execute(newStubContext())
 
 		Expect(act1.ExecuteWithNextCallCount()).To(Equal(1))
 	})
@@ -1898,7 +1898,7 @@ var _ = Describe("Pipeline", func() {
 		}
 
 		pipe := cli.Pipeline(act1, act2)
-		pipe.Execute(&cli.Context{})
+		pipe.Execute(newStubContext())
 
 		Expect(act2.ExecuteCallCount()).To(Equal(1))
 	})
@@ -1916,7 +1916,7 @@ var _ = Describe("Pipeline", func() {
 		}
 
 		pipe := cli.Pipeline(act1, act2, act3)
-		pipe.Execute(&cli.Context{})
+		pipe.Execute(newStubContext())
 
 		Expect(act3.ExecuteCallCount()).To(Equal(1))
 	})
@@ -1926,7 +1926,7 @@ var _ = Describe("Pipeline", func() {
 		value := new(struct{})
 
 		pipe := cli.Pipeline(cli.WithContextValue(privateKey("c"), value), act)
-		c := &cli.Context{}
+		c := newStubContext()
 		c.SetContext(context.Background())
 		pipe.Execute(c)
 

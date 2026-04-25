@@ -161,7 +161,7 @@ func ApplyShellCompletion() Action {
 // SetCompletion sets completion for the command, flag, or arg.
 func SetCompletion(c Completion) Action {
 	return ActionFunc(func(ctx *Context) error {
-		ctx.target.setCompletion(c)
+		ctx.target().setCompletion(c)
 		return nil
 	})
 }
@@ -176,7 +176,7 @@ func setupCompletion(c context.Context) error {
 func setupRobustParsingMode(c *Context) {
 	// Activate robust parsing which causes errors in parsing to be
 	// ignored so that we have an incomplete binding
-	c.target.setInternalFlags(internalFlagRobustParseModeEnabled, true)
+	c.target().setInternalFlags(internalFlagRobustParseModeEnabled, true)
 }
 
 func completionToken(v any) CompletionItem {
@@ -278,7 +278,7 @@ func (c *Context) complete(args []string, incomplete string, re *robustParseResu
 	c.SetData(completionRequestKey, cc)
 	defer c.clearCompletionRequest()
 
-	return c.target.completion().Complete(c)
+	return c.target().completion().Complete(c)
 }
 
 func (c *Context) robustParsingMode() bool {

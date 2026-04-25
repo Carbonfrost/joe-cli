@@ -32,19 +32,46 @@ func IsDestinationImplicitlyCreated(t any) bool {
 }
 
 func SetInitialTiming(c *Context) {
-	c.timing = InitialTiming
+	c.state = &fakeContextState{
+		tim: InitialTiming,
+	}
 }
 
 func SetBeforeTiming(c *Context) {
-	c.timing = BeforeTiming
+	c.state = &fakeContextState{
+		tim: BeforeTiming,
+	}
 }
 
 func SetAfterTiming(c *Context) {
-	c.timing = AfterTiming
+	c.state = &fakeContextState{
+		tim: AfterTiming,
+	}
 }
 
 func SetActionTiming(c *Context) {
-	c.timing = ActionTiming
+	c.state = &fakeContextState{
+		tim: ActionTiming,
+	}
+}
+
+type fakeContextState struct {
+	tim Timing
+	ref context.Context
+}
+
+func (s *fakeContextState) getInternal() internalContext { return nil }
+func (s *fakeContextState) getTarget() target            { return nil }
+func (s *fakeContextState) getParent() *Context          { return nil }
+func (s *fakeContextState) getTiming() Timing            { return s.tim }
+func (s *fakeContextState) getOrigin() *Context          { return nil }
+func (s *fakeContextState) close()                       {}
+func (s *fakeContextState) getRef() context.Context      { return s.ref }
+func (s *fakeContextState) updateRef(c context.Context)  { s.ref = c }
+
+func WithStubState(c *Context) *Context {
+	c.state = new(fakeContextState)
+	return c
 }
 
 func (a *Arg) ActualArgCounter() ArgCounter {

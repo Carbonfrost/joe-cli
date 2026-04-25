@@ -165,8 +165,8 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 	if err != nil {
 		return err
 	}
-	c.Parent().target.setInternalFlags(internalFlagDidSubcommandExecute, true)
-	newCtx := c.Parent().newChild(cmd)
+	c.Parent().target().setInternalFlags(internalFlagDidSubcommandExecute, true)
+	newCtx := c.Parent().newChild(cmd, ActionTiming)
 	return newCtx.Execute(invoke)
 }
 
@@ -341,12 +341,12 @@ func (c *Command) Names() []string {
 func (c *Command) buildSet(ctx *Context) *set {
 	binding := NewBinding(c.Flags, c.Args, ctx.Parent())
 	set := newSet(binding)
-	ctx.internal.(*commandContext).set = set
+	ctx.state.getInternal().(*commandContext).set = set
 	return set
 }
 
 func ensureSubcommands(ctx context.Context) error {
-	cmd := FromContext(ctx).target.(*Command)
+	cmd := FromContext(ctx).target().(*Command)
 
 	if len(cmd.Subcommands) > 0 {
 		if cmd.Action == nil {
@@ -394,7 +394,7 @@ func completeSubCommand(c *Context) []CompletionItem {
 		return nil
 	}
 
-	newCtx := c.Parent().newChild(cmd)
+	newCtx := c.Parent().newChild(cmd, ActionTiming)
 	return newCtx.Complete(invoke, cc.Incomplete)
 }
 
@@ -456,7 +456,7 @@ func defaultCommandCompletion(c *Context) []CompletionItem {
 				break
 			}
 		}
-		return actualCompletion(last.completion()).Complete(c.newChild(last))
+		return actualCompletion(last.completion()).Complete(c.newChild(last, ActionTiming))
 	}
 
 	return items
@@ -472,7 +472,7 @@ func findSolitaryMatch(c *Context) []CompletionItem {
 	for _, f := range cmd.VisibleFlags() {
 		for _, n := range f.synopsis().Names {
 			if n == cc.Incomplete || (hasArg && strings.HasPrefix(n, flagName)) {
-				return actualCompletion(f.completion()).Complete(c.newChild(f))
+				return actualCompletion(f.completion()).Complete(c.newChild(f, ActionTiming))
 			}
 			if strings.HasPrefix(n, cc.Incomplete) {
 				if match != nil && match != f {
@@ -634,7 +634,7 @@ func initializeFlagsArgs(ctx *Context) error {
 }
 
 func initializeSubcommands(ctx *Context) error {
-	cmd := ctx.target.(*Command)
+	cmd := ctx.target().(*Command)
 	anySubcommands := true
 	var subcommandStart int
 
@@ -656,7 +656,8 @@ func initializeChildren[T target](ctx *Context, subs []T) error {
 		}
 
 		originalName := sub.contextName()
-		err := ctx.newChild(sub).initialize()
+		child := ctx.newChild(sub, InitialTiming)
+		err := child.initialize()
 		if err != nil {
 			return err
 		}
@@ -664,26 +665,15 @@ func initializeChildren[T target](ctx *Context, subs []T) error {
 		// on the flag
 		if sub.contextName() != originalName {
 			// TODO: These errors might have to propagate
-			_ = ctx.newChild(sub).reinitialize()
+			_ = child.reinitialize()
 		}
+		child.state.close()
 	}
 	return nil
 }
 
 func copyContextToOrigin(ctx *Context) error {
-	current := ctx
-	for current != nil {
-		current.ref = ctx.ref
-		current = current.origin
-	}
-	return nil
-}
-
-func copyContextToParent(ctx *Context) error {
-	p := ctx.Parent()
-	if p != nil {
-		p.ref = ctx.ref
-	}
+	ctx.state.close()
 	return nil
 }
 
@@ -805,8 +795,8 @@ func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptEr
 		return nil, commandMissing(sub)
 	}
 
-	c.target.setInternalFlags(internalFlagSearchingAlternateCommand, true)
-	defer c.target.setInternalFlags(internalFlagSearchingAlternateCommand, false)
+	c.target().setInternalFlags(internalFlagSearchingAlternateCommand, true)
+	defer c.target().setInternalFlags(internalFlagSearchingAlternateCommand, false)
 	if interceptErr == nil {
 		if auto, ok := c.LookupData(commandNotFoundKey); ok {
 			// Invalid casts are ignored because a sentinel value can be set  to indicate that

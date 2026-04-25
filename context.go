@@ -48,13 +48,7 @@ type Context struct {
 	FS fs.FS
 
 	lookupCore
-	internal internalContext
-	target   target
-	timing   Timing
-
-	parent *Context
-	origin *Context
-	ref    context.Context
+	state contextState
 }
 
 // WalkFunc provides the callback for the Walk function
@@ -69,6 +63,80 @@ type internalContext interface {
 	RawOccurrences(name string) []string
 	Bindings(name string) [][]string
 	BindingNames() []string
+}
+
+// contextState represents the internal state of a Context, which varies
+// based on how the context was created (child vs wrapped)
+type contextState interface {
+	getInternal() internalContext
+	getTarget() target
+	getParent() *Context
+	getTiming() Timing
+	getOrigin() *Context
+	getRef() context.Context
+	updateRef(context.Context)
+	close()
+}
+
+// childContextState represents state for a context created for a target or child
+type childContextState struct {
+	internalCtx internalContext
+	tgt         target
+	par         *Context
+	tim         Timing
+	ref         context.Context // TODO Would be better for this to be on root only
+	sealed      bool
+}
+
+// wrappedContextState represents state for a shallow clone created by middleware
+type wrappedContextState struct {
+	orig   *Context
+	ref    context.Context
+	sealed bool
+}
+
+func (s *childContextState) getInternal() internalContext { return s.internalCtx }
+func (s *childContextState) getTarget() target            { return s.tgt }
+func (s *childContextState) getParent() *Context          { return s.par }
+func (s *childContextState) getTiming() Timing            { return s.tim }
+func (s *childContextState) getOrigin() *Context          { return nil }
+func (s *childContextState) getRef() context.Context      { return s.ref }
+func (s *childContextState) updateRef(c context.Context) {
+	s.demandUnsealed()
+	s.ref = c
+}
+func (s *childContextState) close() {
+	s.demandUnsealed()
+	if s.getParent() != nil {
+		s.getParent().state.updateRef(s.getRef())
+	}
+}
+func (s *childContextState) demandUnsealed() {
+	if s.sealed {
+		panic("unexpected mutation of internal context state")
+	}
+}
+
+// wrappedContextState methods - delegates to origin for most state
+func (s *wrappedContextState) getInternal() internalContext { return s.orig.state.getInternal() }
+func (s *wrappedContextState) getTarget() target            { return s.orig.target() }
+func (s *wrappedContextState) getParent() *Context          { return s.orig.state.getParent() }
+func (s *wrappedContextState) getTiming() Timing            { return s.orig.state.getTiming() }
+func (s *wrappedContextState) getOrigin() *Context          { return s.orig }
+func (s *wrappedContextState) getRef() context.Context      { return s.ref }
+func (s *wrappedContextState) updateRef(c context.Context) {
+	s.demandUnsealed()
+	s.ref = c
+	s.orig.state.updateRef(c)
+}
+func (s *wrappedContextState) close() {
+	s.demandUnsealed()
+	s.orig.state.updateRef(s.getRef())
+}
+func (s *wrappedContextState) demandUnsealed() {
+	if s.sealed {
+		panic("unexpected mutation of internal context state")
+	}
 }
 
 type bindingLookupWrapper struct {
@@ -173,7 +241,7 @@ func newBindingLookup(ic internalContext) BindingLookup {
 
 // Execute executes the context with the given arguments.
 func (c *Context) Execute(args []string) error {
-	if cmd, ok := c.target.(*Command); ok {
+	if cmd, ok := c.target().(*Command); ok {
 		if cmd.fromApp != nil {
 			defer provideCurrentApp(cmd.fromApp)()
 		}
@@ -215,14 +283,14 @@ func (c *Context) Err() error {
 }
 
 func (c *Context) Context() context.Context {
-	return c.ref
+	return c.state.getRef()
 }
 
 // SetContext sets the context
 //
 // Deprecated: Use WithContext middleware instead to avoid mutation
 func (c *Context) SetContext(ctx context.Context) error {
-	c.ref = ctx
+	c.state.updateRef(ctx)
 	return nil
 }
 
@@ -247,7 +315,7 @@ func (c *Context) Parent() *Context {
 	if c == nil {
 		return nil
 	}
-	return c.parent
+	return c.state.getParent()
 }
 
 // App obtains the app
@@ -259,7 +327,7 @@ func (c *Context) App() *App {
 }
 
 func (c *Context) app() (*App, bool) {
-	if root, ok := c.target.(*Command); ok {
+	if root, ok := c.target().(*Command); ok {
 		a := root.fromApp
 		return a, a != nil
 	}
@@ -276,7 +344,11 @@ func (c *Context) Root() *Context {
 }
 
 func (c *Context) root() *rootCommandData {
-	return c.Root().target.(*Command).rootData()
+	return c.Root().target().(*Command).rootData()
+}
+
+func (c *Context) target() target {
+	return c.state.getTarget()
 }
 
 // Command obtains the command.  The command could be a synthetic command that was
@@ -285,7 +357,7 @@ func (c *Context) Command() *Command {
 	if c == nil {
 		return nil
 	}
-	if cmd, ok := c.target.(*Command); ok {
+	if cmd, ok := c.target().(*Command); ok {
 		return cmd
 	}
 	return c.Parent().Command()
@@ -296,7 +368,7 @@ func (c *Context) Arg() *Arg {
 	if c == nil {
 		return nil
 	}
-	if a, ok := c.target.(*Arg); ok {
+	if a, ok := c.target().(*Arg); ok {
 		return a
 	}
 	return c.Parent().Arg()
@@ -307,32 +379,32 @@ func (c *Context) Flag() *Flag {
 	if c == nil {
 		return nil
 	}
-	if f, ok := c.target.(*Flag); ok {
+	if f, ok := c.target().(*Flag); ok {
 		return f
 	}
 	return c.Parent().Flag()
 }
 
 // IsInitializing returns true if the context represents initialization
-func (c *Context) IsInitializing() bool { return c.timing == InitialTiming }
+func (c *Context) IsInitializing() bool { return c.Timing() == InitialTiming }
 
 // IsBefore returns true if the context represents actions running before executing the command
-func (c *Context) IsBefore() bool { return c.timing == BeforeTiming }
+func (c *Context) IsBefore() bool { return c.Timing() == BeforeTiming }
 
 // IsAfter returns true if the context represents actions running after executing the command
-func (c *Context) IsAfter() bool { return c.timing == AfterTiming }
+func (c *Context) IsAfter() bool { return c.Timing() == AfterTiming }
 
 // IsAction returns true if the context represents actions running for the actual execution of the command
-func (c *Context) IsAction() bool { return c.timing == ActionTiming }
+func (c *Context) IsAction() bool { return c.Timing() == ActionTiming }
 
 // Timing retrieves the timing
 func (c *Context) Timing() Timing {
-	return c.timing
+	return c.state.getTiming()
 }
 
 // HasValue tests whether the target has a value
 func (c *Context) HasValue() bool {
-	_, ok := c.target.(*valueTarget)
+	_, ok := c.target().(*valueTarget)
 	return c.isOption() || ok
 }
 
@@ -341,36 +413,36 @@ func (c *Context) IsCommand() bool {
 	if c == nil {
 		return false
 	}
-	_, ok := c.target.(*Command)
+	_, ok := c.target().(*Command)
 	return ok
 }
 
 // IsFlag tests whether the last segment of the path represents a flag
 func (c *Context) IsFlag() bool {
-	_, ok := c.target.(*Flag)
+	_, ok := c.target().(*Flag)
 	return ok
 }
 
 // IsArg tests whether the last segment of the path represents an argument
 func (c *Context) IsArg() bool {
-	_, ok := c.target.(*Arg)
+	_, ok := c.target().(*Arg)
 	return ok
 }
 
 func (c *Context) isOption() bool {
-	_, ok := c.target.(option)
+	_, ok := c.target().(option)
 	return ok
 }
 
 func (c *Context) subcommandDidNotExecute() bool {
-	return !c.target.internalFlags().didSubcommandExecute()
+	return !c.target().internalFlags().didSubcommandExecute()
 }
 
 // Args retrieves the arguments.  IF the context corresponds to a command, these
 // represent the name of the command plus the arguments passed to it.  For flags and arguments,
 // this is the value passed to them
 func (c *Context) Args() []string {
-	return c.internal.Raw("")
+	return c.state.getInternal().Raw("")
 }
 
 // Flags obtains the flags from the command, including
@@ -436,7 +508,7 @@ func (c *Context) ValueContextOf(name string, v any) *Context {
 	case *Arg, *Flag, *Command, *App:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
-	return c.newChild(newValueTarget(v, name, nil))
+	return c.newChild(newValueTarget(v, name, nil), c.Timing())
 }
 
 type targetType = target
@@ -456,13 +528,13 @@ func (c *Context) ContextOf(target any) *Context {
 	}
 	switch name := target.(type) {
 	case *Command:
-		return c.newChild(target.(targetType))
+		return c.newChild(target.(targetType), c.Timing())
 	case *Arg, *Flag, int, rune, string:
 		o, ok := c.lookupOption(name)
 		if !ok {
 			return nil
 		}
-		return c.newChild(o)
+		return c.newChild(o, c.Timing())
 	default:
 		panic(fmt.Sprintf("unexpected target type %T", target))
 	}
@@ -478,7 +550,7 @@ func (c *Context) LookupCommand(name any) (*Command, bool) {
 		if v == "" {
 			return c.Command(), true
 		}
-		if aa, ok := c.target.(*Command); ok {
+		if aa, ok := c.target().(*Command); ok {
 			if r, _, found := findCommandByName(aa.Subcommands, v); found {
 				return r, true
 			}
@@ -507,7 +579,7 @@ func (c *Context) LookupFlag(name any) (*Flag, bool) {
 			}
 			name = c.Name()
 		}
-		if aa, ok := c.target.(*Command); ok {
+		if aa, ok := c.target().(*Command); ok {
 			if f, _, found := findFlagByName(aa.Flags, v); found {
 				return f, true
 			}
@@ -567,7 +639,7 @@ func (c *Context) lookupValueTarget(name string) (*valueTarget, bool) {
 		return nil, false
 	}
 	if name == "" {
-		if t, ok := c.target.(*valueTarget); ok {
+		if t, ok := c.target().(*valueTarget); ok {
 			return t, true
 		}
 		name = c.Name()
@@ -603,19 +675,19 @@ func (c *Context) findTarget(name string) (*Context, bool) {
 		return c, false
 	case matchFlag(name):
 		if f, ok := c.LookupFlag(name); ok {
-			return c.newChild(f), true
+			return c.newChild(f, c.Timing()), true
 		}
 	case matchArg(name):
 		if a, ok := c.LookupArg(name); ok {
-			return c.newChild(a), true
+			return c.newChild(a, c.Timing()), true
 		}
 	case matchExpr(name):
 		if a, ok := c.lookupValueTarget(name); ok {
-			return c.newChild(a), true
+			return c.newChild(a, c.Timing()), true
 		}
 	default:
 		if m, ok := c.LookupCommand(name); ok {
-			return c.newChild(m), true
+			return c.newChild(m, c.Timing()), true
 		}
 	}
 	return nil, false
@@ -640,7 +712,7 @@ func (c *Context) Occurrences(name any) int {
 // ImplicitlySet returns true if the flag or arg was implicitly
 // set.
 func (c *Context) ImplicitlySet() bool {
-	return c.target.internalFlags().seenImplied()
+	return c.target().internalFlags().seenImplied()
 }
 
 // NValue gets the maximum number available, exclusive, as an argument Value.
@@ -707,7 +779,7 @@ func (c *Context) rawCore(name any, occurs func(internalContext, string) []strin
 
 	switch f := name.(type) {
 	case rune, string, nil, int, *Arg, *Flag:
-		d := occurs(c.internal, c.nameToString(f))
+		d := occurs(c.state.getInternal(), c.nameToString(f))
 		if f != "" && len(d) == 0 {
 			return c.Parent().rawCore(c.nameToString(f), occurs)
 		}
@@ -726,16 +798,16 @@ func (c *Context) BindingLookup() BindingLookup {
 	if c == nil {
 		return nil
 	}
-	return newBindingLookup(c.internal)
+	return newBindingLookup(c.state.getInternal())
 }
 
 // LookupData gets the data matching the key, including recursive traversal
 // up the lineage contexts
 func (c *Context) LookupData(name string) (any, bool) {
-	if c == nil || c.target == nil {
+	if c == nil || c.target() == nil {
 		return nil, false
 	}
-	if res, ok := c.target.lookupData(name); ok {
+	if res, ok := c.target().lookupData(name); ok {
 		return res, true
 	}
 	return c.Parent().LookupData(name)
@@ -795,7 +867,7 @@ func (c *Context) SetTransform(fn TransformFunc) error {
 	if err != nil {
 		return err
 	}
-	if option, ok := c.target.(option); ok {
+	if option, ok := c.target().(option); ok {
 		option.setTransform(fn)
 	}
 
@@ -804,43 +876,43 @@ func (c *Context) SetTransform(fn TransformFunc) error {
 
 // Data obtains the data for the current target.  This could be a nil map.
 func (c *Context) Data() map[string]any {
-	return c.target.data()
+	return c.target().data()
 }
 
 // Category obtains the category for the current target.
 func (c *Context) Category() string {
-	return c.target.category()
+	return c.target().category()
 }
 
 // Description obtains the description for the current target.
 func (c *Context) Description() any {
-	return c.target.description()
+	return c.target().description()
 }
 
 // HelpText obtains the helpText for the current target.
 func (c *Context) HelpText() string {
-	return c.target.helpText()
+	return c.target().helpText()
 }
 
 // UsageText obtains the usageText for the current target.
 func (c *Context) UsageText() string {
-	return c.target.usageText()
+	return c.target().usageText()
 }
 
 // ManualText obtains the manualText for the current target.
 func (c *Context) ManualText() string {
-	return c.target.manualText()
+	return c.target().manualText()
 }
 
 // Completion obtains the completion for the current target.
 func (c *Context) Completion() Completion {
-	return c.target.completion()
+	return c.target().completion()
 }
 
 // SetData sets data on the current target.  Despite the return value,
 // this method never returns an error.
 func (c *Context) SetData(name string, v any) error {
-	c.target.setData(name, v)
+	c.target().setData(name, v)
 	return nil
 }
 
@@ -867,7 +939,7 @@ func (c *Context) SetOptionalValue(v any) error {
 
 // SetName sets the name on the current target
 func (c *Context) SetName(name string) error {
-	switch o := c.target.(type) {
+	switch o := c.target().(type) {
 	case *Arg:
 		o.Name = name
 	case *Flag:
@@ -882,31 +954,31 @@ func (c *Context) SetName(name string) error {
 
 // SetCategory sets the category on the current target
 func (c *Context) SetCategory(name string) error {
-	c.target.setCategory(name)
+	c.target().setCategory(name)
 	return nil
 }
 
 // SetDescription sets the description on the current target
 func (c *Context) SetDescription(v any) error {
-	c.target.setDescription(v)
+	c.target().setDescription(v)
 	return nil
 }
 
 // SetHelpText sets the help text on the current target
 func (c *Context) SetHelpText(s string) error {
-	c.target.setHelpText(s)
+	c.target().setHelpText(s)
 	return nil
 }
 
 // SetUsageText sets the usage text on the current target
 func (c *Context) SetUsageText(s string) error {
-	c.target.setUsageText(s)
+	c.target().setUsageText(s)
 	return nil
 }
 
 // SetManualText sets the manualText on the current target
 func (c *Context) SetManualText(v string) error {
-	c.target.setManualText(v)
+	c.target().setManualText(v)
 	return nil
 }
 
@@ -921,13 +993,13 @@ func (c *Context) SetManualText(v string) error {
 // for these timing semantics.
 func (c *Context) SetValue(arg any) error {
 	if c.implicitTimingActive() {
-		if c.target.internalFlags().seenImplied() {
+		if c.target().internalFlags().seenImplied() {
 			return ErrImplicitValueAlreadySet
 		}
 
-		c.target.setInternalFlags(internalFlagSeenImplied, true)
+		c.target().setInternalFlags(internalFlagSeenImplied, true)
 	}
-	return c.target.(option).Set(arg)
+	return c.target().(option).Set(arg)
 }
 
 // At either stores or executes the action at the given timing.
@@ -966,10 +1038,10 @@ func (c *Context) Use(action Action) error {
 // Target retrieves the target of the context, which is *App, *Command, *Flag, *Arg,
 // or *Expr
 func (c *Context) Target() any {
-	if val, ok := c.target.(*valueTarget); ok {
+	if val, ok := c.target().(*valueTarget); ok {
 		return val.v
 	}
-	return c.target
+	return c.target()
 }
 
 // Hook registers a hook that runs for any context in the given timing.
@@ -1006,7 +1078,7 @@ func (c *Context) hookAt(timing Timing, pattern string, handler Action) error {
 }
 
 func (c *Context) hookable() (hookable, bool) {
-	h, ok := c.target.(hookable)
+	h, ok := c.target().(hookable)
 	return h, ok
 }
 
@@ -1038,7 +1110,7 @@ func (c *Context) walkCore(fn WalkFunc) error {
 	switch err {
 	case nil:
 		for _, sub := range current.Subcommands {
-			if err := c.newChild(sub).walkCore(fn); err != nil {
+			if err := c.newChild(sub, c.Timing()).walkCore(fn); err != nil {
 				return err
 			}
 		}
@@ -1088,11 +1160,11 @@ func debugTemplates() bool {
 // Name gets the name of the context, which is the name of the command, arg, flag, or expression
 // operator in use
 func (c *Context) Name() string {
-	if c.internal == nil {
+	if c.state.getInternal() == nil {
 		// Due to tests this could be unset
 		return ""
 	}
-	return c.target.contextName()
+	return c.target().contextName()
 }
 
 // Path retrieves all of the names on the context and its ancestors to the root.
@@ -1464,7 +1536,7 @@ func (c *Context) implicitTimingActive() bool {
 func (c *Context) flagSetOrAncestor(fn func(internalFlags) bool) bool {
 	var result bool
 	c.lineageFunc(func(c1 *Context) {
-		result = result || fn(c1.target.internalFlags())
+		result = result || fn(c1.target().internalFlags())
 	})
 	return result
 }
@@ -1578,11 +1650,17 @@ func rootContext(cctx context.Context, app *App) *Context {
 	}
 	cmd := app.createRoot()
 	cmd.fromApp = app
+	lookup := newLookupCore(internal, nil)
+	state := &childContextState{
+		internalCtx: internal,
+		tgt:         cmd,
+		par:         nil,
+		tim:         InitialTiming,
+		ref:         cctx,
+	}
 	return &Context{
-		ref:        cctx,
-		internal:   internal,
-		target:     cmd,
-		lookupCore: newLookupCore(internal, nil),
+		lookupCore: lookup,
+		state:      state,
 	}
 }
 
@@ -1595,23 +1673,27 @@ func newLookupCore(t internalContext, parent lookupCore) lookupCore {
 }
 
 func (c *Context) setTiming(t Timing) *Context {
-	c.timing = t
+	c.state.(*childContextState).tim = t
 	return c
 }
 
 func triggerOptionsHO(t Timing, on func(*Context) error) ActionFunc {
 	return func(ctx *Context) error {
 		for _, f := range ctx.LocalFlags() {
-			err := on(ctx.newChild(f).setTiming(t))
+			child := ctx.newChild(f, t)
+			err := on(child)
 			if err != nil {
 				return err
 			}
+			child.state.close()
 		}
 		for _, f := range ctx.LocalArgs() {
-			err := on(ctx.newChild(f).setTiming(t))
+			child := ctx.newChild(f, t)
+			err := on(child)
 			if err != nil {
 				return err
 			}
+			child.state.close()
 		}
 
 		return nil
@@ -1622,10 +1704,12 @@ func triggerValueTargetsHO(t Timing, on func(*Context) error) ActionFunc {
 	return func(ctx *Context) error {
 		me, _ := ctx.hookable()
 		for _, sub := range me.valueTargets() {
-			err := on(ctx.newChild(sub).setTiming(t))
+			child := ctx.newChild(sub, t)
+			err := on(child)
 			if err != nil {
 				return err
 			}
+			child.state.close()
 		}
 
 		return nil
@@ -1670,23 +1754,9 @@ func (c *Context) internalError(err error) error {
 	return &InternalError{Path: c.Path(), Timing: c.Timing(), Err: err}
 }
 
-func (c *Context) copy(newTarget target, t internalContext) *Context {
-	return &Context{
-		ref:        c.ref,
-		Stdin:      c.Stdin,
-		Stdout:     c.Stdout,
-		Stderr:     c.Stderr,
-		FS:         c.FS,
-		internal:   t,
-		target:     newTarget,
-		parent:     c,
-		lookupCore: newLookupCore(t, c),
-	}
-}
-
-func (c *Context) newChild(t target) *Context {
+func (c *Context) newChild(newTarget target, timing Timing) *Context {
 	var internal internalContext
-	switch t := t.(type) {
+	switch t := newTarget.(type) {
 	case *Command:
 		internal = &commandContext{
 			// This set doesn't have a binding yet mainly to
@@ -1699,7 +1769,7 @@ func (c *Context) newChild(t target) *Context {
 	case option:
 		internal = &optionContext{
 			option:       t,
-			parentLookup: c.internal,
+			parentLookup: c.state.getInternal(),
 		}
 
 	case *valueTarget:
@@ -1710,7 +1780,23 @@ func (c *Context) newChild(t target) *Context {
 	default:
 		panic("unreachable!")
 	}
-	return c.copy(t, internal)
+
+	lookup := newLookupCore(internal, c)
+	state := &childContextState{
+		internalCtx: internal,
+		tgt:         newTarget,
+		par:         c,
+		tim:         timing,
+		ref:         c.state.getRef(),
+	}
+	return &Context{
+		Stdin:      c.Stdin,
+		Stdout:     c.Stdout,
+		Stderr:     c.Stderr,
+		FS:         c.FS,
+		lookupCore: lookup,
+		state:      state,
+	}
 }
 
 func bubble(start *Context, self, anc func(*Context, context.Context) error) error {
@@ -1804,7 +1890,7 @@ func (c *Context) executeSelf() error {
 }
 
 func (c *Context) flow() *actionPipelines {
-	switch c.target.(type) {
+	switch c.target().(type) {
 	case *Flag, *Arg:
 		return flow[targetTypeOption]
 	case *Command:
@@ -1816,7 +1902,7 @@ func (c *Context) flow() *actionPipelines {
 
 func (c *Context) lookupOption(name any) (option, bool) {
 	if name == "" {
-		o, ok := c.target.(option)
+		o, ok := c.target().(option)
 		return o, ok
 	}
 	switch name.(type) {
@@ -1834,7 +1920,7 @@ func (c *Context) lookupOption(name any) (option, bool) {
 }
 
 func (c *Context) option() option {
-	return c.target.(option)
+	return c.target().(option)
 }
 
 func (c *Context) actualFS() fs.FS {
@@ -2108,7 +2194,7 @@ func (v *valueTarget) lookup() BindingLookup {
 }
 
 func copyFlagsFromValueTarget(c *Context) error {
-	v := c.target.(*valueTarget)
+	v := c.target().(*valueTarget)
 
 	if val, ok := v.v.(interface{ SetHidden(bool) }); ok {
 		val.SetHidden(v.internalFlags().hidden())
@@ -2119,26 +2205,26 @@ func copyFlagsFromValueTarget(c *Context) error {
 
 func applyImplicitVisibility(c *Context) error {
 	if strings.HasPrefix(strings.TrimLeft(c.Name(), "<-"), "_") {
-		if c.target.internalFlags().visibleExplicitlyRequested() {
+		if c.target().internalFlags().visibleExplicitlyRequested() {
 			return nil
 		}
 		if c.flagSetOrAncestor((internalFlags).disableAutoVisibility) {
 			return nil
 		}
 
-		c.target.setInternalFlags(internalFlagHidden, true)
+		c.target().setInternalFlags(internalFlagHidden, true)
 	}
 	return nil
 }
 
 func preventSetupIfPresent(c context.Context) error {
 	// PreventSetup if specified must be handled before all other options
-	opts := FromContext(c).target.options()
+	opts := FromContext(c).target().options()
 	return execute(c, *opts&PreventSetup)
 }
 
 func applyUserOptions(c context.Context) error {
-	opts := FromContext(c).target.options()
+	opts := FromContext(c).target().options()
 	return execute(c, opts)
 }
 
@@ -2155,11 +2241,11 @@ func executeAfterHooks(c context.Context) error {
 func executePipelines(at Timing) Action {
 	return pipelineFunc(func(ctx context.Context) pipeline {
 		c := FromContext(ctx)
-		deferred := c.target.uses().pipeline(at)
-		user := c.target.pipeline(at)
+		deferred := c.target().uses().pipeline(at)
+		user := c.target().pipeline(at)
 
 		var actions []any
-		if c.IsAction() && c.target.internalFlags().eachOccurrence() {
+		if c.IsAction() && c.target().internalFlags().eachOccurrence() {
 			actions = []any{eachOccurrenceOpt()}
 		}
 
@@ -2188,8 +2274,8 @@ func triggerOptions(ctx *Context) error {
 }
 
 func triggerOption(ctx *Context, f option) error {
-	if f.Seen() || hasSeenImplied(f, ctx.target) {
-		return ctx.newChild(f).executeSelf()
+	if f.Seen() || hasSeenImplied(f, ctx.target()) {
+		return ctx.newChild(f, ctx.Timing()).executeSelf()
 	}
 	return nil
 }

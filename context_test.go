@@ -644,7 +644,7 @@ var _ = Describe("Context", func() {
 		})
 
 		It("invokes immediately in the before context", func() {
-			ctx := &cli.Context{}
+			ctx := newStubContext()
 			act := new(joeclifakes.FakeAction)
 			cli.SetBeforeTiming(ctx)
 
@@ -657,7 +657,7 @@ var _ = Describe("Context", func() {
 		DescribeTable("error when timing after",
 			func(timing func(*cli.Context)) {
 				act := new(joeclifakes.FakeAction)
-				ctx := &cli.Context{}
+				ctx := newStubContext()
 				timing(ctx)
 
 				err := ctx.Before(act)
@@ -692,7 +692,7 @@ var _ = Describe("Context", func() {
 		DescribeTable("error when timing after",
 			func(timing func(*cli.Context)) {
 				act := new(joeclifakes.FakeAction)
-				ctx := &cli.Context{}
+				ctx := newStubContext()
 				timing(ctx)
 
 				err := ctx.Use(act)
@@ -1623,4 +1623,10 @@ func (*haveArgs) Set(string) error {
 
 func (*haveArgs) String() string {
 	return ""
+}
+
+func newStubContext() *cli.Context {
+	c := &cli.Context{}
+	cli.WithStubState(c)
+	return c
 }

@@ -504,13 +504,13 @@ func splitOptionsHO(opts Option, fn func(Option)) {
 }
 
 func hiddenOption(c *Context) error {
-	c.target.setHidden(true)
+	c.target().setHidden(true)
 	return nil
 }
 
 func visibleOption(c *Context) error {
-	c.target.setInternalFlags(internalFlagVisibleExplicitlyRequested, true)
-	c.target.setInternalFlags(internalFlagHidden, false)
+	c.target().setInternalFlags(internalFlagVisibleExplicitlyRequested, true)
+	c.target().setInternalFlags(internalFlagHidden, false)
 	return nil
 }
 
@@ -520,7 +520,7 @@ func requiredOption(c *Context) error {
 }
 
 func wrapWithExit(c *Context) error {
-	c.target.setInternalFlags(internalFlagExits, true)
+	c.target().setInternalFlags(internalFlagExits, true)
 	return c.At(ActionTiming, ActionOf(doThenExit))
 }
 
@@ -570,14 +570,14 @@ func optionalOption(c *Context) error {
 
 func setInternalFlag(f internalFlags) ActionFunc {
 	return func(c *Context) error {
-		c.target.setInternalFlags(f, true)
+		c.target().setInternalFlags(f, true)
 		return nil
 	}
 }
 
 func unsetInternalFlag(f internalFlags) ActionFunc {
 	return func(c *Context) error {
-		c.target.setInternalFlags(f, false)
+		c.target().setInternalFlags(f, false)
 		return nil
 	}
 }
@@ -607,14 +607,32 @@ func noOption(c *Context) error {
 	}))
 }
 
+func wrapEachOccurrence(c *Context, newTarget target, t internalContext) *Context {
+	lookup := newLookupCore(t, c)
+	return &Context{
+		Stdin:      c.Stdin,
+		Stdout:     c.Stdout,
+		Stderr:     c.Stderr,
+		FS:         c.FS,
+		lookupCore: lookup,
+		state: &childContextState{ // TODO Would be better as custom state impl
+			internalCtx: t,
+			tgt:         newTarget,
+			par:         c,
+			tim:         ActionTiming, //InitialTiming, // FIXME This is wrong - should be action??
+			ref:         c.Context(),
+		},
+	}
+}
+
 func eachOccurrenceOpt() MiddlewareFunc {
 	return MiddlewareFunc(func(c *Context, next Action) error {
 		opt := c.option()
 		mini := &wrapOccurrenceContext{
-			optionContext: c.internal.(*optionContext),
+			optionContext: c.state.getInternal().(*optionContext),
 		}
 
-		scope := c.copy(opt, mini)
+		scope := wrapEachOccurrence(c, opt, mini)
 
 		// Obtain either the zero value or Reset() the value
 		resetOnFirstOccur := !opt.internalFlags().merge()
@@ -670,7 +688,7 @@ func sortedCommandsOpt(c *Context) error {
 }
 
 func sortedExprsOpt(c *Context) error {
-	exp, ok := c.target.description().(interface{ SortUsage() })
+	exp, ok := c.target().description().(interface{ SortUsage() })
 	if !ok {
 		return nil
 	}
@@ -680,8 +698,8 @@ func sortedExprsOpt(c *Context) error {
 }
 
 func enforceReservedOptions(c *Context) error {
-	if c.target.options() != nil {
-		opts := *c.target.options()
+	if c.target().options() != nil {
+		opts := *c.target().options()
 		if (opts & reservedOptionMask) > 0 {
 			return c.internalError(fmt.Errorf("cannot use reserved options"))
 		}

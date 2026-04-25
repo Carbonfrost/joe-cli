@@ -349,7 +349,6 @@ var (
 			ActionFunc(finalizeSubcommands),
 			ActionFunc(enforceReservedOptions),
 			At(ActionTiming, actionFunc(triggerRobustParsingAndCompletion)),
-			ActionFunc(copyContextToParent),
 		),
 		Action: actions(
 			ActionFunc(triggerOptions),
@@ -863,8 +862,10 @@ func WithContextValue(key, value any) Middleware {
 // Used internally by middleware to propagate context without mutation
 func (c *Context) withWrappedContext(ctx context.Context) *Context {
 	wrapped := *c
-	wrapped.origin = c // specifies where the copy was created
-	wrapped.ref = ctx
+	wrapped.state = &wrappedContextState{
+		orig: c,
+		ref:  ctx,
+	}
 	return &wrapped
 }
 
@@ -1774,7 +1775,7 @@ func (p Prototype) Pipeline() Action {
 }
 
 func (p *Prototype) copyCommonToTarget(c *Context) error {
-	o := c.target
+	o := c.target()
 	if o.category() == "" {
 		o.setCategory(p.Category)
 	}
@@ -1863,7 +1864,7 @@ func (p *Prototype) copyToFlag(c *Context) {
 }
 
 func (p *Prototype) copyToValue(c *Context) error {
-	o, ok := c.target.(*valueTarget)
+	o, ok := c.target().(*valueTarget)
 	if !ok {
 		return nil
 	}
@@ -1948,12 +1949,12 @@ func (w withTimingWrapper) Execute(ctx context.Context) error {
 	desired := w.t
 	actual := desired.actual()
 	switch {
-	case c.timing < actual:
-		c.target.appendAction(desired, w.Action)
+	case c.Timing() < actual:
+		c.target().appendAction(desired, w.Action)
 		return nil
-	case c.timing == actual:
+	case c.Timing() == actual:
 		return execute(c, w.Action)
-	default: // c.timing > actual:
+	default: // c.Timing() > actual:
 		return c.internalError(ErrTimingTooLate)
 	}
 }
@@ -1982,12 +1983,12 @@ func (w withTimingMWWrapper) ExecuteWithNext(ctx context.Context, next Action) e
 	desired := w.t
 	actual := desired.actual()
 	switch {
-	case c.timing < actual:
-		c.target.appendAction(desired, w.Middleware)
+	case c.Timing() < actual:
+		c.target().appendAction(desired, w.Middleware)
 		return nil
-	case c.timing == actual:
+	case c.Timing() == actual:
 		return w.Middleware.ExecuteWithNext(ctx, next)
-	default: // c.timing > actual:
+	default: // c.Timing() > actual:
 		return c.internalError(ErrTimingTooLate)
 	}
 }
