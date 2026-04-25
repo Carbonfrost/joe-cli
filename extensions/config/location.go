@@ -21,6 +21,12 @@ type IdiomaticLocation interface {
 
 	// Layer gets the layer where the location is found
 	Layer() Layer
+
+	// OS gets the operating system the location supports
+	OS() string
+
+	// Arch gets the architecture the location supports
+	Arch() string
 }
 
 // IdiomaticLocationProvider provides an interface for how idiomatic locations
