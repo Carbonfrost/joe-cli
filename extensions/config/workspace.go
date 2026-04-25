@@ -139,9 +139,11 @@ func SetWorkingDir(diropt ...string) cli.Action {
 			Value:    new(string),
 			Options:  cli.MustExist,
 		},
-		cli.IfMatch(
-			cli.Seen,
-			bind.BeforeCall(os.Chdir, bind.Exact(diropt...)),
+		cli.At(cli.ValidatorTiming,
+			cli.IfMatch(
+				cli.Seen,
+				bind.BeforeCall(os.Chdir, bind.Exact(diropt...)),
+			),
 		),
 	)
 }
@@ -170,19 +172,13 @@ func SetConfigDir(diropt ...string) cli.Action {
 		func(c *cli.Context) {
 			c.SetName(appName(c) + "-dir")
 		},
-		bind.Before(WithConfigDir, bind.Exact(diropt...)),
+		cli.At(cli.ValidatorTiming,
+			cli.IfMatch(
+				cli.Seen,
+				bind.Before(WithConfigDir, bind.Exact(diropt...)),
+			),
+		),
 	)
-}
-
-func applyOption[T any](f func(*Workspace, T) error, name string, opt ...T) func(*Workspace) {
-	if len(opt) == 1 {
-		return func(w *Workspace) {
-			f(w, opt[0])
-		}
-	}
-	return func(*Workspace) {
-		panic(fmt.Sprintf("argument %s is required and must be length 1", name))
-	}
 }
 
 func (w workspaceOption) apply(ws *Workspace) {
