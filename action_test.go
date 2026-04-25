@@ -680,6 +680,69 @@ var _ = Describe("timings", func() {
 		Expect(events).To(Equal([]string{"validator", "before", "implicitValue"}))
 	})
 
+	It("ensures that validation runs before other Before funcs even when wrapped in Before", func() {
+		var (
+			events []string
+			stub   = func(evt string) cli.ActionFunc {
+				return func(c *cli.Context) error {
+					events = append(events, evt)
+					return nil
+				}
+			}
+		)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						cli.Before(stub("before")),
+						cli.Before(cli.At(cli.ValidatorTiming, stub("validator"))),
+						cli.Before(cli.At(cli.ImplicitValueTiming, stub("implicitValue"))),
+					),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -f S")
+		_ = app.RunContext(context.Background(), args)
+		Expect(events).To(Equal([]string{"validator", "before", "implicitValue"}))
+	})
+
+})
+
+var _ = Describe("At", func() {
+
+	It("can overwrite existing timing", func() {
+		var (
+			events []string
+			stub   = func(evt string) cli.ActionFunc {
+				return func(c *cli.Context) error {
+					events = append(events, fmt.Sprintf("%s actually %v", evt, c.Timing()))
+					return nil
+				}
+			}
+		)
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						cli.After(cli.Before(stub("before"))),
+						cli.Before(cli.At(cli.ValidatorTiming, stub("validator"))),
+						cli.After(cli.At(cli.ImplicitValueTiming, stub("implicitValue"))),
+					),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -f S")
+		_ = app.RunContext(context.Background(), args)
+		Expect(events).To(Equal([]string{
+			"validator actually BEFORE",
+			"before actually AFTER",
+			"implicitValue actually AFTER",
+		}))
+	})
 })
 
 var _ = Describe("Timing", func() {

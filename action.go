@@ -64,6 +64,11 @@ type legacyActionWrapper struct {
 	a legacyAction
 }
 
+type actionTiming interface {
+	timing() Timing
+	action() Action
+}
+
 //counterfeiter:generate . Middleware
 
 // Middleware provides an action which controls how and whether the next
@@ -738,6 +743,12 @@ func At(t Timing, a Action) Action {
 			setInternalFlag(internalFlagImplicitTimingActive),
 			a,
 			unsetInternalFlag(internalFlagImplicitTimingActive)))
+	}
+	if at, ok := a.(actionTiming); ok {
+		if at.timing().actual() == t.actual() {
+			return a
+		}
+		a = at.action()
 	}
 	if mw, ok := a.(Middleware); ok {
 		return withTimingMWWrapper{mw, t}
@@ -1947,8 +1958,20 @@ func (w withTimingWrapper) Execute(ctx context.Context) error {
 	}
 }
 
+func (w withTimingWrapper) timing() Timing {
+	return w.t
+}
+
+func (w withTimingWrapper) action() Action {
+	return w.Action
+}
+
 func (w withTimingMWWrapper) Execute(ctx context.Context) error {
 	return w.ExecuteWithNext(ctx, nil)
+}
+
+func (w withTimingMWWrapper) action() Action {
+	return w.Middleware
 }
 
 func (w withTimingMWWrapper) ExecuteWithNext(ctx context.Context, next Action) error {
@@ -1967,6 +1990,10 @@ func (w withTimingMWWrapper) ExecuteWithNext(ctx context.Context, next Action) e
 	default: // c.timing > actual:
 		return c.internalError(ErrTimingTooLate)
 	}
+}
+
+func (w withTimingMWWrapper) timing() Timing {
+	return w.t
 }
 
 func (b beforePipeline) Execute(c context.Context) error {
@@ -2146,10 +2173,12 @@ func bind[V any](fn func(V) error) Action {
 }
 
 var (
-	_ Action     = withTimingWrapper{}
-	_ Middleware = withTimingMWWrapper{}
-	_ Action     = Setup{}
-	_ Action     = Prototype{}
-	_ Action     = beforePipeline{}
-	_ hookable   = (*hooksSupport)(nil)
+	_ Action       = withTimingWrapper{}
+	_ Middleware   = withTimingMWWrapper{}
+	_ actionTiming = withTimingWrapper{}
+	_ actionTiming = withTimingMWWrapper{}
+	_ Action       = Setup{}
+	_ Action       = Prototype{}
+	_ Action       = beforePipeline{}
+	_ hookable     = (*hooksSupport)(nil)
 )
