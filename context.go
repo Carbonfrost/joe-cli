@@ -2159,7 +2159,7 @@ func executePipelines(at Timing) Action {
 		user := c.target.pipeline(at)
 
 		var actions []any
-		if c.target.internalFlags().eachOccurrence() {
+		if c.IsAction() && c.target.internalFlags().eachOccurrence() {
 			actions = []any{eachOccurrenceOpt()}
 		}
 
