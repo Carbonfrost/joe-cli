@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.14.2 (April 26, 2026)
+
+### New Features
+
+* `OptionalAlias`; remove `AddAlias` (32704bd)
+* Config extension:
+    * Locations and parsing locations (99db9e2)
+    * Empty lookup and empty store (6ec2f59)
+    * Add OS, Arch to idiomatic location (80ee0a5)
+    * Support additional files (00ef021)
+
+# Bug fixes and improvements
+
+* Encapsulate internal context state; remove copying hacks (7f19060)
+* Demote help alias to optional (43abce1)
+* Disallow duplicate command names (5f520be)
+* Remove completion request into context data (e77702a)
+* Config extension: Simplify and modernize `WorkspaceOption` (ffbd4ee)
+* Bug fix: Ensure config option timings (8e8943f)
+* Bug fix: De-dupe timing wrappers even over synthetic timings (f083cb6)
+* Bug fix: Limit each occurrence to ActionTiming (722deaf)
+
+
 ## v0.14.1 (April 20, 2026)
 
 ### New Features
@@ -516,7 +539,7 @@
 
 * Allow FS as argument to `FromFilePath` (e5dc8b3)
 * Introduce `TransformFunc` as API (218c806)
-* Allow `PrintVersion` to be used as an initializer; add -h alias (`4291c94`)
+* Allow `PrintVersion` to be used as an initializer; add -h alias (4291c94)
 * Introduce `At` (to eventually replace `AtTiming`) (5218990)
 
 ### Bug fixes and improvements
