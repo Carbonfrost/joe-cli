@@ -5,7 +5,9 @@
 package expander_test
 
 import (
+	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/Carbonfrost/joe-cli/extensions/expr/expander"
@@ -70,6 +72,22 @@ var _ = Describe("Reflect", func() {
 		Entry("pointer", &struct{ M complex128 }{4 + 80i}, "%(M)", Equal("(4+80i)")),
 		Entry("nil", nil, "%(unknown)", Equal("<nil>")),
 		Entry("non-existing", struct{ A string }{"L"}, "%(unknown)", Equal("<nil>")),
+	)
+})
+
+var _ = Describe("Runtime", func() {
+
+	DescribeTable("examples", func(text string, expected types.GomegaMatcher) {
+		e := expander.Compile(text)
+
+		expander := expander.Prefix("go", expander.Runtime())
+		Expect(e.Expand(expander)).To(expected)
+	},
+		Entry("numCPU", "%(go.numCPU)", Equal(fmt.Sprintf("%d", runtime.NumCPU()))),
+		Entry("os", "%(go.os)", Equal(runtime.GOOS)),
+		Entry("arch", "%(go.arch)", Equal(runtime.GOARCH)),
+		Entry("version", "%(go.version)", Equal(runtime.Version())),
+		Entry("unknown key", "%(go.unknown)", Equal("<nil>")),
 	)
 })
 

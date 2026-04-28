@@ -873,7 +873,6 @@ func (e *Expression) ExecuteParallel(ctx context.Context, jobs int, items ...any
 	g.SetLimit(jobs)
 
 	for _, item := range items {
-		item := item // capture loop variable
 		g.Go(func() error {
 			return e.evaluateCore(ctx, item)
 		})

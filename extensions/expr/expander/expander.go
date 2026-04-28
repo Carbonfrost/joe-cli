@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -100,6 +101,24 @@ func Env() Interface {
 		result, ok := os.LookupEnv(s)
 		if ok {
 			return result
+		}
+		return nil
+	})
+}
+
+// Runtime provides an expander for Go runtime variables: numCPU, os, arch, version.
+// Intended for use with Prefix("go", Runtime()).
+func Runtime() Interface {
+	return Func(func(k string) any {
+		switch k {
+		case "numCPU":
+			return runtime.NumCPU()
+		case "os":
+			return runtime.GOOS
+		case "arch":
+			return runtime.GOARCH
+		case "version":
+			return runtime.Version()
 		}
 		return nil
 	})
