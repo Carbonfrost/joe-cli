@@ -164,6 +164,31 @@ type C    struct {  }`,
 			Expect(path).To(Equal("a/b"))
 		})
 
+		It("exec pipes file contents through subprocess", func() {
+			SkipOnWindows()
+
+			testFileSystem := testFileSystem()
+			app := &cli.App{
+				Name: "app",
+				FS:   testFileSystem,
+				Action: template.New(
+					template.Vars{"file": "file_generate_test.txt"},
+					template.File("{{ .file }}", template.Exec("cat")),
+				),
+				Stdout: io.Discard,
+			}
+
+			f, _ := testFileSystem.Create("file_generate_test.txt")
+			f.(io.Writer).Write([]byte("cat input"))
+			f.Close()
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+
+			actual, _ := fs.ReadFile(testFileSystem, "file_generate_test.txt")
+			Expect(string(actual)).To(Equal("cat input"))
+		})
+
 		Context("when checking status messages", func() {
 
 			var testFileSystem = func() cli.FS {

@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"time"
 )
 
@@ -142,6 +143,33 @@ func Gofmt() FileGenerator {
 		}
 
 		_, err = doFileGenerate(ctx, c, name, Contents(result))
+		return err
+	})
+}
+
+// Exec generates a file by piping the existing file contents through a subprocess.
+// The subprocess receives the current file contents on stdin, and its stdout becomes
+// the new file contents.
+func Exec(name string, arg ...string) FileGenerator {
+	return FileGeneratorFunc(func(ctx context.Context, c *OutputContext, filename string) error {
+		var src []byte
+		file, err := c.FS.OpenContext(ctx, filename)
+		if err == nil {
+			src, err = io.ReadAll(file)
+			if err != nil {
+				return err
+			}
+		}
+
+		cmd := exec.CommandContext(ctx, name, arg...)
+		cmd.Stdin = bytes.NewReader(src)
+
+		result, err := cmd.Output()
+		if err != nil {
+			return err
+		}
+
+		_, err = doFileGenerate(ctx, c, filename, Contents(result))
 		return err
 	})
 }
