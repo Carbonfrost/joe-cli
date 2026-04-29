@@ -53,8 +53,8 @@ func NewApp() *cli.App {
 func glueTemplateOptions(root func() *template.Root) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		t := root()
-		_ = t.SetDryRun(c.Bool("dry-run"))
-		_ = t.SetOverwrite(c.Bool("force"))
+		t.DryRun = c.Bool("dry-run")
+		t.Overwrite = c.Bool("force")
 		return c.Do(t)
 	}
 }

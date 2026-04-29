@@ -343,7 +343,10 @@ var _ = Describe("Indirect", func() {
 			Flags: []*cli.Flag{
 				{
 					Name: "no-recursive",
-					Uses: bind.Indirect("files", (*cli.FileSet).SetRecursive, false),
+					Uses: bind.Indirect("files", func(f *cli.FileSet, v bool) error {
+						f.Recursive = v
+						return nil
+					}, false),
 				},
 			},
 			Args: []*cli.Arg{
@@ -364,7 +367,10 @@ var _ = Describe("Indirect", func() {
 				{
 					Name:  "no-recursive",
 					Value: new(bool),
-					Uses:  bind.Indirect("files", (*cli.FileSet).SetRecursive, false),
+					Uses: bind.Indirect("files", func(f *cli.FileSet, v bool) error {
+						f.Recursive = v
+						return nil
+					}, false),
 				},
 			},
 			Args: []*cli.Arg{

@@ -407,9 +407,7 @@ func (f *FileSet) Initializer() Action {
 	return ActionFunc(f.setupOptionRequireFS)
 }
 
-// SetRecursive updates the file set Recursive field.  This is generally meant to be
-// used with BindIndirect.  Never returns an error.
-func (f *FileSet) SetRecursive(b bool) error {
+func (f *FileSet) setRecursive(b bool) error {
 	f.Recursive = b
 	return nil
 }
@@ -419,7 +417,7 @@ func (f *FileSet) RecursiveFlag() Prototype {
 	return Prototype{
 		Name:     "recursive",
 		HelpText: "Include files and directories recursively",
-		Uses:     bind(f.SetRecursive),
+		Uses:     bind(f.setRecursive),
 	}
 }
 

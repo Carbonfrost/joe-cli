@@ -60,16 +60,12 @@ func Data(name string, value any) Generator {
 	return &dataSetter{name, value}
 }
 
-// SetOverwrite sets whether to overwrite.  This function is for
-// bindings
-func (r *Root) SetOverwrite(v bool) error {
+func (r *Root) setOverwrite(v bool) error {
 	r.Overwrite = v
 	return nil
 }
 
-// SetDryRun sets whether to do a dry run.  This function is for
-// bindings
-func (r *Root) SetDryRun(v bool) error {
+func (r *Root) setDryRun(v bool) error {
 	r.DryRun = v
 	return nil
 }
@@ -80,7 +76,7 @@ func (r *Root) OverwriteFlag() cli.Prototype {
 		Name:     "overwrite",
 		HelpText: "Overwrite files",
 
-		Uses: bind.Call(r.SetOverwrite),
+		Uses: bind.Call(r.setOverwrite),
 	}
 }
 
@@ -89,7 +85,7 @@ func (r *Root) DryRunFlag() cli.Prototype {
 	return cli.Prototype{
 		Name:     "dry-run",
 		HelpText: "Display what commands will be run without actually executing them",
-		Uses:     bind.Call(r.SetDryRun),
+		Uses:     bind.Call(r.setDryRun),
 	}
 }
 
