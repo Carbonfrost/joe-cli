@@ -303,6 +303,38 @@ var _ = Describe("SetPointer", func() {
 	})
 })
 
+var _ = Describe("Setter", func() {
+
+	Describe("binding arguments", func() {
+		DescribeTable("examples", func(binder bind.Binder[string], expected string) {
+			var actual1 any
+			var actual2 string
+			var caller = func(a any, v string) {
+				actual1 = a
+				actual2 = v
+			}
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{Name: "arg", NArg: 1},
+				},
+				Flags: []*cli.Flag{
+					{Name: "f"},
+				},
+				Uses: bind.Setter(caller, "target", binder),
+			}
+
+			args, _ := cli.Split("app -f flag_value arg_value")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual1).To(Equal("target"))
+			Expect(actual2).To(Equal(expected))
+		},
+			Entry("named", bind.String("f"), "flag_value"),
+			Entry("implicit name", bind.String(), "arg_value"),
+		)
+	})
+})
+
 var _ = Describe("Indirect", func() {
 
 	It("copies the implied value of the function", func() {

@@ -356,6 +356,16 @@ func SetPointer[V any](v *V, binder Binder[V]) cli.Action {
 	}, binder)
 }
 
+// Setter provides a binding over the typical setter accessor for a value,
+// func(*T, V) also commonly in the form func(*T) SetMethod (V) when it is
+// a method with a selector.
+func Setter[T, V any](fn func(T, V), target T, binder Binder[V]) cli.Action {
+	return Call(func(in V) (_ error) {
+		fn(target, in)
+		return
+	}, binder)
+}
+
 // Initializers obtains the initializers for a sequence of binders.
 // For a binder that has a method Initializer() Action, such method will be called
 // to retrieve the initializer. For a binder that has a method SetName(any), the
