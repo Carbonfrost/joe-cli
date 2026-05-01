@@ -7,6 +7,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -30,6 +31,26 @@ func NewStore(base cli.Lookup, has func(string) bool) Store {
 	return wrapperStore{
 		Lookup: base, has: has,
 	}
+}
+
+// FromValues creates a store from the specified values
+func FromValues(values ...Value) (Store, error) {
+	lv := cli.LookupValues{}
+	for _, v := range values {
+		if v.FromEnv {
+			var ok bool
+			lv[v.Name], ok = os.LookupEnv(v.Value)
+			if !ok {
+				return nil, fmt.Errorf("env var not defined %s", v.Value)
+			}
+		} else {
+			lv[v.Name] = v.Value
+		}
+	}
+	return NewStore(lv, func(key string) bool {
+		_, ok := lv[key]
+		return ok
+	}), nil
 }
 
 type wrapperStore struct {

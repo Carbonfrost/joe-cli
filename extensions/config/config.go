@@ -74,6 +74,61 @@ type Options struct {
 
 	// AdditionalFiles specifies additional configuration files to load
 	AdditionalFiles []string
+
+	// Values were specified as additional values at the command line
+	Values []Value
+}
+
+// Value represents a value specified for configuration
+type Value struct {
+	Name    string
+	Value   string
+	FromEnv bool
+}
+
+// SetValue sets a configuration value in the configuration
+func SetValue(nv ...*cli.NameValue) cli.Action {
+	return cli.Pipeline(
+		&cli.Prototype{
+			Name:     "config",
+			HelpText: "Set variable {0:NAME} to a {1:VALUE}",
+			Uses:     cli.OptionalAlias("c"),
+		},
+		bind.Action2(
+			WithValue,
+			bind.Exact(nv...).(*bind.NameValueBinder).Name(),
+			bind.Exact(nv...).(*bind.NameValueBinder).Value(),
+		),
+	)
+}
+
+// WithValue sets a configuration value
+func WithValue(name, value string) Option {
+	return optionFunc(func(c *Config) {
+		c.options.Values = append(c.options.Values, Value{Name: name, Value: value})
+	})
+}
+
+// WithEnvValue sets a configuration value via env var
+func WithEnvValue(name string, envvar string) Option {
+	return optionFunc(func(c *Config) {
+		c.options.Values = append(c.options.Values, Value{Name: name, Value: envvar, FromEnv: true})
+	})
+}
+
+// SetEnvValue sets an additional value in the configuration
+func SetEnvValue(nv ...*cli.NameValue) cli.Action {
+	return cli.Pipeline(
+		&cli.Prototype{
+			Name:     "config-env",
+			HelpText: "Set configuration variable {0:NAME} a value by looking up {1:ENV VAR}",
+		},
+		bind.Action2(
+			WithEnvValue,
+			bind.Exact(nv...).(*bind.NameValueBinder).Name(),
+			bind.Exact(nv...).(*bind.NameValueBinder).Value(),
+		),
+	)
 }
 
 // SetProfile sets up the profile and provides reasonable defaults for initializing
@@ -271,6 +326,8 @@ func FlagsAndArgs() cli.Action {
 	return cli.AddFlags([]*cli.Flag{
 		{Uses: SetProfile()},
 		{Uses: SetAdditionalFile()},
+		{Uses: SetEnvValue()},
+		{Uses: SetValue()},
 	}...)
 }
 
