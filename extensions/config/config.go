@@ -217,9 +217,9 @@ func (c *Config) Paths(ctx context.Context) ([]string, error) {
 }
 
 // Resolve determines the locations of config in terms of idiomaitic locations, if available
-func (c *Config) Resolve(opts Options) ([]IdiomaticLocation, error) {
+func (c *Config) Resolve() ([]IdiomaticLocation, error) {
 	if i, ok := c.location.(IdiomaticLocationProvider); ok {
-		return i.Resolve(opts)
+		return i.Resolve(c.options)
 	}
 	return nil, nil
 }
@@ -273,5 +273,3 @@ func FlagsAndArgs() cli.Action {
 }
 
 func (*Config) contextValueSigil() {}
-
-var _ IdiomaticLocationProvider = (*Config)(nil)
