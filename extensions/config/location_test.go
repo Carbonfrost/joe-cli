@@ -138,6 +138,21 @@ var _ = Describe("ParseLocation", func() {
 			Expect(paths[0]).To(Equal("testapp/file.txt"))
 		})
 
+		It("expands cli:cache in app context", func() {
+			app := &cli.App{
+				Name: "testapp",
+			}
+			ctx, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			loc := config.ParseLocation("${cli:cache}/file.txt")
+			cacheDir, _ := os.UserCacheDir()
+			paths, err := loc.Paths(ctx)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(paths).To(Equal([]string{filepath.Join(cacheDir, "testapp", "file.txt")}))
+		})
+
 		It("expands cli:workspace in workspace context", func() {
 			testFS := fstest.MapFS{
 				"workspace/.testapp": {Mode: fs.ModeDir},

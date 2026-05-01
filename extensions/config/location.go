@@ -94,6 +94,7 @@ func (l Layer) String() string {
 // these special variables are supported:
 //
 //   - cli:app - the app name
+//   - cli:cache - the user cache directory for the app
 //   - cli:workspace - the workspace directory
 //   - cli:workspace.config - the workspace ConfigDir directory
 //   - GOOS - populated from runtime.GOOS
@@ -185,6 +186,14 @@ func expandPath(ctx context.Context, path string) (string, bool) {
 			name := appName(ctx)
 			allResolved = allResolved && (name != "")
 			return name
+		case "cli:cache":
+			cacheDir, err := os.UserCacheDir()
+			allResolved = allResolved && (err == nil)
+			if err != nil {
+				return ""
+			}
+			return filepath.Join(cacheDir, appName(ctx))
+
 		case "cli:workspace":
 			ws, _ := tryWorkspaceFromContext(ctx)
 			allResolved = allResolved && (ws != nil && ws.Dir() != "")
