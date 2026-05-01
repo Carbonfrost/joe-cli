@@ -67,7 +67,7 @@ type workspaceOption func(*Workspace) error
 var SkipFile = errors.New("skip this file")
 
 // DefaultWorkspaceFinder provides the default logic for finding a workspace
-var DefaultWorkspaceFinder WorkspaceFinder = new(defaultWorkspaceFinder)
+const DefaultWorkspaceFinder defaultWorkspaceFinder = iota
 
 var errWorkspaceNotFound = fmt.Errorf("workspace not found")
 
@@ -200,7 +200,7 @@ func (w *Workspace) completeSetup(c context.Context) {
 	if w.dir == "" {
 		cwd, _ := os.Getwd()
 
-		finder := cmp.Or(w.finder, DefaultWorkspaceFinder)
+		finder := cmp.Or(w.finder, WorkspaceFinder(DefaultWorkspaceFinder))
 
 		cwd, _ = finder.FindWorkspacePath(c, actualFS(c), cwd)
 		w.dir = cwd
