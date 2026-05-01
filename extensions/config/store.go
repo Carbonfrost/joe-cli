@@ -6,6 +6,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Carbonfrost/joe-cli"
 )
@@ -23,10 +24,42 @@ type Loader interface {
 	Load(context.Context) (Store, error)
 }
 
-type emptyStore struct{ cli.Lookup }
+// NewStore provides a store that wraps a lookup
+func NewStore(base cli.Lookup, has func(string) bool) Store {
+	return wrapperStore{
+		Lookup: base, has: has,
+	}
+}
 
-var empty = emptyStore{cli.EmptyLookup}
+type wrapperStore struct {
+	cli.Lookup
+	has func(string) bool
+}
 
-func (emptyStore) Has(any) bool {
-	return false
+var empty = wrapperStore{
+	Lookup: cli.EmptyLookup,
+	has: func(string) bool {
+		return false
+	},
+}
+
+func (w wrapperStore) Has(v any) bool {
+	return w.has(nameToString(v))
+}
+
+func nameToString(name any) string {
+	switch v := name.(type) {
+	case rune:
+		return string(v)
+	case string:
+		return v
+	case nil:
+		return ""
+	case *cli.Arg:
+		return v.Name
+	case *cli.Flag:
+		return v.Name
+	default:
+		panic(fmt.Sprintf("unexpected type: %T", name))
+	}
 }
