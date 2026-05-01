@@ -159,7 +159,7 @@ type Config struct {
 	// is added to a pipeline. Typically, this is an initializer set via WithDefaultAction
 	cli.Action
 
-	store    Store
+	store    storeCache
 	options  Options
 	location Location
 }
@@ -198,10 +198,10 @@ func New(opts ...Option) *Config {
 
 // Store provides the configuration store
 func (c *Config) Store() Store {
-	if c == nil || c.store == nil {
+	if c == nil {
 		return empty
 	}
-	return c.store
+	return c.store.ensureStore(nil)
 }
 
 // Apply will apply the given options to the config
@@ -242,7 +242,9 @@ func WithLocation(l Location) Option {
 // WithStore sets the configuration store to use
 func WithStore(s Store) Option {
 	return optionFunc(func(c *Config) {
-		c.store = s
+		c.store.fn = func(context.Context) (Store, error) {
+			return s, nil
+		}
 	})
 }
 

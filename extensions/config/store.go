@@ -7,6 +7,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/Carbonfrost/joe-cli"
 )
@@ -45,6 +46,57 @@ var empty = wrapperStore{
 
 func (w wrapperStore) Has(v any) bool {
 	return w.has(nameToString(v))
+}
+
+// WithLoader specifies a loader that can be used to generate the store.
+func WithLoader(l Loader) Option {
+	return optionFunc(func(c *Config) {
+		c.store.fn = func(ctx context.Context) (Store, error) {
+			return l.Load(ctx)
+		}
+	})
+}
+
+type storeCache struct {
+	fn        func(context.Context) (Store, error)
+	mu        sync.RWMutex
+	store     Store
+	once      sync.Once
+	lastError error
+}
+
+func (c *storeCache) ensureStore(ctx context.Context) Store {
+	c.mu.RLock()
+
+	if c.store != nil {
+		c.mu.RUnlock()
+		return c.store
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.once.Do(func() {
+		if c.fn == nil {
+			c.store = empty
+			return
+		}
+		store, err := c.fn(ctx)
+		if err != nil {
+			c.lastError = err
+			c.store = nil
+
+		} else {
+			c.store = store
+		}
+	})
+
+	// If store creation failed, use the empty store
+	if c.store == nil {
+		c.store = empty
+	}
+	return c.store
 }
 
 func nameToString(name any) string {
