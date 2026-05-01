@@ -7,6 +7,7 @@
 package codec
 
 import (
+	"bytes"
 	"errors"
 	"io"
 )
@@ -15,6 +16,28 @@ import (
 type Interface interface {
 	MarshalWrite(w io.Writer, in any) error
 	UnmarshalRead(r io.Reader, out any) error
+}
+
+// Codec provides a wrapper around the basic interface to facilitate
+// common codec operations
+type Codec struct {
+	Interface
+}
+
+// Marshal returns the encoding of v.
+func (c Codec) Marshal(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	err := c.Interface.MarshalWrite(&buf, v)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Unmarshal parses the encoded data and stores the result in the
+// value pointed to by v.
+func (c Codec) Unmarshal(data []byte, v any) error {
+	return c.Interface.UnmarshalRead(bytes.NewReader(data), v)
 }
 
 // Option implements options for codecs
