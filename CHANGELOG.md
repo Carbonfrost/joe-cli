@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.15.0 (May 1, 2026)
+
+### New Features
+
+* Config extension:
+    * Proactive loading (5b34d93)
+    * Reloadable stores; loading (a559d8e)
+    * Link workspace and Config (299fa1b)
+    * Additional values; `FromValues` (3c0e2e9)
+    * Default loader caching store (3c8a1fc)
+    * Store using map (9db4797)
+    * Cache location (85fda7c)
+    * Wrapper store (2787978)
+* Codec helper functions (fda846f)
+* Codec options as data (2095c4e)
+* Bind extension: `Setter` (e5c0631)
+* Template extension
+    * `FS` generator (1be0a92)
+    * `Exec` generator (039f042)
+* Go runtime variable expander (b03db08)
+
+### Bug fixes and improvements
+
+* Remove binding functions to unexported (df9f452)
+* Config extension:
+    * Make default workspace finder const (5b20be4)
+    * Basic test for loading (58a83bd)
+    * Fix config to use its internal options when resolving idiomatic locations (b3e80ee)
+* Fix file system-based tests on Windows (1d1cf83, 4d2d21c)
+
+
 ## v0.14.2 (April 26, 2026)
 
 ### New Features
@@ -11,7 +42,7 @@
     * Add OS, Arch to idiomatic location (80ee0a5)
     * Support additional files (00ef021)
 
-# Bug fixes and improvements
+### Bug fixes and improvements
 
 * Encapsulate internal context state; remove copying hacks (7f19060)
 * Demote help alias to optional (43abce1)
