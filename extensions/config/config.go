@@ -31,6 +31,12 @@ const (
 	configKey    key = "config"
 )
 
+const (
+	// These timings are required so that they run in order
+	workspaceLoadTiming   = cli.ValidatorTiming
+	configStoreLoadTiming = cli.ImplicitValueTiming
+)
+
 // The various types that the configuration system supports
 const (
 	BigFloat   = marshal.BigFloat
@@ -386,6 +392,7 @@ func WithDefaultAction() Option {
 			ContextValue(c),
 			FlagsAndArgs(),
 			SetupWorkspaceLink(),
+			cli.At(configStoreLoadTiming, Load()),
 		)
 	})
 }

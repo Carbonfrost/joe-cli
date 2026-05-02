@@ -56,6 +56,25 @@ var _ = Describe("Config", func() {
 		Expect(actual).To(Equal("uv"))
 	})
 
+	It("loads proactively", func() {
+		loader := new(configfakes.FakeLoader)
+		app := &cli.App{
+			Name: "myapp",
+			Uses: config.New(
+				config.WithLoader(loader),
+			),
+			Action: func(c context.Context) {
+				Expect(loader.LoadCallCount()).To(Equal(1)) // already loaded by now
+
+				_ = config.FromContext(c).String("context")
+				Expect(loader.LoadCallCount()).To(Equal(1)) // no additional loading
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	Describe("Workspace", func() {
 
 		DescribeTable("examples returns linked workspace in either order", func(uses cli.Action) {

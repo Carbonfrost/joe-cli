@@ -140,7 +140,7 @@ func SetWorkingDir(diropt ...string) cli.Action {
 			Value:    new(string),
 			Options:  cli.MustExist,
 		},
-		cli.At(cli.ValidatorTiming,
+		cli.At(workspaceLoadTiming,
 			cli.IfMatch(
 				cli.Seen,
 				bind.BeforeCall(os.Chdir, bind.Exact(diropt...)),
@@ -173,7 +173,7 @@ func SetConfigDir(diropt ...string) cli.Action {
 		func(c *cli.Context) {
 			c.SetName(appName(c) + "-dir")
 		},
-		cli.At(cli.ValidatorTiming,
+		cli.At(workspaceLoadTiming,
 			cli.IfMatch(
 				cli.Seen,
 				bind.Before(WithConfigDir, bind.Exact(diropt...)),
