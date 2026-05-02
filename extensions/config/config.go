@@ -255,6 +255,8 @@ func WithProfile(name string) Option {
 }
 
 // New creates a new configuration within the context
+// By default, adding the Config to the pipeline adds it as a context service,
+// which is required for most use cases, adds flags, and loads the configuration.
 func New(opts ...Option) *Config {
 	c := new(Config)
 	c.Apply(defaultOpts...)
@@ -296,6 +298,60 @@ func (c *Config) FindProfileNames(ctx context.Context) []string {
 		return i.FindProfileNames(ctx)
 	}
 	return nil
+}
+
+// Load loads the configuration if it has not been loaded
+// yet. If it has, the error returned may be a cached result
+// from a previous failure.
+func (c *Config) Load(ctx context.Context) (Store, error) {
+	c.store.Invalidate()
+	return c.store.ensureStore(c.upgradeContext(ctx)), c.store.lastError
+}
+
+func (c *Config) loadAction(ctx context.Context) error {
+	_, err := c.Load(ctx)
+	return err
+}
+
+// Reload loads the configuration or reloads it. This operation does
+// not re-apply bindings that may have been setup.
+func (c *Config) Reload(ctx context.Context) error {
+	rs, err := c.reloadableStore()
+	if err != nil {
+		return err
+	}
+
+	return rs.Reload(c.upgradeContext(ctx))
+}
+
+func (c *Config) reloadableStore() (ReloadableStore, error) {
+	rs, ok := c.Store().(ReloadableStore)
+	if !ok {
+		return nil, fmt.Errorf("config does not support reloading")
+	}
+	return rs, nil
+}
+
+func (c *Config) upgradeContext(ctx context.Context) context.Context {
+	// Furnish the context with the common values in case this is not
+	// running in a pipeline
+	ctx = upgradeContext(ctx, c)
+	ctx = upgradeContext(ctx, c.Workspace())
+	return ctx
+}
+
+func upgradeContext[T interface {
+	contextValue
+	comparable
+}](ctx context.Context, value T) context.Context {
+	var zero T
+	if value == zero {
+		return ctx
+	}
+	if _, err := tryFromContext[T](ctx); err != nil {
+		return context.WithValue(ctx, keyFor(value), value)
+	}
+	return ctx
 }
 
 // WithLocation sets the configuration location to use
@@ -353,6 +409,25 @@ func SetupWorkspaceLink() cli.Action {
 		if err1 == nil && err2 == nil {
 			cfg.workspace = ws
 		}
+	})
+}
+
+// Load loads the configuration, returning an error if it fails to load.
+// Any binding that reads from the configuration store should wait until
+// loading is completed, which ensures that the load error happens as early as
+// possible and not in the context of a specific value being consumed.
+func Load() cli.Action {
+	return actionThunk((*Config).loadAction)
+}
+
+// Reload loads the configuration or reloads it.
+func Reload() cli.Action {
+	return actionThunk((*Config).Reload)
+}
+
+func actionThunk(fn func(*Config, context.Context) error) cli.Action {
+	return cli.ActionOf(func(c context.Context) error {
+		return fn(FromContext(c), c)
 	})
 }
 

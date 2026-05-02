@@ -21,6 +21,16 @@ type Store interface {
 	Has(name any) bool
 }
 
+// ReloadableStore provides a store which can be reloaded.
+type ReloadableStore interface {
+	Store
+
+	// Reload will reload the store in place. Generally, clients don't call
+	// this method directly. Use Config.Reload which will provide the appropriate
+	// services to the context.
+	Reload(context.Context) error
+}
+
 // Loader loads the configuration system
 type Loader interface {
 	Load(context.Context) (Store, error)
@@ -84,6 +94,14 @@ type storeCache struct {
 	store     Store
 	once      sync.Once
 	lastError error
+}
+
+func (c *storeCache) Invalidate() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.store = nil
+	c.once = sync.Once{}
 }
 
 func (c *storeCache) ensureStore(ctx context.Context) Store {
