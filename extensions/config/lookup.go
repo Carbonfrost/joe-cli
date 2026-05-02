@@ -5,14 +5,359 @@
 package config
 
 import (
+	"encoding/hex"
 	"math/big"
 	"net"
 	"net/url"
 	"regexp"
+	"strconv"
 	"time"
 
-	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
+
+// Map provides a config Store which uses simple key-value pairs typed
+// as strings. The underlying lookup automatically provides conversions.
+type Values map[string]string
+
+func (v Values) Bool(k any) bool {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return false
+	}
+	p, err := support.ParseBool(value)
+	if err != nil {
+		return false
+	}
+	return p
+}
+
+func (v Values) Interface(k any) (any, bool) {
+	s, ok := v[nameToString(k)]
+	return s, ok
+}
+
+func (v Values) Value(k any) any {
+	s, ok := v[nameToString(k)]
+	if !ok {
+		return nil
+	}
+	return s
+}
+
+func convertValue[V any, PV interface {
+	cli.Value
+	*V
+}](v Values, k any) PV {
+	value, ok := v[nameToString(k)]
+	if !ok {
+		return nil
+
+	}
+	result := PV(new(V))
+	err := result.Set(value)
+	if err != nil {
+		return nil
+	}
+	return result
+}
+
+func (v Values) NameValue(k any) *cli.NameValue {
+	return convertValue[cli.NameValue](v, k)
+}
+
+func (v Values) File(k any) *cli.File {
+	return convertValue[cli.File](v, k)
+}
+
+func (v Values) FileSet(k any) *cli.FileSet {
+	return convertValue[cli.FileSet](v, k)
+}
+
+func (v Values) String(k any) string {
+	key := nameToString(k)
+	return v[key]
+}
+
+func (v Values) List(k any) []string {
+	key := nameToString(k)
+	return cli.SplitList(v[key], ",", -1)
+}
+
+func (v Values) Bytes(k any) []byte {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return nil
+	}
+	bb, err := hex.DecodeString(value)
+	if err != nil {
+		return nil
+	}
+	return bb
+}
+
+func (v Values) Map(k any) map[string]string {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return nil
+	}
+
+	return support.FlattenValues(support.ParseMap(value))
+}
+
+func (v Values) NameValues(k any) []*cli.NameValue {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return nil
+	}
+	var p []*cli.NameValue
+	for _, kvp := range cli.SplitList(value, ",", -1) {
+		nvp := new(cli.NameValue)
+		nvp.Name, nvp.Value = splitValuePair(kvp)
+		p = append(p, nvp)
+	}
+	return p
+}
+
+func splitValuePair(arg string) (k, v string) {
+	key, value, ok := support.ParseKeyValue(arg)
+	if ok {
+		return key, value
+	}
+	return key, "true"
+}
+
+func (v Values) Int(k any) int {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	i64, err := strconv.ParseInt(value, 0, strconv.IntSize)
+	if err == nil {
+		return int(i64)
+	}
+	return 0
+}
+
+func (v Values) Int8(k any) int8 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	i64, err := strconv.ParseInt(value, 0, 8)
+	if err == nil {
+		return int8(i64)
+	}
+	return 0
+}
+
+func (v Values) Int16(k any) int16 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	i64, err := strconv.ParseInt(value, 0, 16)
+	if err == nil {
+		return int16(i64)
+	}
+	return 0
+}
+
+func (v Values) Int32(k any) int32 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	i64, err := strconv.ParseInt(value, 0, 32)
+	if err == nil {
+		return int32(i64)
+	}
+	return 0
+}
+
+func (v Values) Int64(k any) int64 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	i64, err := strconv.ParseInt(value, 0, 64)
+	if err == nil {
+		return i64
+	}
+	return 0
+}
+
+func (v Values) Uint(k any) uint {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	u64, err := strconv.ParseUint(value, 0, strconv.IntSize)
+	if err == nil {
+		return uint(u64)
+	}
+	return 0
+}
+
+func (v Values) Uint8(k any) uint8 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	u64, err := strconv.ParseUint(value, 0, 8)
+	if err == nil {
+		return uint8(u64)
+	}
+	return 0
+}
+
+func (v Values) Uint16(k any) uint16 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	u64, err := strconv.ParseUint(value, 0, 16)
+	if err == nil {
+		return uint16(u64)
+	}
+	return 0
+}
+func (v Values) Uint32(k any) uint32 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	u64, err := strconv.ParseUint(value, 0, 32)
+	if err == nil {
+		return uint32(u64)
+	}
+	return 0
+}
+func (v Values) Uint64(k any) uint64 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	u64, err := strconv.ParseUint(value, 0, 64)
+	if err == nil {
+		return u64
+	}
+	return 0
+}
+
+func (v Values) Float32(k any) float32 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	f64, err := strconv.ParseFloat(value, 32)
+	if err == nil {
+		return float32(f64)
+	}
+	return 0
+}
+
+func (v Values) Float64(k any) float64 {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	f64, err := strconv.ParseFloat(value, 64)
+	if err == nil {
+		return f64
+	}
+	return 0
+}
+
+func (v Values) Duration(k any) time.Duration {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return 0
+	}
+	p, _ := time.ParseDuration(value)
+	return p
+}
+
+func (v Values) URL(k any) *url.URL {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return nil
+	}
+	p, err := url.Parse(value)
+	if err == nil {
+		return p
+	}
+	return nil
+}
+
+func (v Values) IP(k any) net.IP {
+	key := nameToString(k)
+	value, _ := v[key]
+	return net.ParseIP(value)
+}
+
+func (v Values) Regexp(k any) *regexp.Regexp {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return nil
+	}
+	p, err := regexp.Compile(value)
+	if err == nil {
+		return p
+	}
+	return nil
+}
+
+func (v Values) BigInt(k any) *big.Int {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return nil
+	}
+	p := new(big.Int)
+	if _, ok := p.SetString(value, 10); ok {
+		return p
+	}
+	return nil
+}
+
+func (v Values) BigFloat(k any) *big.Float {
+	key := nameToString(k)
+	value, ok := v[key]
+	if !ok {
+		return nil
+	}
+	p, _, err := big.ParseFloat(value, 10, 53, big.ToZero)
+	if err == nil {
+		return p
+	}
+	return nil
+}
+
+func (v Values) Has(k any) bool {
+	_, ok := v[nameToString(k)]
+	return ok
+}
 
 // Bool obtains the value and converts it to a bool
 func (c *Config) Bool(name any) bool {
@@ -165,3 +510,4 @@ func (c *Config) Has(name any) bool {
 }
 
 var _ Store = (*Config)(nil)
+var _ Store = (Values)(nil)

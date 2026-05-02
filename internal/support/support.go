@@ -32,6 +32,19 @@ func FlattenValues(m map[string][]string) map[string]string {
 	return result
 }
 
+// ParseBool provides rules for parsing bools
+func ParseBool(value string) (bool, error) {
+	switch strings.ToLower(value) {
+
+	case "", "1", "true", "on", "t":
+		return true, nil
+	case "0", "false", "off", "f":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid value for bool %q", value)
+	}
+}
+
 // ParseMap applies parsing of maps.
 //
 // The map syntax is comma-delimited list of key-value pairs. For key-value

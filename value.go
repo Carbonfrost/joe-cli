@@ -769,15 +769,7 @@ func dereference(v any) any {
 }
 
 func parseBool(value string) (bool, error) {
-	switch strings.ToLower(value) {
-
-	case "", "1", "true", "on", "t":
-		return true, nil
-	case "0", "false", "off", "f":
-		return false, nil
-	default:
-		return false, fmt.Errorf("invalid value for bool %q", value)
-	}
+	return support.ParseBool(value)
 }
 
 func splitValuePair(arg string) (k, v string, hasValue bool) {
