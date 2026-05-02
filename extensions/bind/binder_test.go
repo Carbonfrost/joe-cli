@@ -472,24 +472,34 @@ var _ = Describe("Occurrences", func() {
 	})
 
 	It("invokes bind func with value from flag", func() {
-		var value1, value2 int
+		var value1, value2, value3 int
 		app := &cli.App{
 			Flags: []*cli.Flag{
 				{
 					Name: "m",
-					Uses: bind.Call(callFactory(&value1), bind.Occurrences("", 33)),
+					Uses: bind.Call(callFactory(&value1), bind.Occurrences("", -1, 33, -2)),
 				},
 				{
 					Name: "n",
-					Uses: bind.Call(callFactory(&value2), bind.Occurrences("n", 39)),
+					Uses: bind.Call(callFactory(&value2), bind.Occurrences("n", -1, 39, -2)),
+				},
+				{
+					Name:  "z",
+					Value: new(bool),
+				},
+				{
+					Name:  "o",
+					Value: new(bool),
+					Uses:  bind.Call(callFactory(&value3), bind.Occurrences("z", -1, 40, -2)), // unusual but allowed
 				},
 			},
 		}
-		args, _ := cli.Split("app -mn")
+		args, _ := cli.Split("app -zmno")
 		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value1).To(Equal(33))
 		Expect(value2).To(Equal(39))
+		Expect(value3).To(Equal(40))
 	})
 
 	Describe("composite binder types", func() {

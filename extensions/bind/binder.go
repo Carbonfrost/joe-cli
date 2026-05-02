@@ -222,7 +222,12 @@ func Exact[T any](valopt ...T) Binder[T] {
 // of occurrences of the flag.
 func Occurrences[T any](name string, value T, valuesopt ...T) Binder[T] {
 	values := append([]T{value}, valuesopt...)
-	return wrapWithComposite(&occurrencesBinder[T]{values: values}).(Binder[T])
+	return wrapWithComposite(&occurrencesBinder[T]{
+		binderSupport: binderSupport[T]{
+			impliedName: name,
+		},
+		values: values,
+	}).(Binder[T])
 }
 
 type occurrencesBinder[V any] struct {
