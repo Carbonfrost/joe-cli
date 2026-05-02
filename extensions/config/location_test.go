@@ -145,7 +145,7 @@ var _ = Describe("ParseLocation", func() {
 			ctx, err := app.Initialize(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 
-			loc := config.ParseLocation("${cli:cache}/file.txt")
+			loc := config.ParseLocation(filepath.Join("${cli:cache}", "file.txt"))
 			cacheDir, _ := os.UserCacheDir()
 			paths, err := loc.Paths(ctx)
 
