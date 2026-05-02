@@ -214,15 +214,15 @@ var _ = Describe("ParseLocation", func() {
 
 	Describe("complex path expansion", func() {
 		It("expands multiple variables in single path", func() {
-			os.Setenv("BASE_DIR", "/base")
+			os.Setenv("BASE_DIR", "base")
 			defer os.Unsetenv("BASE_DIR")
 
-			loc := config.ParseLocation("$BASE_DIR/$GOOS/$GOARCH/file.txt")
+			loc := config.ParseLocation(mustLocalize("$BASE_DIR/$GOOS/$GOARCH/file.txt"))
 			paths, err := loc.Paths(context.Background())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(paths).To(HaveLen(1))
-			expected := filepath.Join("/base", runtime.GOOS, runtime.GOARCH, "file.txt")
+			expected := filepath.Join("base", runtime.GOOS, runtime.GOARCH, "file.txt")
 			Expect(paths[0]).To(Equal(expected))
 		})
 

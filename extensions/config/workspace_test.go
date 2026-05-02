@@ -7,6 +7,7 @@ package config_test
 import (
 	"context"
 	"io/fs"
+	"path/filepath"
 	"slices"
 	"testing/fstest"
 
@@ -23,30 +24,30 @@ var _ = Describe("DefaultWorkspaceFinder", func() {
 		var finder = config.DefaultWorkspaceFinder.FindWorkspacePath
 
 		testFS := fstest.MapFS{
-			"a":         {Mode: fs.ModeDir},
-			"a/b/c/d/e": {Mode: fs.ModeDir},
-			"a/.config": {Mode: fs.ModeDir},
+			"a":                       {Mode: fs.ModeDir},
+			mustLocalize("a/b/c/d/e"): {Mode: fs.ModeDir},
+			mustLocalize("a/.config"): {Mode: fs.ModeDir},
 		}
 		actual, _ := finder(context.Background(), testFS, cwd)
 
 		Expect(actual).To(expected)
 	},
 		Entry("nominal", "a", Equal("a")),
-		Entry("ancestor", "a/b/c/d/e", Equal("a")),
+		Entry("ancestor", mustLocalize("a/b/c/d/e"), Equal("a")),
 		Entry("unknown", "unknown", Equal("")),
 	)
 
 	It("it defaults to app sentinel in app context", func() {
 		var finder = config.DefaultWorkspaceFinder.FindWorkspacePath
 		testFS := fstest.MapFS{
-			"x/.myapp": {Mode: fs.ModeDir},
+			mustLocalize("x/.myapp"): {Mode: fs.ModeDir},
 		}
 
 		app := &cli.App{
 			Name: "myapp",
 		}
 		ctx, _ := app.Initialize(context.Background())
-		actual, _ := finder(ctx, testFS, "x/y")
+		actual, _ := finder(ctx, testFS, mustLocalize("x/y"))
 
 		Expect(actual).To(Equal("x"))
 	})
@@ -152,3 +153,11 @@ var _ = Describe("Workspace", func() {
 	})
 
 })
+
+func mustLocalize(s string) string {
+	s, err := filepath.Localize(s)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
