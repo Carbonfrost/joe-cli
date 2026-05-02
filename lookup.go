@@ -103,19 +103,15 @@ func (c LookupValues) Value(name any) any {
 }
 
 func (c LookupValues) try(name any, deref bool) (any, bool) {
+	return tryLookup(c, name, deref)
+}
+
+func (c LookupValues) lookupValue(name string) (any, bool) {
 	if c == nil {
 		return nil, false
 	}
-
-	actual, ok := c[nameToString(name)]
-	if !ok {
-		return nil, false
-	}
-
-	if deref {
-		return dereference(actual), true
-	}
-	return actual, true
+	r, ok := c[name]
+	return r, ok
 }
 
 // Bool obtains the value and converts it to a bool

@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -18,13 +18,33 @@ import (
 )
 
 var _ = Describe("Lookup", func() {
+
 	Describe("accessors", func() {
-		DescribeTable("examples",
+
+		DescribeTableSubtree("examples",
 			func(v any, lookup func(cli.Lookup) any, expected types.GomegaMatcher) {
-				lk := cli.LookupValues{"a": v}
-				Expect(lookup(lk)).To(expected)
-				Expect(lk.Value("a")).To(expected)
+
+				It("applies to LookupValues", func() {
+					lk := cli.LookupValues{"a": v}
+					Expect(lookup(lk)).To(expected)
+					Expect(lk.Value("a")).To(expected)
+
+					_, ok := lk.Interface("a")
+					Expect(ok).To(BeTrue())
+				})
+
+				It("applies to LookupFunc", func() {
+					lk := cli.LookupFunc(func(k string) (any, bool) {
+						return v, true
+					})
+					Expect(lookup(lk)).To(expected)
+					Expect(lk.Value("a")).To(expected)
+
+					_, ok := lk.Interface("a")
+					Expect(ok).To(BeTrue())
+				})
 			},
+
 			Entry(
 				"bool",
 				cli.Bool(),
