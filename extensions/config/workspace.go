@@ -95,6 +95,7 @@ func withDefaultAction(w *Workspace) *Workspace {
 	w.Action = cli.Pipeline(
 		ContextValue(w),
 		SetupWorkspace(),
+		SetupWorkspaceLink(),
 		cli.AddFlags([]*cli.Flag{
 			{Uses: SetWorkingDir()},
 			{Uses: SetConfigDir()},

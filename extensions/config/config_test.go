@@ -34,6 +34,25 @@ var _ = Describe("Config", func() {
 		}).NotTo(Panic())
 	})
 
+	Describe("Workspace", func() {
+
+		DescribeTable("examples returns linked workspace in either order", func(uses cli.Action) {
+			app := &cli.App{
+				Name: "myapp",
+				Uses: uses,
+			}
+			ctx, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg := config.FromContext(ctx)
+			Expect(cfg).NotTo(BeNil())
+			Expect(cfg.Workspace()).NotTo(BeNil())
+		},
+			Entry("config first", cli.Pipeline(config.New(), config.NewWorkspace())),
+			Entry("ws first", cli.Pipeline(config.NewWorkspace(), config.New())),
+		)
+	})
+
 	Describe("Store", func() {
 
 		It("returns empty store when Config is nil", func() {

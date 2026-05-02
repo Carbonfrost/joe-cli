@@ -214,6 +214,8 @@ type Config struct {
 	// is added to a pipeline. Typically, this is an initializer set via WithDefaultAction
 	cli.Action
 
+	workspace *Workspace
+
 	store    storeCache
 	options  Options
 	location Location
@@ -227,6 +229,15 @@ func (c *Config) Pipeline() cli.Action {
 // Profile retrieves the profile name
 func (c *Config) Profile() string {
 	return c.options.Profile
+}
+
+// Workspace obtains the workspace which was encountered when a workspace
+// was initialized. The Config and the Workspace can be initialized in either
+// order to ensure a linkage that is returned from this method. The function
+// SetupWorkspaceLink returns the action that ensures this link and it is
+// available from the default action.
+func (c *Config) Workspace() *Workspace {
+	return c.workspace
 }
 
 // AddAdditionalFile adds an additional file to load
@@ -316,6 +327,7 @@ func WithDefaultAction() Option {
 		c.Action = cli.Pipeline(
 			ContextValue(c),
 			FlagsAndArgs(),
+			SetupWorkspaceLink(),
 		)
 	})
 }
@@ -329,6 +341,19 @@ func FlagsAndArgs() cli.Action {
 		{Uses: SetEnvValue()},
 		{Uses: SetValue()},
 	}...)
+}
+
+// SetupWorkspaceLink ensures a link between the workspace and Config.
+// It should be present in the initializer action of both. It is part of the
+// default action for both.
+func SetupWorkspaceLink() cli.Action {
+	return cli.ActionOf(func(ctx context.Context) {
+		cfg, err1 := tryFromContext[*Config](ctx)
+		ws, err2 := tryFromContext[*Workspace](ctx)
+		if err1 == nil && err2 == nil {
+			cfg.workspace = ws
+		}
+	})
 }
 
 func (*Config) contextValueSigil() {}
