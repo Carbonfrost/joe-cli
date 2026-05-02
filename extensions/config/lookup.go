@@ -311,7 +311,7 @@ func (v Values) URL(k any) *url.URL {
 
 func (v Values) IP(k any) net.IP {
 	key := nameToString(k)
-	value, _ := v[key]
+	value := v[key]
 	return net.ParseIP(value)
 }
 

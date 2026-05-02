@@ -203,8 +203,26 @@ const (
 	// reserved option within its handler if it has significance. In the main package, this
 	// option cannot be present on any target.
 	ReservedOption1
+
+	// ReservedOption2 provides an option which is reserved. This value
+	// can be used within extensions to denote additional options that are
+	// applied within the scope of the extension. The extension or client must remove the
+	// reserved option within its handler if it has significance. In the main package, this
+	// option cannot be present on any target.
 	ReservedOption2
+
+	// ReservedOption3 provides an option which is reserved. This value
+	// can be used within extensions to denote additional options that are
+	// applied within the scope of the extension. The extension or client must remove the
+	// reserved option within its handler if it has significance. In the main package, this
+	// option cannot be present on any target.
 	ReservedOption3
+
+	// ReservedOption4 provides an option which is reserved. This value
+	// can be used within extensions to denote additional options that are
+	// applied within the scope of the extension. The extension or client must remove the
+	// reserved option within its handler if it has significance. In the main package, this
+	// option cannot be present on any target.
 	ReservedOption4
 
 	maxOption
@@ -619,7 +637,7 @@ func wrapEachOccurrence(c *Context, newTarget target, t internalContext) *Contex
 			internalCtx: t,
 			tgt:         newTarget,
 			par:         c,
-			tim:         ActionTiming, //InitialTiming, // FIXME This is wrong - should be action??
+			tim:         ActionTiming,
 			ref:         c.Context(),
 		},
 	}

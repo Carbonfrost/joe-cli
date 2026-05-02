@@ -1411,7 +1411,7 @@ func (i *ifMatchNode) Pipeline() Action {
 		}),
 		i.then,
 
-		middlewareFunc(func(c context.Context, next Action) error {
+		middlewareFunc(func(c context.Context, _ Action) error {
 			if value {
 				return endLabel.Execute(c)
 			}

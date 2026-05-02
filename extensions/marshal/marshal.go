@@ -15,6 +15,7 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 )
 
+// App provides a representation of cli.App for use as data
 type App struct {
 	Name       string         `json:"name"`
 	Commands   []Command      `json:"commands,omitempty"`
@@ -33,6 +34,7 @@ type App struct {
 	Data       map[string]any `json:"data,omitempty"`
 }
 
+// Command provides a representation of cli.Command for use as data
 type Command struct {
 	Name        string         `json:"name"`
 	Aliases     []string       `json:"aliases,omitempty"`
@@ -48,6 +50,7 @@ type Command struct {
 	Data        map[string]any `json:"data,omitempty"`
 }
 
+// Flag provides a representation of cli.Flag for use as data
 type Flag struct {
 	Name        string         `json:"name"`
 	Aliases     []string       `json:"aliases,omitempty"`
@@ -62,6 +65,7 @@ type Flag struct {
 	Data        map[string]any `json:"data,omitempty"`
 }
 
+// Arg provides a representation of cli.Arg for use as data
 type Arg struct {
 	Name        string         `json:"name"`
 	EnvVars     []string       `json:"envVars,omitempty"`
@@ -75,6 +79,7 @@ type Arg struct {
 	Data        map[string]any `json:"data,omitempty"`
 }
 
+// Options provides a representation of cli.Option for use as data
 type Options = cli.Option
 
 // Type identifies the built-in supported types

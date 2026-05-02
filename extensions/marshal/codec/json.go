@@ -13,6 +13,7 @@ type jsonCodec struct {
 	disallowUnknownFields bool
 }
 
+// NewJSONCodec creates a codec support JSON
 func NewJSONCodec() Interface {
 	return &jsonCodec{}
 }

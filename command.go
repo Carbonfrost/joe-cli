@@ -523,7 +523,7 @@ func (c *Command) setCategory(name string) {
 	c.Category = name
 }
 
-func (c *Command) setDefaultText(name string) {
+func (c *Command) setDefaultText(_ string) {
 }
 
 func (c *Command) setManualText(name string) {

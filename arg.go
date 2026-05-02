@@ -573,7 +573,7 @@ func (*matchesArgsCounter) Usage() (optional, multi bool) {
 	return true, false
 }
 
-func (o *matchesArgsCounter) Take(arg string, possibleFlag bool) error {
+func (o *matchesArgsCounter) Take(arg string, _ bool) error {
 	if o.fn(arg) && o.count < o.max {
 		o.count++
 		return nil

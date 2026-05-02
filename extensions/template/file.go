@@ -90,7 +90,7 @@ func Contents(contents any) FileGenerator {
 
 // Touch touches the file.
 func Touch() FileGenerator {
-	return FileGeneratorFunc(func(ctx context.Context, c *OutputContext, name string) error {
+	return FileGeneratorFunc(func(_ context.Context, c *OutputContext, name string) error {
 		f := c.actualFS()
 		fileName := name
 		_, err := f.Stat(fileName)
@@ -175,7 +175,7 @@ func Exec(name string, arg ...string) FileGenerator {
 }
 
 func Mode(mode fs.FileMode) FileGenerator {
-	return FileGeneratorFunc(func(ctx context.Context, c *OutputContext, name string) error {
+	return FileGeneratorFunc(func(_ context.Context, c *OutputContext, name string) error {
 		return c.Chmod(name, mode)
 	})
 }

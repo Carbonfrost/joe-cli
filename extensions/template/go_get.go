@@ -28,7 +28,7 @@ func (d *goGetter) Generate(ctx context.Context, c *OutputContext) error {
 	return d.realGenerate(ctx, c)
 }
 
-func (d *goGetter) realGenerate(ctx context.Context, c *OutputContext) error {
+func (d *goGetter) realGenerate(_ context.Context, c *OutputContext) error {
 	originalMod, originalSum := d.files()
 
 	err := execGoGet(d.pkgs)
@@ -42,7 +42,7 @@ func (d *goGetter) realGenerate(ctx context.Context, c *OutputContext) error {
 	return nil
 }
 
-func (d *goGetter) dryRun(ctx context.Context, c *OutputContext) error {
+func (d *goGetter) dryRun(_ context.Context, c *OutputContext) error {
 	originalMod, _ := d.files()
 
 	for _, pkg := range d.pkgs {
