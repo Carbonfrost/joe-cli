@@ -18,6 +18,8 @@ import (
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
 )
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+
 type key string
 
 type contextValue interface {

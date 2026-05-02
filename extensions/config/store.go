@@ -31,6 +31,8 @@ type ReloadableStore interface {
 	Reload(context.Context) error
 }
 
+//counterfeiter:generate . Loader
+
 // Loader loads the configuration system
 type Loader interface {
 	Load(context.Context) (Store, error)

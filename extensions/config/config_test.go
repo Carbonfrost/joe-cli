@@ -14,6 +14,7 @@ import (
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/config"
+	"github.com/Carbonfrost/joe-cli/extensions/config/configfakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -32,6 +33,27 @@ var _ = Describe("Config", func() {
 		Expect(func() {
 			config.FromContext(ctx)
 		}).NotTo(Panic())
+	})
+
+	It("applies basic loading", func() {
+		var actual string
+		app := &cli.App{
+			Name: "myapp",
+			Uses: config.New(
+				config.WithLoader(&configfakes.FakeLoader{
+					LoadStub: func(context.Context) (config.Store, error) {
+						return alwaysHas{cli.LookupValues{"context": "uv"}}, nil
+					},
+				}),
+			),
+			Action: func(c context.Context) {
+				actual = config.FromContext(c).String("context")
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(Equal("uv"))
 	})
 
 	Describe("Workspace", func() {
