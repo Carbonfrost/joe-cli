@@ -180,9 +180,12 @@ func nameOfWSToken(s byte) nopExpr {
 }
 
 func (f formatExpr) Format(expand Interface) string {
-	var res string
 	value := expand.Expand(f.name)
-	format := f.format
+	return formatStr(value, f.format, f.trailingOpt)
+}
+
+func formatStr(value any, format, trailingOpt string) string {
+	var res string
 	switch t := value.(type) {
 	case time.Time:
 		if format == "" {
@@ -201,7 +204,7 @@ func (f formatExpr) Format(expand Interface) string {
 	if res == "" {
 		return res
 	}
-	return res + f.trailingOpt
+	return res + trailingOpt
 }
 
 func (f fallbackExpr) Format(expand Interface) string {
@@ -209,7 +212,16 @@ func (f fallbackExpr) Format(expand Interface) string {
 	if value == nil {
 		return f.fallback.Format(expand)
 	}
-	res := fmt.Sprint(value)
+
+	// The "fallback" is treated as a format string
+	var format string
+	if lit, ok := f.fallback.(literalExpr); ok {
+		if f, ok := strings.CutPrefix(lit.text, "%"); ok {
+			format = f
+		}
+	}
+
+	res := formatStr(value, format, f.trailingOpt)
 	if res == "" {
 		return res
 	}

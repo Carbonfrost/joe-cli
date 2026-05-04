@@ -25,6 +25,26 @@ var _ = Describe("CompilePattern", func() {
 		Entry("quote with percent sign", "%(", ")", "hello %(hello)", "hello world"),
 	)
 
+	Describe("SyntaxDefault", func() {
+
+		DescribeTable("examples", func(pattern, expected string) {
+			pat := expander.SyntaxDefault.Compile(pattern)
+
+			actual := pat.Expand(
+				expander.Map(map[string]any{
+					"hello":   "world",
+					"goodbye": "earth",
+					"foo":     "bar",
+					"num":     469,
+				}),
+			)
+			Expect(actual).To(Equal(expected), "Expected: debug pattern %s", expander.DebugPattern(pat))
+		},
+			Entry("nominal", "hello %(hello)", "hello world"),
+			Entry("format string", "bonjour %(num:X)", "bonjour 1D5"),
+		)
+	})
+
 	Describe("SyntaxRecursive", func() {
 
 		DescribeTable("examples", func(pattern, expected string) {
@@ -35,6 +55,7 @@ var _ = Describe("CompilePattern", func() {
 					"hello":   "world",
 					"goodbye": "earth",
 					"foo":     "bar",
+					"num":     469,
 				}),
 			)
 			Expect(actual).To(Equal(expected), "Expected: debug pattern %s", expander.DebugPattern(pat))
@@ -45,6 +66,7 @@ var _ = Describe("CompilePattern", func() {
 			Entry("fallback var 2", "hello %(missing:%(missing:%(foo)))", "hello bar"),
 			Entry("fallback literal 2", "hello %(missing:%(missing:baz))", "hello baz"),
 			Entry("redundant literal fallback", "hello %(missing:literal:bar)", "hello literal"),
+			Entry("format string", "hello %(num:%X)", "hello 1D5"),
 		)
 	})
 })
