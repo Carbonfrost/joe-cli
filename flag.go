@@ -357,7 +357,16 @@ func (f Flag) actualArgCounter() ArgCounter {
 	if f.flags.flagOnly() {
 		return NoArgs()
 	}
-	return argCounterImpliedFromValue(f.Value, !f.flags.optional())
+	switch value := f.Value.(type) {
+	case *[]string:
+		if f.flags.optional() {
+			break
+		}
+		return ArgCount(1)
+	case valueProvidesCounter:
+		return value.NewCounter()
+	}
+	return &defaultCounter{requireSeen: !f.flags.optional()}
 }
 
 func (c *wrapOccurrenceContext) Bindings(name string) [][]string {

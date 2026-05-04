@@ -36,6 +36,7 @@ var _ = Describe("Value", func() {
 					Flags: []*cli.Flag{
 						f,
 					},
+					Args:   cli.Args("a", new(string)),
 					Action: act,
 				}
 
@@ -91,6 +92,15 @@ var _ = Describe("Value", func() {
 				},
 				"app -o a",
 				Equal([]string{"default", "a"}),
+			),
+			Entry(
+				"list single flag value",
+				&cli.Flag{
+					Name:  "o",
+					Value: cli.List(),
+				},
+				"app -o a arg",
+				Equal([]string{"a"}),
 			),
 			Entry(
 				"map",

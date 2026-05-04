@@ -317,7 +317,13 @@ func (a Arg) actualArgCounter() ArgCounter {
 	if a.NArg != nil {
 		return ArgCount(a.NArg)
 	}
-	return argCounterImpliedFromValue(a.Value, false)
+	switch value := a.Value.(type) {
+	case *[]string:
+		return ArgCount(TakeUntilNextFlag)
+	case valueProvidesCounter:
+		return value.NewCounter()
+	}
+	return &defaultCounter{requireSeen: false}
 }
 
 // Synopsis contains the value placeholder
@@ -584,16 +590,6 @@ func (o *matchesArgsCounter) Take(arg string, _ bool) error {
 
 func (*matchesArgsCounter) Done() error {
 	return nil
-}
-
-func argCounterImpliedFromValue(value any, requireSeen bool) ArgCounter {
-	switch value := value.(type) {
-	case *[]string:
-		return ArgCount(TakeUntilNextFlag)
-	case valueProvidesCounter:
-		return value.NewCounter()
-	}
-	return &defaultCounter{requireSeen: requireSeen}
 }
 
 func findArgByName(items []*Arg, v any) (*Arg, int, bool) {
