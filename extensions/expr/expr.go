@@ -208,7 +208,7 @@ type expressionDescription struct {
 
 type evaluatorFunc func(context.Context, any, func(any) error) error
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//go:generate go tool counterfeiter -generate
 
 //counterfeiter:generate . Yielder
 

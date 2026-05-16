@@ -38,7 +38,7 @@ import (
 	"golang.org/x/term"
 )
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//go:generate go tool counterfeiter -generate
 
 // Split splits the specified text using shell splitting rules
 func Split(s string) ([]string, error) {
