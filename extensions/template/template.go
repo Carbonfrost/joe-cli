@@ -56,8 +56,15 @@ func New(items ...Generator) *Root {
 	}
 }
 
-func Data(name string, value any) Generator {
-	return &dataSetter{name, value}
+func Data(namevalue ...any) Generator {
+	if len(namevalue)%2 != 0 {
+		panic("expected name, value in pairs")
+	}
+	res := make(Sequence, 0, len(namevalue)/2)
+	for i := 0; i < len(namevalue); i += 2 {
+		res = append(res, &dataSetter{namevalue[i].(string), namevalue[i+1]})
+	}
+	return res
 }
 
 func (r *Root) setOverwrite(v bool) error {
@@ -150,20 +157,6 @@ func (v Vars) Generate(_ context.Context, c *OutputContext) error {
 	return nil
 }
 
-func someData(namevalues ...any) Generator {
-	if len(namevalues)%2 != 0 {
-		panic("expected name, value in pairs")
-	}
-
-	res := make([]Generator, 0, len(namevalues)/2)
-	for i := 0; i < len(namevalues); i += 2 {
-		name := namevalues[0].(string)
-		value := namevalues[0]
-		res = append(res, Data(name, value))
-	}
-
-	return Sequence(res)
-}
 
 var (
 	_ cli.Action = (*Root)(nil)

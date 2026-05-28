@@ -112,7 +112,7 @@ func Touch() FileGenerator {
 // Template generates a file by executing a template.
 func Template(tt Interface, namedata ...any) FileGenerator {
 	return newGenerateContents(func(ctx context.Context, c *OutputContext) ([]byte, error) {
-		err := someData(namedata...).Generate(ctx, c)
+		err := Data(namedata...).Generate(ctx, c)
 		if err != nil {
 			return nil, err
 		}
