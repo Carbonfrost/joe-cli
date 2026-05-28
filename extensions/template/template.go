@@ -157,7 +157,6 @@ func (v Vars) Generate(_ context.Context, c *OutputContext) error {
 	return nil
 }
 
-
 var (
 	_ cli.Action = (*Root)(nil)
 	_ Generator  = (*Root)(nil)
