@@ -157,10 +157,20 @@ func (v Vars) Generate(_ context.Context, c *OutputContext) error {
 	return nil
 }
 
+func (v Vars) applyFSOption(g *fsGenerator) {
+	if g.vars == nil {
+		g.vars = make(Vars)
+	}
+	for k, val := range v {
+		g.vars[k] = val
+	}
+}
+
 var (
 	_ cli.Action = (*Root)(nil)
 	_ Generator  = (*Root)(nil)
 	_ Generator  = (Sequence)(nil)
 	_ Interface  = (*tt.Template)(nil)
 	_ Interface  = (*cli.Template)(nil)
+	_ Option     = (Vars)(nil)
 )

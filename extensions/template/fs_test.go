@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"testing/fstest"
+	tt "text/template"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/template"
@@ -86,6 +87,29 @@ var _ = Describe("FS", func() {
 			actual, err := fs.ReadFile(dest, "main.go")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(actual)).To(Equal("package m\n\ntype C struct{}\n"))
+		})
+
+		It("makes Vars available to file generators", func() {
+			dest := newDest()
+			app := &cli.App{
+				Name: "app",
+				FS:   dest,
+				Action: template.New(
+					template.FS(sourceFS,
+						template.Vars{"Greeting": "world"},
+						template.WithFileGenerator("hello.txt",
+							template.Template(tt.Must(tt.New("").Parse("{{.Greeting}}"))),
+						),
+					),
+				),
+				Stdout: io.Discard,
+			}
+
+			Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+
+			actual, err := fs.ReadFile(dest, "hello.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(actual)).To(Equal("world"))
 		})
 
 		It("does not apply file generators for non-matching files", func() {

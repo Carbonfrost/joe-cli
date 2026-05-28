@@ -12,11 +12,18 @@ import (
 )
 
 // Option configures the behavior of the FS generator.
-type Option func(*fsGenerator)
+type Option interface {
+	applyFSOption(*fsGenerator)
+}
+
+type optionFunc func(*fsGenerator)
+
+func (f optionFunc) applyFSOption(g *fsGenerator) { f(g) }
 
 type fsGenerator struct {
 	source         fs.FS
 	fileGenerators []*fileGenOption
+	vars           Vars
 }
 
 type fileGenOption struct {
@@ -32,7 +39,7 @@ type originalContentsGen struct{}
 func FS(fsys fs.FS, opts ...Option) Generator {
 	g := &fsGenerator{source: fsys}
 	for _, opt := range opts {
-		opt(g)
+		opt.applyFSOption(g)
 	}
 	return g
 }
@@ -41,9 +48,9 @@ func FS(fsys fs.FS, opts ...Option) Generator {
 // matches the given glob pattern.  Any OriginalContents generator in gen is
 // replaced with the actual file contents from the source file system.
 func WithFileGenerator(filename string, gen ...FileGenerator) Option {
-	return func(g *fsGenerator) {
+	return optionFunc(func(g *fsGenerator) {
 		g.fileGenerators = append(g.fileGenerators, &fileGenOption{filename, gen})
-	}
+	})
 }
 
 // OriginalContents is a FileGenerator sentinel.  When used inside
@@ -61,6 +68,9 @@ func (originalContentsGen) GenerateFile(_ context.Context, _ *OutputContext, _ s
 }
 
 func (g *fsGenerator) Generate(ctx context.Context, c *OutputContext) error {
+	for k, v := range g.vars {
+		c.SetData(k, v)
+	}
 	return fs.WalkDir(g.source, ".", func(filePath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
