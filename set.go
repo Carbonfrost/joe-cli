@@ -52,6 +52,8 @@ type Binding interface {
 type BindingState interface {
 	SetOccurrenceData(v any) error
 	SetOccurrence(values ...string) error
+	Occurrences() int
+	Seen() bool
 }
 
 // Raw flags used by the internal parser

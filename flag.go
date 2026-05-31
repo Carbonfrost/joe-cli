@@ -166,8 +166,6 @@ type option interface {
 	BindingState
 	target
 	hookable
-	Occurrences() int
-	Seen() bool
 	Set(any) error
 	setRequired(bool)
 
