@@ -48,7 +48,7 @@ import (
 //
 //   - Synopsis() string         obtains the synopsis text
 //
-//   - SetData(io.Reader)error   read from a reader to set the value
+//   - SetReader(io.Reader)error   read from a reader to set the value
 //
 //   - Completion() Completion   called to obtain the default completion for a value
 type Value = flag.Value
@@ -74,7 +74,7 @@ type NameValue struct {
 // ValueReader is a flag Value that can read from an input reader
 type ValueReader interface {
 	Value
-	SetData(io.Reader) error
+	SetReader(io.Reader) error
 }
 
 type valueDisableSplitting interface {
@@ -282,49 +282,65 @@ func Set(dest any, args ...string) error {
 // If the method convention is not implemented, then ordinary Set(string)
 // method on Value is called on the input.
 func SetData(dest any, arg any) error {
-	if s, ok := dest.(ValueReader); ok {
+	_, ok1 := dest.(ValueReader)
+	if _, ok := dest.(*[]byte); ok1 || ok {
+		rdr := func() io.Reader {
+			switch val := arg.(type) {
+			case string:
+				return strings.NewReader(val)
+			case io.Reader:
+				return val
+			case []byte:
+				return bytes.NewReader(val)
+			}
+			panic(fmt.Sprintf("unexpected argument type %T", arg))
+		}()
+		return SetReader(dest, rdr)
+	}
+
+	str, err := func() (string, error) {
 		switch val := arg.(type) {
 		case string:
-			return s.SetData(strings.NewReader(val))
+			return val, nil
 		case io.Reader:
-			return s.SetData(val)
+			bb, err := io.ReadAll(val)
+			return string(bb), err
 		case []byte:
-			return s.SetData(bytes.NewReader(val))
+			return string(val), nil
 		}
+		panic(fmt.Sprintf("unexpected argument type %T", arg))
+	}()
+	if err != nil {
+		return err
+	}
+	return Set(dest, str)
+
+}
+
+// SetReader sets the value of a flag Value using the semantics
+// of SetReader(io.Reader), which is a convention that can be implemented
+// by a value (see the summary on Value for information about conventions).
+// If the method convention is not implemented, then ordinary Set(string)
+// method on Value is called on the input.
+func SetReader(dest any, src io.Reader) error {
+	if s, ok := dest.(ValueReader); ok {
+		return s.SetReader(src)
 	}
 
 	if s, ok := dest.(*[]byte); ok {
-		switch val := arg.(type) {
-		case io.Reader:
-			buf := bytes.NewBuffer(*s)
-			if _, err := io.Copy(buf, val); err != nil {
-				return err
-			}
-			*s = buf.Bytes()
-			return nil
-
-		case []byte:
-			buf := bytes.NewBuffer(*s)
-			buf.Write(val)
-			*s = buf.Bytes()
-			return nil
-		}
-	}
-
-	switch val := arg.(type) {
-	case string:
-		return Set(dest, val)
-	case io.Reader:
-		bb, err := io.ReadAll(val)
-		if err != nil {
+		buf := bytes.NewBuffer(*s)
+		if _, err := io.Copy(buf, src); err != nil {
 			return err
 		}
-		return Set(dest, string(bb))
-	case []byte:
-		return Set(dest, string(val))
+		*s = buf.Bytes()
+		return nil
 	}
 
-	panic(fmt.Sprintf("unexpected argument type %T", arg))
+	bb, err := io.ReadAll(src)
+	if err != nil {
+		return err
+	}
+	return Set(dest, string(bb))
 }
 
 func trySetOptional(dest any, trySetOptional func() (any, bool)) bool {

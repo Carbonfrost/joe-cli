@@ -125,7 +125,7 @@ func (j *jsonValue) Set(s string) error {
 	return fmt.Errorf("can't set value directly; must read from file")
 }
 
-func (j *jsonValue) SetData(r io.Reader) error {
+func (j *jsonValue) SetReader(r io.Reader) error {
 	err := json.NewDecoder(r).Decode(j.V)
 	if err == io.EOF {
 		return nil

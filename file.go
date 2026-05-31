@@ -325,10 +325,10 @@ func (f *FileSet) Set(arg string) error {
 	return nil
 }
 
-// SetData reads in a list of paths from a reader.
+// SetReader reads in a list of paths from a reader.
 // Blank lines and comment lines (using ; or #) will be
 // ignored. Whitespace is trimmed.
-func (f *FileSet) SetData(in io.Reader) error {
+func (f *FileSet) SetReader(in io.Reader) error {
 	scanner := bufio.NewScanner(in)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
