@@ -646,26 +646,16 @@ func wrapEachOccurrence(c *Context, newTarget target, t internalContext) *Contex
 func eachOccurrenceOpt() MiddlewareFunc {
 	return MiddlewareFunc(func(c *Context, next Action) error {
 		opt := c.option()
+		opt.reset() // TODO Seems like reset is a workaround
+
 		mini := &wrapOccurrenceContext{
 			optionContext: c.state.getInternal().(*optionContext),
 		}
 
 		scope := wrapEachOccurrence(c, opt, mini)
 
-		// Obtain either the zero value or Reset() the value
-		resetOnFirstOccur := !opt.internalFlags().merge()
 		for i := range mini.numOccurs() {
-
-			// Create a copy of the value on each occurrence (unless merge semantics
-			// are in place)
-			if i == 0 || resetOnFirstOccur {
-				opt.cloneZero()
-			}
-
 			mini.index = i
-
-			// Pretend this is the first occurrence
-			opt.reset()
 
 			if err := rawApplyToOption(
 				[][]string{mini.Raw("")},
@@ -675,7 +665,7 @@ func eachOccurrenceOpt() MiddlewareFunc {
 				return err
 			}
 
-			mini.val = c.option().value()
+			mini.val = c.option().OccurrenceValue(i)
 
 			if err := next.Execute(scope); err != nil {
 				return err

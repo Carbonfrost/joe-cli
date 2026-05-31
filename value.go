@@ -123,6 +123,18 @@ type BindingLookup interface {
 	// BindingNames obtains the names of the flags/args which are available.
 	// Even if it is available, the empty string "" is not returned from this list.
 	BindingNames() []string
+
+	// OccurrenceValue obtains the value which occurred at the particular index
+	// for the given name in the binding result. Unless EachOccurrence was specified,
+	// the occurrence value is the last value or its accumulated value if it
+	// is mergable.
+	OccurrenceValue(name string, index int) any
+
+	// OccurrenceValues obtains the values which occurred
+	// for the given name in the binding result. Unless EachOccurrence was specified,
+	// only a single value is present in this slice, the last value that occurred
+	// or its accumulated value if it is mergeable.
+	OccurrenceValues(name string) []any
 }
 
 // degenerateBindingLookup provides looser name lookups and is meant for *Context,
@@ -724,6 +736,20 @@ func (v *valueContext) lookupValue(name string) (any, bool) {
 	return v.lookup.Interface(name)
 }
 
+func (v *valueContext) OccurrenceValue(name string, index int) any {
+	if v.lookup == nil {
+		return nil
+	}
+	return v.lookup.OccurrenceValue(name, index)
+}
+
+func (v *valueContext) OccurrenceValues(name string) []any {
+	if v.lookup == nil {
+		return nil
+	}
+	return v.lookup.OccurrenceValues(name)
+}
+
 func checkSupportedFlagType(v any) error {
 	switch v.(type) {
 	case Value:
@@ -902,17 +928,6 @@ func optionApplyValueConventions(p any, flags internalFlags, firstOccur bool) {
 			*p = map[string]string{}
 		}
 	}
-}
-
-func optionSetOccurrence(o option, values ...string) error {
-	o.nextOccur()
-	for _, arg := range values {
-		err := o.Set(arg)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // valueCloneZero creates a clone with the same type

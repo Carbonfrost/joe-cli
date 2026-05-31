@@ -1039,6 +1039,20 @@ func (s *exprSet) lookupValue(name string) (any, bool) {
 	return nil, false
 }
 
+func (s *exprSet) OccurrenceValue(name string, index int) any {
+	if _, _, g, ok := s.Binding.LookupOption(name); ok {
+		return g.(*cli.Arg).OccurrenceValue(index)
+	}
+	return nil
+}
+
+func (s *exprSet) OccurrenceValues(name string) []any {
+	if _, _, g, ok := s.Binding.LookupOption(name); ok {
+		return g.(*cli.Arg).OccurrenceValues()
+	}
+	return nil
+}
+
 func emptyYielder(any) error {
 	return nil
 }

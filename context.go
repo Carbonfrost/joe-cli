@@ -63,6 +63,8 @@ type internalContext interface {
 	RawOccurrences(name string) []string
 	Bindings(name string) [][]string
 	BindingNames() []string
+	OccurrenceValue(name string, index int) any
+	OccurrenceValues(name string) []any
 }
 
 // contextState represents the internal state of a Context, which varies

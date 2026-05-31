@@ -3497,7 +3497,7 @@ var _ = Describe("EachOccurrence", func() {
 				},
 			},
 		}
-		args, _ := cli.Split("app -f 0 -f 1 -f 1044")
+		args, _ := cli.Split("app -f 2 -f 1 -f 1044")
 		err := app.RunContext(context.Background(), args)
 
 		Expect(err).NotTo(HaveOccurred())

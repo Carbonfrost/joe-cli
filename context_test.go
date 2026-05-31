@@ -356,6 +356,59 @@ var _ = Describe("Context", func() {
 		})
 	})
 
+	Describe("OccurrenceValue", func() {
+
+		It("captures only last value", func() {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{Name: "f", Value: new(string)},
+				},
+			}
+
+			args, _ := cli.Split("app -f 4 -f 3")
+			_ = app.RunContext(context.Background(), args)
+			Expect(app.Flags[0].OccurrenceValues()).To(Equal([]any{"3"}))
+			Expect(app.Flags[0].OccurrenceValue(0)).To(Equal("3"))
+			Expect(app.Flags[0].OccurrenceValue(1)).To(Equal("3"))
+		})
+
+		It("captures accumulated value", func() {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{Name: "a", Value: new(string), NArg: 2},
+				},
+			}
+
+			args, _ := cli.Split("app 2 1")
+			_ = app.RunContext(context.Background(), args)
+			Expect(app.Args[0].OccurrenceValues()).To(Equal([]any{"2 1"}))
+			Expect(app.Args[0].OccurrenceValue(0)).To(Equal("2 1"))
+		})
+
+		Context("when EachOccurrence", func() {
+
+			It("captures all values", func() {
+				var ov []any
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "f", Value: new(string), Options: cli.EachOccurrence},
+					},
+					Action: func(c *cli.Context) {
+						ov = c.BindingLookup().OccurrenceValues("f")
+					},
+				}
+
+				args, _ := cli.Split("app -f 5 -f 10 -f 20")
+				_ = app.RunContext(context.Background(), args)
+				Expect(ov).To(Equal([]any{"5", "10", "20"}))
+				Expect(app.Flags[0].OccurrenceValues()).To(Equal([]any{"5", "10", "20"}))
+				Expect(app.Flags[0].OccurrenceValue(0)).To(Equal("5"))
+				Expect(app.Flags[0].OccurrenceValue(1)).To(Equal("10"))
+				Expect(app.Flags[0].OccurrenceValue(2)).To(Equal("20"))
+			})
+		})
+	})
+
 	Describe("Raw", func() {
 		It("contains flag value at the app level", func() {
 			act := new(joeclifakes.FakeAction)

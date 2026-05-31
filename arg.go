@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -122,7 +122,7 @@ type Arg struct {
 	// overview in cli.Transform for information.
 	Transform TransformFunc
 
-	count int
+	bs BindingState
 }
 
 //counterfeiter:generate . ArgCounter
@@ -279,34 +279,51 @@ func OptionalArg(fn func(string) bool) ArgCounter {
 	return &matchesArgsCounter{fn: fn, max: 1}
 }
 
+// OccurrenceValue obtains the value at the given occurrence. Refer to BindingLookup
+// for more detail.
+func (a *Arg) OccurrenceValue(index int) any {
+	return a.requireBindingState().OccurrenceValue(index)
+}
+
+// OccurrenceValues obtains the values which occurred for the given name in the
+// binding result.  Refer to BindingLookup for more detail.
+func (a *Arg) OccurrenceValues() []any {
+	return a.requireBindingState().OccurrenceValues()
+}
+
 // Occurrences counts the number of times that the argument has occurred on the command line
 func (a *Arg) Occurrences() int {
-	return a.count
+	return a.requireBindingState().Occurrences()
 }
 
 // Seen reports true if the argument is used at least once.
 func (a *Arg) Seen() bool {
-	return a.count > 0
+	return a.requireBindingState().Seen()
 }
 
 // Set will set the value of the argument
 func (a *Arg) Set(v any) error {
-	if arg, ok := v.(string); ok {
-		return setCore(a.Value, a.flags.disableSplitting(), arg)
-	}
-
-	return setDirect(a.Value, v)
+	return optionSet(a.Value, a.flags, nil, v)
 }
 
 // SetOccurrence will update the value of the arg
 func (a *Arg) SetOccurrence(values ...string) error {
-	return optionSetOccurrence(a, values...)
+	return a.requireBindingState().SetOccurrence(values...)
 }
 
 // SetOccurrenceData will update the value of the arg
 func (a *Arg) SetOccurrenceData(v any) error {
-	a.nextOccur()
-	return SetData(a.Value, v)
+	return a.requireBindingState().SetOccurrenceData(v)
+}
+
+func (a *Arg) requireBindingState() BindingState {
+	if a.bs == nil {
+		a.bs = &directBindingState{value: a.Value, flags: a.internalFlags()}
+		if a.internalFlags().eachOccurrence() {
+			a.bs = a.bs.(*directBindingState).upgrade()
+		}
+	}
+	return a.bs
 }
 
 func (a Arg) actualArgCounter() ArgCounter {
@@ -465,16 +482,8 @@ func (a *Arg) completion() Completion {
 	return nil
 }
 
-func (a *Arg) cloneZero() {
-	a.Value = valueCloneZero(a.Value)
-}
-
-func (a *Arg) nextOccur() {
-	a.count++
-	optionApplyValueConventions(a.Value, a.flags, a.count == 1)
-}
-
 func (a *Arg) reset() {
+	a.bs = nil
 	optionReset(a.Value, a.internalFlags())
 }
 
@@ -506,6 +515,20 @@ func (o *optionContext) Bindings(name string) [][]string {
 
 func (o *optionContext) BindingNames() []string {
 	return o.parentLookup.BindingNames()
+}
+
+func (o *optionContext) OccurrenceValue(name string, index int) any {
+	if name == "" {
+		return o.option.OccurrenceValue(index)
+	}
+	return o.parentLookup.OccurrenceValue(name, index)
+}
+
+func (o *optionContext) OccurrenceValues(name string) []any {
+	if name == "" {
+		return o.option.OccurrenceValues()
+	}
+	return o.parentLookup.OccurrenceValues(name)
 }
 
 func (o *optionContext) lookupValue(name string) (any, bool) {

@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025 The Joe-cli Authors. All rights reserved
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -150,8 +150,9 @@ type Flag struct {
 	// overview in cli.Transform for information.
 	Transform TransformFunc
 
-	count         int
 	optionalValue any // set when blank and optional
+
+	bs BindingState
 }
 
 type flagsByCategory []*flagCategory
@@ -177,8 +178,6 @@ type option interface {
 	envVars() []string
 	filePath() string
 	setTransform(fn TransformFunc)
-	cloneZero()
-	nextOccur()
 }
 
 type wrapOccurrenceContext struct {
@@ -342,11 +341,8 @@ func (f *Flag) completion() Completion {
 	return nil
 }
 
-func (f *Flag) cloneZero() {
-	f.Value = valueCloneZero(f.Value)
-}
-
 func (f *Flag) reset() {
+	f.bs = nil
 	optionReset(f.Value, f.internalFlags())
 }
 
@@ -409,17 +405,24 @@ func (c *wrapOccurrenceContext) lookupValue(name string) (any, bool) {
 
 // Seen returns true if the flag was used on the command line at least once
 func (f *Flag) Seen() bool {
-	return f.count > 0
+	return f.requireBindingState().Seen()
+}
+
+// OccurrenceValue obtains the value at the given occurrence. Refer to BindingLookup
+// for more detail.
+func (f *Flag) OccurrenceValue(index int) any {
+	return f.requireBindingState().OccurrenceValue(index)
+}
+
+// OccurrenceValues obtains the values which occurred for the given name in the
+// binding result.  Refer to BindingLookup for more detail.
+func (f *Flag) OccurrenceValues() []any {
+	return f.requireBindingState().OccurrenceValues()
 }
 
 // Occurrences returns the number of times the flag was specified on the command line
 func (f *Flag) Occurrences() int {
-	return f.count
-}
-
-func (f *Flag) nextOccur() {
-	f.count++
-	optionApplyValueConventions(f.Value, f.flags, f.count == 1)
+	return f.requireBindingState().Occurrences()
 }
 
 // ShortName gets the short name for the flag including the leading dash.  This is
@@ -469,29 +472,46 @@ func (f *Flag) Names() []string {
 }
 
 // Set will update the value of the flag
-func (f *Flag) Set(arg any) error {
+func (f *Flag) Set(v any) error {
+	return optionSet(f.Value, f.flags, f.optionalValue, v)
+}
+
+func optionSet(value any, flags internalFlags, optionalValue, arg any) error {
 	if arg, ok := arg.(string); ok {
-		if trySetOptional(f.Value, func() (any, bool) {
-			return f.optionalValue, (arg == "" && f.flags.optional())
+		if trySetOptional(value, func() (any, bool) {
+			return optionalValue, (arg == "" && flags.optional())
 		}) {
 			return nil
 		}
 
-		return setCore(f.Value, f.flags.disableSplitting(), arg)
+		return setCore(value, flags.disableSplitting(), arg)
 	}
 
-	return setDirect(f.Value, arg)
+	return setDirect(value, arg)
 }
 
 // SetOccurrence will update the value of the flag
 func (f *Flag) SetOccurrence(values ...string) error {
-	return optionSetOccurrence(f, values...)
+	return f.requireBindingState().SetOccurrence(values...)
 }
 
 // SetOccurrenceData will update the value of the flag
 func (f *Flag) SetOccurrenceData(v any) error {
-	f.nextOccur()
-	return SetData(f.Value, v)
+	return f.requireBindingState().SetOccurrenceData(v)
+}
+
+func (f *Flag) requireBindingState() BindingState {
+	if f.bs == nil {
+		f.bs = &directBindingState{
+			value:         f.Value,
+			optionalValue: f.optionalValue,
+			flags:         f.internalFlags(),
+		}
+		if f.internalFlags().eachOccurrence() {
+			f.bs = f.bs.(*directBindingState).upgrade()
+		}
+	}
+	return f.bs
 }
 
 func (f *Flag) name() string {

@@ -1049,7 +1049,81 @@ var _ = Describe("Expr", func() {
 
 	})
 
+	Describe("OccurrenceValues", func() {
+
+		DescribeTable("examples", func(arguments string, about string, expected map[string]types.GomegaMatcher) {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "start",
+						NArg: -2,
+					},
+					{
+						Name: "e",
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{
+									Name: "expr",
+									Args: []*cli.Arg{
+										{Name: "a"},
+									},
+									Evaluate: func(c *cli.Context) {
+										if about != "expr" {
+											return
+										}
+										for k, v := range expected {
+											Expect(c.BindingLookup().OccurrenceValues(k)).To(v)
+										}
+									},
+								},
+								{
+									Name: "t",
+									Args: []*cli.Arg{
+										{Name: "z", Options: cli.EachOccurrence},
+									},
+									Evaluate: func(c *cli.Context) {
+										if about != "t" {
+											return
+										}
+										for k, v := range expected {
+											Expect(c.BindingLookup().OccurrenceValues(k)).To(v)
+										}
+									},
+								},
+							},
+						},
+					},
+				},
+				Action: func(c context.Context) {
+					expr.FromContext(c, "e").Evaluate(c, "")
+				},
+			}
+
+			args, _ := cli.Split(arguments)
+			_ = app.RunContext(context.Background(), args)
+		},
+			Entry("by name",
+				"app . -expr a",
+				"expr",
+				Fields{"a": Equal([]any{"a"})}),
+			Entry("arg not in expr",
+				"app . -t b -expr a",
+				"expr",
+				Fields{"z": BeNil()}),
+			Entry("self reference always nil",
+				"app . -expr a",
+				"expr",
+				Fields{"": BeNil()}),
+			Entry("each occurrence",
+				"app . -t a b c",
+				"t",
+				Fields{"z": Equal([]any{"a", "b", "c"})}),
+		)
+
+	})
+
 })
+
 var _ = Describe("Predicate", func() {
 
 	It("yields if true", func() {

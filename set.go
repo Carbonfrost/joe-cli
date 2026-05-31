@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -53,7 +53,127 @@ type BindingState interface {
 	SetOccurrenceData(v any) error
 	SetOccurrence(values ...string) error
 	Occurrences() int
+	OccurrenceValue(int) any
+	OccurrenceValues() []any
 	Seen() bool
+}
+
+// directBindingState shares the value that was set on the Arg or Flag and
+// simply updates it in place
+type directBindingState struct {
+	value         any
+	optionalValue any
+	flags         internalFlags
+	count         int
+}
+
+func (d *directBindingState) SetOccurrence(values ...string) error {
+	d.nextOccur()
+	return optionSetMany(d.value, d.flags, d.optionalValue, values...)
+}
+
+func optionSetMany(value any, flags internalFlags, optionalValue any, values ...string) error {
+	for _, arg := range values {
+		err := optionSet(value, flags, optionalValue, arg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *directBindingState) SetOccurrenceData(v any) error {
+	d.nextOccur()
+	return SetData(d.value, v)
+}
+
+func (d *directBindingState) Seen() bool {
+	return d.count > 0
+}
+
+func (d *directBindingState) Occurrences() int {
+	return d.count
+}
+
+func (d *directBindingState) OccurrenceValue(_ int) any {
+	return dereference(d.value)
+}
+
+func (d *directBindingState) OccurrenceValues() []any {
+	return []any{d.OccurrenceValue(-1)}
+}
+
+func (d *directBindingState) nextOccur() {
+	d.count++
+	optionApplyValueConventions(d.value, d.flags, d.count == 1)
+}
+
+func (d *directBindingState) upgrade() *multiBindingState {
+	return &multiBindingState{initial: d}
+}
+
+// multiBindingState shares the value that was set on the Arg or Flag and
+// simply updates it in place
+type multiBindingState struct {
+	initial *directBindingState
+	all     []*directBindingState
+	actual  any // original initial value - should be flag.Value which needs the final occurrence value
+}
+
+func (m *multiBindingState) SetOccurrence(values ...string) error {
+	err := m.nextOccur().SetOccurrence(values...)
+	if err != nil {
+		return err
+	}
+	if m.actual != nil && len(values) > 0 {
+		d := m.initial
+		return optionSetMany(m.actual, d.flags, d.optionalValue, values...)
+	}
+	return nil
+}
+
+func (m *multiBindingState) SetOccurrenceData(v any) error {
+	return m.nextOccur().SetOccurrenceData(v)
+}
+
+func (m *multiBindingState) Seen() bool {
+	return m.Occurrences() > 0
+}
+
+func (m *multiBindingState) Occurrences() int {
+	return len(m.all)
+}
+
+func (m *multiBindingState) OccurrenceValue(index int) any {
+	return dereference(m.all[index].value)
+}
+
+func (m *multiBindingState) OccurrenceValues() []any {
+	all := make([]any, len(m.all))
+	for i, v := range m.all {
+		all[i] = dereference(v.value)
+	}
+	return all
+}
+
+func (m *multiBindingState) nextOccur() *directBindingState {
+	// Obtain either the zero value or Reset() the value
+	resetOnFirstOccur := !m.initial.flags.merge()
+
+	// Create a copy of the value on each occurrence (unless merge semantics
+	// are in place)
+	if m.Occurrences() == 0 {
+		m.actual = m.initial.value
+		m.initial.value = valueCloneZero(m.initial.value)
+
+	} else if resetOnFirstOccur {
+		m.initial.value = valueCloneZero(m.initial.value)
+	}
+
+	clone := *m.initial
+	optionReset(clone.value, m.initial.flags)
+	m.all = append(m.all, &clone)
+	return m.all[len(m.all)-1]
 }
 
 // Raw flags used by the internal parser
@@ -483,6 +603,20 @@ func (s *set) lookupValue(name string) (any, bool) {
 		return g.(option).value(), true
 	}
 	return nil, false
+}
+
+func (s *set) OccurrenceValue(name string, index int) any {
+	if _, _, g, ok := s.Binding.LookupOption(name); ok {
+		return g.(option).OccurrenceValue(index)
+	}
+	return nil
+}
+
+func (s *set) OccurrenceValues(name string) []any {
+	if _, _, g, ok := s.Binding.LookupOption(name); ok {
+		return g.(option).OccurrenceValues()
+	}
+	return nil
 }
 
 func (m BindingMap) appendOutput(name string, args []string) {
