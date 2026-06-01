@@ -281,7 +281,7 @@ func (e *Expression) Initializer() cli.Action {
 			templ: c.Template("Expressions"),
 		})
 
-	}, func(c *cli.Context) error {
+	}, func(*cli.Context) error {
 		// Set up the expression set early so that events related to Expr can access it without
 		// special checks
 		for _, sub := range e.Exprs {

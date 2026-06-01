@@ -17,7 +17,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
-// Map provides a config Store which uses simple key-value pairs typed
+// Values provides a config Store which uses simple key-value pairs typed
 // as strings. The underlying lookup automatically provides conversions.
 type Values map[string]string
 

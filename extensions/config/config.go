@@ -277,7 +277,7 @@ func (c *Config) Store() Store {
 	if c == nil {
 		return empty
 	}
-	return c.store.ensureStore(nil)
+	return c.store.ensureStore(c.upgradeContext(context.Background()))
 }
 
 // Apply will apply the given options to the config
