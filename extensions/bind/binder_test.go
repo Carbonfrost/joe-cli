@@ -550,6 +550,37 @@ var _ = Describe("Occurrences", func() {
 
 })
 
+var _ = Describe("Seen", func() {
+
+	It("invokes with bind func with value from flag", func() {
+		var value1, value2, value3 bool
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "m",
+					Uses: bind.Call(callFactory(&value1), bind.Seen("")),
+				},
+				{
+					Name: "n",
+					Uses: bind.Call(callFactory(&value2), bind.Seen("n")),
+				},
+				{
+					Name:  "z",
+					Value: new(true),
+					Uses:  bind.AfterCall(callFactory(&value3), bind.Seen("z")),
+				},
+			},
+		}
+		args, _ := cli.Split("app -mn")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value1).To(BeTrue())
+		Expect(value2).To(BeTrue())
+		Expect(value3).To(BeFalse())
+	})
+
+})
+
 var _ = Describe("Value", func() {
 
 	DescribeTable("examples", func(fn any) {

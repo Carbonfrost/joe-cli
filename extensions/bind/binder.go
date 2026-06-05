@@ -219,6 +219,19 @@ func Exact[T any](valopt ...T) Binder[T] {
 	return wrapWithComposite(&exactBinder[T]{v: valopt[0]}).(Binder[T])
 }
 
+// Seen provides a binder which sets the value according to whether the value
+// has been seen.
+// Seen provides a binder which sets
+func Seen(nameopt ...any) Binder[bool] {
+	if len(nameopt) == 0 {
+		return Occurrences(nil, false, true)
+	}
+	if len(nameopt) > 1 {
+		panic("expected 0 or 1 args for valopt")
+	}
+	return Occurrences(nameopt[0], false, true)
+}
+
 // Occurrences provides a binder which sets the value according to the number
 // of occurrences of the flag.
 // As a special case, if the value is set to zero (and no other values for valopt
