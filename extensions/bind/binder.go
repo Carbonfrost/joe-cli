@@ -170,7 +170,7 @@ func (b *binderSupport[_]) boolFlag() cli.Action {
 
 func (b *binderSupport[V]) prototypeThunk(fn func() *cli.Prototype) cli.Action {
 	// This additional thunk is needed so that the b.name() is captured at the right
-	// moement
+	// moment
 	return cli.ActionOf(func(ctx context.Context) error {
 		return cli.Do(ctx, cli.WithContextOf(b.name(), fn()))
 	})
@@ -193,14 +193,14 @@ func NewActionBinder[T any](action cli.Action, binder Binder[T]) ActionBinder[T]
 	}
 }
 
-// Elem retrieves the pointer of a binder
+// Elem dereferences a pointer binder, returning a binder for the element type.
 func Elem[T any, TP *T](src Binder[TP]) Binder[T] {
 	return then(src, func(v TP) T {
 		return *v
 	})
 }
 
-// Pointer retrieves the element of a binder
+// Pointer wraps a binder to return a pointer to the bound value.
 func Pointer[T any](src Binder[T]) Binder[*T] {
 	return then(src, func(v T) *T {
 		return &v
@@ -232,9 +232,12 @@ func Seen(nameopt ...any) Binder[bool] {
 	return Occurrences(nameopt[0], false, true)
 }
 
-// Occurrences provides a binder which sets the value according to the number
-// of occurrences of the flag.
-// As a special case, if the value is set to zero (and no other values for valopt
+// Occurrences provides a binder that maps the occurrence count of the named flag
+// to a value. The first argument after name is returned when the flag does not appear,
+// and valuesopt specifies each of the values for the corresponding number of occurrences.
+// If the flag appears more times than
+// there are values, the last value is returned.
+// As a special case, if the value is set to zero (and no other values for valuesopt
 // and the type is strictly int),
 // it actually means the count of occurrences will be used.
 func Occurrences[T any](name any, value T, valuesopt ...T) Binder[T] {
@@ -310,7 +313,8 @@ func FromContext[T any](fn func(context.Context) T) Binder[T] {
 	})
 }
 
-// ContextValue locates a value within the context.
+// ContextValue returns a binder that retrieves the value stored under key in
+// the standard [context.Context].
 func ContextValue[T any](key any) Binder[T] {
 	return FromContext(func(c context.Context) T {
 		return c.Value(key).(T)
@@ -606,10 +610,8 @@ func byName[T any](f func(*cli.Context, any) T, nameopt []any) *binder[T] {
 		panic("expected 0 or 1 args for nameopt")
 	}
 	return &binder[T]{
-		binderSupport[T]{
-			impliedName: name,
-		},
-		f,
+		binderSupport: binderSupport[T]{impliedName: name},
+		lookupValue:   f,
 	}
 }
 
@@ -640,7 +642,8 @@ func bind3[T, U, V any](c context.Context, t Binder[T], u Binder[U], v Binder[V]
 	return
 }
 
-// BoolBinder provides a binder for [cli.Bool]
+// BoolBinder is a [Binder] for bool values. In addition to the standard Binder
+// interface it exposes derived bindings such as [BoolBinder.Negated].
 type BoolBinder struct {
 	binderSupportInterface[bool]
 }
@@ -672,22 +675,22 @@ func (f *FileBinder) Name() Binder[string] {
 	})
 }
 
-// Dir obtains the name for the file
+// Dir obtains the directory component of the file path
 func (f *FileBinder) Dir() Binder[string] {
 	return then(f, (*cli.File).Dir)
 }
 
-// Exists obtains the name for the file
+// Exists reports whether the file exists
 func (f *FileBinder) Exists() Binder[bool] {
 	return then(f, (*cli.File).Exists)
 }
 
-// Ext obtains the name for the file
+// Ext obtains the file extension
 func (f *FileBinder) Ext() Binder[string] {
 	return then(f, (*cli.File).Ext)
 }
 
-// Base obtains the name for the file
+// Base obtains the base name of the file
 func (f *FileBinder) Base() Binder[string] {
 	return then(f, (*cli.File).Base)
 }
@@ -705,6 +708,10 @@ func (f *FileBinder) CreateWriter() Binder[io.Writer] {
 // NameValueBinder provides a binder for [cli.NameValue]
 type NameValueBinder struct {
 	binderSupportInterface[*cli.NameValue]
+}
+
+func (f *NameValueBinder) Bind(c context.Context) (*cli.NameValue, error) {
+	return f.binderSupportInterface.Bind(c)
 }
 
 // Name provides a delegate binder which obtains the name part
@@ -785,4 +792,5 @@ var (
 	_ binderSupportInterface[any] = (*occurrencesBinder[any])(nil)
 	_ Binder[*cli.File]           = (*FileBinder)(nil)
 	_ Binder[bool]                = (*BoolBinder)(nil)
+	_ Binder[*cli.NameValue]      = (*NameValueBinder)(nil)
 )
