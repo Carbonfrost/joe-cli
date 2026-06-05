@@ -220,7 +220,7 @@ func Exact[T any](valopt ...T) Binder[T] {
 
 // Occurrences provides a binder which sets the value according to the number
 // of occurrences of the flag.
-func Occurrences[T any](name string, value T, valuesopt ...T) Binder[T] {
+func Occurrences[T any](name any, value T, valuesopt ...T) Binder[T] {
 	values := append([]T{value}, valuesopt...)
 	return wrapWithComposite(&occurrencesBinder[T]{
 		binderSupport: binderSupport[T]{
