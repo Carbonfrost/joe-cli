@@ -232,6 +232,9 @@ func newValueTarget(v any, name string, action Action) *valueTarget {
 	}
 }
 
+// newBindingLookup provides an adapter on internal context.
+// Context can't implement BindingLookup directly because it uses
+// Raw(any) instead of Raw(string), for example. See degenerateBindingLookup
 func newBindingLookup(ic internalContext) BindingLookup {
 	return &bindingLookupWrapper{
 		internalContext: ic,
@@ -799,6 +802,18 @@ func (c *Context) BindingLookup() BindingLookup {
 		return nil
 	}
 	return newBindingLookup(c.state.getInternal())
+}
+
+// Bindings obtains values which were specified for a flag or arg
+// including the flag or arg name and grouped into occurrences.
+func (c *Context) Bindings(name any) [][]string {
+	return c.state.getInternal().Bindings(nameToString(name))
+}
+
+// BindingNames obtains the names of the flags/args which are available.
+// Even if it is available, the empty string "" is not returned from this list.
+func (c *Context) BindingNames() []string {
+	return c.state.getInternal().BindingNames()
 }
 
 // LookupData gets the data matching the key, including recursive traversal
@@ -2333,10 +2348,10 @@ func findValueTargetByName(items []*valueTarget, name string) (*valueTarget, boo
 }
 
 var (
-	_ Lookup          = (*Context)(nil)
-	_ context.Context = (*Context)(nil)
-	_ internalContext = (*commandContext)(nil)
-	_ internalContext = (*optionContext)(nil)
-	_ internalContext = (*valueContext)(nil)
-	_ BindingLookup   = (*bindingLookupWrapper)(nil)
+	_ degenerateBindingLookup = (*Context)(nil)
+	_ context.Context         = (*Context)(nil)
+	_ internalContext         = (*commandContext)(nil)
+	_ internalContext         = (*optionContext)(nil)
+	_ internalContext         = (*valueContext)(nil)
+	_ BindingLookup           = (*bindingLookupWrapper)(nil)
 )

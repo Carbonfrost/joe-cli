@@ -125,6 +125,16 @@ type BindingLookup interface {
 	BindingNames() []string
 }
 
+// degenerateBindingLookup provides looser name lookups and is meant for *Context,
+// but otherwise looks like BindingLooup
+type degenerateBindingLookup interface {
+	Lookup
+	Raw(any) []string
+	RawOccurrences(any) []string
+	Bindings(any) [][]string
+	BindingNames() []string
+}
+
 type valueContext struct {
 	v      *valueTarget
 	lookup BindingLookup
