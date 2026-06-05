@@ -512,6 +512,42 @@ var _ = Describe("Occurrences", func() {
 		)
 	})
 
+	Context("when using bind func count", func() {
+
+		It("binds int binder", func() {
+			var actual int
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "m",
+						Uses: bind.Call(callFactory(&actual), bind.Occurrences(nil, 0)),
+					},
+				},
+			}
+			args, _ := cli.Split("app -mmm")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(3))
+		})
+
+		It("does not bind non-int binder", func() {
+			var actual int32
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "m",
+						Uses: bind.Call(callFactory(&actual), bind.Occurrences(nil, int32(0))),
+					},
+				},
+			}
+			args, _ := cli.Split("app -mmm")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(int32(0)))
+		})
+
+	})
+
 })
 
 var _ = Describe("Value", func() {

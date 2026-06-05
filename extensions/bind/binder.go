@@ -55,6 +55,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"reflect"
 	"regexp"
 	"time"
 
@@ -220,7 +221,19 @@ func Exact[T any](valopt ...T) Binder[T] {
 
 // Occurrences provides a binder which sets the value according to the number
 // of occurrences of the flag.
+// As a special case, if the value is set to zero (and no other values for valopt
+// and the type is strictly int),
+// it actually means the count of occurrences will be used.
 func Occurrences[T any](name any, value T, valuesopt ...T) Binder[T] {
+	re := reflect.ValueOf(value)
+	if re.IsZero() && re.Kind() == reflect.Int {
+		return wrapWithComposite(&occurrenceCountBinder{
+			binderSupport: binderSupport[int]{
+				impliedName: name,
+			},
+		}).(Binder[T])
+	}
+
 	values := append([]T{value}, valuesopt...)
 	return wrapWithComposite(&occurrencesBinder[T]{
 		binderSupport: binderSupport[T]{
@@ -241,6 +254,19 @@ func (b *occurrencesBinder[V]) Bind(c context.Context) (V, error) {
 }
 
 func (b *occurrencesBinder[V]) Initializer() cli.Action {
+	return b.boolFlag()
+}
+
+type occurrenceCountBinder struct {
+	binderSupport[int]
+}
+
+func (b *occurrenceCountBinder) Bind(c context.Context) (int, error) {
+	occurs := cli.FromContext(c).Occurrences(b.name())
+	return occurs, nil
+}
+
+func (b *occurrenceCountBinder) Initializer() cli.Action {
 	return b.boolFlag()
 }
 
