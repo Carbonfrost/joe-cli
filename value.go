@@ -781,10 +781,59 @@ func dereference(v any) any {
 		}
 		return v
 	}
+	switch t := v.(type) {
 	// Don't dereference built-in types twice
-	switch v.(type) {
 	case *url.URL, *regexp.Regexp, *big.Int, *big.Float:
 		return v
+	// Dereference common pointer types without reflection
+	case *bool:
+		return *t
+	case *string:
+		return *t
+	case *[]string:
+		return *t
+	case *[]byte:
+		return *t
+	case *map[string]string:
+		return *t
+	case *[]*NameValue:
+		return *t
+	case *int:
+		return *t
+	case *int8:
+		return *t
+	case *int16:
+		return *t
+	case *int32:
+		return *t
+	case *int64:
+		return *t
+	case *uint:
+		return *t
+	case *uint8:
+		return *t
+	case *uint16:
+		return *t
+	case *uint32:
+		return *t
+	case *uint64:
+		return *t
+	case *float32:
+		return *t
+	case *float64:
+		return *t
+	case *time.Duration:
+		return *t
+	case *net.IP:
+		return *t
+	case **url.URL:
+		return *t
+	case **regexp.Regexp:
+		return *t
+	case **big.Int:
+		return *t
+	case **big.Float:
+		return *t
 	}
 
 	val := reflect.ValueOf(v)
