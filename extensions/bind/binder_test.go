@@ -530,6 +530,22 @@ var _ = Describe("Occurrences", func() {
 			Expect(actual).To(Equal(3))
 		})
 
+		It("does not bind int with additional values", func() {
+			var actual int
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "m",
+						Uses: bind.Call(callFactory(&actual), bind.Occurrences(nil, 0, 2, 6)),
+					},
+				},
+			}
+			args, _ := cli.Split("app -mmm")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(int(6)))
+		})
+
 		It("does not bind non-int binder", func() {
 			var actual int32
 			app := &cli.App{
@@ -544,6 +560,23 @@ var _ = Describe("Occurrences", func() {
 			err := app.RunContext(context.Background(), args)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(int32(0)))
+		})
+
+		It("does not bind int alias binder", func() {
+			type rType int
+			var actual rType
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "m",
+						Uses: bind.Call(callFactory(&actual), bind.Occurrences(nil, rType(0))),
+					},
+				},
+			}
+			args, _ := cli.Split("app -mmm")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(rType(0)))
 		})
 
 	})

@@ -242,7 +242,8 @@ func Seen(nameopt ...any) Binder[bool] {
 // it actually means the count of occurrences will be used.
 func Occurrences[T any](name any, value T, valuesopt ...T) Binder[T] {
 	re := reflect.ValueOf(value)
-	if re.IsZero() && re.Kind() == reflect.Int {
+
+	if re.IsZero() && reflect.TypeFor[int]() == re.Type() && len(valuesopt) == 0 {
 		return wrapWithComposite(&occurrenceCountBinder{
 			binderSupport: binderSupport[int]{
 				impliedName: name,
