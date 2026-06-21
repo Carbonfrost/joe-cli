@@ -47,16 +47,18 @@ func Action3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T
 }
 
 // Call obtains an action that invokes the function, binding the parameters.
+// The binder is optional. When not present, it defaults to the
+// binder representing the value of the current flag or arg.
 // If this is added to the Uses timing, it will actually be run in the
 // Action timing and the binders can also provide initializers if they
 // have the method Initializer() Action (as the binders in this package do).
-func Call[T any](call func(T) error, opt ...Binder[T]) cli.Action {
+func Call[T any](call func(T) error, binderopt ...Binder[T]) cli.Action {
 	var t Binder[T]
-	switch len(opt) {
+	switch len(binderopt) {
 	case 0:
 		t = Value[T]("")
 	case 1:
-		t = opt[0]
+		t = binderopt[0]
 	default:
 		panic("expected zero or one arg")
 	}
