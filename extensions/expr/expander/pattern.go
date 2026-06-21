@@ -253,6 +253,43 @@ func (p *Pattern) Expand(expand Interface) string {
 	return b.String()
 }
 
+// ExpandAny expands the pattern, returning the underlying type of the expansion
+// when the pattern consists of a single expression with no format specifier applied..
+// When the pattern has multiple expressions, a literal fallback, or a format specifier,
+// it falls back to string interpolation like Expand.
+func (p *Pattern) ExpandAny(expand Interface) any {
+	if len(p.exprs) != 1 {
+		return p.Expand(expand)
+	}
+	return exprExpandAny(p.exprs[0], expand)
+}
+
+func exprExpandAny(e expr, expand Interface) any {
+	switch exp := e.(type) {
+	case *formatExpr:
+		if exp.format != "" || exp.trailingOpt != "" {
+			return exp.Format(expand)
+		}
+		return expand.Expand(exp.name)
+
+	case *fallbackExpr:
+		if _, ok := exp.fallback.(literalExpr); ok {
+			return exp.Format(expand)
+		}
+		v := expand.Expand(exp.name)
+		if v != nil {
+			if exp.trailingOpt != "" {
+				return exp.Format(expand)
+			}
+			return v
+		}
+		return exprExpandAny(exp.fallback, expand)
+
+	default:
+		return e.Format(expand)
+	}
+}
+
 func (p *Pattern) String() string {
 	var sb strings.Builder
 	for _, e := range p.exprs {

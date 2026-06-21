@@ -14,6 +14,47 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
+var _ = Describe("ExpandAny", func() {
+
+	expand := expander.Map(map[string]any{
+		"hello":   "world",
+		"goodbye": 5 + 2i,
+		"num":     469,
+	})
+
+	Describe("SyntaxDefault", func() {
+
+		DescribeTable("examples", func(pattern string, expected types.GomegaMatcher) {
+			pat := expander.SyntaxDefault.Compile(pattern)
+			Expect(pat.ExpandAny(expand)).To(expected)
+		},
+			Entry("single expr no format returns raw type", "%(num)", BeEquivalentTo(469)),
+			Entry("single expr nil returns nil", "%(missing)", BeNil()),
+			Entry("single expr with format returns string", "%(num:X)", Equal("1D5")),
+			Entry("single expr with trailing ws returns string", "%(hello)%(space)", Equal("world ")),
+			Entry("multiple exprs returns string", "prefix %(hello)", Equal("prefix world")),
+		)
+	})
+
+	Describe("SyntaxRecursive", func() {
+
+		DescribeTable("examples", func(pattern string, expected types.GomegaMatcher) {
+			pat := expander.SyntaxRecursive.Compile(pattern)
+			Expect(pat.ExpandAny(expand)).To(expected)
+		},
+			Entry("single expr no format returns raw type", "%(num)", Equal(469)),
+			Entry("primary found returns its raw type", "%(hello:%(goodbye))", Equal("world")),
+			Entry("primary missing cascades to fallback type", "%(missing:%(goodbye))", Equal(5+2i)),
+			Entry("cascade through multiple missing", "%(missing:%(also_missing:%(goodbye)))", Equal(5+2i)),
+			Entry("all missing returns empty", "%(missing:%(also_missing))", Equal("")),
+			Entry("literal fallback present returns string", "%(hello:le monde)", Equal("world")),
+			Entry("literal fallback used returns string", "%(missing:le monde)", Equal("le monde")),
+			Entry("format specifier returns string", "%(num:%X)", Equal("1D5")),
+			Entry("multiple exprs returns string", "prefix %(goodbye)", Equal("prefix (5+2i)")),
+		)
+	})
+})
+
 var _ = Describe("CompilePattern", func() {
 
 	DescribeTable("expected output",
