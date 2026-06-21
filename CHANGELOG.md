@@ -1,5 +1,85 @@
 # Changelog
 
+## v0.16.0 (June 20, 2026)
+
+### New Features
+
+* `OptionalAlias` (32704bd9)
+* Bind extension:
+    * `Setter` (e5c06318)
+    * `Seen` (40c10b63)
+* Template extension:
+    * `FS` generator (1be0a92a)
+    * `Exec` generator (039f0427)
+* Exec extension: `Editor` (9a82d6ec)
+* Expr and expander extensions:
+    * Go runtime variable expander (b03db08e)
+* Expander extension
+    * `ExpandAny` (4ed5c8d2)
+    * Introduce `Nil` (75f3d5f0)
+    * Add support for formatting to expander recursive syntax (5b302858)
+* Config extension:
+    * Empty store (6ec2f591)
+    * Locations and parsing locations (99db9e2f)
+    * Add OS, Arch to idiomatic location (80ee0a58)
+    * Additional files support (00ef0210)
+    * Reloadable stores; loading (a559d8e4)
+    * Workspace link (299fa1be)
+    * Additional values; `FromValues` (3c0e2e90)
+    * Default loader caching store (3c8a1fcb)
+    * Store using map (9db47977)
+    * Cache location (85fda7c2)
+    * Wrapper store (2787978c)
+
+### Bug fixes and improvements
+
+* Breaking change: Remove `AddAlias` (32704bd9)
+* Delegate `BindingState` within flags and args; encapsulate `EachOccurrence`'s binding state (bbf28a50)
+* Encapsulate internal context state; remove copying hacks (7f190604)
+* API, naming, and documentation improvements:
+    * Unify `Context` and `BindingLookup` interfaces (005b6f5a)
+    * Rename `SetReader`; new top-level API (3dd81143)
+    * Bind extension: Update documentation; consistent exported API (f26f7978, 62e07ac5, 41bff8a5)
+    * Expr extension: Rename `ExecuteParallel` to `EvaluateParallel` (99d5a459)
+    * Push up internal methods into `BindingState` exported API (6698ab6f)
+    * Breaking change: Remove binding functions to unexported (df9f4529)
+    * Documentation updates (945c67a3, 75f3d5f0)
+* Codec extension:
+    * Codec helper functions (fda846fe)
+    * Codec options as data (2095c4ee)
+* Config extension:
+    * Simplify and modernize `WorkspaceOption` (ffbd4ee6)
+    * Proactive loading and in correct order (5b34d938)
+    * Basic test for loading (58a83bd6)
+    * Make default workspace finder const (5b20be4b)
+    * Fix config to use its internal options when resolving idiomatic locations (b3e80eee)
+* Bind extension:
+    * Treat special case zero int `Occurrences` (6941e177)
+* Expander extension
+    * Rework `Fprint` into a method on `Pattern` (75f3d5f0)
+    * Rework `Renderer` into a convention (75f3d5f0)
+* Template extension:
+    * Template extension: allow `Vars` as params to FS (a18680e0)
+    * Template extension: Data generator accepts name-value pairs (42db29e0)
+* Disallow duplicate command names (5f520be9)
+* Bug fix: Ensure config option timings (8e8943fe)
+* Bug fix: De-dupe timing wrappers even over synthetic timings (f083cb64)
+* Bug fix: limit each occurrence to ActionTiming (722deafe)
+* Bug fix: List flags take one value by default (89ac5108)
+* Bug fix: ensure `bind.Occurrences` propagates implied name (a97b3d99)
+* Bug fix: early termination of initialization of flags (e5943a36)
+* Demote help alias to optional (43abce18)
+* Remove completion request into context data (e77702ab)
+* Test and simplify lookup (027e440a)
+* Optimize `dereference` for common values (33b51e90)
+* Chores:
+    * Addresses lint errors; revive configuration (6de88f16, 945c67a3)
+    * Modernize tool invocations (8ab657fb)
+    * Update dependent versions (535a4d01)
+    * Fix file system-based tests on Windows (4d2d21cb, 1d1cf83d)
+    * Modernize/cleanup (e5943a36)
+
+
 ## v0.15.0 (May 1, 2026)
 
 ### New Features
