@@ -72,6 +72,9 @@ var (
 	}
 )
 
+// Nil provides an expander which always provides nil
+var Nil = Func(nilImpl)
+
 // Interface converts the given string key into its variable expansion
 type Interface interface {
 	Expand(key string) any
@@ -204,9 +207,7 @@ func Unknown() Interface {
 // reflection
 func Reflect(v any) Interface {
 	if v == nil {
-		return Func(func(string) any {
-			return nil
-		})
+		return Nil
 	}
 	return &reflectExpander{
 		reflect.ValueOf(v),
@@ -236,6 +237,10 @@ type ErrUnknownToken string
 
 func (e ErrUnknownToken) Error() string {
 	return fmt.Sprintf("unknown: %s", string(e))
+}
+
+func nilImpl(string) any {
+	return nil
 }
 
 var _ error = (ErrUnknownToken)("")

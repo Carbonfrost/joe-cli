@@ -69,10 +69,19 @@ type literalExpr struct {
 }
 
 // Renderer is a specialized writer that understands writing to multiple
-// files and the corresponding variable support
+// files and the corresponding variable support.
+// When used as a writer to Fprint, two control expressions
+// are exposed, stdout and stderr, which can be used to redirect
+// to the underlying writers. For example, "%(stderr)debug: %(v:#v)%(newline)%(stdout)%(v)"
+// would print debug text to whatever writer was set for stderr.
 type Renderer struct {
 	io.Writer
 	out, err io.Writer
+}
+
+// Expander gets the expander for Renderer, which exposes control expressions, stdout and stderr, which switch the writer to use
+func (r *Renderer) Expander() Interface {
+	return Func(r.expandFiles)
 }
 
 func (r *Renderer) expandFiles(k string) any {
@@ -96,18 +105,9 @@ func NewRenderer(stdout, stderr io.Writer) *Renderer {
 	}
 }
 
+// Fprint expands the pattern using the given expander and writes to the specified writer.
 func Fprint(w io.Writer, pattern *Pattern, e Interface) (count int, err error) {
-	// Implicitly upgrade w to *Renderer
-	if r, ok := w.(*Renderer); ok {
-		e = Compose(Func(r.expandFiles), e)
-	}
-	for _, item := range pattern.exprs {
-		count, err = fmt.Fprint(w, item.Format(e))
-		if err != nil {
-			break
-		}
-	}
-	return
+	return pattern.Fprint(w, e)
 }
 
 func Compile(pattern string) *Pattern {
@@ -226,6 +226,25 @@ func (f fallbackExpr) Format(expand Interface) string {
 		return res
 	}
 	return res + f.trailingOpt
+}
+
+// Fprint expands the pattern using the given expander and writes to the specified writer.
+// As a special case, if w has a method Expander() Interface, this
+// method will be called to obtain an expander which composes with
+// the expander e. The main use of this convention is to allow writers
+// to supply control expressions. For an example, see [Renderer].
+func (p *Pattern) Fprint(w io.Writer, e Interface) (count int, err error) {
+	// Implicitly upgrade w to *Renderer, etc.
+	if r, ok := w.(interface{ Expander() Interface }); ok {
+		e = Compose(r.Expander(), e)
+	}
+	for _, item := range p.exprs {
+		count, err = fmt.Fprint(w, item.Format(e))
+		if err != nil {
+			break
+		}
+	}
+	return
 }
 
 func (p *Pattern) Expand(expand Interface) string {
