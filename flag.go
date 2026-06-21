@@ -8,7 +8,6 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
@@ -204,7 +203,9 @@ func groupFlagsByCategory(flags []*Flag) flagsByCategory {
 		cc := category(f.Category)
 		cc.Flags = append(cc.Flags, f)
 	}
-	sort.Sort(res)
+	slices.SortFunc(res, func(a, b *flagCategory) int {
+		return cmp.Compare(a.Category, b.Category)
+	})
 	return res
 }
 
@@ -306,8 +307,6 @@ func (f *Flag) pipeline(t Timing) any {
 		return f.Before
 	case InitialTiming:
 		return f.Uses
-	case ActionTiming:
-		fallthrough
 	default:
 		return f.Action
 	}
@@ -541,18 +540,6 @@ func (f *flagCategory) Undocumented() bool {
 	return true
 }
 
-func (f flagsByCategory) Less(i, j int) bool {
-	return f[i].Category < f[j].Category
-}
-
-func (f flagsByCategory) Len() int {
-	return len(f)
-}
-
-func (f flagsByCategory) Swap(i, j int) {
-	f[i], f[j] = f[j], f[i]
-}
-
 func hasOnlyShortName(f *Flag) bool {
 	return len(f.Name) == 1
 }
@@ -578,22 +565,26 @@ func ensureDestination(dest any, multi bool) (newValue any, created bool) {
 }
 
 func findFlagByName(items []*Flag, v any) (*Flag, int, bool) {
-	if f, ok := v.(*Flag); ok {
+	switch name := v.(type) {
+	case *Flag:
 		for index, match := range items {
-			if f == match {
-				return f, index, true
+			if name == match {
+				return name, index, true
 			}
 		}
 		return nil, -1, false
-	}
-	name := strings.TrimLeft(v.(string), "-")
-	for index, sub := range items {
-		if sub.Name == name {
-			return sub, index, true
+	case string:
+		trimmed := strings.TrimLeft(name, "-")
+		for index, sub := range items {
+			if sub.Name == trimmed {
+				return sub, index, true
+			}
+			if slices.Contains(sub.Aliases, trimmed) {
+				return sub, index, true
+			}
 		}
-		if slices.Contains(sub.Aliases, name) {
-			return sub, index, true
-		}
+	default:
+		panic(fmt.Sprintf("unexpected type: %T", v))
 	}
 	return nil, -1, false
 }

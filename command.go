@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -158,6 +157,9 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 }
 
 func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, error) (*Command, error)) error {
+	if len(invoke) == 0 {
+		return nil
+	}
 	cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], interceptErr)
 	if err == ErrSkipCommand {
 		return nil
@@ -235,7 +237,9 @@ func groupedByCategory(cmds []*Command) commandsByCategory {
 		}
 		cc.Commands = append(cc.Commands, command)
 	}
-	sort.Sort(res)
+	slices.SortFunc(res, func(a, b *commandCategory) int {
+		return cmp.Compare(a.Category, b.Category)
+	})
 	return res
 }
 
@@ -257,18 +261,6 @@ func (e *commandCategory) Undocumented() bool {
 		}
 	}
 	return true
-}
-
-func (c commandsByCategory) Less(i, j int) bool {
-	return c[i].Category < c[j].Category
-}
-
-func (c commandsByCategory) Len() int {
-	return len(c)
-}
-
-func (c commandsByCategory) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
 }
 
 // Synopsis returns the UsageText for the command or produces a succinct representation
@@ -297,14 +289,9 @@ func (c *Command) Arg(name any) (*Arg, bool) {
 
 // VisibleArgs filters all arguments in the command by whether they are not hidden
 func (c *Command) VisibleArgs() []*Arg {
-	res := make([]*Arg, 0, len(c.Args))
-	for _, o := range c.Args {
-		if o.internalFlags().hidden() {
-			continue
-		}
-		res = append(res, o)
-	}
-	return res
+	return slices.DeleteFunc(slices.Clone(c.Args), func(a *Arg) bool {
+		return a.internalFlags().hidden()
+	})
 }
 
 // VisibleFlags filters all flags in the command by whether they are not hidden
@@ -323,14 +310,9 @@ func filterInVisibleFlags(flags []*Flag) []*Flag {
 
 // VisibleSubcommands filters all sub-commands in the command by whether they are not hidden
 func (c *Command) VisibleSubcommands() []*Command {
-	res := make([]*Command, 0, len(c.Subcommands))
-	for _, o := range c.Subcommands {
-		if o.internalFlags().hidden() {
-			continue
-		}
-		res = append(res, o)
-	}
-	return res
+	return slices.DeleteFunc(slices.Clone(c.Subcommands), func(cmd *Command) bool {
+		return cmd.internalFlags().hidden()
+	})
 }
 
 // Names obtains the name of the command and its aliases
@@ -378,8 +360,6 @@ func completeSubCommand(c *Context) []CompletionItem {
 			if detect(s.Name) {
 				res = append(res, CompletionItem{Value: s.Name, HelpText: s.HelpText})
 			}
-		}
-		for _, s := range cmd.Subcommands {
 			for _, alias := range s.Aliases {
 				if detect(alias) {
 					res = append(res, CompletionItem{Value: alias, HelpText: s.HelpText})
@@ -435,6 +415,7 @@ func defaultCommandCompletion(c *Context) []CompletionItem {
 			if ok {
 				return actualCompletion(flag.completion()).Complete(c)
 			}
+			return nil
 		}
 
 		arg, ok := cmd.Arg(name)
@@ -449,7 +430,7 @@ func defaultCommandCompletion(c *Context) []CompletionItem {
 
 	// Request completion of the last argument that was seen
 	if len(cmd.Args) > 0 {
-		last := cmd.Args[0]
+		var last *Arg
 		for _, a := range cmd.Args {
 			last = a
 			if len(cc.Bindings[a.Name]) == 0 {
@@ -593,8 +574,6 @@ func (c *Command) pipeline(t Timing) any {
 		return c.Before
 	case InitialTiming:
 		return c.Uses
-	case ActionTiming:
-		fallthrough
 	default:
 		return c.Action
 	}
@@ -652,7 +631,7 @@ func initializeSubcommands(ctx *Context) error {
 func initializeChildren[T target](ctx *Context, subs []T) error {
 	for _, sub := range subs {
 		if sub.internalFlags().initialized() {
-			return nil
+			continue
 		}
 
 		originalName := sub.contextName()
@@ -714,14 +693,7 @@ func finalizeArgsAndFlags(c *Context) error {
 	}
 
 	for _, f := range c.LocalFlags() {
-		if optionalAliases, ok := f.Data[optionalAliasesDataKey].([]string); ok {
-			for _, alias := range optionalAliases {
-				if !names[alias] {
-					f.Aliases = append(f.Aliases, alias)
-				}
-			}
-			delete(f.Data, optionalAliasesDataKey)
-		}
+		promoteOptionalAliases(f.Data, &f.Aliases, names)
 	}
 
 	if len(errs) > 0 {
@@ -747,21 +719,25 @@ func finalizeSubcommands(c *Context) error {
 		errs = append(errs, support.ValidateNames(names, c.Name, c.Aliases, nil)...)
 	}
 
-	for _, c := range c.LocalCommands() {
-		if optionalAliases, ok := c.Data[optionalAliasesDataKey].([]string); ok {
-			for _, alias := range optionalAliases {
-				if !names[alias] {
-					c.Aliases = append(c.Aliases, alias)
-				}
-			}
-			delete(c.Data, optionalAliasesDataKey)
-		}
+	for _, cmd := range c.LocalCommands() {
+		promoteOptionalAliases(cmd.Data, &cmd.Aliases, names)
 	}
 
 	if len(errs) > 0 {
 		return c.internalError(fmt.Errorf("errors initializing command: %w", errors.Join(errs...)))
 	}
 	return nil
+}
+
+func promoteOptionalAliases(data map[string]any, aliases *[]string, names map[string]bool) {
+	if optionalAliases, ok := data[optionalAliasesDataKey].([]string); ok {
+		for _, alias := range optionalAliases {
+			if !names[alias] {
+				*aliases = append(*aliases, alias)
+			}
+		}
+		delete(data, optionalAliasesDataKey)
+	}
 }
 
 func getGroup(f *Flag) synopsis.OptionGroup {
@@ -797,7 +773,10 @@ func findCommandByName(cmds []*Command, v any) (*Command, int, bool) {
 		return nil, -1, false
 	}
 
-	name := v.(string)
+	name, ok := v.(string)
+	if !ok {
+		return nil, -1, false
+	}
 	for index, sub := range cmds {
 		if sub.Name == name {
 			return sub, index, true

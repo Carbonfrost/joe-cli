@@ -7,6 +7,7 @@ package cli
 import (
 	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
@@ -211,14 +212,13 @@ func Args(namevalue ...any) []*Arg {
 		panic("unexpected number of arguments")
 	}
 	res := make([]*Arg, 0, len(namevalue)/2)
-	for i := 0; i < len(namevalue); i += 2 {
-		value := namevalue[i+1]
-		if err := checkSupportedFlagType(value); err != nil {
+	for pair := range slices.Chunk(namevalue, 2) {
+		if err := checkSupportedFlagType(pair[1]); err != nil {
 			panic(err)
 		}
 		res = append(res, &Arg{
-			Name:  namevalue[i].(string),
-			Value: value,
+			Name:  pair[0].(string),
+			Value: pair[1],
 		})
 	}
 	return res
@@ -276,11 +276,7 @@ func OptionalArg(fn func(string) bool) ArgCounter {
 	if fn == nil {
 		fn = func(string) bool { return true }
 	}
-	return &matchesArgsCounter{
-		fn:    fn,
-		count: 0,
-		max:   1,
-	}
+	return &matchesArgsCounter{fn: fn, max: 1}
 }
 
 // Occurrences counts the number of times that the argument has occurred on the command line
@@ -580,11 +576,11 @@ func (*matchesArgsCounter) Usage() (optional, multi bool) {
 }
 
 func (o *matchesArgsCounter) Take(arg string, _ bool) error {
-	if o.fn(arg) && o.count < o.max {
-		o.count++
+	ok := o.fn(arg) && o.count < o.max
+	o.count++
+	if ok {
 		return nil
 	}
-	o.count++
 	return EndOfArguments
 }
 
