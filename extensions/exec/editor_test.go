@@ -62,6 +62,8 @@ var _ = Describe("Editor", func() {
 		)
 
 		It("applies Mode to the temp file", func() {
+			SkipOnWindows()
+
 			var cap captured
 			e := exec.Editor{
 				Mode: 0640,
