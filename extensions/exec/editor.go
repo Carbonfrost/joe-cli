@@ -104,6 +104,11 @@ func (e *Editor) Execute(ctx context.Context) error {
 	return err
 }
 
+// FindEditor gets the command used for the editor.
+func FindEditor() string {
+	return findEditor()
+}
+
 func writeEditorData(w io.Writer, data any) error {
 	switch v := data.(type) {
 	case io.Reader:
