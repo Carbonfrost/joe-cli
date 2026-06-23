@@ -160,7 +160,7 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 	if len(invoke) == 0 {
 		return nil
 	}
-	cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], interceptErr)
+	cmd, err := tryFindCommandOrIntercept(c, invoke[0], interceptErr)
 	if err == ErrSkipCommand {
 		return nil
 	}
@@ -369,7 +369,7 @@ func completeSubCommand(c *Context) []CompletionItem {
 		return res
 	}
 
-	cmd, err := tryFindCommandOrIntercept(c, c.Command(), invoke[0], nil)
+	cmd, err := tryFindCommandOrIntercept(c, invoke[0], nil)
 	if err != nil {
 		return nil
 	}
@@ -788,8 +788,8 @@ func findCommandByName(cmds []*Command, v any) (*Command, int, bool) {
 	return nil, -1, false
 }
 
-func tryFindCommandOrIntercept(c *Context, cmd *Command, sub string, interceptErr func(*Context, error) (*Command, error)) (*Command, error) {
-	if res, ok := cmd.Command(sub); ok {
+func tryFindCommandOrIntercept(c *Context, sub string, interceptErr func(*Context, error) (*Command, error)) (*Command, error) {
+	if res, ok := c.Command().Command(sub); ok {
 		return res, nil
 	}
 	if c.flagSetOrAncestor((internalFlags).searchingAlternateCommand) {
