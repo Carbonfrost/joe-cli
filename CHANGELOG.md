@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.16.1 (June 22, 2026)
+
+### New Features
+
+* Exec extension: `FindEditor` (763f0d43)
+
+### Bug fixes and improvements
+
+* Bug fix: stricter testing of bind occurrences when using int (4065269f)
+* Exec extension: `Open` now requires file (763f0d43)
+* Simplify `tryFindCommandOrIntercept` (d50b013b)
+* Chores:
+    * Fix tests on Windows: file mode assertion (f1f12bad)
+    * Bump actions/checkout from 6 to 7 (e00bb0aa)
+    * Update dependent versions (8a8d9220)
+
+
 ## v0.16.0 (June 20, 2026)
 
 ### New Features
