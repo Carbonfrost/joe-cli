@@ -152,8 +152,7 @@ type parentLookup struct {
 }
 
 type valueTarget struct {
-	pipelinesSupport
-	internalFlagsSupport
+	targetSupport
 
 	v    any
 	name string
@@ -226,8 +225,8 @@ func newValueTarget(v any, name string, action Action) *valueTarget {
 	return &valueTarget{
 		v:    v,
 		name: name,
-		pipelinesSupport: pipelinesSupport{
-			actionPipelines{
+		targetSupport: targetSupport{
+			p: actionPipelines{
 				Initializers: action,
 			},
 		},

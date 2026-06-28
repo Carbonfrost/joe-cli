@@ -36,9 +36,8 @@ import (
 // is hidden.  To stop this, either set Visible option explicitly or disable
 // global behavior with the DisableAutoVisibility option.
 type Flag struct {
-	pipelinesSupport
+	targetSupport
 	hooksSupport
-	internalFlagsSupport
 
 	// Name provides the name of the flag. This value must be set, and it is used to access
 	// the flag's value via the context

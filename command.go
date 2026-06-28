@@ -29,9 +29,8 @@ import (
 // as one of the aliases. If a flag name is blank, this is an error; however, if
 // an arg name is blank, it is implicitly given a name using its index.
 type Command struct {
+	targetSupport
 	hooksSupport
-	pipelinesSupport
-	internalFlagsSupport
 
 	// Name of the command
 	Name string

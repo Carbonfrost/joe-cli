@@ -190,11 +190,8 @@ type hooksSupport struct {
 	values []*valueTarget
 }
 
-type pipelinesSupport struct {
-	p actionPipelines
-}
-
-type internalFlagsSupport struct {
+type targetSupport struct {
+	p     actionPipelines
 	flags internalFlags
 }
 
@@ -2035,32 +2032,32 @@ func (i *hooksSupport) addValueTarget(v *valueTarget) {
 	i.values = append(i.values, v)
 }
 
-func (s *pipelinesSupport) uses() *actionPipelines {
+func (s *targetSupport) uses() *actionPipelines {
 	return &s.p
 }
 
-func (s *pipelinesSupport) appendAction(t Timing, ah Action) {
+func (s *targetSupport) appendAction(t Timing, ah Action) {
 	s.p.add(t, ah)
 }
 
-func (i *internalFlagsSupport) setInternalFlags(f internalFlags, v bool) {
+func (s *targetSupport) setInternalFlags(f internalFlags, v bool) {
 	if v {
-		i.flags |= f
+		s.flags |= f
 	} else {
-		i.flags &= ^f
+		s.flags &= ^f
 	}
 }
 
-func (i *internalFlagsSupport) internalFlags() internalFlags {
-	return i.flags
+func (s *targetSupport) internalFlags() internalFlags {
+	return s.flags
 }
 
-func (i *internalFlagsSupport) setHidden(v bool) {
-	i.setInternalFlags(internalFlagHidden, v)
+func (s *targetSupport) setHidden(v bool) {
+	s.setInternalFlags(internalFlagHidden, v)
 }
 
-func (i *internalFlagsSupport) setRequired(v bool) {
-	i.setInternalFlags(internalFlagRequired, v)
+func (s *targetSupport) setRequired(v bool) {
+	s.setInternalFlags(internalFlagRequired, v)
 }
 
 func (m middlewareFunc) Execute(c context.Context) error {
