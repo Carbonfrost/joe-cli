@@ -1,14 +1,16 @@
-// Copyright 2023 The Joe-cli Authors. All rights reserved.
+// Copyright 2023, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package support
+package shell
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/mitchellh/go-ps"
+	"golang.org/x/term"
 )
 
 // Copied from
@@ -76,4 +78,23 @@ func isBLE() bool {
 		}
 	}
 	return false
+}
+
+func GuessWidth() int {
+	cols := os.Getenv("COLUMNS")
+	if cols != "" {
+		width, err := strconv.Atoi(cols)
+		if err == nil && width > 12 && width < 80 {
+			return width
+		}
+	}
+
+	fd := int(os.Stdout.Fd())
+	if term.IsTerminal(fd) {
+		width, _, err := term.GetSize(fd)
+		if err == nil && width > 12 && width < 80 {
+			return width
+		}
+	}
+	return 80
 }

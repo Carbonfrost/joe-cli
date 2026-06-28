@@ -43,7 +43,7 @@ import (
 	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
-	"github.com/Carbonfrost/joe-cli/internal/support"
+	"github.com/Carbonfrost/joe-cli/internal/shell"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -218,7 +218,7 @@ func newTableContext(f ...*Format) *tableContext {
 		panic("expected zero or one arg")
 	}
 	if format.ColWidth <= 0 {
-		format.ColWidth = support.GuessWidth()
+		format.ColWidth = shell.GuessWidth()
 	}
 	format.apply(c)
 

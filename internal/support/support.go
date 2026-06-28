@@ -9,15 +9,12 @@ import (
 	"math/big"
 	"net"
 	"net/url"
-	"os"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/term"
 )
 
 type valueResetOrMerge interface {
@@ -368,23 +365,4 @@ func MustValueCloneZero(p any) any {
 
 func errUnsupportedForCopying(p any) error {
 	return fmt.Errorf("unsupported flag type for copying or resetting: %T", p)
-}
-
-func GuessWidth() int {
-	cols := os.Getenv("COLUMNS")
-	if cols != "" {
-		width, err := strconv.Atoi(cols)
-		if err == nil && width > 12 && width < 80 {
-			return width
-		}
-	}
-
-	fd := int(os.Stdout.Fd())
-	if term.IsTerminal(fd) {
-		width, _, err := term.GetSize(fd)
-		if err == nil && width > 12 && width < 80 {
-			return width
-		}
-	}
-	return 80
 }

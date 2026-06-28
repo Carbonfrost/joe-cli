@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Carbonfrost/joe-cli/internal/shell"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/term"
@@ -148,7 +149,7 @@ func ReadString(in io.Reader) (string, error) {
 
 // Shell detects the shell which is running.
 func Shell() string {
-	return support.DetermineShell()
+	return shell.DetermineShell()
 }
 
 var unsafeShlexChars = regexp.MustCompile(`[^\w@%+=:,./-]`)
