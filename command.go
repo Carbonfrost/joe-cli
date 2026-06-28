@@ -141,7 +141,7 @@ const (
 // However, if ErrSkipCommand is returned, then no command is executed, and no error is generated.
 // It is uncommon to use this action because this action is implicitly bound to a synthetic argument when a
 // command defines any sub-commands.
-func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Action {
+func ExecuteSubcommand(interceptErr func(context.Context, error) (*Command, error)) Action {
 	return Pipeline(&Prototype{
 		Name:       "command",
 		UsageText:  "<command> [<args>]",
@@ -155,7 +155,7 @@ func ExecuteSubcommand(interceptErr func(*Context, error) (*Command, error)) Act
 	})))
 }
 
-func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, error) (*Command, error)) error {
+func subcommandCore(c *Context, invoke []string, interceptErr func(context.Context, error) (*Command, error)) error {
 	if len(invoke) == 0 {
 		return nil
 	}
@@ -171,37 +171,66 @@ func subcommandCore(c *Context, invoke []string, interceptErr func(*Context, err
 	return newCtx.Execute(invoke)
 }
 
-// HandleCommandNotFound assigns a default function to invoke when a command cannot be found.
-// The specified function is invoked if a command cannot be found.  It contains the context of the
-// parent attempting to invoke a command and the error previously encountered.  It returns the
-// command if any that can substitute.  Composition occurs with functions registered to handle
-// commands not found.  They each get called until one returns a command.
-func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) Action {
-	return ActionFunc(func(c *Context) error {
-		cmd := c.Command()
-		if fn == nil {
-			// Use a sentinel value, which is used to indicate the default behavior should be used
-			c.SetData(commandNotFoundKey, false)
-			return nil
-		}
+// CommandNotFoundHandler is invoked when a command cannot be found.  It is passed the context of
+// the parent attempting to invoke a command and the error previously encountered, and it returns
+// the command if any that can substitute.  It implements Action: executing it registers the
+// handler so that it is consulted when a command is not found.  Composition occurs with handlers
+// already registered (see ComposeCommandNotFoundHandler); they each get called until one returns
+// a command.
+type CommandNotFoundHandler func(context.Context, error) (*Command, error)
 
-		if existing, ok := cmd.Data[commandNotFoundKey]; ok {
-			existingFn, ok := existing.(func(*Context, error) (*Command, error))
-			if ok {
-				// Compose functions
-				newFn := fn
-				fn = func(c *Context, err1 error) (*Command, error) {
-					cmd, err := newFn(c, err1)
-					if cmd != nil && err == nil {
-						return cmd, nil
-					}
-					return existingFn(c, err)
-				}
-			}
-		}
-		c.SetData(commandNotFoundKey, fn)
+// Execute registers the handler to be consulted when a command cannot be found.  A nil handler
+// resets the behavior to the default.
+func (h CommandNotFoundHandler) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
+	cmd := c.Command()
+	if h == nil {
+		// Use a sentinel value, which is used to indicate the default behavior should be used
+		c.SetData(commandNotFoundKey, false)
 		return nil
-	})
+	}
+
+	fn := h
+	if existing, ok := cmd.Data[commandNotFoundKey]; ok {
+		if existingFn, ok := existing.(CommandNotFoundHandler); ok {
+			// Compose with the previously registered handler
+			fn = ComposeCommandNotFoundHandler(h, existingFn)
+		}
+	}
+	c.SetData(commandNotFoundKey, fn)
+	return nil
+}
+
+// ComposeCommandNotFoundHandler combines handlers into a single handler.  Each handler is invoked
+// in turn until one returns a command (without an error), in which case that command is used.
+// Otherwise, the error from a handler is passed along to the next, and the result of the last
+// handler is returned.
+func ComposeCommandNotFoundHandler(handlers ...CommandNotFoundHandler) CommandNotFoundHandler {
+	return func(c context.Context, err error) (*Command, error) {
+		for i, h := range handlers {
+			if h == nil {
+				continue
+			}
+			cmd, hErr := h(c, err)
+			if (cmd != nil && hErr == nil) || i == len(handlers)-1 {
+				return cmd, hErr
+			}
+			err = hErr
+		}
+		return nil, err
+	}
+}
+
+// HandleCommandNotFound assigns a default handler to invoke when a command cannot be found.
+// Composition occurs with handlers registered to handle commands not found.  They each get
+// called until one returns a command.
+func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) CommandNotFoundHandler {
+	if fn == nil {
+		return nil
+	}
+	return func(c context.Context, err error) (*Command, error) {
+		return fn(FromContext(c), err)
+	}
 }
 
 // ImplicitCommand indicates the command which is implicit when no sub-command matches.
@@ -211,7 +240,7 @@ func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) Action {
 //
 //   - cloud exec tail -f /var/output/log
 //   - cloud tail -f /var/output/log
-func ImplicitCommand(name string) Action {
+func ImplicitCommand(name string) CommandNotFoundHandler {
 	return HandleCommandNotFound(func(c *Context, _ error) (*Command, error) {
 		invoke := append([]string{name}, c.Args()...)
 		err := subcommandCore(c, invoke, nil)
@@ -787,7 +816,7 @@ func findCommandByName(cmds []*Command, v any) (*Command, int, bool) {
 	return nil, -1, false
 }
 
-func tryFindCommandOrIntercept(c *Context, sub string, interceptErr func(*Context, error) (*Command, error)) (*Command, error) {
+func tryFindCommandOrIntercept(c *Context, sub string, interceptErr func(context.Context, error) (*Command, error)) (*Command, error) {
 	if res, ok := c.Command().Command(sub); ok {
 		return res, nil
 	}
@@ -801,7 +830,9 @@ func tryFindCommandOrIntercept(c *Context, sub string, interceptErr func(*Contex
 		if auto, ok := c.LookupData(commandNotFoundKey); ok {
 			// Invalid casts are ignored because a sentinel value can be set  to indicate that
 			// the default behavior should be used
-			interceptErr, _ = auto.(func(*Context, error) (*Command, error))
+			if h, ok := auto.(CommandNotFoundHandler); ok {
+				interceptErr = h
+			}
 		}
 	}
 
