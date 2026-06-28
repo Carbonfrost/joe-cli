@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
@@ -158,8 +159,8 @@ type hookable interface {
 
 type target interface {
 	setHidden(bool)
-	setData(name string, v any)
-	lookupData(name string) (any, bool)
+	SetData(name any, v any)
+	LookupData(name any) (any, bool)
 
 	uses() *actionPipelines
 	options() *Option
@@ -191,8 +192,9 @@ type hooksSupport struct {
 }
 
 type targetSupport struct {
-	p     actionPipelines
-	flags internalFlags
+	p       actionPipelines
+	flags   internalFlags
+	private map[any]any
 }
 
 type actionPipelines struct {
@@ -261,8 +263,8 @@ const (
 )
 
 const (
-	panicDataKey           = "__PanicData"
-	optionalAliasesDataKey = "__OptionalAliases"
+	panicDataKey           = privatekey.PanicData
+	optionalAliasesDataKey = privatekey.OptionalAliases
 )
 
 const (
@@ -1047,11 +1049,11 @@ func Mutex(names ...string) Action {
 }
 
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
-// set up inside a Uses pipeline.
-// When value is nil, the corresponding
-// metadata is deleted
-func Data(name string, value any) Action {
-	return actionThunk2((*Context).SetData, name, value)
+// set up inside a Uses pipeline. When value is nil, the corresponding
+// metadata is deleted. If key is a string, it is considered public data (equivalent to setting
+// to the Data map on the target). Other types are private
+func Data(key any, value any) Action {
+	return actionThunk2((*Context).SetData, key, value)
 }
 
 // Category sets the category of a command, flag, or expression.  This handler is generally
@@ -1076,7 +1078,7 @@ func Alias(a ...string) Action {
 // the alias happens during finalization of args and flags.
 func OptionalAlias(a ...string) Action {
 	return ActionFunc(func(c *Context) error {
-		optionalAliases, _ := c.target().lookupData(optionalAliasesDataKey)
+		optionalAliases, _ := c.target().LookupData(optionalAliasesDataKey)
 		aliases, _ := optionalAliases.([]string)
 		aliases = append(aliases, a...)
 		c.SetData(optionalAliasesDataKey, aliases)
@@ -1891,7 +1893,7 @@ func (p *Prototype) copyToValue(c *Context) error {
 		o.setDescription(p.Description)
 	}
 	for k, v := range p.Data {
-		o.setData(k, v)
+		o.SetData(k, v)
 	}
 	o.setAliases(p.Aliases)
 	p.Options.Execute(c)
@@ -2058,6 +2060,35 @@ func (s *targetSupport) setHidden(v bool) {
 
 func (s *targetSupport) setRequired(v bool) {
 	s.setInternalFlags(internalFlagRequired, v)
+}
+
+func (t *targetSupport) privateData(public *map[string]any) privateData {
+	if *public == nil {
+		*public = map[string]any{}
+	}
+	return privateData{public: *public, private: t.private}
+}
+
+type privateData struct {
+	public  map[string]any // a reference to Data
+	private map[any]any
+}
+
+func (p privateData) lookup(key any) (any, bool) {
+	if name, ok := key.(string); ok {
+		value, ok := p.public[name]
+		return value, ok
+	}
+	value, ok := p.private[key]
+	return value, ok
+}
+
+func (p privateData) set(key, value any) {
+	if name, ok := key.(string); ok {
+		p.public[name] = value
+	} else {
+		p.private[key] = value
+	}
 }
 
 func (m middlewareFunc) Execute(c context.Context) error {

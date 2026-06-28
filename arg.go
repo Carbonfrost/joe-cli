@@ -382,13 +382,14 @@ func (a *Arg) value() any {
 	return a.Value
 }
 
-func (a *Arg) setData(name string, v any) {
-	a.Data = setData(a.Data, name, v)
+// SetData sets internal data used by the argument
+func (a *Arg) SetData(key any, value any) {
+	a.privateData(&a.Data).set(key, value)
 }
 
-func (a *Arg) lookupData(name string) (any, bool) {
-	v, ok := a.Data[name]
-	return v, ok
+// LookupData obtains internal data used by the argument
+func (a *Arg) LookupData(key any) (any, bool) {
+	return a.privateData(&a.Data).lookup(key)
 }
 
 func (a *Arg) setCategory(name string) {

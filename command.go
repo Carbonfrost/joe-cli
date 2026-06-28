@@ -14,6 +14,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
@@ -125,10 +126,6 @@ type commandContext struct {
 	*set
 }
 
-const (
-	commandNotFoundKey = "__CommandNotFound"
-)
-
 // ExecuteSubcommand finds and executes a sub-command.  This action is intended to be used
 // as the action on an argument.  The argument should be a list of strings, which represent
 // the sub-command to locate and execute and the arguments to use.  If used within the
@@ -186,18 +183,18 @@ func (h CommandNotFoundHandler) Execute(ctx context.Context) error {
 	cmd := c.Command()
 	if h == nil {
 		// Use a sentinel value, which is used to indicate the default behavior should be used
-		c.SetData(commandNotFoundKey, false)
+		c.SetData(privatekey.CommandNotFound, false)
 		return nil
 	}
 
 	fn := h
-	if existing, ok := cmd.Data[commandNotFoundKey]; ok {
+	if existing, ok := cmd.Data[privatekey.CommandNotFound]; ok {
 		if existingFn, ok := existing.(CommandNotFoundHandler); ok {
 			// Compose with the previously registered handler
 			fn = ComposeCommandNotFoundHandler(h, existingFn)
 		}
 	}
-	c.SetData(commandNotFoundKey, fn)
+	c.SetData(privatekey.CommandNotFound, fn)
 	return nil
 }
 
@@ -519,13 +516,14 @@ func (c *Command) newSynopsis() *synopsis.Command {
 	)
 }
 
-func (c *Command) setData(name string, v any) {
-	c.Data = setData(c.Data, name, v)
+// SetData sets internal data used by the command
+func (c *Command) SetData(key any, value any) {
+	c.privateData(&c.Data).set(key, value)
 }
 
-func (c *Command) lookupData(name string) (any, bool) {
-	v, ok := c.Data[name]
-	return v, ok
+// LookupData obtains internal data used by the command
+func (c *Command) LookupData(key any) (any, bool) {
+	return c.privateData(&c.Data).lookup(key)
 }
 
 func (c *Command) setCategory(name string) {
@@ -827,7 +825,7 @@ func tryFindCommandOrIntercept(c *Context, sub string, interceptErr func(context
 	c.target().setInternalFlags(internalFlagSearchingAlternateCommand, true)
 	defer c.target().setInternalFlags(internalFlagSearchingAlternateCommand, false)
 	if interceptErr == nil {
-		if auto, ok := c.LookupData(commandNotFoundKey); ok {
+		if auto, ok := c.LookupData(privatekey.CommandNotFound); ok {
 			// Invalid casts are ignored because a sentinel value can be set  to indicate that
 			// the default behavior should be used
 			if h, ok := auto.(CommandNotFoundHandler); ok {

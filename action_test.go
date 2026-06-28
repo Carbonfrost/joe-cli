@@ -3003,7 +3003,7 @@ var _ = Describe("HookBefore", func() {
 		}
 		err := app.RunContext(context.Background(), []string{"app", "-f", "_"})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(app.Flags[0].Value.(*haveArgs).Data).To(HaveKeyWithValue("ok", "4"))
+		Expect(app.Flags[0].Value.(*haveArgs).Data).To(HaveKeyWithValue(any("ok"), "4"))
 	})
 
 	Describe("flag can hook contained arg", func() {

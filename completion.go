@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 )
 
 var (
@@ -91,10 +93,6 @@ type completionData struct {
 	Shell            string
 	ShellComplete    ShellComplete
 }
-
-const (
-	shellCompletesKey = "__ShellCompletes"
-)
 
 // CompletionRequest gets the completion request from the
 // context if a completion is being requested.
@@ -286,10 +284,10 @@ func (c *Context) robustParsingMode() bool {
 }
 
 func (c *Context) shellCompletes() map[string]ShellComplete {
-	l, ok := c.LookupData(shellCompletesKey)
+	l, ok := c.LookupData(privatekey.ShellCompletes)
 	if !ok {
 		l = map[string]ShellComplete{}
-		c.SetData(shellCompletesKey, l)
+		c.SetData(privatekey.ShellCompletes, l)
 	}
 	return l.(map[string]ShellComplete)
 }

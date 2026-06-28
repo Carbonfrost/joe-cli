@@ -214,7 +214,7 @@ func (f *Flag) Synopsis() string {
 }
 
 func (f *Flag) cacheSynopsis(syn *synopsis.Flag) *synopsis.Flag {
-	f.setData(synopsisKey, syn)
+	f.SetData(synopsisKey, syn)
 	return syn
 }
 
@@ -231,13 +231,14 @@ func (f *Flag) newSynopsis() *synopsis.Flag {
 	return synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
 }
 
-func (f *Flag) setData(name string, v any) {
-	f.Data = setData(f.Data, name, v)
+// SetData sets internal data used by the flag
+func (f *Flag) SetData(key any, value any) {
+	f.privateData(&f.Data).set(key, value)
 }
 
-func (f *Flag) lookupData(name string) (any, bool) {
-	v, ok := f.Data[name]
-	return v, ok
+// LookupData obtains internal data used by the flag
+func (f *Flag) LookupData(key any) (any, bool) {
+	return f.privateData(&f.Data).lookup(key)
 }
 
 func (f *Flag) setDescription(value any) {

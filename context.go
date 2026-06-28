@@ -22,6 +22,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 )
 
 // Context provides the context in which the app, command, or flag is executing or initializing.
@@ -178,8 +180,8 @@ type contextPathPattern struct {
 type contextKeyType struct{}
 
 const (
-	synopsisKey          = "_Synopsis"
-	completionRequestKey = "_CompletionRequest"
+	synopsisKey          = privatekey.Synopsis
+	completionRequestKey = privatekey.CompletionRequest
 )
 
 var (
@@ -823,7 +825,7 @@ func (c *Context) LookupData(name string) (any, bool) {
 	if c == nil || c.target() == nil {
 		return nil, false
 	}
-	if res, ok := c.target().lookupData(name); ok {
+	if res, ok := c.target().LookupData(name); ok {
 		return res, true
 	}
 	return c.Parent().LookupData(name)
@@ -927,8 +929,8 @@ func (c *Context) Completion() Completion {
 
 // SetData sets data on the current target.  Despite the return value,
 // this method never returns an error.
-func (c *Context) SetData(name string, v any) error {
-	c.target().setData(name, v)
+func (c *Context) SetData(key any, value any) error {
+	c.target().SetData(key, value)
 	return nil
 }
 
@@ -2170,15 +2172,20 @@ func (v *valueTarget) data() map[string]any {
 	return nil
 }
 
-func (v *valueTarget) setData(name string, val any) {
-	if t, ok := v.v.(interface{ SetData(string, any) }); ok {
+func (v *valueTarget) SetData(name any, val any) {
+	if t, ok := v.v.(interface{ SetData(any, any) }); ok {
 		t.SetData(name, val)
+		return
+	}
+	if t, ok := v.v.(interface{ SetData(string, any) }); ok {
+		t.SetData(name.(string), val)
+		return
 	}
 }
 
-func (v *valueTarget) lookupData(name string) (any, bool) {
+func (v *valueTarget) LookupData(name any) (any, bool) {
 	if t, ok := v.v.(interface {
-		LookupData(string) (any, bool)
+		LookupData(any) (any, bool)
 	}); ok {
 		return t.LookupData(name)
 	}
