@@ -6,9 +6,11 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -279,9 +281,12 @@ func defaultData(c *Context) any {
 	}
 }
 
-// ExecuteTemplate provides an action that renders the specified template using the factory function that
-// creates the data that is passed to the template
-func ExecuteTemplate(name string, data func(*Context) any) Action {
+// ExecuteTemplate provides an action that renders the specified template using the specified data
+// that is passed to the template. The data parameter is used directly unless it is nil
+// in which case a default value is used containing the App and Command. It can also be a function
+// which generates data. This function returns the data and optionally an error. It may either no
+// arguments or exactly one, which is the context (typed as either *Context or context.Context).
+func ExecuteTemplate(name string, data any) Action {
 	return actionThunk2((*Context).ExecuteTemplate, name, data)
 }
 
@@ -295,9 +300,12 @@ func RegisterTemplateFunc(name string, fn any) Action {
 	return actionThunk2((*Context).RegisterTemplateFunc, name, fn)
 }
 
-// ExecuteTemplate provides an action that renders the specified template using the factory function that
-// creates the data that is passed to the template
-func (c *Context) ExecuteTemplate(name string, data func(*Context) any) error {
+// ExecuteTemplate provides an action that renders the specified template using the specified data
+// that is passed to the template. The data parameter is used directly unless it is nil
+// in which case a default value is used containing the App and Command. It can also be a function
+// which generates data. This function returns the data and optionally an error. It may either no
+// arguments or exactly one, which is the context (typed as either *Context or context.Context).
+func (c *Context) ExecuteTemplate(name string, data any) error {
 	tpl := c.Template(name)
 	if tpl == nil {
 		return c.internalError(fmt.Errorf("template does not exist: %q", name))
@@ -305,7 +313,33 @@ func (c *Context) ExecuteTemplate(name string, data func(*Context) any) error {
 	if data == nil {
 		data = defaultData
 	}
-	return tpl.Execute(c.Stdout, data(c))
+
+	var err error
+	switch fn := data.(type) {
+	case nil:
+		data = defaultData
+	case func(context.Context) any:
+		data = fn(c)
+	case func(context.Context) (any, error):
+		data, err = fn(c)
+	case func(*Context) any:
+		data = fn(c)
+	case func(*Context) (any, error):
+		data, err = fn(c)
+	case func() any:
+		data = fn()
+	case func() (any, error):
+		data, err = fn()
+	default:
+		if reflect.TypeOf(data).Kind() == reflect.Func {
+			panic(fmt.Errorf("unexpected data type %T", data))
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("execution error (template %q): %w", name, err)
+	}
+
+	return tpl.Execute(c.Stdout, data)
 }
 
 // RegisterTemplate will register the specified template by name.

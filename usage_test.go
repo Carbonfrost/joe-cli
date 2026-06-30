@@ -7,6 +7,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -68,6 +69,56 @@ var _ = Describe("ExecuteTemplate", func() {
 		err := app.RunContext(context.Background(), []string{"app"})
 		Expect(err).To(MatchError(ContainSubstring(`template does not exist: "custom"`)))
 	})
+
+	var example = struct {
+		App struct{ Name string }
+	}{
+		App: struct{ Name string }{
+			Name: "li",
+		},
+	}
+
+	DescribeTable("examples", func(data any) {
+		var captured bytes.Buffer
+		app := &cli.App{
+			Name:   "li",
+			Uses:   cli.RegisterTemplate("T", "{{ .App.Name }}"),
+			Action: cli.ExecuteTemplate("T", data),
+			Stdout: &captured,
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(captured.String()).To(Equal("li"))
+	},
+		Entry("nil to default", nil),
+		Entry("thunk", func() any { return example }),
+		Entry("context.Context thunk", func(context.Context) any { return example }),
+		Entry("*Context thunk", func(*cli.Context) any { return example }),
+	)
+
+	It("panics on unknown func signature", func() {
+		Expect(func() {
+			new(cli.Context).ExecuteTemplate("_", func() int { return 0 })
+		}).To(Panic())
+	})
+
+	DescribeTable("errors", func(data any) {
+		app := &cli.App{
+			Name:   "app",
+			Uses:   cli.RegisterTemplate("T", "{{ .App.Name }}"),
+			Action: cli.ExecuteTemplate("T", data),
+			Stdout: io.Discard,
+		}
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(`execution error (template "T"): error returned`))
+	},
+		Entry("context.Context err thunk", func(context.Context) (any, error) { return nil, fmt.Errorf("error returned") }),
+		Entry("Context err thunk", func(*cli.Context) (any, error) { return nil, fmt.Errorf("error returned") }),
+		Entry("err thunk", func() (any, error) { return nil, fmt.Errorf("error returned") }),
+	)
+
 })
 
 var _ = Describe("Template", func() {
