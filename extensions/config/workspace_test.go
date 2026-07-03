@@ -5,9 +5,11 @@
 package config_test
 
 import (
+	"bytes"
 	"context"
 	"io/fs"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing/fstest"
 
@@ -51,6 +53,32 @@ var _ = Describe("DefaultWorkspaceFinder", func() {
 
 		Expect(actual).To(Equal("x"))
 	})
+})
+
+var _ = Describe("PrintEnv", func() {
+
+	DescribeTable("examples", func(printEnv cli.Action, arguments string, expected string) {
+		SkipOnWindows()
+		var captured bytes.Buffer
+
+		app := &cli.App{
+			Uses: cli.Pipeline(
+				config.NewWorkspace(
+					config.WithEnvProvider(config.EnvMap{"HELLO": "R", "XXX": "S"}),
+				),
+				printEnv,
+			),
+			Stdout: &captured,
+		}
+		args, _ := cli.Split(arguments)
+		app.RunContext(context.Background(), args)
+		Expect(captured.String()).To(Equal(expected))
+	},
+		Entry("variable", config.PrintEnv(), "app HELLO", "R\n"),
+		Entry("variables", config.PrintEnv(), "app HELLO XXX", "R\nS\n"),
+		Entry("all variables", config.PrintEnv(), "app", "export HELLO=R\nexport XXX=S\n"),
+		Entry("specified variable", config.PrintEnv("XXX"), "app", "S\n"),
+	)
 })
 
 var _ = Describe("Workspace", func() {
@@ -160,4 +188,10 @@ func mustLocalize(s string) string {
 		panic(err)
 	}
 	return s
+}
+
+func SkipOnWindows() {
+	if runtime.GOOS == "windows" {
+		Skip("not tested on Windows")
+	}
 }

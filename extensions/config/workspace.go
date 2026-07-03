@@ -9,10 +9,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"iter"
+	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
@@ -39,6 +43,7 @@ type Workspace struct {
 	walkDirFunc fs.WalkDirFunc
 	finder      WorkspaceFinder
 	loader      func(fs.FS, string, fs.DirEntry) (any, error)
+	env         EnvProvider
 }
 
 // WorkspaceOption provides an option for setting up the Workspace. This is also
@@ -70,6 +75,14 @@ var SkipFile = errors.New("skip this file")
 const DefaultWorkspaceFinder defaultWorkspaceFinder = iota
 
 var errWorkspaceNotFound = fmt.Errorf("workspace not found")
+
+var exportSym = "export"
+
+func init() {
+	if runtime.GOOS == "windows" {
+		exportSym = "set"
+	}
+}
 
 // NewWorkspace creates a workspace with the default action, which registers the
 // flags and adds the workspace to the context.
@@ -182,6 +195,34 @@ func SetConfigDir(diropt ...string) cli.Action {
 	)
 }
 
+// PrintEnv prints out the environment, optionally specifying the vars to
+// print out. When used in the Uses pipeline, it also provides useful initialization
+// to the command it is used on.
+func PrintEnv(vars ...string) cli.Action {
+	var varAction bind.Binder[[]string]
+	if len(vars) == 0 {
+		varAction = bind.List("vars")
+	} else {
+		varAction = bind.Exact(vars)
+	}
+	return cli.Pipeline(
+		&cli.Prototype{
+			Name:     "env",
+			HelpText: "Print environment information",
+			Uses: cli.AddArg(&cli.Arg{
+				Name: "vars",
+			}),
+			Options: cli.Exits,
+		},
+		bind.Call3(
+			(*Workspace).fprintEnv,
+			bind.FromContext(WorkspaceFromContext),
+			bind.Stdout(),
+			varAction,
+		),
+	)
+}
+
 func (w workspaceOption) apply(ws *Workspace) {
 	w(ws)
 }
@@ -228,6 +269,60 @@ func (w *Workspace) ConfigDir() string {
 // FS gets the file system that represents the workspace.
 func (w *Workspace) FS() fs.FS {
 	return w.f
+}
+
+// Env obtains the workspace environment
+func (w *Workspace) Env() iter.Seq2[string, string] {
+	m := map[string]string{}
+	maps.Insert(m, w.env.Environ())
+
+	return func(yield func(string, string) bool) {
+		for _, key := range slices.Sorted(maps.Keys(m)) {
+			if !yield(key, m[key]) {
+				return
+			}
+		}
+	}
+}
+
+func (w *Workspace) fprintEnv(out io.Writer, vars []string) error {
+	return w.FprintEnv(out, vars...)
+}
+
+// Getenv looks up a name in the workspace Env
+func (w *Workspace) Getenv(name string) string {
+	for key, value := range w.Env() {
+		if key == name {
+			return value
+		}
+	}
+	return ""
+}
+
+// PrintEnv prints the environment. If any variable is named
+// then just its value is printed. However, if no variables are
+// named then all are printed out using the syntax of shell variable
+// assignment for the operating system.
+func (w *Workspace) PrintEnv(vars ...string) error {
+	return w.FprintEnv(os.Stdout, vars...)
+}
+
+// FprintEnv prints the environment to the specified writer. If any variable is named
+// then just its value is printed. However, if no variables are
+// named then all are printed out using the syntax of shell variable
+// assignment for the operating system.
+func (w *Workspace) FprintEnv(out io.Writer, vars ...string) error {
+	if len(vars) == 0 {
+		for k, v := range w.Env() {
+			fmt.Fprintf(out, "%s %s=%s\n", exportSym, k, cli.Quote(v))
+		}
+		return nil
+	}
+
+	for _, v := range vars {
+		fmt.Fprintln(out, w.Getenv(v))
+	}
+	return nil
 }
 
 // WorkspaceFileLoaderFunc defines the function for loading files in a workspace.
