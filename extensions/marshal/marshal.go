@@ -7,6 +7,7 @@
 package marshal
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"strings"
@@ -82,12 +83,19 @@ type Arg struct {
 // Options provides a representation of cli.Option for use as data
 type Options = cli.Option
 
-// Type identifies the built-in supported types
-type Type int
+// Type represents a type that can be used in the CLI
+type Type interface {
+	New() any
+	String() string
+	MarshalText() ([]byte, error)
+}
+
+// BuiltinType identifies the built-in supported types
+type BuiltinType int
 
 // The various types that the CLI supports
 const (
-	UnknownType Type = iota
+	UnknownType BuiltinType = iota
 
 	BigFloat
 	BigInt
@@ -153,7 +161,7 @@ var (
 	}
 )
 
-func (t Type) New() any {
+func (t BuiltinType) New() any {
 	switch t {
 	case NameValues:
 		return cli.NameValues()
@@ -211,36 +219,117 @@ func (t Type) New() any {
 	panic(fmt.Sprintf("unexpected value %q", t))
 }
 
-func (t *Type) Set(arg string) error {
+func (t *BuiltinType) Set(arg string) error {
 	arg = strings.ToLower(strings.TrimSpace(arg))
 	for i, v := range typeStrings {
 		if v == arg {
-			*t = Type(i)
+			*t = BuiltinType(i)
 			return nil
 		}
 	}
 	return fmt.Errorf("unexpected %q", arg)
 }
 
-func (t Type) String() string {
+func (t BuiltinType) String() string {
 	return typeStrings[int(t)]
 }
 
 // MarshalText provides the textual representation
-func (t Type) MarshalText() ([]byte, error) {
+func (t BuiltinType) MarshalText() ([]byte, error) {
 	return []byte(t.String()), nil
 }
 
 // UnmarshalText converts the textual representation
-func (t *Type) UnmarshalText(b []byte) error {
+func (t *BuiltinType) UnmarshalText(b []byte) error {
 	token := strings.TrimSpace(string(b))
 	for k, y := range typeStrings {
 		if token == y {
-			*t = Type(k)
+			*t = BuiltinType(k)
 			return nil
 		}
 	}
 	return nil
 }
 
-var _ flag.Value = (*Type)(nil)
+// New creates a new instance based on the schema
+func (s Schema) New() any {
+	result := make(map[string]any, len(s))
+	for name, typ := range s {
+		result[name] = typ.New()
+	}
+	return result
+}
+
+// String returns a string representation of the schema
+func (s Schema) String() string {
+	if len(s) == 0 {
+		return "schema{}"
+	}
+	var parts []string
+	for name, typ := range s {
+		parts = append(parts, fmt.Sprintf("%s:%s", name, typ.String()))
+	}
+	return fmt.Sprintf("schema{%s}", strings.Join(parts, ","))
+}
+
+// Schema represents a structural type with named fields
+type Schema map[string]Type
+
+// MarshalText provides the textual representation
+func (s Schema) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
+// MarshalJSON provides JSON representation of the schema
+func (s Schema) MarshalJSON() ([]byte, error) {
+	result := make(map[string]any, len(s))
+	for name, typ := range s {
+		switch t := typ.(type) {
+		case BuiltinType:
+			result[name] = t.String()
+		case Schema:
+			result[name] = t
+		default:
+			result[name] = typ.String()
+		}
+	}
+	return json.Marshal(result)
+}
+
+// UnmarshalJSON parses JSON representation into a schema
+func (s *Schema) UnmarshalJSON(b []byte) error {
+	var raw map[string]any
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	*s = make(Schema, len(raw))
+	for name, value := range raw {
+		switch v := value.(type) {
+		case string:
+			// Parse as BuiltinType
+			var bt BuiltinType
+			if err := bt.UnmarshalText([]byte(v)); err != nil {
+				return err
+			}
+			(*s)[name] = bt
+		case map[string]any:
+			// Parse as nested Schema
+			jsonBytes, err := json.Marshal(v)
+			if err != nil {
+				return err
+			}
+			var nested Schema
+			if err := nested.UnmarshalJSON(jsonBytes); err != nil {
+				return err
+			}
+			(*s)[name] = nested
+		default:
+			return fmt.Errorf("unexpected type for field %q: %T", name, value)
+		}
+	}
+	return nil
+}
+
+var _ Type = Schema(nil)
+var _ flag.Value = (*BuiltinType)(nil)
+var _ Type = BuiltinType(0)

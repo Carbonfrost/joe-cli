@@ -5,14 +5,16 @@
 package marshal_test
 
 import (
+	"encoding/json"
+
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
-var _ = Describe("Type", func() {
+var _ = Describe("BuiltinType", func() {
 
 	Describe("New", func() {
 		DescribeTable("examples",
@@ -52,7 +54,7 @@ var _ = Describe("Type", func() {
 	Describe("parsing", func() {
 		DescribeTable("examples",
 			func(text string, expected marshal.Type) {
-				var t marshal.Type
+				var t marshal.BuiltinType
 				_ = (&t).UnmarshalText([]byte(text))
 
 				Expect(t).To(Equal(expected))
@@ -83,6 +85,97 @@ var _ = Describe("Type", func() {
 			Entry("IP", "ip", marshal.IP),
 			Entry("BigFloat", "bigfloat", marshal.BigFloat),
 			Entry("BigInt", "bigint", marshal.BigInt),
+		)
+	})
+})
+
+var _ = Describe("Schema", func() {
+
+	Describe("UnmarshalJSON", func() {
+
+		DescribeTable("examples", func(jsonText string, expected types.GomegaMatcher) {
+			var s marshal.Schema
+			err := json.Unmarshal([]byte(jsonText), &s)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(s).To(expected)
+		},
+			Entry("empty", `{}`, Equal(marshal.Schema{})),
+			Entry(
+				"named types",
+				`{
+					"BigFloat": "bigfloat",
+					"BigInt": "bigint",
+					"Bool": "bool",
+					"Bytes": "bytes",
+					"Duration": "duration",
+					"File": "file",
+					"FileSet": "fileset",
+					"Float32": "float32",
+					"Float64": "float64",
+					"Int": "int",
+					"Int16": "int16",
+					"Int32": "int32",
+					"Int64": "int64",
+					"Int8": "int8",
+					"IP": "ip",
+					"List": "list",
+					"Map": "map",
+					"NameValue": "namevalue",
+					"NameValues": "namevalues",
+					"Regexp": "regexp",
+					"String": "string",
+					"Uint": "uint",
+					"Uint16": "uint16",
+					"Uint32": "uint32",
+					"Uint64": "uint64",
+					"Uint8": "uint8",
+					"URL": "url"
+				 }`,
+				And(
+					HaveKeyWithValue("BigFloat", marshal.BigFloat),
+					HaveKeyWithValue("BigInt", marshal.BigInt),
+					HaveKeyWithValue("Bool", marshal.Bool),
+					HaveKeyWithValue("Bytes", marshal.Bytes),
+					HaveKeyWithValue("Duration", marshal.Duration),
+					HaveKeyWithValue("File", marshal.File),
+					HaveKeyWithValue("FileSet", marshal.FileSet),
+					HaveKeyWithValue("Float32", marshal.Float32),
+					HaveKeyWithValue("Float64", marshal.Float64),
+					HaveKeyWithValue("Int", marshal.Int),
+					HaveKeyWithValue("Int16", marshal.Int16),
+					HaveKeyWithValue("Int32", marshal.Int32),
+					HaveKeyWithValue("Int64", marshal.Int64),
+					HaveKeyWithValue("Int8", marshal.Int8),
+					HaveKeyWithValue("IP", marshal.IP),
+					HaveKeyWithValue("List", marshal.List),
+					HaveKeyWithValue("Map", marshal.Map),
+					HaveKeyWithValue("NameValue", marshal.NameValue),
+					HaveKeyWithValue("NameValues", marshal.NameValues),
+					HaveKeyWithValue("Regexp", marshal.Regexp),
+					HaveKeyWithValue("String", marshal.String),
+					HaveKeyWithValue("Uint", marshal.Uint),
+					HaveKeyWithValue("Uint16", marshal.Uint16),
+					HaveKeyWithValue("Uint32", marshal.Uint32),
+					HaveKeyWithValue("Uint64", marshal.Uint64),
+					HaveKeyWithValue("Uint8", marshal.Uint8),
+					HaveKeyWithValue("URL", marshal.URL),
+				),
+			),
+			Entry(
+				"nested",
+				`{
+					"Uint8": "uint8",
+					"Schema": {
+						"Uint64": "uint64"
+					}
+				}`,
+				Equal(marshal.Schema{
+					"Uint8": marshal.Uint8,
+					"Schema": marshal.Schema{
+						"Uint64": marshal.Uint64,
+					},
+				}),
+			),
 		)
 	})
 })
