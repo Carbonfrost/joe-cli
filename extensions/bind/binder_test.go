@@ -19,6 +19,8 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/bind/bindfakes"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
+	"github.com/Carbonfrost/joe-cli/extensions/expr/exprfakes"
 	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
 	"github.com/onsi/gomega/types"
 
@@ -257,6 +259,78 @@ var _ = Describe("FileBinder", func() {
 
 		data, _ := io.ReadAll(dataReader)
 		Expect(string(data)).To(Equal("data"))
+	})
+
+	Describe("delegates via Seq applies type and value", func() {
+		DescribeTable("arg examples", func(file *bind.FileBinder) {
+
+			var name string
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{Name: "a"},
+				},
+				Uses: bind.Call(callFactory(&name), file.Name()),
+			}
+
+			args, _ := cli.Split("app V/filename.txt")
+			_ = app.RunContext(context.Background(), args)
+
+			Expect(name).To(Equal("V/filename.txt"))
+			Expect(app.Args[0].Value).To(BeAssignableToTypeOf(new(cli.File)))
+		},
+			Entry("index", bind.File(0)),
+			Entry("name", bind.File("a")),
+			Entry("implicit", bind.File()),
+		)
+
+		DescribeTable("arg in expr examples", func(file *bind.FileBinder) {
+
+			var name string
+			var eval = new(exprfakes.FakeEvaluator)
+
+			callFactory := func(s string) expr.Evaluator {
+				name = s
+				return eval
+			}
+
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "expression",
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{
+									Name: "name",
+									Args: []*cli.Arg{
+										{
+											Name:  "a",
+											Value: new(cli.File), // TODO This must be set up explicitly because
+											// implicit setting in file.Name() below is triggered too late
+											// to initialize the args
+										},
+									},
+									Uses: expr.BindEvaluator(callFactory, file.Name()),
+								},
+							},
+						},
+					},
+				},
+				Action: func(c *cli.Context) {
+					expr.FromContext(c, "expression").Evaluate(c, 0)
+				},
+			}
+
+			args, _ := cli.Split("app -- -name V/filename.txt")
+			err := app.RunContext(context.Background(), args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(name).To(Equal("V/filename.txt"))
+			Expect(app.Args[0].Value.(*expr.Expression).Exprs[0].Args[0].Value).To(BeAssignableToTypeOf(new(cli.File)))
+		},
+			Entry("index", bind.File(0)),
+			Entry("name", bind.File("a")),
+			Entry("implicit", bind.File()),
+		)
+
 	})
 })
 

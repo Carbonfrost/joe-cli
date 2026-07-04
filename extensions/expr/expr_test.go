@@ -582,6 +582,13 @@ var _ = Describe("Expr", func() {
 			Expect(cli.FromContext(captured).Int("flag")).To(Equal(9))
 		})
 
+		It("provides values local to the args", func() {
+			captured, _, _ := act.EvaluateArgsForCall(0)
+			Expect(cli.FromContext(captured).Bool(0)).To(BeTrue())
+			Expect(cli.FromContext(captured).Int("g")).To(Equal(2))
+			Expect(cli.FromContext(captured).Int(1)).To(Equal(2))
+		})
+
 		It("provides bindings that were selected", func() {
 			captured, _, _ := act.EvaluateArgsForCall(0)
 			exp := expr.FromContext(cli.FromContext(captured), "e")

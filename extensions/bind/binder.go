@@ -774,6 +774,12 @@ func (b *thenBinder[_, _]) Initializer() cli.Action {
 	return nil
 }
 
+func (b *thenBinder[_, _]) SetName(name any) {
+	if try, ok := b.binder.(binderImpliedName); ok {
+		try.SetName(name)
+	}
+}
+
 func wrapWithComposite[V any](in binderSupportInterface[V]) any {
 	var zero V
 	switch any(zero).(type) {
