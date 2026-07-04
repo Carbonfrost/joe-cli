@@ -202,8 +202,9 @@ const (
 	TakeExceptForFlags = -3
 )
 
-// Args provides a simple initializer for positional arguments.  You specify each argument name and value
-// in order to this function.    It generates the corresponding list of required positional arguments.
+// Args provides a simple initializer for positional arguments.  You specify each argument name and either
+// its value, nil, or the initializer Action to this function.
+// It generates the corresponding list of required positional arguments.
 // A panic occurs when this function is not called properly: when names and values
 // are not arranged in pairs or when an unsupported type of value is used.
 func Args(namevalue ...any) []*Arg {
@@ -212,13 +213,27 @@ func Args(namevalue ...any) []*Arg {
 	}
 	res := make([]*Arg, 0, len(namevalue)/2)
 	for pair := range slices.Chunk(namevalue, 2) {
-		value := pair[1]
-		if err := checkSupportedFlagType(value); value != nil && err != nil {
+		name := pair[0].(string)
+		var value any
+		var uses Action
+
+		if pair[1] == nil {
+			value = nil
+
+		} else if act, ok := pair[1].(Action); ok {
+			uses = act
+
+		} else if err := checkSupportedFlagType(pair[1]); err != nil {
 			panic(err)
+
+		} else {
+			value = pair[1]
 		}
+
 		res = append(res, &Arg{
-			Name:  pair[0].(string),
+			Name:  name,
 			Value: value,
+			Uses:  uses,
 		})
 	}
 	return res

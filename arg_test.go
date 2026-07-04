@@ -566,6 +566,14 @@ var _ = Describe("Args", func() {
 		Expect(func() { cli.Args("a", nil) }).NotTo(Panic())
 	})
 
+	It("allows Action to be used for value", func() {
+		action := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: cli.Args("a", cli.ActionOf(action)),
+		}
+		app.Initialize(context.Background())
+		Expect(action.ExecuteCallCount()).To(Equal(1))
+	})
 })
 
 var _ = Describe("ArgCount", func() {
