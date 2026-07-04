@@ -48,8 +48,6 @@ func (m Mode) String() string {
 		return "never"
 	case Always:
 		return "always"
-	case Auto:
-	default:
 	}
 	return "auto"
 }

@@ -15,8 +15,6 @@ import (
 )
 
 type templateContext struct {
-	funcs map[string]any
-
 	colorEnabledThunk func() bool
 }
 
@@ -58,27 +56,20 @@ var (
 // NewTemplateFuncs gets the template funcs that support the
 // given mode
 func NewTemplateFuncs(modeopt ...Mode) map[string]any {
-	result := func() bool {
-		switch {
-		case len(modeopt) == 0 || modeopt[0] == Auto:
-			return support.ColorEnabled(os.Stdout)
-		case modeopt[0] == Never:
-			return false
-		case modeopt[0] == Always:
-		}
-		return true
-	}()
-	return templateFuncs(func() bool {
-		return result
-	})
+	var enabled bool
+	if len(modeopt) == 0 || modeopt[0] == Auto {
+		enabled = support.ColorEnabled(os.Stdout)
+	} else {
+		enabled = modeopt[0] == Always
+	}
+	return templateFuncs(func() bool { return enabled })
 }
 
 func templateFuncs(colorEnabled func() bool) map[string]any {
 	t := &templateContext{colorEnabledThunk: colorEnabled}
 	bold := t.sprintStyle(cli.Bold)
-	underline := t.sprintStyle(cli.Underline)
 
-	t.funcs = map[string]any{
+	return map[string]any{
 		"Black":         t.sprintForegroundColor(cli.Black),
 		"Red":           t.sprintForegroundColor(cli.Red),
 		"Green":         t.sprintForegroundColor(cli.Green),
@@ -102,7 +93,7 @@ func templateFuncs(colorEnabled func() bool) map[string]any {
 		"Bold":          bold,
 		"Faint":         t.sprintStyle(cli.Faint),
 		"Italic":        t.sprintStyle(cli.Italic),
-		"Underline":     underline,
+		"Underline":     t.sprintStyle(cli.Underline),
 		"Blink":         t.sprintStyle(cli.Blink),
 		"Reverse":       t.sprintStyle(cli.Reverse),
 		"Strikethrough": t.sprintStyle(cli.Strikethrough),
@@ -120,7 +111,6 @@ func templateFuncs(colorEnabled func() bool) map[string]any {
 			return append([]string{first}, s[1:]...)
 		},
 	}
-	return t.funcs
 }
 
 func (t *templateContext) sprintStyle(s cli.Style) sprinter {
@@ -158,8 +148,8 @@ func (t *templateContext) resetColor() func() string {
 }
 
 func (t *templateContext) setColor(color string, a ...any) (string, error) {
-	if _, ok := colorNames[color]; ok {
-		return t.funcs[color].(sprinter)(a...)
+	if f, ok := colorNames[color]; ok {
+		return t.sprintForegroundColor(f)(a...)
 	}
 	return "", fmt.Errorf("not valid color: %q", color)
 }
@@ -181,8 +171,8 @@ func (t *templateContext) setStyle(styles string, a ...any) (string, error) {
 	case 0:
 		return fmt.Sprint(a...), nil
 	case 1:
-		if _, ok := styleNames[s[0]]; ok {
-			return t.funcs[s[0]].(sprinter)(a...)
+		if style, ok := styleNames[s[0]]; ok {
+			return t.sprintStyle(style)(a...)
 		}
 	default:
 		all := make([]cli.Style, len(s))
