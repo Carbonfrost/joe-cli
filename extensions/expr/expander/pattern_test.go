@@ -55,11 +55,11 @@ var _ = Describe("ExpandAny", func() {
 	})
 })
 
-var _ = Describe("CompilePattern", func() {
+var _ = Describe("Compile options", func() {
 
-	DescribeTable("expected output",
+	DescribeTable("WithDelimiters",
 		func(start, end, pattern, expected string) {
-			pat := expander.CompilePattern(pattern, start, end)
+			pat := expander.Compile(pattern, expander.WithDelimiters(start, end))
 			actual := pat.Expand(expander.Map(map[string]any{"hello": "world"}))
 			Expect(actual).To(Equal(expected))
 		},
@@ -69,7 +69,7 @@ var _ = Describe("CompilePattern", func() {
 	Describe("SyntaxDefault", func() {
 
 		DescribeTable("examples", func(pattern, expected string) {
-			pat := expander.SyntaxDefault.Compile(pattern)
+			pat := expander.Compile(pattern, expander.SyntaxDefault)
 
 			actual := pat.Expand(
 				expander.Map(map[string]any{
@@ -89,7 +89,7 @@ var _ = Describe("CompilePattern", func() {
 	Describe("SyntaxRecursive", func() {
 
 		DescribeTable("examples", func(pattern, expected string) {
-			pat := expander.SyntaxRecursive.Compile(pattern)
+			pat := expander.Compile(pattern, expander.SyntaxRecursive)
 
 			actual := pat.Expand(
 				expander.Map(map[string]any{
@@ -179,7 +179,7 @@ var _ = Describe("String", func() {
 
 	It("expands meta reference", func() {
 		meta := expander.Compile("%(a) %(b)")
-		pat := expander.Compile("%(meta) %(c)").WithMeta("meta", meta)
+		pat := expander.Compile("%(meta) %(c)", expander.WithMeta("meta", meta))
 		Expect(pat.String()).To(Equal("%(a) %(b) %(c)"))
 	})
 })

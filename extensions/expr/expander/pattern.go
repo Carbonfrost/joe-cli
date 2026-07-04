@@ -110,30 +110,97 @@ func Fprint(w io.Writer, pattern *Pattern, e Interface) (count int, err error) {
 	return pattern.Fprint(w, e)
 }
 
-func Compile(pattern string) *Pattern {
-	return SyntaxDefault.Compile(pattern)
+// Option configures how a pattern is compiled by Compile. The Syntax
+// values are themselves options
+type Option interface {
+	apply(*options)
 }
 
-func CompilePattern(pattern, start, end string) *Pattern {
-	return SyntaxDefault.CompilePattern(pattern, start, end)
+type options struct {
+	syntax Syntax
+	start  string
+	end    string
+	metas  []metaOption
 }
 
-func (s Syntax) Compile(pattern string) *Pattern {
-	return s.CompilePattern(pattern, "%(", ")")
+type metaOption struct {
+	name    string
+	pattern *Pattern
 }
 
-func (s Syntax) CompilePattern(pattern, start, end string) *Pattern {
-	endBytes := []byte(end)
+type optionFunc func(*options)
+
+func (f optionFunc) apply(o *options) { f(o) }
+
+func (s Syntax) apply(o *options) { o.syntax = s }
+
+// WithDelimiters overrides the start and end delimiters used to recognize
+// expressions within a pattern. The end delimiter must be a single byte.
+// The default delimiters are "%(" and ")".
+func WithDelimiters(start, end string) Option {
+	return optionFunc(func(o *options) {
+		o.start = start
+		o.end = end
+	})
+}
+
+// WithMeta substitutes every expression named name with the expressions
+// from the given pattern. It is applied after the pattern is compiled and
+// may be specified more than once.
+func WithMeta(name string, pattern *Pattern) Option {
+	return optionFunc(func(o *options) {
+		o.metas = append(o.metas, metaOption{name: name, pattern: pattern})
+	})
+}
+
+// Compile compiles pattern into a Pattern, applying any options. By default
+// the SyntaxDefault syntax and the delimiters "%(" and ")" are used.
+func Compile(pattern string, opts ...Option) *Pattern {
+	o := options{
+		start: "%(",
+		end:   ")",
+	}
+	for _, opt := range opts {
+		opt.apply(&o)
+	}
+
+	endBytes := []byte(o.end)
 	if len(endBytes) > 1 {
 		panic("end sequence must be one byte")
 	}
 
 	newExpr := defaultNewExpr
-	if s == SyntaxRecursive {
-		newExpr = recursiveNewExpr(start, end)
+	if o.syntax == SyntaxRecursive {
+		newExpr = recursiveNewExpr(o.start, o.end)
 	}
 
-	return compilePatternCore([]byte(pattern), []byte(start), endBytes, newExpr)
+	p := compilePatternCore([]byte(pattern), []byte(o.start), endBytes, newExpr)
+	for _, m := range o.metas {
+		p = p.WithMeta(m.name, m.pattern)
+	}
+	return p
+}
+
+// CompilePattern compiles pattern using the given delimiters.
+//
+// Deprecated: Use Compile with WithDelimiters instead.
+func CompilePattern(pattern, start, end string) *Pattern {
+	return Compile(pattern, WithDelimiters(start, end))
+}
+
+// Compile compiles pattern using the receiver's syntax.
+//
+// Deprecated: Use Compile with the Syntax value as an option instead.
+func (s Syntax) Compile(pattern string) *Pattern {
+	return Compile(pattern, s)
+}
+
+// CompilePattern compiles pattern using the receiver's syntax and the given
+// delimiters.
+//
+// Deprecated: Use Compile with the Syntax value and WithDelimiters instead.
+func (s Syntax) CompilePattern(pattern, start, end string) *Pattern {
+	return Compile(pattern, s, WithDelimiters(start, end))
 }
 
 func (l literalExpr) Format(_ Interface) string {
