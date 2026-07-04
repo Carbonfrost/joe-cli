@@ -151,7 +151,7 @@ var _ = Describe("Compile", func() {
 
 				pat := expander.Compile(pattern)
 				renderer := expander.NewRenderer(&out, &err)
-				_, _ = expander.Fprint(renderer, pat, expander.Map(map[string]any{"hello": "world"}))
+				_, _ = pat.Fprint(renderer, expander.Map(map[string]any{"hello": "world"}))
 				Expect(out.String()).To(Equal(expectedOut))
 				Expect(err.String()).To(Equal(expectedErr))
 			},

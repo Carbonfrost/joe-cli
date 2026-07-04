@@ -105,9 +105,14 @@ func NewRenderer(stdout, stderr io.Writer) *Renderer {
 	}
 }
 
+// Expands expands the pattern using the given expander and produces a string
+func Expand(pattern string, e Interface, opts ...Option) string {
+	return Compile(pattern, opts...).Expand(e)
+}
+
 // Fprint expands the pattern using the given expander and writes to the specified writer.
-func Fprint(w io.Writer, pattern *Pattern, e Interface) (count int, err error) {
-	return pattern.Fprint(w, e)
+func Fprint(pattern string, w io.Writer, e Interface, opts ...Option) (count int, err error) {
+	return Compile(pattern, opts...).Fprint(w, e)
 }
 
 // Option configures how a pattern is compiled by Compile. The Syntax
@@ -314,9 +319,10 @@ func (p *Pattern) Fprint(w io.Writer, e Interface) (count int, err error) {
 	return
 }
 
+// Expand expands the pattern with the given replacements
 func (p *Pattern) Expand(expand Interface) string {
 	var b strings.Builder
-	Fprint(&b, p, expand)
+	p.Fprint(&b, expand)
 	return b.String()
 }
 
