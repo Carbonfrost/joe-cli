@@ -13,6 +13,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/color"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	"github.com/Carbonfrost/joe-cli/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -311,6 +312,32 @@ var _ = Describe("ContextFilter", func() {
 			}))
 		})
 
+	})
+})
+
+var _ = Describe("Synopsis styling", func() {
+	It("SynopsisColor sets the private data key read by synopsis", func() {
+		f := &cli.Flag{Name: "f", Value: new(bool), Uses: color.SynopsisColor(cli.Red)}
+		app := &cli.App{
+			Name:   "app",
+			Flags:  []*cli.Flag{f},
+			Action: func(*cli.Context) {},
+		}
+		_ = app.RunContext(context.Background(), []string{"app"})
+
+		Expect(f.Data).To(HaveKeyWithValue(synopsis.ColorData, cli.Red))
+	})
+
+	It("SynopsisStyle sets the private data key read by synopsis", func() {
+		f := &cli.Flag{Name: "f", Value: new(bool), Uses: color.SynopsisStyle(cli.Underline)}
+		app := &cli.App{
+			Name:   "app",
+			Flags:  []*cli.Flag{f},
+			Action: func(*cli.Context) {},
+		}
+		_ = app.RunContext(context.Background(), []string{"app"})
+
+		Expect(f.Data).To(HaveKeyWithValue(synopsis.StyleData, cli.Underline))
 	})
 })
 

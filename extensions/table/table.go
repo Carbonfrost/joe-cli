@@ -150,7 +150,7 @@ const (
 {{- Table "Unformatted" -}}
 {{- range . -}}
 {{- Row -}}
-{{- .Names | BoldFirst | Join ", " | Cell -}}
+{{- .Names | SynopsisStyleFirst | Join ", " | Cell -}}
 {{- Cell .HelpText -}}
 {{- end -}}
 {{- EndTable -}}`

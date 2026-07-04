@@ -76,7 +76,7 @@ var (
 
 {{- define "SubcommandListing" -}}
 {{- range . -}}
-{{ "\t" }}{{ .Names | BoldFirst | Join ", " }}{{ "\t" }}{{.HelpText}}{{ "\n" }}
+{{ "\t" }}{{ .Names | SynopsisStyleFirst . | Join ", " }}{{ "\t" }}{{.HelpText}}{{ "\n" }}
 {{- end -}}
 {{- end -}}
 
@@ -200,17 +200,14 @@ Expressions:
 			return s + " "
 		},
 
-		// These are used in the default synopsis (but you need color extension
-		// to actually activate them)
-		"Bold": func(s string) string {
-			return s
+		"SynopsisStyleFirst": func(cmd *commandData, s []string) []string {
+			if len(s) == 0 {
+				return s
+			}
+			first := synopsis.StyleFromData(cmd.Data).ApplyTo(s[0])
+			return append([]string{first}, s[1:]...)
 		},
-		"BoldFirst": func(s []string) []string {
-			return s
-		},
-		"Underline": func(s string) string {
-			return s
-		},
+
 		"Trim": strings.TrimSpace,
 	}
 )

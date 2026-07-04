@@ -228,7 +228,9 @@ func (f *Flag) synopsis() *synopsis.Flag {
 }
 
 func (f *Flag) newSynopsis() *synopsis.Flag {
-	return synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
+	syn := synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
+	syn.Style = synopsis.StyleFromData(f.Data)
+	return syn
 }
 
 // SetData sets internal data used by the flag

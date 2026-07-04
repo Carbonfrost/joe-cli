@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -32,6 +32,41 @@ var _ = Describe("String", func() {
 			"flag multi",
 			&synopsis.Flag{Names: []string{"-a", "-b"}, Separator: "=", Value: basicValue},
 			Equal("**-a, -b**=_STRING_"),
+		),
+		Entry(
+			"flag with style override",
+			&synopsis.Flag{
+				Names: []string{"-a"},
+				Style: synopsis.StyleFromData(map[string]any{synopsis.StyleData: ansiterm.Underline}),
+			},
+			Equal("_-a_"),
+		),
+		Entry(
+			"flag with color override",
+			&synopsis.Flag{
+				Names: []string{"-a"},
+				Style: synopsis.StyleFromData(map[string]any{synopsis.ColorData: ansiterm.Red}),
+			},
+			Equal("{red}-a{reset}"),
+		),
+		Entry(
+			"flag with color and style override",
+			&synopsis.Flag{
+				Names: []string{"-a"},
+				Style: synopsis.StyleFromData(map[string]any{
+					synopsis.ColorData: ansiterm.Red,
+					synopsis.StyleData: ansiterm.Underline,
+				}),
+			},
+			Equal("{red}<underline>-a{reset}"),
+		),
+		Entry(
+			"command name with color override",
+			&synopsis.Command{
+				Name:  "c",
+				Style: synopsis.StyleFromData(map[string]any{synopsis.ColorData: ansiterm.Red}),
+			},
+			ContainSubstring("{red}c{reset}"),
 		),
 		Entry("action flags",
 			synopsis.NewCommand("c",
@@ -94,6 +129,18 @@ type Writer struct {
 }
 
 var basicValue = &synopsis.Value{Placeholder: "STRING"}
+
+func (w *Writer) SetForeground(c ansiterm.Color) {
+	fmt.Fprintf(w, "{%s}", c)
+}
+
+func (w *Writer) SetStyle(s ansiterm.Style) {
+	fmt.Fprintf(w, "<%s>", s)
+}
+
+func (w *Writer) Reset() {
+	w.WriteString("{reset}")
+}
 
 func (w *Writer) Styled(s ansiterm.Style, v ...any) (int, error) {
 	var c string

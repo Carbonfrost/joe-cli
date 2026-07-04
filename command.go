@@ -511,9 +511,11 @@ func (c *Command) newSynopsis() *synopsis.Command {
 		args[i] = a.newSynopsis()
 	}
 
-	return synopsis.NewCommand(
+	syn := synopsis.NewCommand(
 		c.Name, flags, args, c.internalFlags().rightToLeft(),
 	)
+	syn.Style = synopsis.StyleFromData(c.Data)
+	return syn
 }
 
 // SetData sets internal data used by the command

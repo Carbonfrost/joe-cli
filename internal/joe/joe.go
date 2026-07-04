@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/color"
 	"github.com/Carbonfrost/joe-cli/extensions/template"
 	"github.com/Carbonfrost/joe-cli/internal/build"
 )
@@ -40,11 +41,13 @@ func NewApp() *cli.App {
 				Subcommands: []*cli.Command{
 					newAppCommand(),
 				},
+				Uses: color.SynopsisColor(cli.Green),
 			},
 			{
 				Name:     "init",
 				HelpText: "Initialize the current Go module for use with Joe-cli",
 				Action:   glueTemplateOptions(newInitTemplate),
+				Uses:     color.SynopsisColor(cli.Green),
 			},
 		},
 	}

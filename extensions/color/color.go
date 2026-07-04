@@ -18,6 +18,7 @@ import (
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/internal/support"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 // Options is the configuration for the color extension and provides the initializer for the
@@ -152,6 +153,26 @@ func SetMode(modeopt ...Mode) cli.Action {
 		},
 		bind.Call2(setMode, bind.Context(), bind.Exact(untyped(modeopt)...)),
 	)
+}
+
+// SynopsisColor returns an action, typically added to the Uses pipeline of a
+// flag, command, or expression, that causes its name to be rendered in the
+// synopsis using the given foreground color instead of the default Bold style.
+// It sets a private data key that the synopsis package reads.
+//
+//	&cli.Flag{Uses: color.SynopsisColor(cli.Red)}
+func SynopsisColor(c cli.Color) cli.Action {
+	return cli.Data(synopsis.ColorData, c)
+}
+
+// SynopsisStyle returns an action, typically added to the Uses pipeline of a
+// flag, command, or expression, that causes its name to be rendered in the
+// synopsis using the given style instead of the default Bold style.  It sets a
+// private data key that the synopsis package reads.
+//
+//	&cli.Flag{Uses: color.SynopsisStyle(cli.Underline)}
+func SynopsisStyle(s cli.Style) cli.Action {
+	return cli.Data(synopsis.StyleData, s)
 }
 
 func untyped[T any](values []T) []any {

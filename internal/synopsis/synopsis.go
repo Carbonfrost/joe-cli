@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,12 +10,16 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/juju/ansiterm"
 )
 
 type styleWriter interface {
 	io.Writer
 	io.StringWriter
+	SetForeground(ansiterm.Color)
+	SetStyle(ansiterm.Style)
+	Reset()
 	Styled(ansiterm.Style, ...any) (int, error)
 }
 
@@ -34,6 +38,7 @@ type Command struct {
 	RequiredArgs []*Arg
 	OptionalArgs []*Arg
 	RTL          bool
+	Style        Style
 }
 
 type Flag struct {
@@ -46,6 +51,7 @@ type Flag struct {
 	AlternateNames []string
 	Value          *Value
 	Group          OptionGroup
+	Style          Style
 }
 
 type Arg struct {
@@ -62,6 +68,7 @@ type Expr struct {
 	Args         []*Arg
 	RequiredArgs []*Arg
 	OptionalArgs []*Arg
+	Style        Style
 }
 
 type Value struct {
@@ -85,6 +92,58 @@ const (
 	Bold      = ansiterm.Bold
 	Underline = ansiterm.Underline
 )
+
+const (
+	ColorData = "_synopsisColor"
+	StyleData = "_synopsisStyle"
+)
+
+// Style controls how the name of a flag, command, or expression is rendered in
+// the synopsis.  The zero value renders the name in Bold.  When a color is set,
+// it is used in place of the default Bold style unless a style is also set
+// explicitly, in which case both are applied.
+type Style struct {
+	color ansiterm.Color
+	style ansiterm.Style
+}
+
+func StyleFromData(data map[string]any) Style {
+	var s Style
+	if data == nil {
+		return s
+	}
+	if c, ok := data[ColorData].(ansiterm.Color); ok {
+		s.color = c
+	}
+	if st, ok := data[StyleData].(ansiterm.Style); ok {
+		s.style = st
+	}
+	return s
+}
+
+func (s Style) write(w styleWriter, text string) {
+	if s.color == 0 {
+		style := s.style
+		if style == 0 {
+			style = Bold
+		}
+		w.Styled(style, text)
+		return
+	}
+
+	w.SetForeground(s.color)
+	if s.style != 0 {
+		w.SetStyle(s.style)
+	}
+	w.WriteString(text)
+	w.Reset()
+}
+
+func (s Style) ApplyTo(str string) string {
+	return support.FormatDefault(func(sw support.StyleWriter) {
+		s.write(sw, str)
+	})
+}
 
 func NewCommand(name string, flags []*Flag, args []*Arg, rtl bool) *Command {
 	groups := map[OptionGroup][]*Flag{
@@ -207,7 +266,7 @@ func (v *Value) WriteTo(w styleWriter) {
 }
 
 func (c *Command) WriteTo(sb styleWriter) {
-	sb.Styled(Bold, c.Name)
+	c.Style.write(sb, c.Name)
 
 	if flags := c.Flags[ActionGroup]; len(flags) > 0 {
 		sb.WriteString(" {")
@@ -266,13 +325,13 @@ func (a *Arg) WithUsage(text string) *Arg {
 }
 
 func (f *Flag) WriteTo(sb styleWriter) {
-	sb.Styled(Bold, strings.Join(f.Names, ", "))
+	f.Style.write(sb, strings.Join(f.Names, ", "))
 	sb.WriteString(f.Separator)
 	f.Value.WriteTo(sb)
 }
 
 func (f *Flag) primaryWriteTo(sb styleWriter) {
-	sb.Styled(Bold, f.Primary)
+	f.Style.write(sb, f.Primary)
 	sb.WriteString(f.Separator)
 	f.Value.WriteTo(sb)
 }
@@ -329,13 +388,13 @@ func (f *Flag) withLongAndShort(long []string, short []rune) *Flag {
 }
 
 func (e *Expr) WriteTo(sb styleWriter) {
-	boldFirst(sb, e.Names)
+	styleFirst(sb, e.Style, e.Names)
 	writeArgList(sb, false, e.RequiredArgs, e.OptionalArgs)
 }
 
-func boldFirst(sb styleWriter, n []string) {
+func styleFirst(sb styleWriter, s Style, n []string) {
 	if len(n) > 0 {
-		sb.Styled(Bold, n[0])
+		s.write(sb, n[0])
 		for _, name := range n[1:] {
 			sb.WriteString(", ")
 			sb.WriteString(name)

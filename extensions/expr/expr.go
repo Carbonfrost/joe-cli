@@ -637,7 +637,9 @@ func (e *Expr) newSynopsis() *synopsis.Expr {
 		}
 	}
 
-	return synopsis.NewExpr(e.Name, e.Aliases, usage, args)
+	syn := synopsis.NewExpr(e.Name, e.Aliases, usage, args)
+	syn.Style = synopsis.StyleFromData(e.Data)
+	return syn
 }
 
 func argSynopsis(a *cli.Arg, name string) *synopsis.Arg {
