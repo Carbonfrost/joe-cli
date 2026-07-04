@@ -1833,8 +1833,8 @@ func bubble(start *Context, self, anc func(*Context, context.Context) error) err
 func tunnel(start *Context, self, anc func(*Context, context.Context) error) error {
 	lineage := start.Lineage()
 	fn := anc
-	for i := len(lineage) - 1; i >= 0; i-- {
-		current := lineage[i]
+	for i, current := range slices.Backward(lineage) {
+
 		if i == 0 {
 			fn = self
 		}

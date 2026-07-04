@@ -8,6 +8,7 @@ package template
 import (
 	"context"
 	"io"
+	"maps"
 	tt "text/template"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -161,9 +162,7 @@ func (v Vars) applyFSOption(g *fsGenerator) {
 	if g.vars == nil {
 		g.vars = make(Vars)
 	}
-	for k, val := range v {
-		g.vars[k] = val
-	}
+	maps.Copy(g.vars, v)
 }
 
 var (

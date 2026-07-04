@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -173,14 +174,16 @@ func splitMapRegions(s string) (prefix, kvps, suffix []string) {
 		return
 	}
 
-	var suffixIndex int
-	for suffixIndex = len(tmpKVPs) - 1; suffixIndex >= 0; suffixIndex-- {
-		// TODO Need additional check for escaping
-		if strings.Contains(tmpKVPs[suffixIndex], "=") {
-			suffix = tmpKVPs[suffixIndex+1:]
-			break
+	suffixIndex := func() int {
+		for si, tmpKVP := range slices.Backward(tmpKVPs) {
+			// TODO Need additional check for escaping
+			if strings.Contains(tmpKVP, "=") {
+				suffix = tmpKVPs[si+1:]
+				return si
+			}
 		}
-	}
+		return -1
+	}()
 
 	// Special case with only one KVP
 	if len(prefix) == 0 && suffixIndex == 0 {
