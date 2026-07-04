@@ -212,12 +212,13 @@ func Args(namevalue ...any) []*Arg {
 	}
 	res := make([]*Arg, 0, len(namevalue)/2)
 	for pair := range slices.Chunk(namevalue, 2) {
-		if err := checkSupportedFlagType(pair[1]); err != nil {
+		value := pair[1]
+		if err := checkSupportedFlagType(value); value != nil && err != nil {
 			panic(err)
 		}
 		res = append(res, &Arg{
 			Name:  pair[0].(string),
-			Value: pair[1],
+			Value: value,
 		})
 	}
 	return res

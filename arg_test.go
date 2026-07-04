@@ -562,6 +562,10 @@ var _ = Describe("Args", func() {
 			PanicWith(MatchError("unsupported flag type: string")))
 	})
 
+	It("allows nil to be used for value", func() {
+		Expect(func() { cli.Args("a", nil) }).NotTo(Panic())
+	})
+
 })
 
 var _ = Describe("ArgCount", func() {
