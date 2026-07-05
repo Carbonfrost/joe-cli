@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,9 +7,7 @@ package template
 
 import (
 	"context"
-	"io"
 	"maps"
-	tt "text/template"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
@@ -39,12 +37,6 @@ type Generator interface {
 // Vars contains template variables.  Variables are copied into the template
 // context
 type Vars map[string]any
-
-// Interface provides the interface of a template.  The primary implementation
-// is usually from the text/template package.
-type Interface interface {
-	Execute(out io.Writer, data any) error
-}
 
 type dataSetter struct {
 	name  string
@@ -169,7 +161,5 @@ var (
 	_ cli.Action = (*Root)(nil)
 	_ Generator  = (*Root)(nil)
 	_ Generator  = (Sequence)(nil)
-	_ Interface  = (*tt.Template)(nil)
-	_ Interface  = (*cli.Template)(nil)
 	_ Option     = (Vars)(nil)
 )

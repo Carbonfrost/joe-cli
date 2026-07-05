@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	tt "text/template"
 	"time"
 )
 
@@ -110,7 +111,7 @@ func Touch() FileGenerator {
 }
 
 // Template generates a file by executing a template.
-func Template(tt Interface, namedata ...any) FileGenerator {
+func Template(tt *tt.Template, namedata ...any) FileGenerator {
 	return newGenerateContents(func(ctx context.Context, c *OutputContext) ([]byte, error) {
 		err := Data(namedata...).Generate(ctx, c)
 		if err != nil {
