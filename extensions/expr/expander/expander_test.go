@@ -119,3 +119,17 @@ var _ = Describe("Time", func() {
 		Entry("ZoneOffset", "%(time.zoneOffset)", Equal("0")),
 	)
 })
+
+var _ = Describe("ExpandSlice", func() {
+
+	DescribeTable("examples", func(in expander.Interface, key string, expected types.GomegaMatcher) {
+		Expect(in.Expand(key)).To(expected)
+	},
+		Entry("nominal", expander.ExpandSlice([]int{0, 1}), "1", Equal(1)),
+		Entry("negative", expander.ExpandSlice([]int{0, 1, 2}), "-1", Equal(2)),
+		Entry("out of range", expander.ExpandSlice([]int{0}), "10", BeNil()),
+		Entry("non-numeric", expander.ExpandSlice([]int{0}), "x", BeNil()),
+	)
+	Describe("Expand", func() {
+	})
+})

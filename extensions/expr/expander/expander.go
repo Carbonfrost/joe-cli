@@ -13,6 +13,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -174,6 +175,28 @@ func (m Map) Expand(k string) any {
 		return nil
 	}
 	return v
+}
+
+// ExpandSlice creates an expander which uses the underlying
+// slice as its input. Keys resolve as the index into the slice, including
+// supporting negative indexes to reference from the end of the slice.
+func ExpandSlice[T any](slice []T) Interface {
+	return Func(func(key string) any {
+		i, err := strconv.Atoi(key)
+		if err != nil {
+			return nil
+		}
+
+		if i < 0 {
+			i += len(slice)
+		}
+
+		if i < 0 || i >= len(slice) {
+			return nil
+		}
+
+		return slice[i]
+	})
 }
 
 func Colors() Interface {
