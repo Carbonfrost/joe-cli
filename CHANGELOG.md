@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.17.0 (July 5, 2026)
+
+### New Features
+
+* Expander extension:
+    * `ExpandSlice` (dbdafc0b)
+    * Introduce options-based constructor for `expander.Pattern` (fa56dfbe)
+* Config extension: Introduce env handling to workspace (b39a54f1)
+* Marshal extension: Add `Schema` type and introduce `BuiltinType` (5b62134b)
+* Customize synopsis color and style (db6349e7)
+
+### Bug fixes and improvements
+
+* Bug fix: Don't clobber value targets with `Prototype` values (6955c919)
+* Bug fix: Propagate implicit naming with sequence binder (dd6fa0f6)
+* Breaking change: Template extension: remove `Interface` type (a31abfbc)
+* Expander extension:
+    * Add marshaling support to `expander.Pattern` (5c74db87)
+    * Replace arg type of `expander.Fprint` and introduce `Expand` function (66bbf462)
+* Code cleanup in color extension: simplify expressions; switches (8681b936)
+* Allow `Args` to support nil, `Action` (cc727257, 1998bd19)
+* `ExecuteTemplate`: generalize data signature (c9620f6e)
+* Introduce shell support package (90a29d67)
+* Support private data; move common keys into private (bf627967)
+* Encapsulate `CommandNotFoundHandler` (39908e70)
+* Consolidate pipelines and internal flags support into `targetSupport` (978d0379)
+* Chores:
+    * Apply modernizations (06e100cf)
+
+
 ## v0.16.1 (June 22, 2026)
 
 ### New Features
