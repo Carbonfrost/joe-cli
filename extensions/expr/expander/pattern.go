@@ -300,6 +300,26 @@ func (f fallbackExpr) Format(expand Interface) string {
 	return res + f.trailingOpt
 }
 
+// AppendText implements [encoding.TextAppender]. The output
+// matches that of calling the [Pattern.String] method.
+func (p *Pattern) AppendText(b []byte) ([]byte, error) {
+	return append(b, p.String()...), nil
+}
+
+// MarshalText implements [encoding.TextMarshaler]. The output
+// matches that of calling the [Pattern.AppendText] method.
+func (p *Pattern) MarshalText() ([]byte, error) {
+	return p.AppendText(nil)
+}
+
+// UnmarshalText implements [encoding.TextUnmarshaler] by calling
+// [Compile] on the encoded value using the default delimiters
+func (p *Pattern) UnmarshalText(text []byte) error {
+	newPattern := Compile(string(text))
+	*p = *newPattern
+	return nil
+}
+
 // Fprint expands the pattern using the given expander and writes to the specified writer.
 // As a special case, if w has a method Expander() Interface, this
 // method will be called to obtain an expander which composes with

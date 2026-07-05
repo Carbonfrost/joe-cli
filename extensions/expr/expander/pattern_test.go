@@ -133,6 +133,12 @@ var _ = Describe("Compile", func() {
 		Entry("whitespace: adjacent newlines", "%(newline)%(newline)", "\n\n"),
 	)
 
+	It("parses from UnmarshalText", func() {
+		pat := &expander.Pattern{}
+		Expect(pat.UnmarshalText([]byte("hello %(hello)"))).To(Succeed())
+		Expect(pat.String()).To(Equal("hello %(hello)"))
+	})
+
 	Context("when using colors", func() {
 		DescribeTable("example",
 			func(pattern, expected string) {
@@ -169,6 +175,7 @@ var _ = Describe("String", func() {
 		func(pattern, expected string) {
 			pat := expander.Compile(pattern)
 			Expect(pat.String()).To(Equal(expected))
+			Expect(pat.AppendText(nil)).To(Equal([]byte(expected)))
 		},
 		Entry("literal", "hello", "hello"),
 		Entry("expansion", "hello %(planet)", "hello %(planet)"),
