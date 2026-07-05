@@ -1766,7 +1766,6 @@ func (p Prototype) Execute(ctx context.Context) error {
 // Pipeline converts the prototype to a pipeline
 func (p Prototype) Pipeline() Action {
 	return Pipeline(
-		p.copyCommonToTarget,
 		p.copyToFlag,
 		p.copyToArg,
 		p.copyToValue,
@@ -1782,8 +1781,7 @@ func (p Prototype) Pipeline() Action {
 	)
 }
 
-func (p *Prototype) copyCommonToTarget(c *Context) error {
-	o := c.target()
+func copyCommonToTarget(o target, p *Prototype) error {
 	if o.category() == "" {
 		o.setCategory(p.Category)
 	}
@@ -1809,6 +1807,7 @@ func (p *Prototype) copyToCommand(o *Command) {
 	if o.Name == "" {
 		o.Name = p.Name
 	}
+	copyCommonToTarget(o, p)
 
 	o.Options |= p.Options
 	maps.Copy(o.Data, p.Data)
@@ -1823,6 +1822,8 @@ func (p *Prototype) copyToArg(c *Context) {
 	if !ok {
 		return
 	}
+	copyCommonToTarget(o, p)
+
 	if o.Name == "" {
 		o.Name = p.Name
 	}
@@ -1850,6 +1851,7 @@ func (p *Prototype) copyToFlag(c *Context) {
 	if !ok {
 		return
 	}
+	copyCommonToTarget(o, p)
 
 	if o.Name == "" {
 		o.Name = p.Name
@@ -1877,20 +1879,25 @@ func (p *Prototype) copyToValue(c *Context) error {
 		return nil
 	}
 
-	if o.category() == "" {
+	// Can't actually query valueTarget's underlying values (they are always
+	// empty), so only apply non-empty values FROM the prototype
+	if p.Category != "" {
 		o.setCategory(p.Category)
 	}
-	if o.helpText() == "" {
+	if p.HelpText != "" {
 		o.setHelpText(p.HelpText)
 	}
-	if o.manualText() == "" {
+	if p.ManualText != "" {
 		o.setManualText(p.ManualText)
 	}
-	if o.usageText() == "" {
+	if p.UsageText != "" {
 		o.setUsageText(p.UsageText)
 	}
-	if o.description() == "" || o.description() == nil {
+	if p.Description != nil {
 		o.setDescription(p.Description)
+	}
+	if p.DefaultText != "" {
+		o.setDefaultText(p.DefaultText)
 	}
 	for k, v := range p.Data {
 		o.SetData(k, v)

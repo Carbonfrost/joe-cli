@@ -13,6 +13,7 @@ import (
 	"regexp"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -355,6 +356,29 @@ var _ = Describe("DisplayHelpScreen", func() {
 							{
 								Name:     "cname",
 								HelpText: "Gets the cname value",
+							},
+						},
+					},
+				),
+			},
+			And(
+				ContainSubstring("Expressions:"),
+				ContainSubstring("-cname"),
+				ContainSubstring("Gets the cname value"),
+			)),
+		Entry("display expression description with binding",
+			&cli.App{
+				Args: cli.Args(
+					"expr",
+					&expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name:     "cname",
+								HelpText: "Gets the cname value",
+								// Addresses a bug in Prototype{} where HelpText was getting
+								// overwritten by the effect of the Prototype being used in expr.Evaluator's
+								// initializer
+								Uses: expr.BindEvaluator(func(int) expr.Evaluator { return nil }, bind.Int()),
 							},
 						},
 					},

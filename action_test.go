@@ -2594,9 +2594,47 @@ var _ = Describe("Prototype", func() {
 		Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
 		Entry("ManualText", cli.Prototype{ManualText: "explain"}, Fields{"ManualText": Equal("explain")}),
 		Entry("UsageText", cli.Prototype{UsageText: "nom"}, Fields{"UsageText": Equal("nom")}),
+		Entry("DefaultText", cli.Prototype{DefaultText: "def"}, Fields{"DefaultText": Equal("def")}),
 		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Hidden": BeTrue()}),
 		Entry("Data", cli.Prototype{Data: map[string]any{"B": 3}}, Fields{"Data": Equal(map[string]any{"B": 3})}),
 		Entry("Aliases", cli.Prototype{Aliases: []string{"B"}}, Fields{"Aliases": Equal([]string{"B"})}),
+	)
+
+	DescribeTableSubtree("value target empty examples", func(expected Fields) {
+
+		It("does not copy empty values to target", func() {
+
+			// Value target technically can't query for the state of underlying values, so
+			// it should never try to copy empty string over to it
+
+			var proto cli.Prototype
+			value := &protoValue{
+				Description: "d",
+				Category:    "f",
+				HelpText:    "new help text",
+				ManualText:  "explain",
+				UsageText:   "nom",
+				DefaultText: "d",
+			}
+			app := &cli.App{
+				Name: "any",
+				Args: []*cli.Arg{
+					{
+						Uses: cli.ProvideValueInitializer(value, "v", proto),
+					},
+				},
+			}
+
+			_ = app.RunContext(context.Background(), []string{"app"})
+			Expect(value).To(PointTo(MatchFields(IgnoreExtras, expected)))
+		})
+	},
+		Entry("Description", Fields{"Description": Equal("d")}),
+		Entry("Category", Fields{"Category": Equal("f")}),
+		Entry("HelpText", Fields{"HelpText": Equal("new help text")}),
+		Entry("ManualText", Fields{"ManualText": Equal("explain")}),
+		Entry("UsageText", Fields{"UsageText": Equal("nom")}),
+		Entry("DefaultText", Fields{"DefaultText": Equal("d")}),
 	)
 })
 
@@ -2607,6 +2645,7 @@ type protoValue struct {
 	UsageText   string
 	Aliases     []string
 	Description string
+	DefaultText string
 	Data        map[string]any
 	Hidden      bool
 }
@@ -2617,6 +2656,7 @@ func (p *protoValue) SetHelpText(v string)    { p.HelpText = v }
 func (p *protoValue) SetManualText(v string)  { p.ManualText = v }
 func (p *protoValue) SetUsageText(v string)   { p.UsageText = v }
 func (p *protoValue) SetDescription(v string) { p.Description = v }
+func (p *protoValue) SetDefaultText(v string) { p.DefaultText = v }
 func (p *protoValue) SetAliases(v []string)   { p.Aliases = v }
 func (p *protoValue) SetData(k string, v any) {
 	if p.Data == nil {
