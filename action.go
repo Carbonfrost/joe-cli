@@ -1881,6 +1881,9 @@ func (p *Prototype) copyToValue(c *Context) error {
 
 	// Can't actually query valueTarget's underlying values (they are always
 	// empty), so only apply non-empty values FROM the prototype
+	if p.Name != "" {
+		o.setName(p.Name)
+	}
 	if p.Category != "" {
 		o.setCategory(p.Category)
 	}

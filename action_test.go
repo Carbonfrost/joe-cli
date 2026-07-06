@@ -2589,6 +2589,7 @@ var _ = Describe("Prototype", func() {
 		_ = app.RunContext(context.Background(), []string{"app"})
 		Expect(value).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
+		Entry("Name", cli.Prototype{Name: "n"}, Fields{"Name": Equal("n")}),
 		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
 		Entry("Category", cli.Prototype{Category: "f"}, Fields{"Category": Equal("f")}),
 		Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),
@@ -2609,6 +2610,7 @@ var _ = Describe("Prototype", func() {
 
 			var proto cli.Prototype
 			value := &protoValue{
+				Name:        "n",
 				Description: "d",
 				Category:    "f",
 				HelpText:    "new help text",
@@ -2629,6 +2631,7 @@ var _ = Describe("Prototype", func() {
 			Expect(value).To(PointTo(MatchFields(IgnoreExtras, expected)))
 		})
 	},
+		Entry("Name", Fields{"Name": Equal("n")}),
 		Entry("Description", Fields{"Description": Equal("d")}),
 		Entry("Category", Fields{"Category": Equal("f")}),
 		Entry("HelpText", Fields{"HelpText": Equal("new help text")}),
@@ -2639,6 +2642,7 @@ var _ = Describe("Prototype", func() {
 })
 
 type protoValue struct {
+	Name        string
 	Category    string
 	HelpText    string
 	ManualText  string
@@ -2650,6 +2654,7 @@ type protoValue struct {
 	Hidden      bool
 }
 
+func (p *protoValue) SetName(v string)        { p.Name = v }
 func (p *protoValue) SetCategory(v string)    { p.Category = v }
 func (p *protoValue) SetHidden(v bool)        { p.Hidden = v }
 func (p *protoValue) SetHelpText(v string)    { p.HelpText = v }

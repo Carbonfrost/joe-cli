@@ -964,8 +964,8 @@ func (c *Context) SetName(name string) error {
 		o.Name = name
 	case *Command:
 		o.Name = name
-	case interface{ SetName(string) }:
-		o.SetName(name)
+	case *valueTarget:
+		o.setName(name)
 	}
 	return nil
 }
@@ -2098,6 +2098,13 @@ func (v *valueTarget) setDescription(arg any) {
 		val.SetDescription(fmt.Sprint(arg))
 	case interface{ SetDescription(any) }:
 		val.SetDescription(arg)
+	}
+}
+
+func (v *valueTarget) setName(arg any) {
+	switch val := v.v.(type) {
+	case interface{ SetName(string) }:
+		val.SetName(fmt.Sprint(arg))
 	}
 }
 
