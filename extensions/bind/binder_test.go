@@ -545,6 +545,23 @@ var _ = Describe("Occurrences", func() {
 		})
 	})
 
+	It("returns internal error if name is undefined", func() {
+		var value1 bool
+		app := &cli.App{
+			Name: "b",
+			Flags: []*cli.Flag{
+				{
+					Name: "m",
+					Uses: bind.Call(callFactory(&value1), bind.Seen("z")),
+				},
+			},
+		}
+		args, _ := cli.Split("app -m _")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(`internal error, at "b -m" (action timing): flag or arg named in binding but not defined "z"`))
+	})
+
 	It("invokes bind func with value from flag", func() {
 		var value1, value2, value3 int
 		app := &cli.App{

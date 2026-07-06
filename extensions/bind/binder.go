@@ -51,6 +51,7 @@ package bind
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
@@ -265,8 +266,13 @@ type occurrencesBinder[V any] struct {
 	values []V
 }
 
-func (b *occurrencesBinder[V]) Bind(c context.Context) (V, error) {
-	occurs := cli.FromContext(c).Occurrences(b.name())
+func (b *occurrencesBinder[V]) Bind(ctx context.Context) (V, error) {
+	c := cli.FromContext(ctx)
+	occurs := c.Occurrences(b.name())
+	if occurs == -1 {
+		// The name wasn't present, return this as-is
+		return b.values[0], undefinedError(c, b.name())
+	}
 	return b.values[min(occurs, len(b.values)-1)], nil
 }
 
@@ -791,6 +797,14 @@ func wrapWithComposite[V any](in binderSupportInterface[V]) any {
 		return &NameValueBinder{in.(binderSupportInterface[*cli.NameValue])}
 	}
 	return in
+}
+
+func undefinedError(c *cli.Context, name any) error {
+	return &cli.InternalError{
+		Path:   c.Path(),
+		Timing: c.Timing(),
+		Err:    fmt.Errorf("flag or arg named in binding but not defined %q", name),
+	}
 }
 
 var (
