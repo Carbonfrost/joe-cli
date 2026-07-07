@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"testing/fstest"
 	"time"
 
@@ -3817,6 +3818,54 @@ var _ = Describe("Mutex", func() {
 		Entry("three others", "app -abcd", MatchError("can't use -a together with -b, -c, or -d")),
 	)
 
+})
+
+var _ = Describe("Transform", func() {
+
+	DescribeTable("examples", func(arguments string, opts cli.Option, fn cli.TransformFunc, expected types.GomegaMatcher) {
+		var str string
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:      "long",
+					Transform: fn,
+					Options:   opts,
+					Value:     &str,
+				},
+			},
+			Action: func() {},
+		}
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(str).To(expected)
+	},
+		Entry("nominal",
+			"app --long=exec",
+			nil,
+			cli.TransformFunc(func(rawOccurrences []string) (any, error) {
+				return strings.Join(rawOccurrences, ","), nil
+			}),
+			Equal("--long,exec"),
+		),
+		Entry("multiple last one wins",
+			"app --long exec --long read",
+			nil,
+			cli.TransformFunc(func(rawOccurrences []string) (any, error) {
+				return strings.Join(rawOccurrences, ","), nil
+			}),
+			Equal("--long,read"),
+		),
+		Entry("multiple merging",
+			"app --long exec --long read",
+			cli.Merge,
+			cli.TransformFunc(func(rawOccurrences []string) (any, error) {
+				return strings.Join(rawOccurrences, ","), nil
+			}),
+			Equal("--long,exec --long,read"),
+		),
+	)
 })
 
 var _ = Describe("ValueTransform", func() {
