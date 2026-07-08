@@ -49,6 +49,7 @@ var _ = Describe("Option", func() {
 			Entry("DisableAutoVisibility", cli.DisableAutoVisibility, "DISABLE_AUTO_VISIBILITY"),
 			Entry("Trigger", cli.Trigger, "TRIGGER"),
 			Entry("ParseUnknownFlagsAsArgs", cli.ParseUnknownFlagsAsArgs, "PARSE_UNKNOWN_FLAGS_AS_ARGS"),
+			Entry("Numeric", cli.Numeric, "NUMERIC"),
 			Entry("ReservedOption1", cli.ReservedOption1, "RESERVED_OPTION_1"),
 			Entry("ReservedOption2", cli.ReservedOption2, "RESERVED_OPTION_2"),
 			Entry("ReservedOption3", cli.ReservedOption3, "RESERVED_OPTION_3"),

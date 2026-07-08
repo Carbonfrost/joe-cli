@@ -229,6 +229,7 @@ type testFlagSet struct {
 	args     []string
 	counters map[string]cli.ArgCounter
 	aliases  map[string]string
+	numeric  string
 }
 
 func (t *testFlagSet) PositionalArgNames() []string {
@@ -240,6 +241,10 @@ func (t *testFlagSet) BehaviorFlags(name string) (optional bool) {
 }
 
 func (t *testFlagSet) Reset() {
+}
+
+func (t *testFlagSet) Numeric() string {
+	return t.numeric
 }
 
 func (t *testFlagSet) LookupOption(name string) (cli.TransformFunc, cli.ArgCounter, cli.BindingState, bool) {

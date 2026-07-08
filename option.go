@@ -197,6 +197,13 @@ const (
 	// flag-like syntax specially.
 	ParseUnknownFlagsAsArgs
 
+	// Numeric is set on the flag handles numeric syntax.
+	// Some commands use flags like -0, -1, -2, etc. When set, this option indicates
+	// which flag receives such values.  If any other flag has a name or alias
+	// which is numeric, it will have precedence over the flag selected
+	// with this option.
+	Numeric
+
 	// ReservedOption1 provides an option which is reserved. This value
 	// can be used within extensions to denote additional options that are
 	// applied within the scope of the extension. The extension or client must remove the
@@ -264,6 +271,7 @@ const (
 	internalFlagTriggerRequested
 	internalFlagParseUnknownFlagsAsArgs
 	internalFlagEachOccurrence
+	internalFlagNumeric
 )
 
 var (
@@ -293,6 +301,7 @@ var (
 		ImpliedAction:           setInternalFlag(internalFlagImpliedAction),
 		Trigger:                 setInternalFlag(internalFlagTriggerRequested),
 		ParseUnknownFlagsAsArgs: setInternalFlag(internalFlagParseUnknownFlagsAsArgs),
+		Numeric:                 Pipeline(setInternalFlag(internalFlagNumeric), Prototype{Value: new(int)}),
 		ReservedOption1:         ActionFunc(nil), // Reserved options are enforced in the default pipelines
 		ReservedOption2:         ActionFunc(nil),
 		ReservedOption3:         ActionFunc(nil),
@@ -325,6 +334,7 @@ var (
 		DisableAutoVisibility:   "DISABLE_AUTO_VISIBILITY",
 		Trigger:                 "TRIGGER",
 		ParseUnknownFlagsAsArgs: "PARSE_UNKNOWN_FLAGS_AS_ARGS",
+		Numeric:                 "NUMERIC",
 		ReservedOption1:         "RESERVED_OPTION_1",
 		ReservedOption2:         "RESERVED_OPTION_2",
 		ReservedOption3:         "RESERVED_OPTION_3",
@@ -492,6 +502,10 @@ func (f internalFlags) parseUnknownFlagsAsArgs() bool {
 
 func (f internalFlags) eachOccurrence() bool {
 	return f&internalFlagEachOccurrence == internalFlagEachOccurrence
+}
+
+func (f internalFlags) numeric() bool {
+	return f&internalFlagNumeric == internalFlagNumeric
 }
 
 func (f internalFlags) toRaw() RawParseFlag {

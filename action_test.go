@@ -3820,6 +3820,53 @@ var _ = Describe("Mutex", func() {
 
 })
 
+var _ = Describe("Numeric", func() {
+
+	It("sets up implied int type", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "n",
+					Options: cli.Numeric,
+				},
+			},
+		}
+		_, _ = app.Initialize(context.Background())
+		Expect(app.Flags[0].Value).To(BeAssignableToTypeOf(new(int)))
+	})
+
+	DescribeTable("examples", func(arguments string, expected int) {
+		var p int
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "n",
+					Value:   &p,
+					Options: cli.Numeric,
+				},
+				{
+					Name:    "9",
+					Value:   new(bool),
+					Aliases: []string{"8"},
+				},
+			},
+		}
+
+		args, _ := cli.Split(arguments)
+		err := app.RunContext(context.TODO(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(p).To(Equal(expected))
+	},
+		Entry("zero", "app -0", 0),
+		Entry("nominal", "app -1", 1),
+		Entry("multiple digits", "app -619", 619),
+		Entry("leading with existing numeric", "app -98", 0), // not set
+		Entry("existing wins", "app -9", 0),                  // not set
+		Entry("normal argument", "app -n 2", 2),
+		Entry("normal inline argument", "app -n2", 2),
+	)
+})
+
 var _ = Describe("Transform", func() {
 
 	DescribeTable("examples", func(arguments string, opts cli.Option, fn cli.TransformFunc, expected types.GomegaMatcher) {

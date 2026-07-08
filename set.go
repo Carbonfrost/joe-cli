@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -22,6 +23,7 @@ type bindingImpl struct {
 	longOptions       map[string]string
 	positionalOptions []string
 	names             map[string]option
+	numeric           string
 }
 
 type argBinding struct {
@@ -45,6 +47,7 @@ type Binding interface {
 	ResolveAlias(name string) (string, bool)
 	PositionalArgNames() []string
 	BehaviorFlags(name string) (optional bool)
+	Numeric() string // gets the flag which handles numeric syntax
 	Reset()
 }
 
@@ -462,6 +465,16 @@ Parsing:
 		for i, c := range arg {
 			short := "-" + string(c)
 			flag, ok := b.ResolveAlias(string(c))
+
+			var looksNumeric bool
+			if !ok && i == 0 && b.Numeric() != "" {
+				if _, err := strconv.Atoi(arg); err == nil {
+					flag = b.Numeric()
+					looksNumeric = true
+					ok = true
+				}
+			}
+
 			if !ok {
 				if i == 0 && parseUnknownFlagsAsArgs {
 					state = didPushbackArg
@@ -474,6 +487,11 @@ Parsing:
 
 			_, opt, _, _ := b.LookupOption(flag)
 			value := arg[1+i:]
+
+			// For numeric flags, treat the whole expression as the value
+			if looksNumeric {
+				value = arg
+			}
 
 			if value != "" {
 				err = instanceTake(value, false, opt)
@@ -570,6 +588,10 @@ func (b *bindingImpl) BehaviorFlags(name string) (optional bool) {
 	return false
 }
 
+func (b *bindingImpl) Numeric() string {
+	return b.numeric
+}
+
 func (b *bindingImpl) PositionalArgNames() []string {
 	return b.positionalOptions
 }
@@ -586,6 +608,9 @@ func (b *bindingImpl) defineFlag(f *Flag) {
 		} else {
 			b.longOptions[alias] = name
 		}
+	}
+	if f.internalFlags().numeric() {
+		b.numeric = f.Name
 	}
 	b.names[name] = f
 }
