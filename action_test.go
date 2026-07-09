@@ -1428,7 +1428,9 @@ var _ = Describe("ProvideValueInitializer", func() {
 		Expect(setup.After.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 		Expect(setup.Action.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 
-		Expect(cli.FromContext(setup.Uses.(*joeclifakes.FakeAction).ExecuteArgsForCall(0)).Name()).To(Equal("<-myname>"))
+		captured := cli.FromContext(setup.Uses.(*joeclifakes.FakeAction).ExecuteArgsForCall(0))
+		Expect(captured.Name()).To(Equal("<-myname>"))
+		Expect(captured.IsValueTarget()).To(BeTrue())
 	})
 
 	It("invokes a context scope on nested arguments", func() {
@@ -3853,7 +3855,7 @@ var _ = Describe("Numeric", func() {
 		}
 
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.TODO(), args)
+		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(p).To(Equal(expected))
 	},

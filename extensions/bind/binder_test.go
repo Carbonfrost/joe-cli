@@ -303,10 +303,7 @@ var _ = Describe("FileBinder", func() {
 									Name: "name",
 									Args: []*cli.Arg{
 										{
-											Name:  "a",
-											Value: new(cli.File), // TODO This must be set up explicitly because
-											// implicit setting in file.Name() below is triggered too late
-											// to initialize the args
+											Name: "a",
 										},
 									},
 									Uses: expr.BindEvaluator(callFactory, file.Name()),

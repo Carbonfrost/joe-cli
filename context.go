@@ -440,6 +440,13 @@ func (c *Context) isOption() bool {
 	return ok
 }
 
+// IsValueTarget gets whether the target represents a value setup via
+// ProvidesValueInitializer
+func (c *Context) IsValueTarget() bool {
+	_, ok := c.target().(*valueTarget)
+	return ok
+}
+
 func (c *Context) subcommandDidNotExecute() bool {
 	return !c.target().internalFlags().didSubcommandExecute()
 }
@@ -529,11 +536,15 @@ func (c *Context) ContextOf(target any) *Context {
 	if target == "" {
 		return c
 	}
-	if !c.IsCommand() {
+
+	// Always resolve options from the containing command. Value targets
+	// and commands can resolve themselves
+	if c.isOption() {
 		return c.Parent().ContextOf(target)
 	}
 	switch name := target.(type) {
 	case *Command:
+
 		return c.newChild(target.(targetType), c.Timing())
 	case *Arg, *Flag, int, rune, string:
 		o, ok := c.lookupOption(name)

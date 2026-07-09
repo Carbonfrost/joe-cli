@@ -1192,6 +1192,44 @@ var _ = Describe("Context", func() {
 				Entry("self", "", WithTransform(flagName, Equal("self"))),
 			)
 		})
+
+		Describe("resolving from a value target", func() {
+
+			DescribeTable("examples", func(name any, expected types.GomegaMatcher) {
+				var actual any
+				app := &cli.App{
+					Name: "theApp",
+					Flags: []*cli.Flag{
+						{Name: "flag", Aliases: []string{"f"}},
+					},
+					Args: []*cli.Arg{
+						{
+							Name: "a",
+							Value: &customValue{
+								init: cli.ActionOf(func(c *cli.Context) {
+									c.ProvideValueInitializer(&haveArgs{
+										Args: []*cli.Arg{
+											{Name: "s"},
+										},
+									}, "v", cli.ActionOf(func(c *cli.Context) {
+										actual = c.ContextOf(name).Target()
+									}))
+								}),
+							},
+						},
+					},
+				}
+				_ = app.RunContext(context.Background(), []string{"app", "--self", "v"})
+				Expect(actual).To(expected)
+			},
+				Entry("name of flag", "flag", WithTransform(flagName, Equal("flag"))),
+				Entry("name of arg", "a", WithTransform(argName, Equal("a"))),
+				Entry("name of arg local to value initializer", "s", WithTransform(argName, Equal("s"))),
+				Entry("index of arg local to value initializer", 0, WithTransform(argName, Equal("s"))),
+				Entry("rune", 'f', WithTransform(flagName, Equal("flag"))),
+				Entry("self", "", BeAssignableToTypeOf(new(haveArgs))),
+			)
+		})
 	})
 
 	Describe("Target", func() {
