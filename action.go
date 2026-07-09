@@ -519,10 +519,6 @@ func (p simplePipeline) Execute(ctx context.Context) error {
 	return nil
 }
 
-func (p simplePipeline) Pipeline() Action {
-	return pipeline{actions: p}
-}
-
 func flatten(actions []Action) []Action {
 	var result []Action
 
@@ -2139,20 +2135,6 @@ func (t TransformFunc) Execute(ctx context.Context) error {
 
 func (w legacyActionWrapper) Execute(ctx context.Context) error {
 	return w.a.Execute(FromContext(ctx))
-}
-
-func setData(data map[string]any, name string, v any) map[string]any {
-	if v == nil {
-		delete(data, name)
-		return data
-	}
-	if data == nil {
-		return map[string]any{
-			name: v,
-		}
-	}
-	data[name] = v
-	return data
 }
 
 func actions(actions ...Action) Action {
