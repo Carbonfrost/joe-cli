@@ -5,6 +5,10 @@
 package marshal_test
 
 import (
+	"bytes"
+	"context"
+
+	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal/codec"
 	_ "github.com/Carbonfrost/joe-cli/extensions/marshal/codec/toml"
@@ -80,4 +84,77 @@ var _ = Describe("Codec", func() {
 
 	})
 
+})
+
+var _ = Describe("CodecRegistry", func() {
+
+	Describe("ProviderNames", func() {
+		It("lists the registered codecs", func() {
+			// The toml codec is registered via the blank import above; yaml has
+			// no implementation and must not appear.
+			Expect(marshal.CodecRegistry.ProviderNames()).To(ConsistOf("json", "toml"))
+		})
+	})
+
+	Describe("New", func() {
+		It("creates a codec from Options", func() {
+			actual, err := marshal.CodecRegistry.New("json", map[string]string{
+				"disallow_unknown_fields": "true",
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).NotTo(BeNil())
+			Expect(actual).To(BeAssignableToTypeOf(codec.NewJSONCodec()))
+		})
+
+		It("returns an error for an unregistered codec", func() {
+			_, err := marshal.CodecRegistry.New("yaml", nil)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+})
+
+var _ = Describe("ListCodecs", func() {
+
+	It("prints the registered codecs then exits", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Flags: []*cli.Flag{
+				{
+					Name:  "list-codec",
+					Value: new(bool),
+					Uses:  marshal.ListCodecs(),
+				},
+			},
+			Uses: marshal.CodecRegistry,
+		}
+
+		// The list-codec flag uses cli.Exits, so the app exits after printing.
+		_ = app.RunContext(context.Background(), []string{"app", "--list-codec"})
+		Expect(capture.String()).To(Equal(
+			"json\tdisallow_unknown_fields=false, indent_size=2, indent_style=space\n" +
+				"toml\tdisallow_unknown_fields=false, indent_size=2, indent_style=space\n",
+		))
+	})
+
+	// TODO There is a bug with shared state in the provider context services causing this
+	// to unexpectedly pass
+	XIt("generates an error on no codec registry", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Flags: []*cli.Flag{
+				{
+					Name:  "list-codec",
+					Value: new(bool),
+					Uses:  marshal.ListCodecs(),
+				},
+			},
+		}
+
+		err := app.RunContext(context.Background(), []string{"app", "--list-codec"})
+		Expect(err).To(MatchError("no codecs registered"))
+	})
 })
