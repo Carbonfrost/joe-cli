@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package template_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"io/fs"
 	"os"
@@ -56,7 +57,7 @@ var _ = Describe("File", func() {
 		},
 			Entry("write string",
 				"",
-				template.Contents("string"),
+				template.ContentsString("string"),
 				Equal("string"),
 			),
 			Entry("write bytes",
@@ -66,15 +67,25 @@ var _ = Describe("File", func() {
 			),
 			Entry("write reader",
 				"",
-				template.Contents(bytes.NewBuffer([]byte("reader contents"))),
+				template.ContentsFrom(bytes.NewBuffer([]byte("reader contents"))),
 				Equal("reader contents"),
 			),
 			Entry("JSON",
 				"",
-				template.Contents(struct {
+				template.ContentsJSON(struct {
 					F string
 					L string
 				}{F: "O", L: "D"}),
+				MatchJSON(`{"F": "O", "L": "D"}`),
+			),
+			Entry("Marshal",
+				"",
+				template.ContentsMarshal(struct {
+					F string
+					L string
+				}{F: "O", L: "D"}, marshalWriterFunc(func(w io.Writer, in any) error {
+					return json.NewEncoder(w).Encode(in)
+				})),
 				MatchJSON(`{"F": "O", "L": "D"}`),
 			),
 			Entry("Gofmt",
@@ -129,7 +140,7 @@ type C    struct {  }`,
 				FS:   testFileSystem,
 				Action: template.New(
 					template.Vars{"App": map[string]any{"Name": "o"}},
-					template.File("{{ .App.Name }}.txt", template.Contents("OK")),
+					template.File("{{ .App.Name }}.txt", template.ContentsString("OK")),
 				),
 				Stdout: io.Discard,
 			}
@@ -153,7 +164,7 @@ type C    struct {  }`,
 			app := &cli.App{
 				Name:   "app",
 				FS:     ff,
-				Action: template.New(template.File("a/b/c.txt", template.Contents("OK"))),
+				Action: template.New(template.File("a/b/c.txt", template.ContentsString("OK"))),
 				Stdout: io.Discard,
 			}
 
@@ -213,7 +224,7 @@ type C    struct {  }`,
 				app := &cli.App{
 					Name:   "app",
 					FS:     testFileSystem(),
-					Action: template.New(template.File("existing.txt", template.Contents("existing contents"))),
+					Action: template.New(template.File("existing.txt", template.ContentsString("existing contents"))),
 				}
 
 				res := renderScreen(app, "app")
@@ -224,7 +235,7 @@ type C    struct {  }`,
 				app := &cli.App{
 					Name:   "app",
 					FS:     testFileSystem(),
-					Action: template.New(template.File("existing.txt", template.Contents("difference"))),
+					Action: template.New(template.File("existing.txt", template.ContentsString("difference"))),
 				}
 
 				res := renderScreen(app, "app")
@@ -235,7 +246,7 @@ type C    struct {  }`,
 				app := &cli.App{
 					Name:   "app",
 					FS:     testFileSystem(),
-					Action: template.New(template.File("new.txt", template.Contents("new"))),
+					Action: template.New(template.File("new.txt", template.ContentsString("new"))),
 				}
 
 				res := renderScreen(app, "app")
@@ -248,7 +259,7 @@ type C    struct {  }`,
 				app := &cli.App{
 					Name:   "app",
 					FS:     testFileSystem(),
-					Action: template.New(template.Dir("bin", template.File("new.txt", template.Contents("new")))),
+					Action: template.New(template.Dir("bin", template.File("new.txt", template.ContentsString("new")))),
 				}
 
 				res := renderScreen(app, "app")
@@ -258,6 +269,12 @@ type C    struct {  }`,
 		})
 	})
 })
+
+type marshalWriterFunc func(w io.Writer, in any) error
+
+func (f marshalWriterFunc) MarshalWrite(w io.Writer, in any) error {
+	return f(w, in)
+}
 
 type wrapperFS struct {
 	afero.Fs

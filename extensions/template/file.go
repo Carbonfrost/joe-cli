@@ -71,21 +71,50 @@ func File(name string, ops ...FileGenerator) Generator {
 	}
 }
 
-// Contents generates a file with the given contents.  Contents is either
-// a string, []byte, or io.Reader, which is copied to the output file of the given
-// name.  As a special case, if contents is some other type, it is JSON encoded.
-func Contents(contents any) FileGenerator {
+// MarshalWriter is used by ContentsMarshal to encode a value into file contents.
+type MarshalWriter interface {
+	MarshalWrite(w io.Writer, in any) error
+}
+
+// Contents generates a file with the given contents, which are copied to the
+// output file of the given name.
+func Contents(contents []byte) FileGenerator {
 	return newGenerateContents(func(_ context.Context, _ *OutputContext) ([]byte, error) {
-		switch c := contents.(type) {
-		case string:
-			return []byte(c), nil
-		case []byte:
-			return c, nil
-		case io.Reader:
-			return io.ReadAll(c)
-		default:
-			return json.MarshalIndent(c, "", "    ")
+		return contents, nil
+	})
+}
+
+// ContentsString generates a file whose contents are the given string.
+func ContentsString(contents string) FileGenerator {
+	return newGenerateContents(func(_ context.Context, _ *OutputContext) ([]byte, error) {
+		return []byte(contents), nil
+	})
+}
+
+// ContentsFrom generates a file whose contents are read from the given reader.
+func ContentsFrom(r io.Reader) FileGenerator {
+	return newGenerateContents(func(_ context.Context, _ *OutputContext) ([]byte, error) {
+		return io.ReadAll(r)
+	})
+}
+
+// ContentsJSON generates a file whose contents are the JSON encoding of the
+// given value.
+func ContentsJSON(v any) FileGenerator {
+	return newGenerateContents(func(_ context.Context, _ *OutputContext) ([]byte, error) {
+		return json.MarshalIndent(v, "", "    ")
+	})
+}
+
+// ContentsMarshal generates a file whose contents are the encoding of the
+// given value produced by the MarshalWriter.
+func ContentsMarshal(v any, m MarshalWriter) FileGenerator {
+	return newGenerateContents(func(_ context.Context, _ *OutputContext) ([]byte, error) {
+		var buf bytes.Buffer
+		if err := m.MarshalWrite(&buf, v); err != nil {
+			return nil, err
 		}
+		return buf.Bytes(), nil
 	})
 }
 

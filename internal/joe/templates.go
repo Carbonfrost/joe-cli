@@ -1,4 +1,4 @@
-// Copyright 2023 The Joe-cli Authors. All rights reserved.
+// Copyright 2023, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -17,7 +17,7 @@ func newAppTemplate(data *generatorData) *Root {
 	}
 	var license Generator
 	if data.License {
-		license = File("cmd/{{ .App.Name }}/license.txt", Contents("No license is available with this build."))
+		license = File("cmd/{{ .App.Name }}/license.txt", ContentsString("No license is available with this build."))
 	}
 
 	return New(
