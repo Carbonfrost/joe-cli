@@ -158,3 +158,55 @@ var _ = Describe("ListCodecs", func() {
 		Expect(err).To(MatchError("no codecs registered"))
 	})
 })
+
+var _ = Describe("Dump", func() {
+
+	It("prints the value as JSON when no context provider", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Action: marshal.Dump(
+				struct {
+					F string
+					L string
+				}{F: "O", L: "D"},
+			),
+			Uses: marshal.CodecRegistry,
+		}
+
+		// The list-codec flag uses cli.Exits, so the app exits after printing.
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).NotTo((HaveOccurred()))
+		Expect(capture.String()).To(MatchJSON(`{"F": "O", "L": "D"}`))
+	})
+
+	It("configures via context provider", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Action: marshal.Dump(struct {
+				Name  string           `toml:"name"`
+				ID    uint             `toml:"id"`
+				Table []map[string]int `toml:"table"`
+			}{
+				Name: "J",
+				ID:   234,
+				Table: []map[string]int{
+					{"t": 3},
+				},
+			}),
+			Uses: cli.Pipeline(
+				marshal.NewCodecProvider(),
+			),
+		}
+
+		// TODO An upstream bug in providers prevents testing --output-arg indent_size=2
+		args, _ := cli.Split("app --output=toml,indent_size=2")
+		_ = app.RunContext(context.Background(), args)
+		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n  t = 3\n\n"))
+
+	})
+
+})
