@@ -103,6 +103,13 @@ type FileSet struct {
 
 	// FS is the file system used to open files
 	FS fs.FS
+
+	// Globber specifies a glob function to apply when enumerating files.  When
+	// set, each name in Files is expanded by calling Globber, and iteration
+	// proceeds over the matched names.  Recursion is applied after globbing, so
+	// directories matched by the glob are recursed into when Recursive is set.
+	// When nil, names in Files are used as-is.
+	Globber func(string) ([]string, error)
 }
 
 type stdFile struct {
@@ -603,12 +610,19 @@ func (f *FileSet) All() iter.Seq2[*File, error] {
 	}
 }
 
-// Do will invoke the given function on each file in the set.  If recursion is
+// Do will invoke the given function on each file in the set.  If a Globber is
+// specified, each name is first expanded into its matches.  If recursion is
 // enabled, it will recurse directories and process on each file encountered.
+// Recursion is applied after globbing.
 func (f *FileSet) Do(fn func(*File, error) error) error {
 	ff := actualFS(f.FS)
+	files, err := f.globbed()
+	if err != nil {
+		return err
+	}
+
 	if f.Recursive {
-		for _, file := range f.Files {
+		for _, file := range files {
 			err := walkFile(ff, file, func(path string, _ fs.DirEntry, walkErr error) error {
 				return fn(&File{path, ff}, walkErr)
 			})
@@ -619,12 +633,30 @@ func (f *FileSet) Do(fn func(*File, error) error) error {
 		return nil
 	}
 
-	for _, file := range f.Files {
+	for _, file := range files {
 		if err := fn(&File{file, ff}, nil); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// globbed expands the names in Files using the Globber, if set.  When no
+// Globber is present, the names are returned as-is.
+func (f *FileSet) globbed() ([]string, error) {
+	if f.Globber == nil {
+		return f.Files, nil
+	}
+
+	files := make([]string, 0, len(f.Files))
+	for _, file := range f.Files {
+		matches, err := f.Globber(file)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, matches...)
+	}
+	return files, nil
 }
 
 // NewCounter obtains the arg counter for file sets, which is implied to be TakeUntilNextFlag
@@ -698,6 +730,9 @@ func (f *FileSet) CachedInput() (*FileInput, error) {
 
 // entries provides the lazy enumerator
 func (f *FileSet) entries() iter.Seq[fileEntry] {
+	if f.Globber != nil {
+		panic("not implemented: FileInput with globber")
+	}
 	return func(yield func(fileEntry) bool) {
 		ff := actualFS(f.FS)
 
@@ -751,7 +786,11 @@ func (f *FileSet) acchedEntries() ([]fileEntry, error) {
 	}
 
 	var entries []fileEntry
-	for _, name := range f.Files {
+	gg, err := f.globbed()
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range gg {
 		if f.Recursive {
 			_ = walkFile(ff, name, func(path string, d fs.DirEntry, walkErr error) error {
 				if walkErr != nil {

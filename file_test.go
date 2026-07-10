@@ -621,6 +621,19 @@ var _ = Describe("FileSet", func() {
 				&cli.FileSet{FS: testFileSystem, Files: []string{"src/a/b.txt"}}, "b"),
 			Entry("process files recursive",
 				&cli.FileSet{FS: testFileSystem, Recursive: true, Files: []string{"src"}}, "bc"),
+			Entry("process globbed files",
+				&cli.FileSet{
+					FS:      testFileSystem,
+					Files:   []string{"src/*"},
+					Globber: func(p string) ([]string, error) { return fs.Glob(testFileSystem, p) },
+				}, "c"),
+			Entry("process globbed files recursive",
+				&cli.FileSet{
+					FS:        testFileSystem,
+					Recursive: true,
+					Files:     []string{"src/*"},
+					Globber:   func(p string) ([]string, error) { return fs.Glob(testFileSystem, p) },
+				}, "bc"),
 		)
 	})
 
@@ -879,6 +892,32 @@ var _ = Describe("FileInput", func() {
 			}
 			Expect(opened).To(HaveKey("src/a"))
 			Expect(opened).To(HaveKey("src/z"))
+		})
+
+		Describe("Contents", func() {
+
+			// TODO This should be applicable to both types of file input iterators,
+			// but for the moment, only works with cached
+
+			It("using globber enumerates the contents of each file", func() {
+				set := &cli.FileSet{
+					FS:      testFileSystem,
+					Files:   []string{"src/*.txt"},
+					Globber: func(p string) ([]string, error) { return fs.Glob(testFileSystem, p) },
+				}
+
+				var names []string
+				var contents []string
+				in, _ := set.CachedInput()
+				for data, input := range in.Contents() {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					names = append(names, input.Filename())
+					contents = append(contents, string(data))
+				}
+
+				Expect(names).To(Equal([]string{"src/c.txt"}))
+				Expect(contents).To(Equal([]string{"c"}))
+			})
 		})
 	})
 
