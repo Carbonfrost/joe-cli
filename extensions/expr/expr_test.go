@@ -901,6 +901,61 @@ var _ = Describe("Expr", func() {
 				Entry("existing name-value behavior", "arg -k t=v", HaveKeyWithValue("nvp", &cli.NameValue{Name: "t", Value: "v"})),
 			)
 		})
+
+		Describe("Numeric", func() {
+			DescribeTable("examples", func(arguments string, expected types.GomegaMatcher) {
+				values := map[string]any{}
+
+				app := &cli.App{
+					Name: "app",
+					Action: func(c *cli.Context) {
+						expr.FromContext(c, "e").Evaluate(c, "")
+					},
+					Args: []*cli.Arg{
+						{
+							Name: "f",
+							NArg: -2,
+						},
+						{
+							Name: "e",
+							Value: &expr.Expression{
+								Exprs: []*expr.Expr{
+									{
+										Name: "number",
+										Args: []*cli.Arg{
+											{Value: new(int)},
+										},
+										Evaluate: func(c *cli.Context) {
+											values["number"] = c.Value(0)
+										},
+										Options: cli.Numeric,
+									},
+									{
+										Name:    "4",
+										Aliases: []string{"5"},
+										Args: []*cli.Arg{
+											{Value: new(int)},
+										},
+										Evaluate: func(c *cli.Context) {
+											values["existing"] = c.Value(0)
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				args, _ := cli.Split("app " + arguments)
+				err := app.RunContext(context.Background(), args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(expected)
+			},
+				Entry("nominal", "arg -1", HaveKeyWithValue("number", 1)),
+				Entry("long", "arg -123", HaveKeyWithValue("number", 123)),
+				Entry("existing name wins", "arg -4 4", HaveKeyWithValue("existing", 4)),
+				Entry("existing alias wins", "arg -5 5", HaveKeyWithValue("existing", 5)),
+			)
+		})
 	})
 
 	Describe("visibility", func() {

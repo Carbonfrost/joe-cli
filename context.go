@@ -2243,6 +2243,9 @@ func copyFlagsFromValueTarget(c *Context) error {
 	if val, ok := v.v.(interface{ SetRequired(bool) }); ok {
 		val.SetRequired(v.internalFlags().required())
 	}
+	if val, ok := v.v.(interface{ SetNumeric(bool) }); ok {
+		val.SetNumeric(v.internalFlags().numeric())
+	}
 
 	return nil
 }

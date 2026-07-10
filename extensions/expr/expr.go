@@ -145,6 +145,7 @@ type Expression struct {
 
 	parseInlineValues bool
 	nameLookupCache   map[string]*Expr
+	numeric           string
 
 	// Exprs identifies the expression operators that are allowed
 	Exprs []*Expr
@@ -236,6 +237,7 @@ type exprSet struct {
 const (
 	exprFlagHidden = exprFlags(1 << iota)
 	exprFlagRightToLeft
+	exprFlagNumeric
 )
 
 var (
@@ -703,6 +705,12 @@ func (e *Expr) SetHidden(value bool) {
 	e.setInternalFlags(exprFlagHidden, value)
 }
 
+// SetNumeric marks the expression as handling the numeric
+// syntax -0, -1, etc.
+func (e *Expr) SetNumeric(value bool) {
+	e.setInternalFlags(exprFlagNumeric, value)
+}
+
 // SetAliases adds additional aliases
 func (e *Expr) SetAliases(a []string) {
 	e.Aliases = append(e.Aliases, a...)
@@ -765,6 +773,10 @@ func (f exprFlags) hidden() bool {
 
 func (f exprFlags) rightToLeft() bool {
 	return f&exprFlagRightToLeft == exprFlagRightToLeft
+}
+
+func (f exprFlags) numeric() bool {
+	return f&exprFlagNumeric == exprFlagNumeric
 }
 
 func (f exprFlags) toRaw() cli.RawParseFlag {
@@ -952,7 +964,7 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func (e *Expression) findExpr(exprName string) (result *Expr, isShortInlineAlias, ok bool) {
+func (e *Expression) names() map[string]*Expr {
 	if e.nameLookupCache == nil {
 		e.nameLookupCache = map[string]*Expr{}
 		for _, x := range e.Exprs {
@@ -960,17 +972,22 @@ func (e *Expression) findExpr(exprName string) (result *Expr, isShortInlineAlias
 			for _, alias := range x.Aliases {
 				e.nameLookupCache[alias] = x
 			}
+			if x.internalFlags().numeric() {
+				e.numeric = x.Name
+			}
 		}
 	}
+	return e.nameLookupCache
+}
 
-	exprs := e.nameLookupCache
+func (e *Expression) findExpr(exprName string) (result *Expr, isShortInlineAlias, ok bool) {
+	exprs := e.names()
 	expr, ok := exprs[exprName]
 	if !ok && e.parseInlineValues {
 		if unicode.IsUpper(([]rune(exprName))[0]) || strings.Contains(exprName, "=") {
 			exprName = string([]rune(exprName)[0])
 			expr, ok = exprs[exprName]
-
-			return expr, true, ok
+			return expr, true, true
 		}
 	}
 	return expr, false, ok
@@ -990,6 +1007,13 @@ func parseExpressions(e *Expression) ([]BindingEvaluator, cli.BindingMap, error)
 		if isShortInline {
 			// Push back the remaining part so it can be parsed as args
 			args = append([]string{arg[2:]}, args...)
+		}
+		if !ok && e.numeric != "" {
+			if _, err := strconv.Atoi(arg[1:]); err == nil {
+				args = append([]string{arg[1:]}, args...)
+				expr = e.names()[e.numeric]
+				ok = true
+			}
 		}
 
 		if !ok {
