@@ -2240,6 +2240,9 @@ func copyFlagsFromValueTarget(c *Context) error {
 	if val, ok := v.v.(interface{ SetHidden(bool) }); ok {
 		val.SetHidden(v.internalFlags().hidden())
 	}
+	if val, ok := v.v.(interface{ SetRequired(bool) }); ok {
+		val.SetRequired(v.internalFlags().required())
+	}
 
 	return nil
 }

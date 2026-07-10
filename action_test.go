@@ -2602,6 +2602,7 @@ var _ = Describe("Prototype", func() {
 		Entry("Options", cli.Prototype{Options: cli.Hidden}, Fields{"Hidden": BeTrue()}),
 		Entry("Data", cli.Prototype{Data: map[string]any{"B": 3}}, Fields{"Data": Equal(map[string]any{"B": 3})}),
 		Entry("Aliases", cli.Prototype{Aliases: []string{"B"}}, Fields{"Aliases": Equal([]string{"B"})}),
+		Entry("Required", cli.Prototype{Options: cli.Required}, Fields{"Required": BeTrue()}),
 	)
 
 	DescribeTableSubtree("value target empty examples", func(expected Fields) {
@@ -2655,6 +2656,7 @@ type protoValue struct {
 	DefaultText string
 	Data        map[string]any
 	Hidden      bool
+	Required    bool
 }
 
 func (p *protoValue) SetName(v string)        { p.Name = v }
@@ -2666,6 +2668,7 @@ func (p *protoValue) SetUsageText(v string)   { p.UsageText = v }
 func (p *protoValue) SetDescription(v string) { p.Description = v }
 func (p *protoValue) SetDefaultText(v string) { p.DefaultText = v }
 func (p *protoValue) SetAliases(v []string)   { p.Aliases = v }
+func (p *protoValue) SetRequired(v bool)      { p.Required = v }
 func (p *protoValue) SetData(k string, v any) {
 	if p.Data == nil {
 		p.Data = map[string]any{}

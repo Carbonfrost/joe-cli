@@ -166,7 +166,6 @@ type option interface {
 	target
 	hookable
 	Set(any) error
-	setRequired(bool)
 
 	reset()
 	actualArgCounter() ArgCounter

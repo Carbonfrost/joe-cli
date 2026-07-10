@@ -276,10 +276,10 @@ const (
 
 var (
 	builtinOptions = FeatureMap[Option]{
-		Hidden:                  ActionFunc(hiddenOption),
+		Hidden:                  setInternalFlag(internalFlagHidden),
 		Visible:                 ActionFunc(visibleOption),
 		DisableAutoVisibility:   setInternalFlag(internalFlagDisableAutoVisibility),
-		Required:                ActionFunc(requiredOption),
+		Required:                setInternalFlag(internalFlagRequired),
 		Exits:                   ActionFunc(wrapWithExit),
 		MustExist:               Before(ActionFunc(mustExistOption)),
 		SkipFlagParsing:         setInternalFlag(internalFlagSkipFlagParsing),
@@ -535,19 +535,9 @@ func splitOptionsHO(opts Option, fn func(Option)) {
 	}
 }
 
-func hiddenOption(c *Context) error {
-	c.target().setHidden(true)
-	return nil
-}
-
 func visibleOption(c *Context) error {
 	c.target().setInternalFlags(internalFlagVisibleExplicitlyRequested, true)
 	c.target().setInternalFlags(internalFlagHidden, false)
-	return nil
-}
-
-func requiredOption(c *Context) error {
-	c.option().setRequired(true)
 	return nil
 }
 

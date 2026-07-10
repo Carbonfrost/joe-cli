@@ -158,7 +158,6 @@ type hookable interface {
 }
 
 type target interface {
-	setHidden(bool)
 	SetData(name any, v any)
 	LookupData(name any) (any, bool)
 
@@ -2058,14 +2057,6 @@ func (s *targetSupport) setInternalFlags(f internalFlags, v bool) {
 
 func (s *targetSupport) internalFlags() internalFlags {
 	return s.flags
-}
-
-func (s *targetSupport) setHidden(v bool) {
-	s.setInternalFlags(internalFlagHidden, v)
-}
-
-func (s *targetSupport) setRequired(v bool) {
-	s.setInternalFlags(internalFlagRequired, v)
 }
 
 func (t *targetSupport) privateData(public *map[string]any) privateData {
