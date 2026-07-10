@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/term"
 )
 
 //counterfeiter:generate . FS
@@ -126,6 +128,234 @@ type fsExtensionWrapper struct {
 type dirFS string
 
 var errStopWalk = errors.New("stop walking")
+
+// FileInput provides a controller for successively reading the files
+// enumerated from a FileSet.  It is obtained from FileSet.Input.
+//
+// The files are enumerated by one of the scanning methods, Readers or
+// Contents.  As iteration proceeds, the state of the FileInput reflects the
+// file currently being processed; use Filename, File, and Err to obtain
+// information about it.  Only one scanning method can be used per FileInput;
+// calling a second one panics.
+//
+// When the file set is empty, stdin is implicitly used as the only file
+// unless stdin is connected to a TTY.  When the file set names a directory,
+// it is an error to read from it unless the file set is also Recursive.
+type FileInput struct {
+	state    fileInputState
+	current  *File
+	err      error
+	method   string
+	advanced bool
+}
+
+type fileEntry struct {
+	file *File
+	err  error
+}
+
+type stdinReaderFS interface {
+	stdin() io.Reader
+}
+
+var errIsDirectory = errors.New("is a directory")
+
+// Readers enumerates each of the files in the fileset, producing a reader
+// for each one.
+func (fi *FileInput) Readers() iter.Seq2[io.Reader, *FileInput] {
+	fi.useMethod("Readers")
+	return func(yield func(io.Reader, *FileInput) bool) {
+		fi.drive(func(fi *FileInput) bool {
+			var r io.Reader
+			if fi.err == nil {
+				r, fi.err = fi.open()
+			}
+			return yield(r, fi)
+		})
+	}
+}
+
+// Contents enumerates each of the files in the fileset, producing its contents
+// in bytes.
+func (fi *FileInput) Contents() iter.Seq2[[]byte, *FileInput] {
+	fi.useMethod("Contents")
+	return func(yield func([]byte, *FileInput) bool) {
+		fi.drive(func(fi *FileInput) bool {
+			var data []byte
+			if fi.err == nil {
+				var r io.Reader
+				if r, fi.err = fi.open(); fi.err == nil {
+					data, fi.err = io.ReadAll(r)
+					fi.closeReader(r)
+				}
+			}
+			return yield(data, fi)
+		})
+	}
+}
+
+// Filename is the name of the file currently being processed.
+func (fi *FileInput) Filename() string {
+	if fi.current == nil {
+		return ""
+	}
+	return fi.current.Name
+}
+
+// File is the file currently being processed.
+func (fi *FileInput) File() *File {
+	return fi.current
+}
+
+// Err contains the error reading a file or scanning its input.  The error
+// io.EOF won't be returned.  If an error is returned, you must call NextFile
+// to clear it in order to proceed to handling the next file within the next
+// iteration; otherwise, the iteration will stop.
+func (fi *FileInput) Err() error {
+	if errors.Is(fi.err, io.EOF) {
+		return nil
+	}
+	return fi.err
+}
+
+// NextFile moves to the next file in the fileset.  If Err is set, then the
+// error is cleared.  It reports whether there is a further file to process.
+func (fi *FileInput) NextFile() bool {
+	return fi.state.nextFile(fi)
+}
+
+func (fi *FileInput) drive(yield func(*FileInput) bool) {
+	fi.state.drive(fi, yield)
+}
+
+func (fi *FileInput) open() (io.Reader, error) {
+	f := fi.current
+
+	if info, err := f.Stat(); err == nil && info != nil && info.IsDir() {
+		return nil, &fs.PathError{Op: "read", Path: f.Name, Err: errIsDirectory}
+	}
+	return f.Open()
+}
+
+func (fi *FileInput) closeReader(r io.Reader) {
+	if fi.current != nil && fi.current.Name == "-" {
+		// Don't close stdin because it might be shared
+		return
+	}
+	if c, ok := r.(io.Closer); ok {
+		_ = c.Close()
+	}
+}
+
+func (fi *FileInput) useMethod(name string) {
+	if fi.method != "" {
+		panic("cli: FileInput." + name + " called after FileInput." + fi.method)
+	}
+	fi.method = name
+}
+
+type fileInputState interface {
+	drive(fi *FileInput, yield func(*FileInput) bool)
+	nextFile(fi *FileInput) bool
+}
+
+type walkerFileInputState struct {
+	source iter.Seq[fileEntry]
+	next   func() (fileEntry, bool)
+	cur    fileEntry
+	ok     bool
+}
+
+type cachedFileInputState struct {
+	entries []fileEntry
+	index   int
+}
+
+func (s *walkerFileInputState) drive(fi *FileInput, yield func(*FileInput) bool) {
+	next, stop := iter.Pull(s.source)
+	defer stop()
+	s.next = next
+
+	s.cur, s.ok = next()
+	for s.ok {
+		fi.current = s.cur.file
+		fi.err = s.cur.err
+		fi.advanced = false
+
+		if !yield(fi) {
+			return
+		}
+
+		if fi.Err() != nil && !fi.advanced {
+			return
+		}
+		if !fi.advanced {
+			s.cur, s.ok = next()
+		}
+	}
+}
+
+func (s *walkerFileInputState) nextFile(fi *FileInput) bool {
+	fi.err = nil
+	fi.advanced = true
+	if s.next == nil {
+		return false
+	}
+	s.cur, s.ok = s.next()
+	return s.ok
+}
+
+func (s *cachedFileInputState) drive(fi *FileInput, yield func(*FileInput) bool) {
+	for s.index < len(s.entries) {
+		e := s.entries[s.index]
+		fi.current = e.file
+		fi.err = e.err
+		fi.advanced = false
+
+		if !yield(fi) {
+			return
+		}
+
+		if fi.Err() != nil && !fi.advanced {
+			return
+		}
+		if !fi.advanced {
+			s.index++
+		}
+	}
+}
+
+func (s *cachedFileInputState) nextFile(fi *FileInput) bool {
+	fi.err = nil
+	s.index++
+	fi.advanced = true
+	return s.index < len(s.entries)
+}
+
+func stdinOf(ff FS) io.Reader {
+	if s, ok := ff.(stdinReaderFS); ok {
+		return s.stdin()
+	}
+	return nil
+}
+
+func isTerminalReader(r io.Reader) bool {
+	if f, ok := r.(interface{ Fd() uintptr }); ok {
+		return term.IsTerminal(int(f.Fd()))
+	}
+	return false
+}
+
+func (d defaultFS) stdin() io.Reader {
+	if d.std != nil {
+		return d.std.in
+	}
+	return nil
+}
+
+var (
+	_ stdinReaderFS = defaultFS{}
+)
 
 // NewFS wraps the given FS for use as a CLI file system. If the argument
 // is nil, the result will also be nil
@@ -435,6 +665,116 @@ func (f *FileSet) setupOptionRequireFS(c *Context) error {
 		f.FS = c.FS
 	}
 	return nil
+}
+
+// Input obtains a controller for successively reading the files enumerated
+// from the file set.
+func (f *FileSet) Input() *FileInput {
+	return &FileInput{
+		state: &walkerFileInputState{
+			source: f.entries(),
+		},
+	}
+}
+
+// CachedInput obtains a controller for successively reading file enumerated from
+// the file set; however, compared to Input, the results are pre-calculated.
+// Typically, the FileInput walks the hierarchy in a lazy fashion
+// which may be desirable for a large number of files; however, if errors occur,
+// they may be deferred which could make it more complex to handle a complete and
+// consistent iteration of all files. CachedInput helps by calculating all files and
+// detecting any errors upfront.
+func (f *FileSet) CachedInput() (*FileInput, error) {
+	e, err := f.acchedEntries()
+	if err != nil {
+		return nil, err
+	}
+	return &FileInput{
+		state: &cachedFileInputState{
+			entries: e,
+		},
+	}, nil
+}
+
+// entries provides the lazy enumerator
+func (f *FileSet) entries() iter.Seq[fileEntry] {
+	return func(yield func(fileEntry) bool) {
+		ff := actualFS(f.FS)
+
+		if len(f.Files) == 0 {
+			if checkStdin(ff) {
+				yield(fileEntry{file: &File{"-", ff}})
+			}
+			return
+		}
+
+		for _, name := range f.Files {
+			if f.Recursive {
+				err := walkFile(ff, name, func(path string, d fs.DirEntry, walkErr error) error {
+					var e fileEntry
+					switch {
+					case walkErr != nil:
+						e = fileEntry{&File{path, ff}, walkErr}
+					case d.IsDir():
+						return nil
+					default:
+						e = fileEntry{file: &File{path, ff}}
+					}
+					if !yield(e) {
+						return errStopWalk
+					}
+					return nil
+				})
+				if errors.Is(err, errStopWalk) {
+					return
+				}
+				continue
+			}
+
+			if !yield(fileEntry{file: &File{name, ff}}) {
+				return
+			}
+		}
+	}
+}
+
+// acchedEntries provides the upfront enumeartor
+func (f *FileSet) acchedEntries() ([]fileEntry, error) {
+	ff := actualFS(f.FS)
+
+	if len(f.Files) == 0 {
+		// With no files, stdin is used implicitly unless it is a TTY.
+		if checkStdin(ff) {
+			return []fileEntry{{file: &File{"-", ff}}}, nil
+		}
+		return nil, nil
+	}
+
+	var entries []fileEntry
+	for _, name := range f.Files {
+		if f.Recursive {
+			_ = walkFile(ff, name, func(path string, d fs.DirEntry, walkErr error) error {
+				if walkErr != nil {
+					entries = append(entries, fileEntry{&File{path, ff}, walkErr})
+					return nil
+				}
+				if d.IsDir() {
+					return nil
+				}
+				entries = append(entries, fileEntry{file: &File{path, ff}})
+				return nil
+			})
+			continue
+		}
+
+		entries = append(entries, fileEntry{file: &File{name, ff}})
+	}
+	return entries, nil
+}
+
+func checkStdin(fsys FS) bool {
+	in := stdinOf(fsys)
+	return in != nil && !isTerminalReader(in)
 }
 
 func (d defaultFS) Open(name string) (fs.File, error) {

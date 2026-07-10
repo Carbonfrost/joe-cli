@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -27,6 +27,18 @@ import (
 type emptyFS struct{}
 
 func (emptyFS) Open(name string) (fs.File, error) { return nil, nil }
+
+// recordingFS records the name of every file opened, which includes the
+// directories read while walking a tree.
+type recordingFS struct {
+	fstest.MapFS
+	opened map[string]bool
+}
+
+func (r *recordingFS) Open(name string) (fs.File, error) {
+	r.opened[name] = true
+	return r.MapFS.Open(name)
+}
 
 var _ = Describe("File", func() {
 
@@ -638,4 +650,236 @@ var _ = Describe("FileSet", func() {
 				}, []string{"src", "src/a", "src/a/b.txt", "src/c.txt"}),
 		)
 	})
+})
+
+var _ = Describe("FileInput", func() {
+
+	testFileSystem := fstest.MapFS{
+		"src/a/b.txt": {Data: []byte("b")},
+		"src/c.txt":   {Data: []byte("c")},
+	}
+
+	DescribeTableSubtree("common walker behavior", func(cached bool) {
+
+		var createInput = func(fs *cli.FileSet) *cli.FileInput {
+			if cached {
+				in, _ := fs.CachedInput()
+				return in
+			}
+			return fs.Input()
+		}
+
+		Describe("Contents", func() {
+
+			It("enumerates the contents of each file", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/a/b.txt", "src/c.txt"},
+				}
+
+				var names []string
+				var contents []string
+				for data, input := range createInput(set).Contents() {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					names = append(names, input.Filename())
+					contents = append(contents, string(data))
+				}
+
+				Expect(names).To(Equal([]string{"src/a/b.txt", "src/c.txt"}))
+				Expect(contents).To(Equal([]string{"b", "c"}))
+			})
+
+			It("skips directories when recursive", func() {
+				set := &cli.FileSet{
+					FS:        testFileSystem,
+					Recursive: true,
+					Files:     []string{"src"},
+				}
+
+				var contents []string
+				for data, input := range createInput(set).Contents() {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					contents = append(contents, string(data))
+				}
+
+				Expect(contents).To(Equal([]string{"b", "c"}))
+			})
+
+			It("errors when a directory is named without recursion", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src"},
+				}
+
+				var errs []error
+				for _, input := range createInput(set).Contents() {
+					errs = append(errs, input.Err())
+					input.NextFile()
+				}
+
+				Expect(errs).To(HaveLen(1))
+				Expect(errs[0]).To(HaveOccurred())
+			})
+
+			It("stops iteration when an error is not cleared", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"missing.txt", "src/c.txt"},
+				}
+
+				var visited []string
+				for _, input := range createInput(set).Contents() {
+					visited = append(visited, input.Filename())
+					if input.Err() != nil {
+						break
+					}
+				}
+
+				Expect(visited).To(Equal([]string{"missing.txt"}))
+			})
+
+			It("proceeds to the next file when the error is cleared", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"missing.txt", "src/c.txt"},
+				}
+
+				var contents []string
+				for data, input := range createInput(set).Contents() {
+					if input.Err() != nil {
+						input.NextFile()
+						continue
+					}
+					contents = append(contents, string(data))
+				}
+
+				Expect(contents).To(Equal([]string{"c"}))
+			})
+		})
+
+		Describe("Readers", func() {
+
+			It("enumerates a reader for each file", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/a/b.txt", "src/c.txt"},
+				}
+
+				var contents []string
+				for r, input := range createInput(set).Readers() {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					data, _ := io.ReadAll(r)
+					contents = append(contents, string(data))
+				}
+
+				Expect(contents).To(Equal([]string{"b", "c"}))
+			})
+
+			It("exposes the current file", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/c.txt"},
+				}
+
+				var file *cli.File
+				for _, input := range createInput(set).Readers() {
+					file = input.File()
+				}
+
+				Expect(file).NotTo(BeNil())
+				Expect(file.Name).To(Equal("src/c.txt"))
+			})
+		})
+
+		It("panics when more than one scanning method is used", func() {
+			set := &cli.FileSet{FS: testFileSystem, Files: []string{"src/c.txt"}}
+			input := createInput(set)
+			input.Readers()
+
+			Expect(func() {
+				input.Contents()
+			}).To(Panic())
+		})
+
+		Describe("implicit stdin", func() {
+
+			It("uses stdin as the only file when empty", func() {
+				set := &cli.FileSet{
+					FS: cli.NewSysFS(cli.DirFS("."), strings.NewReader("hello\n"), io.Discard),
+				}
+
+				var names []string
+				var contents []string
+				for data, input := range createInput(set).Contents() {
+					names = append(names, input.Filename())
+					contents = append(contents, string(data))
+				}
+
+				Expect(names).To(Equal([]string{"-"}))
+				Expect(contents).To(Equal([]string{"hello\n"}))
+			})
+
+			It("yields nothing when empty and stdin is unavailable", func() {
+				set := &cli.FileSet{FS: testFileSystem}
+
+				var count int
+				for range createInput(set).Contents() {
+					count++
+				}
+
+				Expect(count).To(Equal(0))
+			})
+		})
+
+	},
+		Entry("default", false),
+		Entry("cached", true),
+	)
+
+	Describe("default walker", func() {
+		It("walks directories lazily", func() {
+			opened := map[string]bool{}
+			base := fstest.MapFS{
+				"src/a/b.txt": {Data: []byte("b")},
+				"src/z/y.txt": {Data: []byte("y")},
+			}
+			set := &cli.FileSet{
+				FS:        &recordingFS{MapFS: base, opened: opened},
+				Recursive: true,
+				Files:     []string{"src"},
+			}
+
+			for range set.Input().Contents() {
+				break // stop after the first file
+			}
+
+			// The directory holding the first file must have been read...
+			Expect(opened).To(HaveKey("src/a"))
+			// ...but a later directory should not have been walked yet.
+			Expect(opened).NotTo(HaveKey("src/z"))
+		})
+	})
+
+	Describe("cached walker", func() {
+		It("accumulates all directories", func() {
+			opened := map[string]bool{}
+			base := fstest.MapFS{
+				"src/a/b.txt": {Data: []byte("b")},
+				"src/z/y.txt": {Data: []byte("y")},
+			}
+			set := &cli.FileSet{
+				FS:        &recordingFS{MapFS: base, opened: opened},
+				Recursive: true,
+				Files:     []string{"src"},
+			}
+
+			in, _ := set.CachedInput()
+			for range in.Contents() {
+				break // stop after the first file
+			}
+			Expect(opened).To(HaveKey("src/a"))
+			Expect(opened).To(HaveKey("src/z"))
+		})
+	})
+
 })
