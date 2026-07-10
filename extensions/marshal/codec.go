@@ -60,3 +60,9 @@ func (c Codec) String() string {
 func DisallowUnknownFields() codec.Option {
 	return codec.DisallowUnknownFields()
 }
+
+// WithIndent affects marshaling and sets the string used for each level of
+// indentation in the encoded output.
+func WithIndent(indent string) codec.Option {
+	return codec.WithIndent(indent)
+}

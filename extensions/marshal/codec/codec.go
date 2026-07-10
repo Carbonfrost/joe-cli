@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"strings"
 )
 
 // Interface defines the interface for reading and writing from data
@@ -58,12 +59,24 @@ func WithOptions(i Interface, opts ...Option) (Interface, error) {
 
 type commonInterfaceOptioner interface {
 	DisallowUnknownFields()
+	SetIndent(indent string)
 }
 
 // DisallowUnknownFields affects unmarshaling and prevents unknown fields from
 // being specified.
 func DisallowUnknownFields() Option {
 	return booleanOption((commonInterfaceOptioner).DisallowUnknownFields)
+}
+
+// WithIndent affects marshaling and sets the string used for each level of
+// indentation in the encoded output.
+func WithIndent(indent string) Option {
+	return valueOption((commonInterfaceOptioner).SetIndent, indent)
+}
+
+// WithIndentStyleSize sets the indent based on style and style
+func WithIndentStyleSize(style IndentStyle, size int) Option {
+	return WithIndent(strings.Repeat(style.unit(), size))
 }
 
 func booleanOption[C any](fn func(C)) Option {
@@ -73,6 +86,17 @@ func booleanOption[C any](fn func(C)) Option {
 			return errors.ErrUnsupported
 		}
 		fn(c)
+		return nil
+	})
+}
+
+func valueOption[C, V any](fn func(C, V), value V) Option {
+	return optionFunc(func(i Interface) error {
+		c, ok := i.(C)
+		if !ok {
+			return errors.ErrUnsupported
+		}
+		fn(c, value)
 		return nil
 	})
 }

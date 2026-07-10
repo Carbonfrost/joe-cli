@@ -15,6 +15,7 @@ import (
 
 type tomlCodec struct {
 	disallowUnknownFields bool
+	indent                string
 }
 
 func init() {
@@ -26,8 +27,12 @@ func NewTOMLCodec() codec.Interface {
 	return &tomlCodec{}
 }
 
-func (*tomlCodec) MarshalWrite(w io.Writer, in any) error {
+func (t *tomlCodec) MarshalWrite(w io.Writer, in any) error {
 	e := toml.NewEncoder(w)
+	if t.indent != "" {
+		e.SetIndentSymbol(t.indent)
+		e.SetIndentTables(true)
+	}
 	return e.Encode(in)
 }
 
@@ -42,4 +47,8 @@ func (t *tomlCodec) UnmarshalRead(r io.Reader, out any) error {
 
 func (t *tomlCodec) DisallowUnknownFields() {
 	t.disallowUnknownFields = true
+}
+
+func (t *tomlCodec) SetIndent(indent string) {
+	t.indent = indent
 }

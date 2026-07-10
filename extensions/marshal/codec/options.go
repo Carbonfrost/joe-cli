@@ -11,7 +11,9 @@ import (
 // Options represents all currently available codec options as data.
 // It implements Option and can be decomposed into a list of individual options.
 type Options struct {
-	DisallowUnknownFields bool `mapstructure:"disallow_unknown_fields"`
+	DisallowUnknownFields bool        `mapstructure:"disallow_unknown_fields"`
+	IndentSize            int         `mapstructure:"indent_size"`
+	IndentStyle           IndentStyle `mapstructure:"indent_style"`
 }
 
 // List returns the individual Option values corresponding to the fields set on o.
@@ -20,6 +22,9 @@ func (o Options) List() []Option {
 
 	if o.DisallowUnknownFields {
 		opts = append(opts, DisallowUnknownFields())
+	}
+	if o.IndentSize > 0 {
+		opts = append(opts, WithIndentStyleSize(o.IndentStyle, o.IndentSize))
 	}
 	return opts
 }

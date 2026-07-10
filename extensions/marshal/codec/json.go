@@ -11,6 +11,7 @@ import (
 
 type jsonCodec struct {
 	disallowUnknownFields bool
+	indent                string
 }
 
 // NewJSONCodec creates a codec support JSON
@@ -18,8 +19,11 @@ func NewJSONCodec() Interface {
 	return &jsonCodec{}
 }
 
-func (*jsonCodec) MarshalWrite(w io.Writer, in any) error {
+func (j *jsonCodec) MarshalWrite(w io.Writer, in any) error {
 	e := json.NewEncoder(w)
+	if j.indent != "" {
+		e.SetIndent("", j.indent)
+	}
 	return e.Encode(in)
 }
 
@@ -33,4 +37,8 @@ func (j *jsonCodec) UnmarshalRead(r io.Reader, out any) error {
 
 func (j *jsonCodec) DisallowUnknownFields() {
 	j.disallowUnknownFields = true
+}
+
+func (j *jsonCodec) SetIndent(indent string) {
+	j.indent = indent
 }
