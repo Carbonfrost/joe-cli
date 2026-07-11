@@ -27,8 +27,11 @@ func init() {
 }
 
 func registerServices() cli.Action {
-	return cli.WithContextValue(servicesKey, &ContextServices{
-		registries: map[string]*Registry{},
+	return cli.WithContext(func(ctx context.Context) context.Context {
+		// This thunk ensures that a new instance is created per app
+		return context.WithValue(ctx, servicesKey, &ContextServices{
+			registries: map[string]*Registry{},
+		})
 	})
 }
 
