@@ -22,7 +22,6 @@ import (
 // For example,
 //
 //	import _ "github.com/Carbonfrost/joe-cli/extensions/marshal/codec/toml"
-//
 type Codec int
 
 // The available formats for marshaling and unmarshaling data
@@ -182,12 +181,16 @@ func (codecLookup) LookupProvider(name string) (provider.Detail, bool) {
 	if !ok || !c.Available() {
 		return provider.Detail{}, false
 	}
+	defaults := map[string]string{
+		"disallow_unknown_fields": "false",
+		"indent_size":             "2",
+		"indent_style":            "space",
+	}
+	if c.supportsEscapeHTML() {
+		defaults["escape_html"] = "false"
+	}
 	return provider.Detail{
-		Defaults: map[string]string{
-			"disallow_unknown_fields": "false",
-			"indent_size":             "2",
-			"indent_style":            "space",
-		},
+		Defaults: defaults,
 		HelpText: codecHelpText[c],
 		Factory: provider.FactoryOf(func(o codec.Options) (codec.Interface, error) {
 			return c.New(o)
@@ -290,7 +293,7 @@ func SetOutput(v ...Codec) cli.Action {
 			bind.Seq(provider.BindValue().Args(), func(s any) (codec.Options, error) {
 				opts := s.(*structure.Value).V.(*codec.Options)
 				if opts == nil {
-					return codec.Options{}, nil 
+					return codec.Options{}, nil
 				}
 				return *opts, nil
 			}),
@@ -319,7 +322,7 @@ func (c *CodecProvider) SetCodec(in codec.Interface) {
 
 // Codec gets the codec used internally by the provider
 func (c *CodecProvider) Codec() codec.Interface {
-return c.c
+	return c.c
 }
 
 // SetOutputArgument provides a flag which sets an argument on the codec
@@ -370,10 +373,21 @@ func (c Codec) String() string {
 	return codecNames[c]
 }
 
+func (c Codec) supportsEscapeHTML() bool {
+	_, err := c.New(EscapeHTML())
+	return err == nil
+}
+
 // DisallowUnknownFields affects unmarshaling and prevents unknown fields from
 // being specified.
 func DisallowUnknownFields() codec.Option {
 	return codec.DisallowUnknownFields()
+}
+
+// EscapeHTML affects marshaling and generates escaped HTML within JSON.
+// For other codecs, this option generates an error.
+func EscapeHTML() codec.Option {
+	return codec.EscapeHTML()
 }
 
 // WithIndent affects marshaling and sets the string used for each level of

@@ -62,10 +62,20 @@ type commonInterfaceOptioner interface {
 	SetIndent(indent string)
 }
 
+type escapeHTMLInterfaceOptioner interface {
+	EscapeHTML()
+}
+
 // DisallowUnknownFields affects unmarshaling and prevents unknown fields from
 // being specified.
 func DisallowUnknownFields() Option {
 	return booleanOption((commonInterfaceOptioner).DisallowUnknownFields)
+}
+
+// EscapeHTML affects marshaling and generates escaped HTML within JSON.
+// For other codecs, this option generates an error.
+func EscapeHTML() Option {
+	return booleanOption((escapeHTMLInterfaceOptioner).EscapeHTML)
 }
 
 // WithIndent affects marshaling and sets the string used for each level of

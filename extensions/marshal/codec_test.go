@@ -7,6 +7,8 @@ package marshal_test
 import (
 	"bytes"
 	"context"
+	"slices"
+	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
@@ -132,9 +134,10 @@ var _ = Describe("ListCodecs", func() {
 
 		// The list-codec flag uses cli.Exits, so the app exits after printing.
 		_ = app.RunContext(context.Background(), []string{"app", "--list-codec"})
-		Expect(capture.String()).To(Equal(
-			"json\tdisallow_unknown_fields=false, indent_size=2, indent_style=space\n" +
-				"toml\tdisallow_unknown_fields=false, indent_size=2, indent_style=space\n",
+		lines := slices.Collect(strings.Lines(capture.String()))
+		Expect(lines).To(ConsistOf(
+			"json\tdisallow_unknown_fields=false, escape_html=false, indent_size=2, indent_style=space\n",
+			"toml\tdisallow_unknown_fields=false, indent_size=2, indent_style=space\n",
 		))
 	})
 

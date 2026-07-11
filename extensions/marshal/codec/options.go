@@ -14,6 +14,7 @@ type Options struct {
 	DisallowUnknownFields bool        `mapstructure:"disallow_unknown_fields"`
 	IndentSize            int         `mapstructure:"indent_size"`
 	IndentStyle           IndentStyle `mapstructure:"indent_style"`
+	EscapeHTML            bool        `mapstructure:"escape_html"`
 }
 
 // List returns the individual Option values corresponding to the fields set on o.
@@ -25,6 +26,9 @@ func (o Options) List() []Option {
 	}
 	if o.IndentSize > 0 {
 		opts = append(opts, WithIndentStyleSize(o.IndentStyle, o.IndentSize))
+	}
+	if o.EscapeHTML {
+		opts = append(opts, EscapeHTML())
 	}
 	return opts
 }

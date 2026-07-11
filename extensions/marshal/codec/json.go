@@ -11,6 +11,7 @@ import (
 
 type jsonCodec struct {
 	disallowUnknownFields bool
+	escapeHTML            bool
 	indent                string
 }
 
@@ -24,6 +25,7 @@ func (j *jsonCodec) MarshalWrite(w io.Writer, in any) error {
 	if j.indent != "" {
 		e.SetIndent("", j.indent)
 	}
+	e.SetEscapeHTML(j.escapeHTML)
 	return e.Encode(in)
 }
 
@@ -39,6 +41,12 @@ func (j *jsonCodec) DisallowUnknownFields() {
 	j.disallowUnknownFields = true
 }
 
+func (j *jsonCodec) EscapeHTML() {
+	j.escapeHTML = true
+}
+
 func (j *jsonCodec) SetIndent(indent string) {
 	j.indent = indent
 }
+
+var _ escapeHTMLInterfaceOptioner = (*jsonCodec)(nil)
