@@ -20,10 +20,10 @@ import (
 // Root is the root of a template, used to compose a sequence and
 // configuration
 type Root struct {
-	Sequence         Sequence
-	Overwrite        bool
-	DryRun           bool
-	WorkingDirectory string
+	Generator Generator
+	Overwrite bool
+	DryRun    bool
+	Path      string
 }
 
 // Sequence is a sequence of template generators
@@ -43,9 +43,10 @@ type dataSetter struct {
 	value any
 }
 
+// New creates a new template using the given sequence of generators
 func New(items ...Generator) *Root {
 	return &Root{
-		Sequence: items,
+		Generator: Sequence(items),
 	}
 }
 
@@ -104,7 +105,7 @@ func (r *Root) Pipeline() cli.Action {
 			}...),
 		},
 		cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) error {
-			workDir := r.WorkingDirectory
+			workDir := r.Path
 			if workDir == "" {
 				workDir = "."
 			}
@@ -122,7 +123,7 @@ func (r *Root) Pipeline() cli.Action {
 }
 
 func (r *Root) Generate(ctx context.Context, c *OutputContext) error {
-	return r.Sequence.Generate(ctx, c)
+	return r.Generator.Generate(ctx, c)
 }
 
 func (s Sequence) Generate(ctx context.Context, c *OutputContext) error {
