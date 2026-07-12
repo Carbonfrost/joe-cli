@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.18.0 (July 11, 2026)
+
+### New Features
+
+* `Numeric` flags (4f02f5f)
+* Support `Numeric` on expr and all value targets by convention (3c120b1)
+* Codec extension:
+    * `EscapeHTML` (2bb96e4)
+    * Context-bound providers; `Dump` (1054c50)
+    * Add codec provider `Registry` and `ListCodecs` (88c46c9)
+    * Add `SetIndent` common codec option with `IndentStyle` enum (fdb2342)
+* `Globber` on file sets (e265422)
+* `FileInput` (5acc882)
+* `IsValueTarget` (e10d5f3)
+
+### Bug fixes and improvements
+
+* Template extension: use `Generator`, `Path` in `Root` (101c1be)
+* Breaking change: Split `template.Contents` into use cases (6cfd004)
+* `Hidden` and `Required` conventions; simplify target interface (0dcc186)
+* Remove unused methods (3982014)
+* Bug fix: Resolve local args from names in value targets (e10d5f3)
+* Bug fix: provider extension global state shouldn't be shared between apps (ddfb4fe)
+* Bug fix: Avoid panic on missing bind reference (97b52c1)
+* Bug fix: allow SetName to apply to value targets (1a063a5)
+* Add tests for `TransformFunc` (4545eea)
+
+
 ## v0.17.0 (July 5, 2026)
 
 ### New Features
