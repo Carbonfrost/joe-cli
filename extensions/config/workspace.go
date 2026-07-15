@@ -37,13 +37,25 @@ type Workspace struct {
 	// added to a pipeline.
 	cli.Action
 
-	dir         string
-	configDir   string
+	dir       string
+	configDir string
+	files     WorkspaceFileSet[any]
+	finder    WorkspaceFinder
+	env       EnvProvider
+}
+
+// WorkspaceFileSet enumerates and loads files within a workspace. It holds the
+// state that determines which files are visited (the file system and the walk
+// function) and how each file is loaded (the loader). The type parameter T is
+// the type produced by the loader and yielded from [WorkspaceFileSet.LoadFiles].
+//
+// A file set is obtained from a workspace via [Workspace.FileSet], which
+// delegates the workspace's own [Workspace.Files] and [Workspace.LoadFiles]
+// methods to it.
+type WorkspaceFileSet[T any] struct {
 	f           fs.FS
 	walkDirFunc fs.WalkDirFunc
-	finder      WorkspaceFinder
-	loader      func(fs.FS, string, fs.DirEntry) (any, error)
-	env         EnvProvider
+	loader      func(fs.FS, string, fs.DirEntry) (T, error)
 }
 
 // WorkspaceOption provides an option for setting up the Workspace. This is also
@@ -249,14 +261,8 @@ func (w *Workspace) completeSetup(c context.Context) {
 
 		// TODO Seems like this should be a sub-FS on the actualFS rather than
 		// always in the file system
-		w.f = cmp.Or(w.f, os.DirFS(cwd))
+		w.files.f = cmp.Or(w.files.f, os.DirFS(cwd))
 		w.configDir = cmp.Or(w.configDir, filepath.Join(cwd, "."+appName(c)))
-	}
-
-	if w.walkDirFunc == nil {
-		w.walkDirFunc = func(string, fs.DirEntry, error) error {
-			return nil
-		}
 	}
 }
 
@@ -268,7 +274,7 @@ func (w *Workspace) ConfigDir() string {
 
 // FS gets the file system that represents the workspace.
 func (w *Workspace) FS() fs.FS {
-	return w.f
+	return w.files.f
 }
 
 // Env obtains the workspace environment
@@ -331,7 +337,7 @@ type WorkspaceFileLoaderFunc func(root fs.FS, name string, d fs.DirEntry) (any, 
 // WithFileLoader is an option that determines how to read files in a workspace.
 func WithFileLoader(loader WorkspaceFileLoaderFunc) WorkspaceOption {
 	return workspaceOption(func(w *Workspace) error {
-		w.loader = loader
+		w.files.loader = loader
 		return nil
 	})
 
@@ -350,7 +356,7 @@ func WithFinder(finder WorkspaceFinder) WorkspaceOption {
 // with use [os.DirFS] corresponding to the workspace directory.
 func WithFS(f fs.FS) WorkspaceOption {
 	return workspaceOption(func(w *Workspace) error {
-		w.f = f
+		w.files.f = f
 		return nil
 	})
 }
@@ -362,16 +368,70 @@ func WithFS(f fs.FS) WorkspaceOption {
 // in the result of the [Workspace.Files] and [Workspace.LoadFiles] methods.
 func WithWalkDirFunc(fn fs.WalkDirFunc) WorkspaceOption {
 	return workspaceOption(func(w *Workspace) error {
-		w.walkDirFunc = fn
+		w.files.walkDirFunc = fn
 		return nil
 	})
 }
 
+// FileSet obtains the file set that the workspace delegates its file
+// enumeration and loading to. The result shares the workspace's file system,
+// walk function, and loader, so options such as [WithFS], [WithWalkDirFunc],
+// and [WithFileLoader] are reflected in it. For a strongly typed file set, use
+// the package-level [NewFileSet] function.
+func (w *Workspace) FileSet() *WorkspaceFileSet[any] {
+	return &w.files
+}
+
+// NewFileSet obtains a strongly typed file set from the workspace using the
+// specified loader. The result shares the workspace's file system and walk
+// function, so options such as [WithFS] and [WithWalkDirFunc] are reflected in
+// it; however, it uses the given loader rather than the one configured on the
+// workspace via [WithFileLoader], which strongly types the values yielded from
+// [WorkspaceFileSet.LoadFiles]. This is the generic counterpart to the
+// [Workspace.FileSet] method, which cannot introduce a type parameter of its
+// own. If loader is nil, the workspace's configured loader is used, with its
+// results asserted to type T.
+func NewFileSet[T any](w *Workspace, loader func(root fs.FS, name string, d fs.DirEntry) (T, error)) *WorkspaceFileSet[T] {
+	if loader == nil {
+		inner := w.files.loader
+		loader = func(root fs.FS, name string, d fs.DirEntry) (T, error) {
+			loaded, err := inner(root, name, d)
+			if err != nil {
+				var zero T
+				return zero, err
+			}
+			return loaded.(T), nil
+		}
+	}
+	return &WorkspaceFileSet[T]{
+		f:           w.files.f,
+		walkDirFunc: w.files.walkDirFunc,
+		loader:      loader,
+	}
+}
+
 // Files enumerates all files in the workspace which match the filters.
 // The result contains the name of the file and a [io/fs.DirEntry].
+// It delegates to the workspace's [Workspace.FileSet].
 func (w *Workspace) Files(diropt ...string) iter.Seq2[string, fs.DirEntry] {
+	return w.FileSet().Files(diropt...)
+}
+
+// LoadFiles loads all files in the workspace which match the filters.
+// This method is good for a single pass, not dynamic workspaces where files
+// are expected to change while the app is running. The type of the items
+// returned from this depend upon what was set as the loader. When no loader
+// is set, the result will be fs.File. It delegates to the workspace's
+// [Workspace.FileSet].
+func (w *Workspace) LoadFiles(diropt ...string) iter.Seq[any] {
+	return w.FileSet().LoadFiles(diropt...)
+}
+
+// Files enumerates all files in the file set which match the filters.
+// The result contains the name of the file and a [io/fs.DirEntry].
+func (s *WorkspaceFileSet[T]) Files(diropt ...string) iter.Seq2[string, fs.DirEntry] {
 	return func(yield func(string, fs.DirEntry) bool) {
-		_ = w.walkDir(func(path string, d fs.DirEntry, _ error) error {
+		_ = s.walkDir(func(path string, d fs.DirEntry, _ error) error {
 			if !yield(path, d) {
 				return fs.SkipAll
 			}
@@ -381,15 +441,14 @@ func (w *Workspace) Files(diropt ...string) iter.Seq2[string, fs.DirEntry] {
 	}
 }
 
-// LoadFiles loads all files in the workspace which match the filters.
+// LoadFiles loads all files in the file set which match the filters.
 // This method is good for a single pass, not dynamic workspaces where files
 // are expected to change while the app is running. The type of the items
-// returned from this depend upon what was set as the loader. When no loader
-// is set, the result will be fs.File.
-func (w *Workspace) LoadFiles(diropt ...string) iter.Seq[any] {
-	return func(yield func(any) bool) {
-		_ = w.walkDir(func(path string, d fs.DirEntry, _ error) error {
-			loaded, err := w.loader(w.FS(), path, d)
+// returned from this is determined by the loader.
+func (s *WorkspaceFileSet[T]) LoadFiles(diropt ...string) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		_ = s.walkDir(func(path string, d fs.DirEntry, _ error) error {
+			loaded, err := s.loader(s.f, path, d)
 			if err != nil {
 				return err
 			}
@@ -403,19 +462,26 @@ func (w *Workspace) LoadFiles(diropt ...string) iter.Seq[any] {
 	}
 }
 
-func (w *Workspace) walkDir(fn fs.WalkDirFunc, diropt ...string) error {
-	rootFS := w.FS()
+func (s *WorkspaceFileSet[T]) walkDir(fn fs.WalkDirFunc, diropt ...string) error {
+	rootFS := s.f
 	var err error
 
 	if len(diropt) > 0 {
-		rootFS, err = fs.Sub(w.FS(), filepath.Join(diropt...))
+		rootFS, err = fs.Sub(s.f, filepath.Join(diropt...))
 		if err != nil {
 			return err
 		}
 	}
 
+	walkDirFunc := s.walkDirFunc
+	if walkDirFunc == nil {
+		walkDirFunc = func(string, fs.DirEntry, error) error {
+			return nil
+		}
+	}
+
 	return fs.WalkDir(rootFS, ".", func(name string, d fs.DirEntry, err error) error {
-		err = w.walkDirFunc(name, d, err)
+		err = walkDirFunc(name, d, err)
 		if SkipFile == err {
 			return nil
 		}

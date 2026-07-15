@@ -180,6 +180,42 @@ var _ = Describe("Workspace", func() {
 		})
 	})
 
+	Describe("NewFileSet", func() {
+
+		It("loads strongly typed files from the workspace", func() {
+			ws := config.NewWorkspace(
+				config.WithFS(fstest.MapFS{
+					"a":   {},
+					"b/a": {},
+					"b/b": {},
+				}),
+			)
+			config.CompleteSetup(context.Background(), ws)
+
+			files := config.NewFileSet(ws, func(_ fs.FS, name string, _ fs.DirEntry) (int, error) {
+				return len(name), nil
+			})
+
+			Expect(slices.Collect(files.LoadFiles())).To(ConsistOf(1, 3, 3))
+		})
+
+		It("reuses the workspace loader when nil is given", func() {
+			ws := config.NewWorkspace(
+				config.WithFS(fstest.MapFS{
+					"a": {},
+				}),
+				config.WithFileLoader(func(_ fs.FS, name string, _ fs.DirEntry) (any, error) {
+					return "data:" + name, nil
+				}),
+			)
+			config.CompleteSetup(context.Background(), ws)
+
+			files := config.NewFileSet[string](ws, nil)
+
+			Expect(slices.Collect(files.LoadFiles())).To(ConsistOf("data:a"))
+		})
+	})
+
 })
 
 func mustLocalize(s string) string {
