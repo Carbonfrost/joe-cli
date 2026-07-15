@@ -97,6 +97,16 @@ type FileSet struct {
 	// Do or All recursively opens directories
 	Recursive bool
 
+	// Inplace determines whether the FileInput obtained from Input writes its
+	// output back to the corresponding input file rather than to standard
+	// output.  See FileInput.Output for details.
+	Inplace bool
+
+	// BackupSuffix, when set together with Inplace, causes each input file to
+	// be copied to a backup file whose name is the input file name with this
+	// suffix appended before it is overwritten.  See FileInput.Output.
+	BackupSuffix string
+
 	// Files provides the files named in the file set.  These can be files or
 	// directories
 	Files []string
@@ -148,12 +158,23 @@ var errStopWalk = errors.New("stop walking")
 // When the file set is empty, stdin is implicitly used as the only file
 // unless stdin is connected to a TTY.  When the file set names a directory,
 // it is an error to read from it unless the file set is also Recursive.
+//
+// A FileInput also provides an output controller via Output (and the Print,
+// Printf, and Println helpers).  By default the output is standard output;
+// when the file set is Inplace, the output is written back to the file
+// currently being processed.  Use SetInplace and SetBackupSuffix to configure
+// this behavior; FileSet.Input copies these settings from the FileSet.
 type FileInput struct {
 	state    fileInputState
 	current  *File
 	err      error
 	method   string
 	advanced bool
+
+	fs           fs.FS
+	inplace      bool
+	backupSuffix string
+	out          io.Writer
 }
 
 type fileEntry struct {
@@ -163,6 +184,10 @@ type fileEntry struct {
 
 type stdinReaderFS interface {
 	stdin() io.Reader
+}
+
+type stdoutWriterFS interface {
+	stdout() io.Writer
 }
 
 var errIsDirectory = errors.New("is a directory")
@@ -212,6 +237,78 @@ func (fi *FileInput) Filename() string {
 // File is the file currently being processed.
 func (fi *FileInput) File() *File {
 	return fi.current
+}
+
+// Output obtains the writer used for the output of the file currently being
+// processed.  By default this is standard output.  When SetInplace has been
+// used, it instead writes to the file currently being processed: the file is
+// overwritten on the first write to the output.  When SetBackupSuffix has also
+// been used, the input file is first copied to a backup file whose name is the
+// input file name with the suffix appended.
+//
+// The writer is bound to the current file; as iteration advances to the next
+// file, a fresh writer is returned that targets that file, and the previous
+// file's output is flushed and closed.
+func (fi *FileInput) Output() io.Writer {
+	if fi.out == nil {
+		fi.out = fi.newOutput()
+	}
+	return fi.out
+}
+
+// SetInplace controls whether Output writes back to the file currently being
+// processed instead of standard output.
+func (fi *FileInput) SetInplace(v bool) {
+	fi.inplace = v
+}
+
+// SetBackupSuffix sets the suffix used to name the backup copy made of each
+// input file before it is overwritten when writing output in place.  When the
+// suffix is empty, no backup is made.  The suffix has no effect unless the
+// input is also in place; see SetInplace.
+func (fi *FileInput) SetBackupSuffix(s string) {
+	fi.backupSuffix = s
+}
+
+// Print formats using the default formats for its operands and writes to
+// Output.  It corresponds to fmt.Fprint(fi.Output(), a...).
+func (fi *FileInput) Print(a ...any) (int, error) {
+	return fmt.Fprint(fi.Output(), a...)
+}
+
+// Printf formats according to a format specifier and writes to Output.  It
+// corresponds to fmt.Fprintf(fi.Output(), format, a...).
+func (fi *FileInput) Printf(format string, a ...any) (int, error) {
+	return fmt.Fprintf(fi.Output(), format, a...)
+}
+
+// Println formats using the default formats for its operands and writes to
+// Output.  It corresponds to fmt.Fprintln(fi.Output(), a...).
+func (fi *FileInput) Println(a ...any) (int, error) {
+	return fmt.Fprintln(fi.Output(), a...)
+}
+
+func (fi *FileInput) newOutput() io.Writer {
+	if fi.inplace && fi.current != nil {
+		return &inplaceWriter{
+			file:   fi.current,
+			suffix: fi.backupSuffix,
+		}
+	}
+	if out := stdoutOf(actualFS(fi.fs)); out != nil {
+		return out
+	}
+	return os.Stdout
+}
+
+// closeOutput flushes and closes the output writer for the current file, if
+// one was created.  Only the in-place writer is closed; the standard output
+// writer must be left open because it is shared.
+func (fi *FileInput) closeOutput() {
+	if o, ok := fi.out.(*inplaceWriter); ok {
+		_ = o.Close()
+	}
+	fi.out = nil
 }
 
 // Err contains the error reading a file or scanning its input.  The error
@@ -281,10 +378,12 @@ type cachedFileInputState struct {
 func (s *walkerFileInputState) drive(fi *FileInput, yield func(*FileInput) bool) {
 	next, stop := iter.Pull(s.source)
 	defer stop()
+	defer fi.closeOutput()
 	s.next = next
 
 	s.cur, s.ok = next()
 	for s.ok {
+		fi.closeOutput()
 		fi.current = s.cur.file
 		fi.err = s.cur.err
 		fi.advanced = false
@@ -313,7 +412,9 @@ func (s *walkerFileInputState) nextFile(fi *FileInput) bool {
 }
 
 func (s *cachedFileInputState) drive(fi *FileInput, yield func(*FileInput) bool) {
+	defer fi.closeOutput()
 	for s.index < len(s.entries) {
+		fi.closeOutput()
 		e := s.entries[s.index]
 		fi.current = e.file
 		fi.err = e.err
@@ -346,6 +447,13 @@ func stdinOf(ff FS) io.Reader {
 	return nil
 }
 
+func stdoutOf(ff FS) io.Writer {
+	if s, ok := ff.(stdoutWriterFS); ok {
+		return s.stdout()
+	}
+	return nil
+}
+
 func isTerminalReader(r io.Reader) bool {
 	if f, ok := r.(interface{ Fd() uintptr }); ok {
 		return term.IsTerminal(int(f.Fd()))
@@ -360,8 +468,16 @@ func (d defaultFS) stdin() io.Reader {
 	return nil
 }
 
+func (d defaultFS) stdout() io.Writer {
+	if d.std != nil {
+		return d.std.out
+	}
+	return nil
+}
+
 var (
-	_ stdinReaderFS = defaultFS{}
+	_ stdinReaderFS  = defaultFS{}
+	_ stdoutWriterFS = defaultFS{}
 )
 
 // NewFS wraps the given FS for use as a CLI file system. If the argument
@@ -552,6 +668,64 @@ func (e errOnFirstWriter) Write([]byte) (int, error) {
 	return -1, e.err
 }
 
+// inplaceWriter writes back to file, deferring the (destructive) opening of
+// the file until the first write.  When suffix is set, the file is copied to a
+// backup before it is overwritten.
+type inplaceWriter struct {
+	file    *File
+	suffix  string
+	w       io.Writer
+	started bool
+}
+
+func (o *inplaceWriter) Write(p []byte) (int, error) {
+	if !o.started {
+		o.started = true
+		o.w = o.begin()
+	}
+	return o.w.Write(p)
+}
+
+func (o *inplaceWriter) begin() io.Writer {
+	if o.suffix != "" {
+		if err := backupFile(o.file, o.file.Name+o.suffix); err != nil {
+			return errOnFirstWriter{err}
+		}
+	}
+	f, err := o.file.Create()
+	if err != nil {
+		return errOnFirstWriter{err}
+	}
+	return f.(io.Writer)
+}
+
+func (o *inplaceWriter) Close() error {
+	if c, ok := o.w.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
+}
+
+// backupFile copies the contents of src to a new file named dest.
+func backupFile(src *File, dest string) error {
+	in, err := src.Open()
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := (&File{Name: dest, FS: src.FS}).Create()
+	if err != nil {
+		return err
+	}
+	_, copyErr := io.Copy(out.(io.Writer), in)
+	closeErr := out.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	return closeErr
+}
+
 // Set argument value; can call repeatedly
 func (f *FileSet) Set(arg string) error {
 	if f.Files == nil {
@@ -674,12 +848,45 @@ func (f *FileSet) setRecursive(b bool) error {
 	return nil
 }
 
+func (f *FileSet) setInplace(b bool) error {
+	f.Inplace = b
+	return nil
+}
+
+func (f *FileSet) setBackupSuffix(s string) error {
+	f.BackupSuffix = s
+	return nil
+}
+
 // RecursiveFlag obtains a conventions-based flag for making the file set recursive.
 func (f *FileSet) RecursiveFlag() Prototype {
 	return Prototype{
 		Name:     "recursive",
 		HelpText: "Include files and directories recursively",
 		Uses:     bind(f.setRecursive),
+	}
+}
+
+// InplaceFlag obtains a conventions-based flag for editing files in place.  It
+// sets Inplace so that the output of the file set's Input is written back to
+// each input file rather than to standard output.
+func (f *FileSet) InplaceFlag() Prototype {
+	return Prototype{
+		Name:     "in-place",
+		Aliases:  []string{"i"},
+		HelpText: "Edit files in place instead of writing to standard output",
+		Uses:     bind(f.setInplace),
+	}
+}
+
+// BackupSuffixFlag obtains a conventions-based flag for setting the suffix used
+// to back up each file before it is edited in place.  It sets BackupSuffix,
+// which takes effect when editing in place; see InplaceFlag.
+func (f *FileSet) BackupSuffixFlag() Prototype {
+	return Prototype{
+		Name:     "suffix",
+		HelpText: "Back up each file to a copy named with the given `SUFFIX` before editing in place",
+		Uses:     bind(f.setBackupSuffix),
 	}
 }
 
@@ -706,6 +913,9 @@ func (f *FileSet) Input() *FileInput {
 		state: &walkerFileInputState{
 			source: f.entries(),
 		},
+		fs:           f.FS,
+		inplace:      f.Inplace,
+		backupSuffix: f.BackupSuffix,
 	}
 }
 
@@ -725,6 +935,9 @@ func (f *FileSet) CachedInput() (*FileInput, error) {
 		state: &cachedFileInputState{
 			entries: e,
 		},
+		fs:           f.FS,
+		inplace:      f.Inplace,
+		backupSuffix: f.BackupSuffix,
 	}, nil
 }
 

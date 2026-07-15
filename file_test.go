@@ -568,6 +568,61 @@ var _ = Describe("FileSet", func() {
 		Expect(string(actual)).To(Equal("hello\n"))
 	})
 
+	Describe("flags", func() {
+
+		DescribeTable("examples", func(
+			protoName string,
+			proto func(*cli.FileSet) cli.Prototype,
+			args []string,
+			expected func(*cli.FileSet) types.GomegaMatcher) {
+
+			set := new(cli.FileSet)
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name:  "files",
+						Value: set,
+						Uses:  cli.Accessory("", proto),
+					},
+				},
+				Action: act,
+			}
+
+			err := app.RunContext(context.Background(), append([]string{"app"}, args...))
+			Expect(err).NotTo(HaveOccurred())
+
+			flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
+			Expect(flags[len(flags)-1].Name).To(Equal(protoName))
+			Expect(set).To(expected(set))
+		},
+			Entry("InplaceFlag creates the flag and sets Inplace",
+				"in-place",
+				(*cli.FileSet).InplaceFlag,
+				[]string{"--in-place"},
+				func(*cli.FileSet) types.GomegaMatcher {
+					return HaveField("Inplace", BeTrue())
+				},
+			),
+			Entry("InplaceFlag can be set with the -i alias",
+				"in-place",
+				(*cli.FileSet).InplaceFlag,
+				[]string{"-i"},
+				func(*cli.FileSet) types.GomegaMatcher {
+					return HaveField("Inplace", BeTrue())
+				},
+			),
+			Entry("BackupSuffixFlag creates the flag and sets BackupSuffix",
+				"suffix",
+				(*cli.FileSet).BackupSuffixFlag,
+				[]string{"--suffix", ".bak"},
+				func(*cli.FileSet) types.GomegaMatcher {
+					return HaveField("BackupSuffix", Equal(".bak"))
+				},
+			),
+		)
+	})
+
 	Describe("SetData", func() {
 
 		DescribeTable("examples", func(data string, expected types.GomegaMatcher) {
@@ -917,6 +972,122 @@ var _ = Describe("FileInput", func() {
 
 				Expect(names).To(Equal([]string{"src/c.txt"}))
 				Expect(contents).To(Equal([]string{"c"}))
+			})
+		})
+	})
+
+	Describe("Output", func() {
+
+		It("writes to standard output by default", func() {
+			var buf bytes.Buffer
+			base := cli.NewFS(testFileSystem)
+			set := &cli.FileSet{
+				FS:    cli.NewSysFS(base, nil, &buf),
+				Files: []string{"src/c.txt"},
+			}
+
+			for data, in := range set.Input().Contents() {
+				_, _ = in.Printf("[%s]", string(data))
+			}
+
+			Expect(buf.String()).To(Equal("[c]"))
+		})
+
+		Describe("in place", func() {
+
+			var dir string
+
+			BeforeEach(func() {
+				SkipOnWindows()
+				dir, _ = os.MkdirTemp("", "fileinput")
+				DeferCleanup(func() { os.RemoveAll(dir) })
+				Expect(os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hello"), 0644)).To(Succeed())
+			})
+
+			It("writes back to the input file", func() {
+				set := &cli.FileSet{
+					FS:      cli.DirFS(dir),
+					Files:   []string{"a.txt"},
+					Inplace: true,
+				}
+
+				for data, in := range set.Input().Contents() {
+					_, _ = in.Printf("[%s]", string(data))
+				}
+
+				out, _ := os.ReadFile(filepath.Join(dir, "a.txt"))
+				Expect(string(out)).To(Equal("[hello]"))
+			})
+
+			It("writes back to each input file independently", func() {
+				Expect(os.WriteFile(filepath.Join(dir, "b.txt"), []byte("world"), 0644)).To(Succeed())
+				set := &cli.FileSet{
+					FS:      cli.DirFS(dir),
+					Files:   []string{"a.txt", "b.txt"},
+					Inplace: true,
+				}
+
+				for data, in := range set.Input().Contents() {
+					_, _ = in.Print(strings.ToUpper(string(data)))
+				}
+
+				a, _ := os.ReadFile(filepath.Join(dir, "a.txt"))
+				b, _ := os.ReadFile(filepath.Join(dir, "b.txt"))
+				Expect(string(a)).To(Equal("HELLO"))
+				Expect(string(b)).To(Equal("WORLD"))
+			})
+
+			It("backs up the input file when a suffix is set", func() {
+				set := &cli.FileSet{
+					FS:           cli.DirFS(dir),
+					Files:        []string{"a.txt"},
+					Inplace:      true,
+					BackupSuffix: ".bak",
+				}
+
+				for data, in := range set.Input().Contents() {
+					_, _ = in.Print(strings.ToUpper(string(data)))
+				}
+
+				out, _ := os.ReadFile(filepath.Join(dir, "a.txt"))
+				Expect(string(out)).To(Equal("HELLO"))
+
+				bak, _ := os.ReadFile(filepath.Join(dir, "a.txt.bak"))
+				Expect(string(bak)).To(Equal("hello"))
+			})
+
+			It("can be configured with SetInplace and SetBackupSuffix", func() {
+				in := (&cli.FileSet{
+					FS:    cli.DirFS(dir),
+					Files: []string{"a.txt"},
+				}).Input()
+				in.SetInplace(true)
+				in.SetBackupSuffix(".orig")
+
+				for data, i := range in.Contents() {
+					_, _ = i.Print(strings.ToUpper(string(data)))
+				}
+
+				out, _ := os.ReadFile(filepath.Join(dir, "a.txt"))
+				Expect(string(out)).To(Equal("HELLO"))
+
+				bak, _ := os.ReadFile(filepath.Join(dir, "a.txt.orig"))
+				Expect(string(bak)).To(Equal("hello"))
+			})
+
+			It("does not overwrite the input file until first written", func() {
+				set := &cli.FileSet{
+					FS:      cli.DirFS(dir),
+					Files:   []string{"a.txt"},
+					Inplace: true,
+				}
+
+				for range set.Input().Contents() {
+					// Obtain the output but never write to it
+				}
+
+				out, _ := os.ReadFile(filepath.Join(dir, "a.txt"))
+				Expect(string(out)).To(Equal("hello"))
 			})
 		})
 	})
