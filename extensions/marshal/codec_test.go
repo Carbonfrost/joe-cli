@@ -14,6 +14,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal/codec"
 	_ "github.com/Carbonfrost/joe-cli/extensions/marshal/codec/toml"
+	_ "github.com/Carbonfrost/joe-cli/extensions/marshal/codec/yaml"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -76,12 +77,39 @@ var _ = Describe("Codec", func() {
 					"{\n  \"a\": 1\n}\n",
 				),
 				Entry(
+					"YAML",
+					marshal.YAML,
+					map[string]any{"parent": map[string]any{"child": 1}},
+					"parent:\n  child: 1\n",
+				),
+				Entry(
 					"TOML",
 					marshal.TOML,
 					map[string]any{"parent": map[string]any{"child": 1}},
 					"[parent]\n  child = 1\n",
 				),
 			)
+		})
+
+		Describe("DisallowUnknownFields", func() {
+			DescribeTable("examples", func(c marshal.Codec, in string) {
+				impl, _ := c.New(marshal.DisallowUnknownFields())
+				actual := struct{ K string }{}
+				err := impl.UnmarshalRead(bytes.NewReader([]byte(in)), &actual)
+
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(
+					Or(
+						ContainSubstring("unknown"),
+						ContainSubstring("fields in the document are missing"),
+					),
+				))
+			},
+				Entry("json", marshal.JSON, `{"unknown": 2}`),
+				Entry("yaml", marshal.YAML, `unknown: 2`),
+				Entry("toml", marshal.TOML, "unknown = 2"),
+			)
+
 		})
 
 	})
@@ -94,7 +122,7 @@ var _ = Describe("CodecRegistry", func() {
 		It("lists the registered codecs", func() {
 			// The toml codec is registered via the blank import above; yaml has
 			// no implementation and must not appear.
-			Expect(marshal.CodecRegistry.ProviderNames()).To(ConsistOf("json", "toml"))
+			Expect(marshal.CodecRegistry.ProviderNames()).To(ConsistOf("json", "toml", "yaml"))
 		})
 	})
 
@@ -108,8 +136,8 @@ var _ = Describe("CodecRegistry", func() {
 			Expect(actual).To(BeAssignableToTypeOf(codec.NewJSONCodec()))
 		})
 
-		It("returns an error for an unregistered codec", func() {
-			_, err := marshal.CodecRegistry.New("yaml", nil)
+		It("returns an error for an unknown codec", func() {
+			_, err := marshal.CodecRegistry.New("xml", nil)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -138,6 +166,7 @@ var _ = Describe("ListCodecs", func() {
 		Expect(lines).To(ConsistOf(
 			"json\tdisallow_unknown_fields=false, escape_html=false, indent_size=2, indent_style=space\n",
 			"toml\tdisallow_unknown_fields=false, indent_size=2, indent_style=space\n",
+			"yaml\tdisallow_unknown_fields=false, indent_size=2, indent_style=space\n",
 		))
 	})
 

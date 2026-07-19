@@ -15,7 +15,7 @@ type jsonCodec struct {
 	indent                string
 }
 
-// NewJSONCodec creates a codec support JSON
+// NewJSONCodec creates a codec to support JSON
 func NewJSONCodec() Interface {
 	return &jsonCodec{}
 }

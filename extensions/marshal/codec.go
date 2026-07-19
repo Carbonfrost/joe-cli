@@ -365,6 +365,9 @@ func (c Codec) Available() bool {
 
 // New creates an instance of the given codec
 func (c Codec) New(opts ...codec.Option) (codec.Interface, error) {
+	if !c.Available() {
+		return nil, fmt.Errorf("codec not available: %s", c)
+	}
 	return codec.WithOptions(codecs[c](), opts...)
 }
 

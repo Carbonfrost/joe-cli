@@ -41,7 +41,21 @@ func (c Codec) Unmarshal(data []byte, v any) error {
 	return c.Interface.UnmarshalRead(bytes.NewReader(data), v)
 }
 
-// Option implements options for codecs
+// Option implements options for codecs.
+// By default, a particular codec Interface needs to implement additional
+// conventional interfaces in order to signal that it supports the
+// built-in options; otherwise, applying the option to a codec which does
+// not support it is an error. The conventions are:
+//
+// * DisallowUnknownFields()
+// * EscapeHTML()
+// * SetIndent(indent string) - corresponds to WithIndentStyleSize and WithIndent
+//
+// In general, an error should be returned if an option is not supported
+// by a codec; however, if a reasonable workaround is available, codecs
+// may return without an error. For example, the built-in YAML encoding
+// does not support tabs, but specifying an indent with tabs will
+// convert the tabs to spaces.
 type Option interface {
 	apply(Interface) error
 }

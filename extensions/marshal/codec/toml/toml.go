@@ -19,11 +19,11 @@ type tomlCodec struct {
 }
 
 func init() {
-	marshal.RegisterCodec(marshal.TOML, NewTOMLCodec)
+	marshal.RegisterCodec(marshal.TOML, NewCodec)
 }
 
-// NewTOMLCodec creates the TOML codec
-func NewTOMLCodec() codec.Interface {
+// NewCodec creates the TOML codec
+func NewCodec() codec.Interface {
 	return &tomlCodec{}
 }
 
