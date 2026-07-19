@@ -84,6 +84,7 @@ type Interface interface {
 // Func converts the given string key into its variable expansion
 type Func func(string) any
 
+// Expand implements Interface by invoking f with key.
 func (f Func) Expand(key string) any {
 	return f(key)
 }
@@ -100,6 +101,8 @@ func Prefix(p string, e Interface) Interface {
 	})
 }
 
+// Env provides an expander which looks up environment variables by name,
+// returning nil when the variable is not set.
 func Env() Interface {
 	return Func(func(s string) any {
 		result, ok := os.LookupEnv(s)
@@ -167,8 +170,11 @@ func Time(t time.Time) Interface {
 	})
 }
 
+// Map provides an expander backed by a map, resolving keys directly to
+// their corresponding values.
 type Map map[string]any
 
+// Expand returns the value stored under k, or nil when k is absent.
 func (m Map) Expand(k string) any {
 	v, ok := m[k]
 	if !ok {
@@ -199,6 +205,8 @@ func ExpandSlice[T any](slice []T) Interface {
 	})
 }
 
+// Colors provides an expander which resolves color and style names to their
+// VT100 ANSI escape sequences, returning nil for unrecognized names.
 func Colors() Interface {
 	return Func(func(k string) any {
 		if a, ok := colors[k]; ok {
@@ -208,6 +216,8 @@ func Colors() Interface {
 	})
 }
 
+// Compose combines the given expanders into a single expander, returning the
+// first non-nil expansion produced by them in order.
 func Compose(expanders ...Interface) Interface {
 	return Func(func(k string) any {
 		for _, x := range expanders {
@@ -220,6 +230,9 @@ func Compose(expanders ...Interface) Interface {
 	})
 }
 
+// Unknown provides an expander which resolves every key to an ErrUnknownToken
+// error. It is typically composed last so that unrecognized keys are reported
+// rather than silently expanding to nil.
 func Unknown() Interface {
 	return Func(func(s string) any {
 		return ErrUnknownToken(s)
@@ -256,8 +269,11 @@ func (r *reflectExpander) Expand(k string) any {
 	return field.Interface()
 }
 
+// ErrUnknownToken is an error reporting a key that no expander recognized.
+// Its string value is the unrecognized key.
 type ErrUnknownToken string
 
+// Error implements the error interface.
 func (e ErrUnknownToken) Error() string {
 	return fmt.Sprintf("unknown: %s", string(e))
 }

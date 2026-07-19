@@ -21,6 +21,8 @@ var (
 	empty   = nopExpr{"empty"}
 )
 
+// Syntax selects the expression syntax used when compiling a pattern.
+// A Syntax value is itself an Option.
 type Syntax int
 
 const (
@@ -35,6 +37,8 @@ const (
 	SyntaxRecursive
 )
 
+// Pattern is a compiled expandable expression produced by Compile. A Pattern
+// may be expanded repeatedly with different expanders.
 type Pattern struct {
 	exprs []expr
 
@@ -97,6 +101,8 @@ func (r *Renderer) expandFiles(k string) any {
 	return nil
 }
 
+// NewRenderer creates a Renderer that writes to stdout by default and exposes
+// the stdout and stderr control expressions for switching the active writer.
 func NewRenderer(stdout, stderr io.Writer) *Renderer {
 	return &Renderer{
 		Writer: stdout,
@@ -383,6 +389,8 @@ func exprExpandAny(e expr, expand Interface) any {
 	}
 }
 
+// String implements fmt.Stringer, reconstructing the pattern's source
+// representation using its delimiters.
 func (p *Pattern) String() string {
 	var sb strings.Builder
 	for _, e := range p.exprs {
@@ -391,6 +399,9 @@ func (p *Pattern) String() string {
 	return sb.String()
 }
 
+// WithMeta returns a copy of the pattern with every expression named name
+// replaced by the expressions from pattern. See the WithMeta Option for the
+// equivalent applied at compile time.
 func (p *Pattern) WithMeta(name string, pattern *Pattern) *Pattern {
 	newExprs := make([]expr, 0, len(p.exprs))
 	for _, e := range p.exprs {
