@@ -187,7 +187,7 @@ func Compile(pattern string, opts ...Option) *Pattern {
 
 	p := compilePatternCore([]byte(pattern), []byte(o.start), endBytes, newExpr)
 	for _, m := range o.metas {
-		p = p.WithMeta(m.name, m.pattern)
+		p = p.withMeta(m.name, m.pattern)
 	}
 	return p
 }
@@ -399,10 +399,7 @@ func (p *Pattern) String() string {
 	return sb.String()
 }
 
-// WithMeta returns a copy of the pattern with every expression named name
-// replaced by the expressions from pattern. See the WithMeta Option for the
-// equivalent applied at compile time.
-func (p *Pattern) WithMeta(name string, pattern *Pattern) *Pattern {
+func (p *Pattern) withMeta(name string, pattern *Pattern) *Pattern {
 	newExprs := make([]expr, 0, len(p.exprs))
 	for _, e := range p.exprs {
 		if f, ok := e.(*formatExpr); ok && f.name == name {

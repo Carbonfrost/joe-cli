@@ -259,10 +259,17 @@ func (r *reflectExpander) Expand(k string) any {
 	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
-	field := v.FieldByNameFunc(func(name string) bool {
+	f, ok := v.Type().FieldByNameFunc(func(name string) bool {
 		return strings.EqualFold(name, k)
 	})
 
+	if !ok {
+		return nil
+	}
+	if !f.IsExported() {
+		return nil
+	}
+	field := v.FieldByIndex(f.Index)
 	if !field.IsValid() {
 		return nil
 	}

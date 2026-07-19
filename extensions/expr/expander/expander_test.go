@@ -72,6 +72,7 @@ var _ = Describe("Reflect", func() {
 		Entry("pointer", &struct{ M complex128 }{4 + 80i}, "%(M)", Equal("(4+80i)")),
 		Entry("nil", nil, "%(unknown)", Equal("<nil>")),
 		Entry("non-existing", struct{ A string }{"L"}, "%(unknown)", Equal("<nil>")),
+		Entry("unexported are not expanded", struct{ a string }{"L"}, "%(a)", Equal("<nil>")),
 	)
 })
 
