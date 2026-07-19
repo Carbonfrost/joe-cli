@@ -171,6 +171,8 @@ type FileInput struct {
 	method   string
 	advanced bool
 
+	lineno       int
+	fileLineno   int
 	fs           fs.FS
 	inplace      bool
 	backupSuffix string
@@ -222,6 +224,42 @@ func (fi *FileInput) Contents() iter.Seq2[[]byte, *FileInput] {
 				}
 			}
 			return yield(data, fi)
+		})
+	}
+}
+
+// Lines enumerates each of the lines from each of the files in the fileset.
+// Line-ending runes are stripped from each line.  As iteration proceeds,
+// Lineno and FileLineno track the current line number.
+func (fi *FileInput) Lines() iter.Seq2[string, *FileInput] {
+	fi.useMethod("Lines")
+	return func(yield func(string, *FileInput) bool) {
+		fi.drive(func(fi *FileInput) bool {
+			fi.fileLineno = 0
+			if fi.err != nil {
+				return yield("", fi)
+			}
+
+			r, err := fi.open()
+			if err != nil {
+				fi.err = err
+				return yield("", fi)
+			}
+			defer fi.closeReader(r)
+
+			scanner := bufio.NewScanner(r)
+			for scanner.Scan() {
+				fi.lineno++
+				fi.fileLineno++
+				if !yield(scanner.Text(), fi) {
+					return false
+				}
+			}
+			if err := scanner.Err(); err != nil {
+				fi.err = err
+				return yield("", fi)
+			}
+			return true
 		})
 	}
 }
@@ -309,6 +347,18 @@ func (fi *FileInput) closeOutput() {
 		_ = o.Close()
 	}
 	fi.out = nil
+}
+
+// Lineno is the aggregate line number across all files.  It is zero before the
+// first read and 1 corresponds to the first line.
+func (fi *FileInput) Lineno() int {
+	return fi.lineno
+}
+
+// FileLineno is the line number for the current file.  It is zero before the
+// first read and 1 corresponds to the first line.
+func (fi *FileInput) FileLineno() int {
+	return fi.fileLineno
 }
 
 // Err contains the error reading a file or scanning its input.  The error

@@ -725,6 +725,7 @@ var _ = Describe("FileInput", func() {
 	testFileSystem := fstest.MapFS{
 		"src/a/b.txt": {Data: []byte("b")},
 		"src/c.txt":   {Data: []byte("c")},
+		"lines.txt":   {Data: []byte("one\ntwo\nthree\n")},
 	}
 
 	DescribeTableSubtree("common walker behavior", func(cached bool) {
@@ -822,6 +823,52 @@ var _ = Describe("FileInput", func() {
 				}
 
 				Expect(contents).To(Equal([]string{"c"}))
+			})
+		})
+
+		Describe("Lines", func() {
+
+			It("enumerates the lines of each file", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/a/b.txt", "lines.txt"},
+				}
+
+				var lines []string
+				for line, input := range createInput(set).Lines() {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					lines = append(lines, line)
+				}
+
+				Expect(lines).To(Equal([]string{"b", "one", "two", "three"}))
+			})
+
+			It("tracks the aggregate and per-file line numbers", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/a/b.txt", "lines.txt"},
+				}
+
+				var lineno []int
+				var fileLineno []int
+				for _, input := range createInput(set).Lines() {
+					lineno = append(lineno, input.Lineno())
+					fileLineno = append(fileLineno, input.FileLineno())
+				}
+
+				Expect(lineno).To(Equal([]int{1, 2, 3, 4}))
+				Expect(fileLineno).To(Equal([]int{1, 1, 2, 3}))
+			})
+
+			It("starts the line numbers at zero", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/c.txt"},
+				}
+
+				input := createInput(set)
+				Expect(input.Lineno()).To(Equal(0))
+				Expect(input.FileLineno()).To(Equal(0))
 			})
 		})
 
