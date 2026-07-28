@@ -17,7 +17,6 @@ import (
 	"math/big"
 	"net"
 	"net/url"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -91,10 +90,6 @@ type valueProvidesCounter interface {
 
 type valueInitializer interface {
 	Initializer() Action
-}
-
-type valueDereference interface {
-	Value() any
 }
 
 type valueCompleter interface {
@@ -789,84 +784,11 @@ func checkSupportedFlagType(v any) error {
 }
 
 func dereference(v any) any {
-	if _, ok := v.(Value); ok {
-		if d, ok := v.(valueDereference); ok {
-			return d.Value()
-		}
-		if d, ok := v.(flag.Getter); ok {
-			return d.Get()
-		}
-
-		// Reflection to detect typed value dereference
-		selector := reflect.ValueOf(v)
-		if valueMethod, ok := selector.Type().MethodByName("Value"); ok {
-			if valueMethod.Type.NumIn() == 1 && valueMethod.Type.NumOut() == 1 {
-				out := valueMethod.Func.Call([]reflect.Value{selector})
-				return out[0].Interface()
-			}
-		}
-		return v
-	}
 	switch t := v.(type) {
-	// Don't dereference built-in types twice
-	case *url.URL, *regexp.Regexp, *big.Int, *big.Float:
-		return v
-	// Dereference common pointer types without reflection
-	case *bool:
-		return *t
-	case *string:
-		return *t
-	case *[]string:
-		return *t
-	case *[]byte:
-		return *t
-	case *map[string]string:
-		return *t
 	case *[]*NameValue:
 		return *t
-	case *int:
-		return *t
-	case *int8:
-		return *t
-	case *int16:
-		return *t
-	case *int32:
-		return *t
-	case *int64:
-		return *t
-	case *uint:
-		return *t
-	case *uint8:
-		return *t
-	case *uint16:
-		return *t
-	case *uint32:
-		return *t
-	case *uint64:
-		return *t
-	case *float32:
-		return *t
-	case *float64:
-		return *t
-	case *time.Duration:
-		return *t
-	case *net.IP:
-		return *t
-	case **url.URL:
-		return *t
-	case **regexp.Regexp:
-		return *t
-	case **big.Int:
-		return *t
-	case **big.Float:
-		return *t
 	}
-
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Pointer {
-		return val.Elem().Interface()
-	}
-	return v
+	return support.Dereference(v)
 }
 
 func parseBool(value string) (bool, error) {

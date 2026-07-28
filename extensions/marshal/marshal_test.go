@@ -21,6 +21,7 @@ var _ = Describe("BuiltinType", func() {
 			func(t marshal.Type, expected any) {
 				v := t.New()
 				Expect(v).To(BeAssignableToTypeOf(expected))
+				Expect(marshal.TypeFromValue(v)).To(Equal(t))
 			},
 			Entry("Bool", marshal.Bool, cli.Bool()),
 			Entry("File", marshal.File, &cli.File{}),

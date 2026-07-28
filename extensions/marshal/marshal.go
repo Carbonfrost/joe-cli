@@ -10,6 +10,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math/big"
+	"net"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -64,6 +68,7 @@ type Flag struct {
 	DefaultText string         `json:"defaultText,omitempty"`
 	Options     Options        `json:"options,omitempty"`
 	Data        map[string]any `json:"data,omitempty"`
+	Value       Value          `json:"value"`
 }
 
 // Arg provides a representation of cli.Arg for use as data
@@ -78,6 +83,33 @@ type Arg struct {
 	DefaultText string         `json:"defaultText,omitempty"`
 	Options     Options        `json:"options,omitempty"`
 	Data        map[string]any `json:"data,omitempty"`
+	Value       Value          `json:"value"`
+	Expression  *Expression    `json:"expression,omitempty"`
+}
+
+// Arg provides a representation of a value for use as data
+type Value struct {
+	Type   *BuiltinType `json:"type,omitempty"`
+	String string       `json:"string,omitempty"`
+}
+
+// Expression provides a representation of expressions
+type Expression struct {
+	// Exprs identifies the expression operators that are allowed
+	Exprs []Expr `json:"exprs,omitempty"`
+}
+
+// Expr provides a representation of expression operands
+type Expr struct {
+	Name       string         `json:"name"`
+	Aliases    []string       `json:"aliases,omitempty"`
+	Args       []Arg          `json:"args,omitempty"`
+	HelpText   string         `json:"helpText,omitempty"`
+	ManualText string         `json:"manualText,omitempty"`
+	Category   string         `json:"category,omitempty"`
+	UsageText  string         `json:"usageText,omitempty"`
+	Options    Options        `json:"options,omitempty"`
+	Data       map[string]any `json:"data,omitempty"`
 }
 
 // Options provides a representation of cli.Option for use as data
@@ -160,6 +192,69 @@ var (
 		URL:        "url",
 	}
 )
+
+// TypeFromValue gets the Type for the given value. The value can be a built-in supported
+// flag type or a pointer to one. If none matches, unknownType is returned.
+func TypeFromValue(v any) BuiltinType {
+	switch v.(type) {
+	case *bool, bool:
+		return Bool
+	case *string, string:
+		return String
+	case *[]string, []string:
+		return List
+	case *int, int:
+		return Int
+	case *int8, int8:
+		return Int8
+	case *int16, int16:
+		return Int16
+	case *int32, int32:
+		return Int32
+	case *int64, int64:
+		return Int64
+	case *uint, uint:
+		return Uint
+	case *uint8, uint8:
+		return Uint8
+	case *uint16, uint16:
+		return Uint16
+	case *uint32, uint32:
+		return Uint32
+	case *uint64, uint64:
+		return Uint64
+	case *float32, float32:
+		return Float32
+	case *float64, float64:
+		return Float64
+	case *time.Duration, time.Duration:
+		return Duration
+	case *map[string]string, map[string]string:
+		return Map
+	case *[]*cli.NameValue, []*cli.NameValue:
+		return NameValues
+	case **url.URL, *url.URL:
+		return URL
+	case *net.IP, net.IP:
+		return IP
+	case **regexp.Regexp, *regexp.Regexp:
+		return Regexp
+	case **big.Int, *big.Int:
+		return BigInt
+	case **big.Float, *big.Float:
+		return BigFloat
+	case *[]byte, []byte:
+		return Bytes
+	case *cli.NameValue:
+		return NameValue
+	case *cli.File:
+		return File
+	case *cli.FileSet:
+		return FileSet
+	}
+
+	return UnknownType
+}
 
 func (t BuiltinType) New() any {
 	switch t {

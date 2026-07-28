@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -86,12 +87,14 @@ var _ = Describe("From", func() {
                ],
                "flags": [
                  {
-                   "name": "Flag"
+                   "name": "Flag",
+                   "value": {}
                  }
                ],
                "args": [
                  {
-                   "name": "Arg"
+                   "name": "Arg",
+                   "value": {}
                  }
                ],
                "helpText": "HelpText",
@@ -157,12 +160,14 @@ var _ = Describe("From", func() {
                ],
                "flags": [
                  {
-                   "name": "Flag"
+                   "name": "Flag",
+                   "value": {}
                  }
                ],
                "args": [
                  {
-                   "name": "Arg"
+                   "name": "Arg",
+                   "value": {}
                  }
                ],
                "aliases": [
@@ -191,6 +196,7 @@ var _ = Describe("From", func() {
 			DefaultText: "DefaultText",
 			Options:     cli.Hidden,
 			Data:        map[string]any{"k": "v"},
+			Value:       new(int),
 		}, MatchFields(IgnoreUnexportedExtras, Fields{
 			"Name":        Equal("Flag"),
 			"Aliases":     Equal([]string{"f"}),
@@ -203,6 +209,10 @@ var _ = Describe("From", func() {
 			"DefaultText": Equal("DefaultText"),
 			"Options":     Equal(cli.Hidden),
 			"Data":        Equal(map[string]any{"k": "v"}),
+			"Value": MatchFields(IgnoreUnexportedExtras, Fields{
+				"String": Equal("0"),
+				"Type":   Equal(new(marshal.Int)),
+			}),
 		}),
 			`{
                "name": "Flag",
@@ -221,6 +231,10 @@ var _ = Describe("From", func() {
                "options": "HIDDEN",
                "data": {
                  "k": "v"
+               },
+               "value": {
+                 "string": "0",
+                 "type": "int"
                }
              }`),
 
@@ -235,6 +249,7 @@ var _ = Describe("From", func() {
 			DefaultText: "DefaultText",
 			Options:     cli.Hidden,
 			Data:        map[string]any{"f": "b"},
+			Value:       &expr.Expression{},
 		}, MatchFields(IgnoreUnexportedExtras, Fields{
 			"Name":        Equal("Arg"),
 			"EnvVars":     Equal([]string{"ENV_VAR"}),
@@ -246,6 +261,11 @@ var _ = Describe("From", func() {
 			"DefaultText": Equal("DefaultText"),
 			"Options":     Equal(cli.Hidden),
 			"Data":        Equal(map[string]any{"f": "b"}),
+			"Expression":  BeAssignableToTypeOf(new(marshal.Expression)),
+			"Value": MatchFields(IgnoreUnexportedExtras, Fields{
+				"String": Equal(""),
+				"Type":   BeNil(),
+			}),
 		}),
 			`{
                "name": "Arg",
@@ -261,8 +281,60 @@ var _ = Describe("From", func() {
                "options": "HIDDEN",
                "data": {
                  "f": "b"
+               },
+               "value": {},
+               "expression": {}
+             }`),
+
+		Entry("Expr", &expr.Expr{
+			Name:       "Expr",
+			HelpText:   "HelpText",
+			ManualText: "ManualText",
+			Category:   "Category",
+			UsageText:  "UsageText",
+			Aliases:    []string{"a", "b"},
+			Options:    cli.Hidden,
+			Args:       cli.Args("m", nil),
+			Data:       map[string]any{"f": "b"},
+		}, MatchFields(IgnoreUnexportedExtras, Fields{
+			"Name":       Equal("Expr"),
+			"HelpText":   Equal("HelpText"),
+			"ManualText": Equal("ManualText"),
+			"Category":   Equal("Category"),
+			"UsageText":  Equal("UsageText"),
+			"Aliases":    Equal([]string{"a", "b"}),
+			"Args":       HaveLen(1),
+			"Options":    Equal(cli.Hidden),
+			"Data":       Equal(map[string]any{"f": "b"}),
+		}),
+			`{
+               "name": "Expr",
+               "helpText": "HelpText",
+               "manualText": "ManualText",
+               "category": "Category",
+               "usageText": "UsageText",
+               "options": "HIDDEN",
+               "aliases": ["a","b"],
+               "args": [
+                 { "name": "m", "value": {} }
+               ],
+               "data": {
+                 "f": "b"
                }
              }`),
+
+		Entry("Expression", &expr.Expression{
+			Exprs: []*expr.Expr{
+				{Name: "E"},
+			},
+		}, PointTo(MatchFields(IgnoreUnexportedExtras, Fields{
+			"Exprs": HaveLen(1),
+		})),
+			`{
+         "exprs": [{
+           "name": "E"
+         }]
+       }`),
 	)
 
 	Describe("clean marshal data dictionary", func() {

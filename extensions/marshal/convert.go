@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // value is a value that can be serialized
@@ -55,6 +57,10 @@ func (c *converter) fromInternal(v any) value {
 		return c.newFlagMarshal(t)
 	case *cli.Arg:
 		return c.newArgMarshal(t)
+	case *expr.Expression:
+		return c.newExpressionMarshal(t)
+	case *expr.Expr:
+		return c.newExprMarshal(t)
 	case value:
 		return t
 	}
@@ -146,10 +152,12 @@ func (c *converter) newFlagMarshal(v *cli.Flag) Flag {
 		Options:     v.Options,
 		Category:    v.Category,
 		Data:        c.cleanDataMap(v.Data),
+		Value:       c.newValueMarshal(v.Value),
 	}
 }
 
 func (c *converter) newArgMarshal(v *cli.Arg) Arg {
+	exp, _ := v.Value.(*expr.Expression)
 	return Arg{
 		Name:        v.Name,
 		HelpText:    v.HelpText,
@@ -161,6 +169,44 @@ func (c *converter) newArgMarshal(v *cli.Arg) Arg {
 		Options:     v.Options,
 		Category:    v.Category,
 		Data:        c.cleanDataMap(v.Data),
+		Value:       c.newValueMarshal(v.Value),
+		Expression:  c.newExpressionMarshal(exp),
+	}
+}
+
+func (c *converter) newValueMarshal(v any) Value {
+	typ := TypeFromValue(v)
+	if typ != UnknownType {
+		return Value{
+			Type:   &typ,
+			String: sprintValue(v),
+		}
+	}
+	return Value{}
+}
+
+func (c *converter) newExpressionMarshal(v *expr.Expression) *Expression {
+	if v == nil {
+		return nil
+	}
+	res := make([]Expr, len(v.Exprs))
+	for i := range v.Exprs {
+		res[i] = c.newExprMarshal(v.Exprs[i])
+	}
+	return &Expression{Exprs: res}
+}
+
+func (c *converter) newExprMarshal(v *expr.Expr) Expr {
+	return Expr{
+		Name:       v.Name,
+		Aliases:    v.Aliases,
+		HelpText:   v.HelpText,
+		ManualText: v.ManualText,
+		UsageText:  v.UsageText,
+		Options:    v.Options,
+		Category:   v.Category,
+		Args:       c.argsMarshal(v.Args),
+		Data:       c.cleanDataMap(v.Data),
 	}
 }
 
@@ -223,10 +269,16 @@ func cleanDataMapValue(k string, v any, skipPrivate bool) (any, bool) {
 	return v, true
 }
 
-func (App) valueSigil()     {}
-func (Flag) valueSigil()    {}
-func (Arg) valueSigil()     {}
-func (Command) valueSigil() {}
+func sprintValue(v any) string {
+	return fmt.Sprint(support.Dereference(v))
+}
+
+func (App) valueSigil()        {}
+func (Flag) valueSigil()       {}
+func (Arg) valueSigil()        {}
+func (Command) valueSigil()    {}
+func (Expression) valueSigil() {}
+func (Expr) valueSigil()       {}
 
 func (f optionFunc) apply(c *converter) {
 	f(c)
