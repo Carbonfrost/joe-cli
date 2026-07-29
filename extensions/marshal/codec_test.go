@@ -170,9 +170,7 @@ var _ = Describe("ListCodecs", func() {
 		))
 	})
 
-	// TODO There is a bug with shared state in the provider context services causing this
-	// to unexpectedly pass
-	XIt("generates an error on no codec registry", func() {
+	It("generates an error on no codec registry", func() {
 		var capture bytes.Buffer
 		app := &cli.App{
 			Name:   "app",
