@@ -302,7 +302,7 @@ var (
 		ImpliedAction:           setInternalFlag(internalFlagImpliedAction),
 		Trigger:                 setInternalFlag(internalFlagTriggerRequested),
 		ParseUnknownFlagsAsArgs: setInternalFlag(internalFlagParseUnknownFlagsAsArgs),
-		Numeric:                 Pipeline(setInternalFlag(internalFlagNumeric), Prototype{Value: new(int)}),
+		Numeric:                 ActionFunc(numericOption),
 		ReservedOption1:         ActionFunc(nil), // Reserved options are enforced in the default pipelines
 		ReservedOption2:         ActionFunc(nil),
 		ReservedOption3:         ActionFunc(nil),
@@ -542,8 +542,15 @@ func visibleOption(c *Context) error {
 	return nil
 }
 
+func numericOption(c *Context) error {
+	c.target().setInternalFlags(internalFlagNumeric, true)
+	c.Do(Prototype{Value: new(int)})
+	return nil
+}
+
 func wrapWithExit(c *Context) error {
 	c.target().setInternalFlags(internalFlagExits, true)
+	c.Do(Prototype{Value: new(bool)})
 	return c.At(ActionTiming, ActionOf(doThenExit))
 }
 

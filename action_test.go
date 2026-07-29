@@ -1522,6 +1522,25 @@ var _ = Describe("Required", func() {
 	})
 })
 
+var _ = Describe("Exits", func() {
+
+	It("implicitly sets Boolean flag", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:    "f",
+					Options: cli.Exits,
+				},
+			},
+			Action: func() {},
+		}
+		_ = app.RunContext(context.Background(), []string{"app", "-f"})
+
+		flag := app.Flags[0]
+		Expect(flag.Value).To(Equal(new(true)))
+	})
+})
+
 var _ = Describe("Trigger", func() {
 
 	It("invokes the action regardless of not being used", func() {
