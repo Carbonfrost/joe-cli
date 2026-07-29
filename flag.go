@@ -290,10 +290,6 @@ func (f *Flag) manualText() string {
 	return f.ManualText
 }
 
-func (f *Flag) setOptional() {
-	f.setOptionalValue(valueSmartOptionalDefault(f.Value))
-}
-
 func (f *Flag) setOptionalValue(v any) {
 	f.setInternalFlags(internalFlagOptional, true)
 	f.optionalValue = v

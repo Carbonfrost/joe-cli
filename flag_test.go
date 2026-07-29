@@ -411,6 +411,29 @@ var _ = Describe("Flag", func() {
 			Entry("long Duration", cli.Duration(), "app --show", time.Second),
 		)
 
+		DescribeTable("errors", func(flag any) {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "show",
+						Value:   flag,
+						Options: cli.Optional,
+					},
+				},
+				Action: func() {},
+				Name:   "app",
+			}
+
+			_, err := app.Initialize(context.Background())
+			Expect(err).To(MatchError(ContainSubstring(`internal error, at "app --show" (initial timing):`)))
+			Expect(err).To(MatchError(MatchRegexp(`invalid type .+ for Optional flag`)))
+		},
+			Entry("string", new(string)),
+			Entry("[]string", new([]string)),
+			Entry("[]byte", new([]byte)),
+			Entry("Value", new(joeclifakes.FakeValue)),
+		)
+
 		DescribeTable("OptionalValue examples", func(flag any, args string, expected any) {
 			var actual any
 			app := &cli.App{
@@ -439,6 +462,8 @@ var _ = Describe("Flag", func() {
 			Entry("List", cli.List(), "app -s", []string{"OK"}),
 			Entry("Map", cli.Map(), "app -s", map[string]string{"A": "B"}),
 			Entry("Bytes", cli.Bytes(), "app -s", []byte("ab")),
+
+			Entry("trailing equal sign", cli.Bytes(), "app --show=", []byte("ab")), // Interpreted as resetting value
 		)
 
 		It("following is treated as argument", func() {

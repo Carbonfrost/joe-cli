@@ -73,7 +73,8 @@ const (
 	//   []byte                                 *
 	//   other Value                            *
 	//
-	//   * For string, []string, []byte, and any other Value implementation, using this option panics.
+	//   * For string, []string, []byte, and any other Value implementation, using this option generates
+	//     an internal error during initialization.
 	//
 	// For short options, no space can be between the flag and value (e.g. you need -sString to
 	// specify a String to the -s option).
@@ -586,7 +587,16 @@ func workingDirectoryOption() Action {
 }
 
 func optionalOption(c *Context) error {
-	c.Flag().setOptional()
+	f, ok := c.target().(*Flag)
+	if !ok {
+		// Ignored when used on other
+		return nil
+	}
+	v, err := valueSmartOptionalDefault(f.Value)
+	if err != nil {
+		return c.internalError(err)
+	}
+	f.setOptionalValue(v)
 	return nil
 }
 

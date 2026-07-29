@@ -939,40 +939,40 @@ func valueCloneZero(p any) any {
 	return support.MustValueCloneZero(p)
 }
 
-func valueSmartOptionalDefault(v any) any {
+func valueSmartOptionalDefault(v any) (any, error) {
 	switch v.(type) {
 	case *bool:
-		return true
+		return true, nil
 	case *int:
-		return int(1)
+		return int(1), nil
 	case *int8:
-		return int8(1)
+		return int8(1), nil
 	case *int16:
-		return int16(1)
+		return int16(1), nil
 	case *int32:
-		return int32(1)
+		return int32(1), nil
 	case *int64:
-		return int64(1)
+		return int64(1), nil
 	case *uint:
-		return uint(1)
+		return uint(1), nil
 	case *uint8:
-		return uint8(1)
+		return uint8(1), nil
 	case *uint16:
-		return uint16(1)
+		return uint16(1), nil
 	case *uint32:
-		return uint32(1)
+		return uint32(1), nil
 	case *uint64:
-		return uint64(1)
+		return uint64(1), nil
 	case *float32:
-		return float32(1)
+		return float32(1), nil
 	case *float64:
-		return float64(1)
+		return float64(1), nil
 	case *time.Duration:
-		return time.Second
+		return time.Second, nil
 	case *net.IP:
-		return net.ParseIP("127.0.0.1")
+		return net.ParseIP("127.0.0.1"), nil
 	}
-	return nil
+	return "", fmt.Errorf("invalid type %T for Optional flag", v)
 }
 
 var (
