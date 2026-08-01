@@ -91,6 +91,26 @@ var _ = Describe("String", func() {
 				}, nil, false),
 			ContainSubstring("--normal")),
 
+		Entry("flags in a synopsis category",
+			synopsis.NewCommand("c",
+				[]*synopsis.Flag{
+					withCategory(synopsis.NewFlag("timeout", nil, "", "", "", synopsis.OtherOptional), "http-client"),
+					withCategory(synopsis.NewFlag("user-agent", nil, "", "", "", synopsis.OtherOptional), "http-client"),
+					synopsis.NewFlag("normal", nil, "", "", "", synopsis.Other),
+				}, nil, false),
+			Equal("**c****--normal**=_VALUE_ { _http-client-flags_ }")),
+
+		Entry("flags in a synopsis category when categories are not condensed",
+			func() synopsis.Stringer {
+				cmd := synopsis.NewCommand("c",
+					[]*synopsis.Flag{
+						withCategory(synopsis.NewFlag("timeout", nil, "", "", "", synopsis.OtherOptional), "http-client"),
+					}, nil, false)
+				cmd.CondenseCategories = false
+				return cmd
+			}(),
+			ContainSubstring("[**--timeout**=_VALUE_]")),
+
 		Entry(
 			"arg",
 			&synopsis.Arg{Value: "STRING"},
@@ -129,6 +149,11 @@ type Writer struct {
 }
 
 var basicValue = &synopsis.Value{Placeholder: "STRING"}
+
+func withCategory(f *synopsis.Flag, category string) *synopsis.Flag {
+	f.Category = category
+	return f
+}
 
 func (w *Writer) SetForeground(c ansiterm.Color) {
 	fmt.Fprintf(w, "{%s}", c)

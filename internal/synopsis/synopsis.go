@@ -39,6 +39,10 @@ type Command struct {
 	OptionalArgs []*Arg
 	RTL          bool
 	Style        Style
+
+	// CondenseCategories causes flags with a SynopsisCategory set to be condensed
+	// into groups
+	CondenseCategories bool
 }
 
 type Flag struct {
@@ -52,6 +56,10 @@ type Flag struct {
 	Value          *Value
 	Group          OptionGroup
 	Style          Style
+
+	// Category names the synopsis category that the flag belongs to, which is
+	// empty for most flags.  See Command.CondenseCategories.
+	Category string
 }
 
 type Arg struct {
@@ -94,8 +102,9 @@ const (
 )
 
 const (
-	ColorData = "_synopsisColor"
-	StyleData = "_synopsisStyle"
+	ColorData    = "_synopsisColor"
+	StyleData    = "_synopsisStyle"
+	CategoryData = "_synopsisCategory"
 )
 
 // Style controls how the name of a flag, command, or expression is rendered in
@@ -137,6 +146,16 @@ func (s Style) write(w styleWriter, text string) {
 	}
 	w.WriteString(text)
 	w.Reset()
+}
+
+// CategoryFromData obtains the synopsis category which was set within the data of a
+// flag, which is the empty string if the flag has no synopsis category.
+func CategoryFromData(data map[string]any) string {
+	if data == nil {
+		return ""
+	}
+	name, _ := data[CategoryData].(string)
+	return name
 }
 
 func (s Style) ApplyTo(str string) string {
@@ -186,12 +205,13 @@ func NewCommand(name string, flags []*Flag, args []*Arg, rtl bool) *Command {
 	}
 
 	return &Command{
-		Name:         name,
-		Flags:        groups,
-		Args:         args,
-		RequiredArgs: required,
-		OptionalArgs: optional,
-		RTL:          rtl,
+		Name:               name,
+		Flags:              groups,
+		Args:               args,
+		RequiredArgs:       required,
+		OptionalArgs:       optional,
+		RTL:                rtl,
+		CondenseCategories: true,
 	}
 }
 
@@ -268,7 +288,9 @@ func (v *Value) WriteTo(w styleWriter) {
 func (c *Command) WriteTo(sb styleWriter) {
 	c.Style.write(sb, c.Name)
 
-	if flags := c.Flags[ActionGroup]; len(flags) > 0 {
+	groups, categories := c.flagGroups()
+
+	if flags := groups[ActionGroup]; len(flags) > 0 {
 		sb.WriteString(" {")
 		for i, f := range flags {
 			if i > 0 {
@@ -279,14 +301,14 @@ func (c *Command) WriteTo(sb styleWriter) {
 		sb.WriteString("}")
 	}
 
-	if flags := c.Flags[OnlyShortNoValue]; len(flags) > 0 {
+	if flags := groups[OnlyShortNoValue]; len(flags) > 0 {
 		sb.WriteString(" -")
 		for _, f := range flags {
 			sb.WriteString(f.Short)
 		}
 	}
 
-	if flags := c.Flags[OnlyShortNoValueOptional]; len(flags) > 0 {
+	if flags := groups[OnlyShortNoValueOptional]; len(flags) > 0 {
 		sb.WriteString(" [-")
 		for _, f := range flags {
 			sb.WriteString(f.Short)
@@ -294,7 +316,7 @@ func (c *Command) WriteTo(sb styleWriter) {
 		sb.WriteString("]")
 	}
 
-	if flags := c.Flags[OtherOptional]; len(flags) > 0 {
+	if flags := groups[OtherOptional]; len(flags) > 0 {
 		for _, f := range flags {
 			sb.WriteString(" [")
 			f.primaryWriteTo(sb)
@@ -302,13 +324,58 @@ func (c *Command) WriteTo(sb styleWriter) {
 		}
 	}
 
-	if flags := c.Flags[Other]; len(flags) > 0 {
+	if flags := groups[Other]; len(flags) > 0 {
 		for _, f := range flags {
 			f.primaryWriteTo(sb)
 		}
 	}
 
+	for _, category := range categories {
+		sb.WriteString(" { ")
+		sb.Styled(Underline, category+"-flags")
+		sb.WriteString(" }")
+	}
+
 	writeArgList(sb, c.RTL, c.RequiredArgs, c.OptionalArgs)
+}
+
+// flagGroups obtains the flags to display within the synopsis along with the names of
+// the synopsis categories, sorted by name, which stand in for the flags they contain.
+// Unless CondenseCategories is set, the flags are used as-is and no categories are
+// identified.
+func (c *Command) flagGroups() (map[OptionGroup][]*Flag, []string) {
+	if !c.CondenseCategories {
+		return c.Flags, nil
+	}
+
+	var (
+		groups     = make(map[OptionGroup][]*Flag, len(c.Flags))
+		seen       = map[string]bool{}
+		categories []string
+	)
+
+	for group, flags := range c.Flags {
+		if group == Hidden {
+			groups[group] = flags
+			continue
+		}
+
+		res := make([]*Flag, 0, len(flags))
+		for _, f := range flags {
+			if f.Category == "" {
+				res = append(res, f)
+				continue
+			}
+			if !seen[f.Category] {
+				seen[f.Category] = true
+				categories = append(categories, f.Category)
+			}
+		}
+		groups[group] = res
+	}
+
+	sort.Strings(categories)
+	return groups, categories
 }
 
 func (a *Arg) WriteTo(sb styleWriter) {

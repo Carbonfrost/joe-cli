@@ -650,6 +650,58 @@ var _ = Describe("Command", func() {
 				},
 				"cmd <a> [[<b>] <c>]",
 			),
+			Entry(
+				"synopsis category condenses flags",
+				&cli.Command{
+					Flags: []*cli.Flag{
+						{Name: "t", Value: cli.Bool()},
+						{Name: "timeout", Value: cli.Duration(), Uses: cli.SynopsisCategory("http-client")},
+						{Name: "user-agent", Value: cli.String(), Uses: cli.SynopsisCategory("http-client")},
+					},
+					Name: "cmd",
+				},
+				"cmd [-t] { http-client-flags }",
+			),
+			Entry(
+				"synopsis categories are sorted and listed last",
+				&cli.Command{
+					Flags: []*cli.Flag{
+						{Name: "timeout", Value: cli.Duration(), Uses: cli.SynopsisCategory("http-client")},
+						{Name: "tan", Value: cli.String()},
+						{Name: "verbose", Value: cli.Bool(), Uses: cli.SynopsisCategory("diagnostics")},
+					},
+					Name: "cmd",
+				},
+				"cmd [--tan=STRING] { diagnostics-flags } { http-client-flags }",
+			),
+			Entry(
+				"hidden flags don't contribute a synopsis category",
+				&cli.Command{
+					Flags: []*cli.Flag{
+						{Name: "tan", Value: cli.String()},
+						{
+							Name:    "timeout",
+							Value:   cli.Duration(),
+							Options: cli.Hidden,
+							Uses:    cli.SynopsisCategory("http-client"),
+						},
+					},
+					Name: "cmd",
+				},
+				"cmd [--tan=STRING]",
+			),
+			Entry(
+				"DisableSynopsisCategories displays flags individually",
+				&cli.Command{
+					Flags: []*cli.Flag{
+						{Name: "timeout", Value: cli.Duration(), Uses: cli.SynopsisCategory("http-client")},
+						{Name: "user-agent", Value: cli.String(), Uses: cli.SynopsisCategory("http-client")},
+					},
+					Options: cli.DisableSynopsisCategories,
+					Name:    "cmd",
+				},
+				"cmd [--timeout=DURATION] [--user-agent=STRING]",
+			),
 		)
 
 	})

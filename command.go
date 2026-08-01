@@ -522,6 +522,7 @@ func (c *Command) newSynopsis() *synopsis.Command {
 		c.Name, flags, args, c.internalFlags().rightToLeft(),
 	)
 	syn.Style = synopsis.StyleFromData(c.Data)
+	syn.CondenseCategories = !c.internalFlags().disableSynopsisCategories()
 	return syn
 }
 

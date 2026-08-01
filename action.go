@@ -24,6 +24,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 	"github.com/Carbonfrost/joe-cli/internal/support"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 // ActionFunc provides the basic function for an Action
@@ -1055,6 +1056,21 @@ func Data(key any, value any) Action {
 // set up inside a Uses pipeline.
 func Category(name string) Action {
 	return actionThunk1((*Context).SetCategory, name)
+}
+
+// SynopsisCategory sets the synopsis category of a flag, which is a name that is used
+// to condense the flag together with the other flags of the category within the synopsis
+// of a command.  Rather than being listed individually, the flags of a synopsis category
+// are suppressed and the category is represented by a single opaque category label.
+// Synopsis categories are listed last among the flags in the synopsis.  This behavior can
+// be turned off for a command with the option DisableSynopsisCategories.  This handler is
+// generally set up inside a Uses pipeline.
+//
+//	&cli.Flag{Uses: cli.SynopsisCategory("http-client")}
+//
+// The synopsis category is unrelated to Category, which groups flags on the help screen.
+func SynopsisCategory(name string) Action {
+	return Data(synopsis.CategoryData, name)
 }
 
 // Named sets the name of a command, flag, or expression.  This handler is generally

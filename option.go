@@ -207,6 +207,12 @@ const (
 	// with this option.
 	Numeric
 
+	// DisableSynopsisCategories when applied to a Command causes the flags which belong
+	// to a synopsis category to be displayed individually within the synopsis of the
+	// command rather than being condensed into the identifier of their category.
+	// See also SynopsisCategory.
+	DisableSynopsisCategories
+
 	// ReservedOption1 provides an option which is reserved. This value
 	// can be used within extensions to denote additional options that are
 	// applied within the scope of the extension. The extension or client must remove the
@@ -275,6 +281,7 @@ const (
 	internalFlagParseUnknownFlagsAsArgs
 	internalFlagEachOccurrence
 	internalFlagNumeric
+	internalFlagDisableSynopsisCategories
 )
 
 var (
@@ -309,6 +316,8 @@ var (
 		ReservedOption2:         ActionFunc(nil),
 		ReservedOption3:         ActionFunc(nil),
 		ReservedOption4:         ActionFunc(nil),
+
+		DisableSynopsisCategories: setInternalFlag(internalFlagDisableSynopsisCategories),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -342,6 +351,8 @@ var (
 		ReservedOption2:         "RESERVED_OPTION_2",
 		ReservedOption3:         "RESERVED_OPTION_3",
 		ReservedOption4:         "RESERVED_OPTION_4",
+
+		DisableSynopsisCategories: "DISABLE_SYNOPSIS_CATEGORIES",
 	}
 )
 
@@ -509,6 +520,10 @@ func (f internalFlags) eachOccurrence() bool {
 
 func (f internalFlags) numeric() bool {
 	return f&internalFlagNumeric == internalFlagNumeric
+}
+
+func (f internalFlags) disableSynopsisCategories() bool {
+	return f&internalFlagDisableSynopsisCategories == internalFlagDisableSynopsisCategories
 }
 
 func (f internalFlags) toRaw() RawParseFlag {

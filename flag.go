@@ -229,6 +229,7 @@ func (f *Flag) synopsis() *synopsis.Flag {
 func (f *Flag) newSynopsis() *synopsis.Flag {
 	syn := synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
 	syn.Style = synopsis.StyleFromData(f.Data)
+	syn.Category = synopsis.CategoryFromData(f.Data)
 	return syn
 }
 
