@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.19.0 (August 1, 2026)
+
+### New Features
+
+* Codec extension: `Dumper` (e38b7be)
+* `SynopsisCategory` to hide flags in long command synopses (372c36b)
+* Breaking change: Provider arguments are now untyped (b7cde79)
+* Expander extension
+    * `SubexpNames` (1393742)
+    * Allow expander `Reflect` to work on methods (90abae2)
+* Expr extension: printer and Unix-like printer expressions (2aedbfa)
+* Marshal extension: convert expressions and values (d9d1600)
+* Lines and line number tracking in `FileInput` (658b4d4)
+* `FileInput`: add output controller (0996f27)
+* Introduce `WorkspaceFileSet` for strongly typed workspace file loading (35c5e52)
+* Codec extension: YAML (70147e4)
+
+### Bug fixes and improvements
+
+* Expander extension: don't expand unexported fields; remove `WithMeta` from API (7574fab)
+* Codec extension: improve names, docs; DisallowUnknownFields tests (70147e4)
+* Improve handling of optional flags by removing a panic (9081a77)
+* Bug fix: Report original error on missing `ImplicitCommand` (9ec9a8e)
+* Bug fix: Set `Option` to uint64 explicitly; improve type flexibility of `FeatureMap` (939116b)
+* Bug fix: Ensure `Exit` option sets up Boolean flag by default (e41b339)
+* Bug fix: Prevent sharing of prototype in Numeric option (e41b339)
+* Chores:
+    * Bug fix: Enable a pending test, which has since been fixed (probably in ddfb4fe5) (e152937)
+    * Update dependent versions (38a56b3)
+    * Update documentation: expr expander (9d19eff)
+
 ## v0.18.0 (July 11, 2026)
 
 ### New Features
