@@ -361,11 +361,11 @@ func unescapeAndUnquote(s string) string {
 	return buf.String()
 }
 
-func FormatMap(m map[string]string, delim string) string {
+func FormatMap[V any](m map[string]V, delim string) string {
 	items := make([]string, len(m))
 	var i int
 	for k, v := range m {
-		items[i] = k + "=" + v
+		items[i] = k + "=" + fmt.Sprint(v)
 		i++
 	}
 	sort.Strings(items)

@@ -65,10 +65,10 @@ type Value struct {
 }
 
 // FactoryFunc describes the factory function for a provider
-type FactoryFunc func(opts map[string]string) (any, error)
+type FactoryFunc func(opts map[string]any) (any, error)
 
 type Factory interface {
-	New(opts map[string]string) (any, error)
+	New(opts map[string]any) (any, error)
 }
 
 // Lookup defines how to obtain the provider or information about it from its name
@@ -83,10 +83,11 @@ type Details map[string]Detail
 
 // Detail provides information about a provider
 type Detail struct {
+
 	// Defaults specifies the default values for the provider.
 	// The factory or value can provide conventional values as an alternative
 	// to specifying this value by containing a method Defaults()map[string]string
-	Defaults map[string]string
+	Defaults map[string]any
 
 	// Factory is responsible for creating the provider given the options.
 	// The value is a function, and must be one of the functions available to
@@ -121,7 +122,7 @@ type Detail struct {
 }
 
 // Map provides a map that names the providers and their the default values.
-type Map map[string]map[string]string
+type Map map[string]map[string]any
 
 // Registry can be used to add validation to the Provider value and to determine what
 // to be listed.  This value is used in the Uses
@@ -156,7 +157,7 @@ type providerData struct {
 	Defaults defaultsMap
 }
 
-type defaultsMap map[string]string
+type defaultsMap map[string]any
 
 var (
 	listTemplate = `{{ range .Providers -}}
@@ -372,16 +373,16 @@ func (r *Registry) LookupProvider(name string) (Detail, bool) {
 	return r.Providers.LookupProvider(name)
 }
 
-func (r *Registry) New(name string, opts map[string]string) (any, error) {
+func (r *Registry) New(name string, opts any) (any, error) {
 	pro, ok := r.LookupProvider(name)
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %q", name)
 	}
 
 	if pro.Factory != nil {
-		mergedOpts := map[string]string{}
+		mergedOpts := map[string]any{}
 		maps.Copy(mergedOpts, pro.Defaults)
-		maps.Copy(mergedOpts, opts)
+		maps.Copy(mergedOpts, optsMap(opts))
 		return pro.Factory.New(mergedOpts)
 
 	} else if pro.Value != nil {
@@ -442,6 +443,7 @@ func (d Details) LookupProvider(name string) (Detail, bool) {
 		descriptionTextProvider interface{ Description() string }
 		descriptionProvider     interface{ Description() any }
 		defaultsProvider        interface{ Defaults() map[string]string }
+		defaultsAnyProvider     interface{ Defaults() map[string]any }
 		helpTextProvider        interface{ HelpText() string }
 		manualTextProvider      interface{ ManualText() string }
 		usageTextProvider       interface{ UsageText() string }
@@ -449,6 +451,9 @@ func (d Details) LookupProvider(name string) (Detail, bool) {
 
 	if len(r.Defaults) == 0 {
 		if defaults, ok := conventions(r, (defaultsProvider).Defaults); ok {
+			r.Defaults = untypedMap(defaults)
+		}
+		if defaults, ok := conventions(r, (defaultsAnyProvider).Defaults); ok {
 			r.Defaults = defaults
 		}
 	}
@@ -495,6 +500,20 @@ func conventions[T, V any](r Detail, fn func(T) V) (V, bool) {
 	return *new(V), false
 }
 
+func untypedMap(m map[string]string) map[string]any {
+	r := map[string]any{}
+	for k, v := range m {
+		r[k] = v
+	}
+	return r
+}
+
+func optsMap(opts any) map[string]any {
+	r := map[string]any{}
+	_ = structure.Decode(opts, &r)
+	return r
+}
+
 func (d defaultsMap) String() string {
 	return support.FormatMap(d, ", ")
 }
@@ -517,9 +536,9 @@ func toData(r *Registry) []providerData {
 	return res
 }
 
-func (r *reflectedFactory) New(opts map[string]string) (any, error) {
+func (r *reflectedFactory) New(opts map[string]any) (any, error) {
 	if opts == nil {
-		opts = map[string]string{}
+		opts = map[string]any{}
 	}
 
 	value := reflect.New(r.optType).Interface()
@@ -536,7 +555,7 @@ func (r *reflectedFactory) New(opts map[string]string) (any, error) {
 	return out[0].Interface(), err
 }
 
-func (f FactoryFunc) New(opts map[string]string) (any, error) {
+func (f FactoryFunc) New(opts map[string]any) (any, error) {
 	return f(opts)
 }
 

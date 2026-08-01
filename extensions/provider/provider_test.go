@@ -7,7 +7,6 @@ package provider_test
 import (
 	"bytes"
 	"context"
-	"strconv"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -60,14 +59,14 @@ var _ = Describe("Registry", func() {
 				Name: "providers",
 				Providers: provider.Details{
 					"csv": {
-						Defaults: map[string]string{
+						Defaults: map[string]any{
 							"comma":   "a",
-							"useCRLF": "true",
+							"useCRLF": true,
 						},
-						Factory: provider.FactoryFunc(func(opts map[string]string) (any, error) {
-							b, _ := strconv.ParseBool(opts["useCRLF"])
+						Factory: provider.FactoryFunc(func(opts map[string]any) (any, error) {
+							b, _ := opts["useCRLF"].(bool)
 							return &csvProvider{
-								Comma:   opts["comma"],
+								Comma:   opts["comma"].(string),
 								UseCRLF: b,
 							}, nil
 						}),
@@ -239,10 +238,10 @@ var _ = Describe("Details", func() {
 				},
 			}
 			actual, _ := details.LookupProvider("A")
-			Expect(actual.Defaults).To(Equal(map[string]string{"A": "1"}))
+			Expect(actual.Defaults).To(Equal(map[string]any{"A": "1"}))
 
 			actual, _ = details.LookupProvider("B")
-			Expect(actual.Defaults).To(Equal(map[string]string{"A": "1"}))
+			Expect(actual.Defaults).To(Equal(map[string]any{"A": "1"}))
 		})
 	})
 })
@@ -255,7 +254,7 @@ var _ = Describe("FactoryOf", func() {
 			Expect(o.B).To(Equal("B"))
 			called = true
 			return nil
-		}).New(map[string]string{
+		}).New(map[string]any{
 			"A": "A",
 			"B": "B",
 		})
@@ -267,7 +266,7 @@ var _ = Describe("FactoryOf", func() {
 		_, err := provider.FactoryOf(func(o Options) any {
 			called = true
 			return nil
-		}, structure.ErrorUnused).New(map[string]string{
+		}, structure.ErrorUnused).New(map[string]any{
 			"Extra": "this field is not on the struct",
 		})
 		Expect(called).To(BeFalse())
@@ -420,14 +419,14 @@ var _ = Describe("ListProviders", func() {
 				Name: "providers",
 				Providers: provider.Details{
 					"csv": {
-						Defaults: map[string]string{
+						Defaults: map[string]any{
 							"comma":   "a",
 							"useCRLF": "true",
 						},
 						HelpText: "Use comma-separated values",
 					},
 					"json": {
-						Defaults: map[string]string{
+						Defaults: map[string]any{
 							"indent": "true",
 						},
 						HelpText: "Use JSON values",
@@ -787,7 +786,7 @@ func (*conventions) Defaults() map[string]string { return map[string]string{"A":
 
 type conventionsFactory struct{}
 
-func (*conventionsFactory) New(_ map[string]string) (any, error) {
+func (*conventionsFactory) New(_ map[string]any) (any, error) {
 	return nil, nil
 }
 

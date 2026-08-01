@@ -29,7 +29,7 @@ var _ = Describe("Bind", func() {
 			Name: "format",
 			Providers: provider.Details{
 				"csv": {
-					Defaults: map[string]string{
+					Defaults: map[string]any{
 						"comma":   "a",
 						"useCRLF": "true",
 					},

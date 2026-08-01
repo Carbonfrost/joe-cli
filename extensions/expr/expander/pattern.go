@@ -403,8 +403,8 @@ func (p *Pattern) String() string {
 // which appear in the variable placeholders. Names are listed in the order
 // they first occur, and each name is listed once no matter how many
 // placeholders use it. Within [SyntaxRecursive], this includes the names
-// of the recursively named fallbacks. The whitespace expressions 
-// space, tab, newline, and empty are not variable placeholders and are 
+// of the recursively named fallbacks. The whitespace expressions
+// space, tab, newline, and empty are not variable placeholders and are
 // therefore omitted.
 func (p *Pattern) SubexpNames() []string {
 	var res []string

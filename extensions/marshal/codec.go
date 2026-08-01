@@ -181,9 +181,9 @@ func (codecLookup) LookupProvider(name string) (provider.Detail, bool) {
 	if !ok || !c.Available() {
 		return provider.Detail{}, false
 	}
-	defaults := map[string]string{
-		"disallow_unknown_fields": "false",
-		"indent_size":             "2",
+	defaults := map[string]any{
+		"disallow_unknown_fields": false,
+		"indent_size":             2,
 		"indent_style":            "space",
 	}
 	if c.supportsEscapeHTML() {
