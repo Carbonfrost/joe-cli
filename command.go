@@ -237,10 +237,17 @@ func HandleCommandNotFound(fn func(*Context, error) (*Command, error)) CommandNo
 //
 //   - cloud exec tail -f /var/output/log
 //   - cloud tail -f /var/output/log
+//
+// If the command named by the ImplicitCommand also does not exist, the original error
+// is returned.
 func ImplicitCommand(name string) CommandNotFoundHandler {
-	return HandleCommandNotFound(func(c *Context, _ error) (*Command, error) {
+	return HandleCommandNotFound(func(c *Context, originalErr error) (*Command, error) {
 		invoke := append([]string{name}, c.Args()...)
 		err := subcommandCore(c, invoke, nil)
+		if pe, ok := err.(*ParseError); ok && pe.Code == CommandNotFound {
+			// The name is itself unknown, return the original error
+			return nil, originalErr
+		}
 		if err != nil {
 			return nil, err
 		}

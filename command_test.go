@@ -972,4 +972,21 @@ var _ = Describe("ImplicitCommand", func() {
 		Expect(app.Commands[0].Args[1].Value).To(PointTo(Equal([]string{"/var/output/logs"})))
 		Expect(app.Commands[0].Flags[0].Value).To(PointTo(BeTrue()))
 	})
+
+	It("returns original error on missing implicit command", func() {
+		act := new(joeclifakes.FakeAction)
+		app := cli.App{
+			Commands: []*cli.Command{
+				{
+					Name:   "cmd",
+					Action: act,
+				},
+			},
+			Uses: cli.ImplicitCommand("missing"), // doesn't exist either
+		}
+
+		args, _ := cli.Split("app tail /var/output/logs -f")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(MatchError(`"tail" is not a command`))
+	})
 })
