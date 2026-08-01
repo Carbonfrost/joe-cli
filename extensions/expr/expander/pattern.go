@@ -399,6 +399,48 @@ func (p *Pattern) String() string {
 	return sb.String()
 }
 
+// SubexpNames returns the names of the sub-expressions in the Pattern
+// which appear in the variable placeholders. Names are listed in the order
+// they first occur, and each name is listed once no matter how many
+// placeholders use it. Within [SyntaxRecursive], this includes the names
+// of the recursively named fallbacks. The whitespace expressions 
+// space, tab, newline, and empty are not variable placeholders and are 
+// therefore omitted.
+func (p *Pattern) SubexpNames() []string {
+	var res []string
+	seen := map[string]bool{}
+	for _, e := range p.exprs {
+		res = appendSubexpNames(res, seen, e)
+	}
+	return res
+}
+
+func appendSubexpNames(res []string, seen map[string]bool, e expr) []string {
+	var (
+		name     string
+		fallback expr
+	)
+
+	switch exp := e.(type) {
+	case *formatExpr:
+		name = exp.name
+	case *fallbackExpr:
+		name = exp.name
+		fallback = exp.fallback
+	default:
+		return res
+	}
+
+	if !seen[name] {
+		seen[name] = true
+		res = append(res, name)
+	}
+	if fallback != nil {
+		res = appendSubexpNames(res, seen, fallback)
+	}
+	return res
+}
+
 func (p *Pattern) withMeta(name string, pattern *Pattern) *Pattern {
 	newExprs := make([]expr, 0, len(p.exprs))
 	for _, e := range p.exprs {

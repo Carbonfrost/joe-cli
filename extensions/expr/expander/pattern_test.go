@@ -191,6 +191,46 @@ var _ = Describe("String", func() {
 	})
 })
 
+var _ = Describe("SubexpNames", func() {
+
+	Describe("SyntaxDefault", func() {
+
+		DescribeTable("examples", func(pattern string, expected []string) {
+			pat := expander.Compile(pattern, expander.SyntaxDefault)
+			Expect(pat.SubexpNames()).To(Equal(expected))
+		},
+			Entry("literal only", "hello", nil),
+			Entry("nominal", "hello %(hello)", []string{"hello"}),
+			Entry("multiple", "%(hello) %(goodbye)", []string{"hello", "goodbye"}),
+			Entry("format specifier excluded", "%(num:X)", []string{"num"}),
+			Entry("repeated name listed once", "%(hello) %(hello)", []string{"hello"}),
+			Entry("whitespace expressions excluded", "%(hello)%(space)%(newline)%(tab)%(empty)", []string{"hello"}),
+			Entry("untruncated expansion", "hello %(p", nil),
+		)
+	})
+
+	Describe("SyntaxRecursive", func() {
+
+		DescribeTable("examples", func(pattern string, expected []string) {
+			pat := expander.Compile(pattern, expander.SyntaxRecursive)
+			Expect(pat.SubexpNames()).To(Equal(expected))
+		},
+			Entry("nominal", "hello %(hello)", []string{"hello"}),
+			Entry("fallback name included", "%(visual:%(editor))", []string{"visual", "editor"}),
+			Entry("cascading fallback names included", "%(a:%(b:%(c)))", []string{"a", "b", "c"}),
+			Entry("literal fallback excluded", "%(visual:vi)", []string{"visual"}),
+			Entry("format specifier excluded", "%(num:%X)", []string{"num"}),
+			Entry("repeated name listed once", "%(a:%(a))", []string{"a"}),
+		)
+	})
+
+	It("includes names introduced by WithMeta", func() {
+		meta := expander.Compile("%(a) %(b)")
+		pat := expander.Compile("%(meta) %(c)", expander.WithMeta("meta", meta))
+		Expect(pat.SubexpNames()).To(Equal([]string{"a", "b", "c"}))
+	})
+})
+
 var _ = Describe("Env", func() {
 
 	os.Setenv("ENV_VAR", "an env var")
