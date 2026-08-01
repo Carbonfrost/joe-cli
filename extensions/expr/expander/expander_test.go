@@ -73,8 +73,37 @@ var _ = Describe("Reflect", func() {
 		Entry("nil", nil, "%(unknown)", Equal("<nil>")),
 		Entry("non-existing", struct{ A string }{"L"}, "%(unknown)", Equal("<nil>")),
 		Entry("unexported are not expanded", struct{ a string }{"L"}, "%(a)", Equal("<nil>")),
+
+		Entry("method", greeter{}, "%(greeting)", Equal("hello")),
+		Entry("method, case insensitive", greeter{}, "%(Greeting)", Equal("hello")),
+		Entry("method on pointer receiver", &greeter{}, "%(shout)", Equal("HELLO")),
+		Entry("method on pointer receiver is not addressable",
+			greeter{}, "%(shout)", Equal("<nil>")),
+		Entry("method with arguments is not expanded", greeter{}, "%(repeat)", Equal("<nil>")),
+		Entry("method with multiple results is not expanded", greeter{}, "%(result)", Equal("<nil>")),
+		Entry("field takes precedence over method", named{Name: "field"}, "%(name)", Equal("field")),
+		Entry("time", time.Date(2026, 2, 1, 20, 30, 33, 300, time.UTC), "%(year)-%(month)",
+			Equal("2026-February")),
+		Entry("nil pointer", (*greeter)(nil), "%(greeting)", Equal("<nil>")),
+		Entry("non-struct", "text", "%(unknown)", Equal("<nil>")),
 	)
 })
+
+type greeter struct{}
+
+func (greeter) Greeting() string { return "hello" }
+
+func (*greeter) Shout() string { return "HELLO" }
+
+func (greeter) Repeat(n int) string { return fmt.Sprint(n) }
+
+func (greeter) Result() (string, error) { return "", nil }
+
+type named struct {
+	Name string
+}
+
+func (named) NAME() string { return "method" }
 
 var _ = Describe("Runtime", func() {
 

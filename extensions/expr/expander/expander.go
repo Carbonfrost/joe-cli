@@ -240,7 +240,12 @@ func Unknown() Interface {
 }
 
 // Reflect provides a simple expander around a given value using
-// reflection
+// reflection.  Keys resolve, case-insensitively, to the exported fields of the
+// value (or of the struct it points to) and to its exported methods which take
+// no arguments and return a single value.  Methods make it possible to expand
+// values which don't expose their state as fields.  For example, the key
+// "year" applied to a [time.Time] resolves to its Year method.  Fields take
+// precedence over methods, and any other key resolves to nil.
 func Reflect(v any) Interface {
 	if v == nil {
 		return Nil
@@ -255,25 +260,63 @@ type reflectExpander struct {
 }
 
 func (r *reflectExpander) Expand(k string) any {
+	if res, ok := r.field(k); ok {
+		return res
+	}
+	if res, ok := r.method(k); ok {
+		return res
+	}
+	return nil
+}
+
+func (r *reflectExpander) field(k string) (any, bool) {
 	v := r.v
 	if v.Kind() == reflect.Pointer {
+		if v.IsNil() {
+			return nil, false
+		}
 		v = v.Elem()
 	}
+	if v.Kind() != reflect.Struct {
+		return nil, false
+	}
+
 	f, ok := v.Type().FieldByNameFunc(func(name string) bool {
 		return strings.EqualFold(name, k)
 	})
 
-	if !ok {
-		return nil
-	}
-	if !f.IsExported() {
-		return nil
+	if !ok || !f.IsExported() {
+		return nil, false
 	}
 	field := v.FieldByIndex(f.Index)
 	if !field.IsValid() {
-		return nil
+		return nil, false
 	}
-	return field.Interface()
+	return field.Interface(), true
+}
+
+// method resolves the key to an exported method which takes no arguments and
+// returns a single value.  The method set of the value as it was given is used,
+// which means that methods with pointer receivers only resolve when the value
+// is itself a pointer.
+func (r *reflectExpander) method(k string) (any, bool) {
+	if r.v.Kind() == reflect.Pointer && r.v.IsNil() {
+		return nil, false
+	}
+
+	t := r.v.Type()
+	for i := range t.NumMethod() {
+		if !strings.EqualFold(t.Method(i).Name, k) {
+			continue
+		}
+
+		m := r.v.Method(i)
+		if m.Type().NumIn() != 0 || m.Type().NumOut() != 1 {
+			continue
+		}
+		return m.Call(nil)[0].Interface(), true
+	}
+	return nil, false
 }
 
 // ErrUnknownToken is an error reporting a key that no expander recognized.
