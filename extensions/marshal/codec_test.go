@@ -7,10 +7,12 @@ package marshal_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"slices"
 	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal/codec"
 	_ "github.com/Carbonfrost/joe-cli/extensions/marshal/codec/toml"
@@ -240,3 +242,113 @@ var _ = Describe("Dump", func() {
 	})
 
 })
+
+var _ = Describe("Dumper", func() {
+
+	It("prints the value as JSON when no context provider", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Action: func(c *cli.Context) error {
+				return marshal.Dumper{}.Evaluate(c, map[string]string{"F": "O"}, func(any) error {
+					return nil
+				})
+			},
+		}
+
+		Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(capture.String()).To(MatchJSON(`{"F": "O"}`))
+	})
+
+	It("prints the value using the codec configured in the context", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Uses:   marshal.NewCodecProvider(),
+			Action: func(c *cli.Context) error {
+				return marshal.Dumper{}.Evaluate(c, map[string]string{"name": "J"}, func(any) error {
+					return nil
+				})
+			},
+		}
+
+		args, _ := cli.Split("app --output=toml")
+		Expect(app.RunContext(context.Background(), args)).NotTo(HaveOccurred())
+		Expect(capture.String()).To(Equal("name = 'J'\n\n"))
+	})
+
+	It("always yields the value", func() {
+		var capture bytes.Buffer
+		var yielded []any
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Action: func(c *cli.Context) error {
+				return marshal.Dumper{}.Evaluate(c, "hello", func(v any) error {
+					yielded = append(yielded, v)
+					return nil
+				})
+			},
+		}
+
+		Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(yielded).To(Equal([]any{"hello"}))
+	})
+
+	It("propagates the error from the yielder", func() {
+		var capture bytes.Buffer
+		expected := errors.New("stop")
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Action: func(c *cli.Context) error {
+				return marshal.Dumper{}.Evaluate(c, "hello", func(any) error {
+					return expected
+				})
+			},
+		}
+
+		Expect(app.RunContext(context.Background(), []string{"app"})).To(MatchError(expected))
+	})
+
+	It("dumps and yields each value within an expression", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Args: []*cli.Arg{
+				{
+					Name: "start",
+					NArg: -2,
+				},
+				{
+					Name: "e",
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name:     "print",
+								Evaluate: marshal.Dumper{},
+							},
+						},
+					},
+				},
+			},
+			Action: func(c *cli.Context) error {
+				items := make([]any, 0)
+				for _, v := range c.List("start") {
+					items = append(items, v)
+				}
+				return expr.FromContext(c, "e").Evaluate(c, items...)
+			},
+		}
+
+		args, _ := cli.Split("app a b -print")
+		Expect(app.RunContext(context.Background(), args)).NotTo(HaveOccurred())
+		Expect(capture.String()).To(Equal("\"a\"\n\n\"b\"\n\n"))
+	})
+
+})
+
+var _ expr.Evaluator = marshal.Dumper{}

@@ -268,6 +268,23 @@ func DumpContext(ctx context.Context, v ...any) error {
 	return nil
 }
 
+// Dumper provides an expr.Evaluator which prints each value it is given using
+// the codec configured within the context.  Printing is done by DumpContext,
+// which means that the codec and writer are obtained from the context.  The
+// value is always yielded to the rest of the expression pipeline, so a Dumper
+// can be introduced anywhere within an expression to observe the values which
+// flow through it.  The zero value is ready to use.
+type Dumper struct{}
+
+// Evaluate implements the Evaluator interface from the expr extension by
+// dumping v and then yielding it.
+func (Dumper) Evaluate(ctx context.Context, v any, yield func(any) error) error {
+	if err := DumpContext(ctx, v); err != nil {
+		return err
+	}
+	return yield(v)
+}
+
 func codecProviderFlagsAndArgs() cli.Action {
 	return cli.AddFlags([]*cli.Flag{
 		{Uses: SetOutput()},
