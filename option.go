@@ -14,14 +14,16 @@ import (
 )
 
 // Option provides a built-in convenience configuration for flags, args, and commands.
-type Option int
+type Option uint64
 
+// Feature provides the intrinsic integral types which can be used in FeatureMap.
+// This is a type constraint not an interface
 type Feature interface {
-	~int
+	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr | ~int | ~int8 | ~int16 | ~int32 | ~int64
 }
 
 // FeatureMap provides a map from a feature identifier to an action.  A common idiom within
-// joe-cli is to define a bitmask representing
+// joe-cli is to define a bitmask representing features that apply in an extension
 type FeatureMap[T Feature] map[T]Action
 
 type internalFlags uint32

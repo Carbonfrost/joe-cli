@@ -26,9 +26,14 @@ type ContextFilter interface {
 // FilterModes enumerates common context filters.  These are bitwise-combinable.
 type FilterModes int
 
-type bitSet[T ~int, V any] struct {
-	keys []uint
-	m    map[T]V
+type bitSet[K Feature, V any] struct {
+	entries []bitSetEntry[K]
+	m       map[K]V
+}
+
+type bitSetEntry[K Feature] struct {
+	key    K
+	weight int
 }
 
 type (
@@ -289,27 +294,31 @@ func castUniverseFilter[TFilter interface {
 	return TFilter(f)
 }
 
-func decompose[T ~int, V any](m map[T]V) *bitSet[T, V] {
+func decompose[K Feature, V any](m map[K]V) *bitSet[K, V] {
 	var i int
 
-	keys := make([]uint, len(m))
+	entries := make([]bitSetEntry[K], len(m))
 	for k := range m {
-		keys[i] = uint(k)
+		entries[i] = bitSetEntry[K]{
+			key:    k,
+			weight: bits.OnesCount64(uint64(k)),
+		}
 		i++
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		if bits.OnesCount(keys[i]) > bits.OnesCount(keys[j]) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].weight > entries[j].weight {
 			return true
 		}
-		return keys[i] > keys[j]
+		return entries[i].key > entries[j].key
 	})
-	return &bitSet[T, V]{keys: keys, m: m}
+	return &bitSet[K, V]{entries: entries, m: m}
 }
 
 func (b *bitSet[T, V]) items(values T) []V {
-	options := uint(values)
+	options := values
 	var parts []V
-	for _, current := range b.keys {
+	for _, e := range b.entries {
+		current := e.key
 		if options&current == current {
 			action := b.m[T(current)]
 			parts = append(parts, action)
