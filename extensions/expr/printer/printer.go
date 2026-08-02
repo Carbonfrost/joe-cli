@@ -389,6 +389,13 @@ func (p *Printer) Close() error {
 	return errors.Join(errs...)
 }
 
+// File obtains the file output writer by name. It will be opened on first
+// request and cached for further use so that a pipeline of expressions
+// will append to the file.
+func (p *Printer) File(ctx context.Context, name string) (io.Writer, error) {
+	return p.file(ctx, name)
+}
+
 func (p *Printer) file(ctx context.Context, name string) (io.Writer, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
