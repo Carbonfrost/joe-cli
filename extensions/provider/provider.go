@@ -510,6 +510,14 @@ func untypedMap(m map[string]string) map[string]any {
 
 func optsMap(opts any) map[string]any {
 	r := map[string]any{}
+
+	// If the input map has stringly typed values, then values can be deferred into
+	// the untyped map where they will be parsed later. (This isn't built-in to
+	// mapstructure decoding)
+	if ss, ok := opts.(map[string]string); ok {
+		return untypedMap(ss)
+	}
+
 	_ = structure.Decode(opts, &r)
 	return r
 }

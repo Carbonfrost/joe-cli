@@ -157,12 +157,14 @@ func tryFromContext(ctx context.Context) (*CodecProvider, error) {
 	return zero, fmt.Errorf("expected %s value not present in context", contextProviderKey)
 }
 
+const codecRegistryName = "codec"
+
 // CodecRegistry provides a provider.Registry that enumerates the supported codecs.
 // Each codec is instanced from a factory that takes Options as its argument, and
 // only codecs which have been registered are listed.  Use ListCodecs to expose the
 // registry via a flag.
 var CodecRegistry = &provider.Registry{
-	Name:      "codec",
+	Name:      codecRegistryName,
 	Providers: codecLookup{},
 }
 
@@ -299,36 +301,20 @@ func SetOutput(v ...Codec) cli.Action {
 		cli.Prototype{
 			Name: "output",
 			Value: &provider.Value{
-				Registry: "codecs",
+				Registry: codecRegistryName,
 				Args:     structure.Of(&codec.Options{}),
 			},
 		},
-		bind.Call3(
-			(*CodecProvider).setHelper,
+		bind.Call2(
+			(*CodecProvider).setCodecHelper,
 			bind.FromContext(CodecProviderFromContext),
-			provider.BindValue().Name(),
-			bind.Seq(provider.BindValue().Args(), func(s any) (codec.Options, error) {
-				opts := s.(*structure.Value).V.(*codec.Options)
-				if opts == nil {
-					return codec.Options{}, nil
-				}
-				return *opts, nil
-			}),
+			provider.Bind[codec.Interface](),
 		),
 	)
 }
 
-func (c *CodecProvider) setHelper(name string, opts codec.Options) error {
-	n, ok := codecByName(name)
-	if !ok {
-		return fmt.Errorf("")
-	}
-
-	res, err := n.New(opts)
-	if err != nil {
-		return err
-	}
-	c.SetCodec(res)
+func (c *CodecProvider) setCodecHelper(in codec.Interface) error {
+	c.SetCodec(in)
 	return nil
 }
 

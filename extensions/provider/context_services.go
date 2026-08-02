@@ -54,7 +54,7 @@ func (c *ContextServices) LookupRegistry(name any) (*Registry, bool) {
 }
 
 // New retrieves the given provider and invokes it
-func (c *ContextServices) New(registry any, provider string, args map[string]string) (any, error) {
+func (c *ContextServices) New(registry any, provider string, args any) (any, error) {
 	r, ok := c.LookupRegistry(registry)
 	if !ok {
 		return nil, fmt.Errorf("registry not found: %q", registryName(registry))

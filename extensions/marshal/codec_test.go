@@ -143,6 +143,21 @@ var _ = Describe("CodecRegistry", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
+
+	It("creates a codec from Options", func() {
+		co, err := marshal.CodecRegistry.New("json", codec.Options{
+			IndentSize: 4,
+			EscapeHTML: true,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		c := codec.Codec{co.(codec.Interface)}
+		actual, _ := c.Marshal(struct {
+			F string
+		}{F: "<o></o>"})
+		Expect(string(actual)).To(MatchJSON(`{"F": "\u003co\u003e\u003c/o\u003e"}`))
+		Expect(string(actual)).To(MatchRegexp(`(?m)^    "F"`)) // indented
+	})
 })
 
 var _ = Describe("ListCodecs", func() {

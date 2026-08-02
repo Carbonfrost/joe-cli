@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
@@ -52,11 +51,7 @@ func (v *binder[T]) Bind(ctx context.Context) (T, error) {
 	}
 
 	c := cli.FromContext(ctx)
-	reg, ok := Services(c).LookupRegistry(c.Target())
-	if !ok {
-		panic(fmt.Sprintf("registry not found %q", registryName(c.Target())))
-	}
-	result, err := reg.New(value.Name, value.rawArgs)
+	result, err := Services(c).New(c.Target(), value.Name, value.Args)
 	if err != nil {
 		return zero, err
 	}
