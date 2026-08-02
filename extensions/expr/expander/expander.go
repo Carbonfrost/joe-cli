@@ -134,40 +134,69 @@ func Runtime() Interface {
 // Time obtains an expander for the specified time
 func Time(t time.Time) Interface {
 	return Func(func(k string) any {
+		return expandTime(t, k)
+	})
+}
+
+func expandTime(t time.Time, k string) any {
+	{
 		switch k {
 		case "timestamp", "unix":
 			return t.Unix()
 		case "timestampNanos", "timestampNano", "unixNanos", "unixNano":
 			return t.UnixNano()
-		case "year":
+		case "year", "date.year":
 			return t.Year()
 		case "yearDay":
 			return t.YearDay()
-		case "month":
+		case "month", "date.month":
 			return t.Month()
-		case "hour12":
+		case "hour12", "clock.hour":
 			return (t.Hour() + 12) % 12
 		case "hour":
 			return t.Hour()
-		case "day":
+		case "day", "date.day":
 			return t.Day()
-		case "minute":
+		case "minute", "clock.minute":
 			return t.Minute()
-		case "second":
+		case "second", "clock.second":
 			return t.Second()
 		case "nano", "nanosecond":
 			return t.Nanosecond()
 		case "weekday":
 			return t.Weekday()
-		case "zone":
+		case "isoWeek", "isoWeek.year", "isoWeek.week":
+			year, week := t.ISOWeek()
+			switch _, f, _ := strings.Cut(k, "."); f {
+			case "year":
+				return year
+			case "week":
+				return week
+			}
+			return fmt.Sprintf("%dW%d", year, week)
+		case "clock":
+			h, m, s := t.Clock()
+			return fmt.Sprintf("%d:%d:%d", h, m, s)
+		case "date":
+			y, m, d := t.Date()
+			return fmt.Sprintf("%d-%02d-%02d", y, m, d)
+		case "zone", "zone.name":
 			z, _ := t.Zone()
 			return z
-		case "zoneOffset":
+		case "location":
+			z := t.Location()
+			return z.String()
+		case "zoneOffset", "zone.offset":
 			_, offset := t.Zone()
 			return offset
+		case "utc":
+			return t.UTC()
 		}
-		return nil
-	})
+		if field, ok := strings.CutPrefix(k, "utc."); ok {
+			return expandTime(t.UTC(), field)
+		}
+	}
+	return nil
 }
 
 // Map provides an expander backed by a map, resolving keys directly to

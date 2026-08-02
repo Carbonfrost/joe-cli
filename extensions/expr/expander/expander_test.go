@@ -147,6 +147,42 @@ var _ = Describe("Time", func() {
 		Entry("YearDay", "%(time.yearDay)", Equal("32")),
 		Entry("Zone", "%(time.zone)", Equal("UTC")),
 		Entry("ZoneOffset", "%(time.zoneOffset)", Equal("0")),
+
+		Entry("ISOWeek", "%(time.isoWeek)", Equal("2026W5")),
+		Entry("ISOWeek", "%(time.isoWeek.week)", Equal("5")),
+		Entry("ISOWeek year", "%(time.isoWeek.year)", Equal("2026")),
+
+		Entry("Clock", "%(time.clock)", Equal("20:30:33")),
+		Entry("Clock hour", "%(time.clock.hour)", Equal("8")),
+		Entry("Clock minute", "%(time.clock.minute)", Equal("30")),
+		Entry("Clock second", "%(time.clock.second)", Equal("33")),
+
+		Entry("Date", "%(time.date)", Equal("2026-02-01")),
+		Entry("Date year", "%(time.date.year)", Equal("2026")),
+		Entry("Date month", "%(time.date.month)", Equal("February")),
+		Entry("Date day", "%(time.date.day)", Equal("1")),
+	)
+
+	DescribeTable("zone offset examples", func(text string, expected types.GomegaMatcher) {
+		e := expander.Compile(text)
+
+		where, err := time.LoadLocation("America/Los_Angeles")
+		if err != nil {
+			panic(err)
+		}
+		expander := expander.Prefix("time",
+			expander.Time(time.Date(2026, 2, 1, 20, 30, 33, 300, where)),
+		)
+		Expect(e.Expand(expander)).To(expected)
+	},
+		Entry("UTC conversion", "%(time.utc)", Equal("2026-02-02T04:30:33Z")),
+		Entry("UTC conversion hour", "%(time.utc.hour)", Equal("4")),
+
+		Entry("Zone", "%(time.zone)", Equal("PST")),
+		Entry("Zone name", "%(time.zone.name)", Equal("PST")),
+		Entry("Zone offset", "%(time.zone.offset)", Equal("-28800")),
+
+		Entry("Location", "%(time.location)", Equal("America/Los_Angeles")),
 	)
 })
 
