@@ -93,6 +93,13 @@ var _ = Describe("Printer", func() {
 			Entry("printf with literal", "-printf '%(name)=%(size)%(newline)'", item{Name: "f", Size: 2}, "f=2\n"),
 			Entry("printf expands time values", "-printf %(year)-%(month)",
 				time.Date(2026, time.July, 30, 0, 0, 0, 0, time.UTC), "2026-July"),
+			Entry("field", "-field name", item{Name: "f", Size: 2}, "f"),
+			Entry("field separates by tab", "-field name,size", item{Name: "f", Size: 2}, "f\t2"),
+			Entry("field alias", "-F name,size", item{Name: "f", Size: 2}, "f\t2"),
+			Entry("field expands an unknown name as printf does", "-field unknown",
+				item{Name: "f"}, "<nil>"),
+			Entry("field adjoining", "-F name -F size", item{Name: "f", Size: 2}, "f\t2"),
+			Entry("fields non-adjoining", "-F name -print -F size", item{Name: "f", Size: 2}, "ff\n2"),
 		)
 
 		DescribeTable("file examples", func(args string, value any, expected string) {
@@ -150,6 +157,7 @@ var _ = Describe("Printer", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(synopsesOf(app)).To(Equal([]string{
+				"-F, -field NAMES",
 				"-fprint FILE",
 				"-fprint0 FILE",
 				"-fprintf FILE PATTERN",
@@ -251,6 +259,25 @@ var _ = Describe("Printer", func() {
 
 			Expect(run(app, "-printf '${name} %(name)'")).NotTo(HaveOccurred())
 			Expect(stdout.String()).To(Equal("f %(name)"))
+		})
+
+		It("WithDelimiter controls how fields are separated", func() {
+			app := newApp(printer.New(printer.WithDelimiter("/")), item{Name: "f", Size: 2})
+
+			Expect(run(app, "-field name,size")).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal("f/2"))
+		})
+
+		It("WithPatternOptions leaves the fields of -field alone", func() {
+			// The -field operator builds its pattern using the default
+			// delimiters, so changing the pattern delimiters doesn't affect it
+			app := newApp(
+				printer.New(printer.WithPatternOptions(expander.WithDelimiters("${", "}"))),
+				item{Name: "f", Size: 2},
+			)
+
+			Expect(run(app, "-field name,size")).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal("f\t2"))
 		})
 
 		It("WithExpanderFactory controls how values are expanded", func() {
@@ -380,6 +407,25 @@ var _ = Describe("Printer", func() {
 			})
 		})
 
+		Describe("Delimiter", func() {
+
+			It("defaults to a tab", func() {
+				Expect(printer.New().Delimiter()).To(Equal("\t"))
+				Expect(printer.DefaultDelimiter).To(Equal("\t"))
+			})
+
+			It("distinguishes the empty delimiter from the default", func() {
+				p := printer.New(printer.WithDelimiter(""))
+				Expect(p.Delimiter()).To(BeEmpty())
+			})
+
+			It("uses the delimiter which was most recently set", func() {
+				p := printer.New(printer.WithDelimiter("/"))
+				p.SetDelimiter("-")
+				Expect(p.Delimiter()).To(Equal("-"))
+			})
+		})
+
 		Describe("Expander", func() {
 
 			DescribeTable("examples", func(value any, key string, expected types.GomegaMatcher) {
@@ -427,6 +473,75 @@ var _ = Describe("Printer", func() {
 				Expect(run(app, "-fprint out.txt")).NotTo(HaveOccurred())
 				Expect(contentsOf("out.txt")).To(Equal("other\n"))
 			})
+		})
+	})
+
+	Describe("SetDelimiter", func() {
+
+		// newDelimiterApp is the app from the package documentation: a flag
+		// which lets the user choose the delimiter and an expression which
+		// evaluates the time
+		var newDelimiterApp = func(p *printer.Printer, delimiteropt ...string) *cli.App {
+			stdout = new(bytes.Buffer)
+			return &cli.App{
+				Name:   "app",
+				Uses:   p,
+				Stdout: stdout,
+				Flags: []*cli.Flag{
+					{
+						Name: "delimiter",
+						Uses: printer.SetDelimiter(delimiteropt...),
+					},
+				},
+				Args: []*cli.Arg{
+					{
+						Name: "path",
+						NArg: 1,
+					},
+					{
+						Name:  "expression",
+						Value: new(expr.Expression),
+					},
+				},
+				Action: func(c *cli.Context) error {
+					// The Go time format reference time
+					now := time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC)
+					return expr.FromContext(c, "expression").Evaluate(c, now)
+				},
+			}
+		}
+
+		It("sets the delimiter from the flag", func() {
+			app := newDelimiterApp(printer.New())
+			arguments, _ := cli.Split("app --delimiter=/ . -F year,month,day")
+
+			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal("2006/January/2"))
+		})
+
+		It("sets up the flag with a string value", func() {
+			app := newDelimiterApp(printer.New())
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(app.Flags[0].Value).To(BeAssignableToTypeOf(cli.String()))
+			Expect(app.Flags[0].Synopsis()).To(Equal("-d, --delimiter=STRING"))
+		})
+
+		It("uses the delimiter which was specified instead of the flag value", func() {
+			app := newDelimiterApp(printer.New(), "-")
+			arguments, _ := cli.Split("app --delimiter=/ . -F year,month")
+
+			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal("2006-January"))
+		})
+
+		It("reports an error when the printer is not in the context", func() {
+			app := newDelimiterApp(printer.New(printer.WithAction(nil)))
+			arguments, _ := cli.Split("app --delimiter=/ . ")
+
+			Expect(app.RunContext(context.Background(), arguments)).To(
+				MatchError(ContainSubstring("not present in context")))
 		})
 	})
 

@@ -13,6 +13,11 @@
 //	-print0
 //	-printf PATTERN
 //
+// together with the operator -field (aliased as -F), which names the fields to
+// print rather than spelling out a pattern:
+//
+//	-field NAMES
+//
 // Each of these operators always yields the value it was given, which makes it
 // possible to compose them with the rest of the pipeline.
 //
@@ -43,10 +48,17 @@
 //	app . -fprintf test.txt %(year)/%(month)
 //
 // writes the year and month of the value which was pushed into the pipeline to
-// the file test.txt.  How the value is converted into the expander which
-// resolves the names within a pattern is controlled by
-// [WithExpanderFactory]; how patterns themselves are parsed is controlled
-// by [WithPatternOptions].  The operators which don't take a pattern print the
+// the file test.txt.  Invoking it as
+//
+//	app . -field year,month
+//
+// prints the same two fields to standard output, separated by the delimiter.
+// The delimiter is a tab unless [WithDelimiter] sets another one, and
+// [SetDelimiter] provides the action which lets the user choose it.
+//
+// How the value is converted into the expander which resolves the names within
+// a pattern is controlled by [WithExpanderFactory]; how patterns themselves are
+// parsed is controlled by [WithPatternOptions]. Thxe operators which don't take a pattern print the
 // value using the conversion which [WithFormatter] controls, and whether they
 // imply a newline is controlled by [WithNewline], which the flag that
 // [SetNoNewline] defines also provides.
@@ -60,6 +72,7 @@ import (
 	"io/fs"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 
 	cli "github.com/Carbonfrost/joe-cli"
@@ -78,6 +91,10 @@ const (
 
 	newline = "\n"
 )
+
+// DefaultDelimiter is the delimiter which the -field operator uses to separate
+// the fields it prints when the printer has no other delimiter set.
+const DefaultDelimiter = "\t"
 
 var (
 	pkgPath = reflect.TypeFor[Printer]().PkgPath()
@@ -137,10 +154,19 @@ type Printer struct {
 	// printer implies the newline, which is the default
 	noNewline bool
 
+	// delimiter is nil until it is set, which distinguishes the default
+	// delimiter from one which was deliberately set to the empty string
+	delimiter *string
+
+	// didPrintField is true right after a field is printed so we can detect
+	// adjoining fields
+	didPrintField bool
+
 	mu       sync.Mutex
 	writers  map[string]io.Writer
 	open     []fs.File
 	patterns map[string]*expander.Pattern
+	fields   map[string]*expander.Pattern
 }
 
 // Option provides an option for configuring the printer.  An option is also an
@@ -222,6 +248,16 @@ func WithPatternOptions(opts ...expander.Option) Option {
 	})
 }
 
+// WithDelimiter sets the delimiter which the -field operator uses to separate
+// the fields it prints.  When unset, [DefaultDelimiter] is used.  The
+// delimiter can also be set while the app runs, which is what [SetDelimiter]
+// does.
+func WithDelimiter(delimiter string) Option {
+	return optionFunc(func(p *Printer) {
+		p.SetDelimiter(delimiter)
+	})
+}
+
 // WithExpanderFactory sets how a value from the expression evaluation pipeline
 // is converted into the expander which is used to expand patterns.  When
 // unset, [DefaultExpanderFactory] is used.
@@ -283,6 +319,27 @@ func ContextValue(v *Printer) cli.Action {
 	return cli.WithContextValue(contextPrinterKey, v)
 }
 
+// SetDelimiter returns an action that sets the delimiter which the -field
+// operator uses to separate the fields it prints.  If specified on a flag or
+// argument, it provides the action for a string value that names the
+// delimiter.  The initializer sets *string if the value is unset.  If the
+// argument delimiteropt is specified, that value is used; otherwise, it is
+// obtained from the context.  The printer must be registered in the context,
+// which is done by adding it to a pipeline (see [New]).
+//
+//	&cli.Flag{Name: "delimiter", Uses: printer.SetDelimiter()}
+func SetDelimiter(delimiteropt ...string) cli.Action {
+	return cli.Pipeline(
+		cli.Prototype{
+			Name:     "delimiter",
+			Value:    cli.String(),
+			HelpText: "Sets the delimiter which separates printed fields",
+			Uses:     cli.OptionalAlias("d"),
+		},
+		bind.Call2(setDelimiter, bind.Context(), bind.Exact(delimiteropt...)),
+	)
+}
+
 // FromContext retrieves the printer from the context.  This panics if the
 // printer has not been registered, which is done by adding it to a pipeline
 // (see [New]) or by using [ContextValue].
@@ -302,8 +359,8 @@ func tryFromContext(ctx context.Context) (*Printer, error) {
 }
 
 // AddExprs provides an action which registers each of the expression operators
-// which the printer supports: -fprint, -fprint0, -fprintf, -print, -print0,
-// and -printf.
+// which the printer supports: -field, -fprint, -fprint0, -fprintf, -print,
+// -print0, and -printf.
 //
 // When this action is used within the Uses pipeline of the arg which defines
 // the expression, the operators are added to it directly.  Otherwise it adds
@@ -318,6 +375,15 @@ func AddExprs() cli.Action {
 			cli.ContextFilterFunc(definesExpression),
 			addExprs(),
 		))
+	})
+}
+
+// Field provides an evaluator which prints the named fields of the value from
+// the expression evaluation pipeline to standard output, separated by the
+// delimiter.
+func Field(names []string) expr.Evaluator {
+	return evaluator(func(ctx context.Context, p *Printer, v any) error {
+		return p.Field(ctx, names, v)
 	})
 }
 
@@ -369,6 +435,16 @@ func Fprintf(file string, pattern *expander.Pattern) expr.Evaluator {
 	})
 }
 
+// Field prints the named fields of the value to standard output.  It is
+// equivalent to [Printer.Printf] using the pattern which names each field in
+// order and separates them with the delimiter (see [Printer.Delimiter]); the
+// value is therefore expanded by the same expander that a pattern would use.
+func (p *Printer) Field(ctx context.Context, names []string, v any) error {
+	err := p.Printf(ctx, p.fieldPattern(names), v)
+	p.didPrintField = true
+	return err
+}
+
 // Print prints the value to standard output followed by a newline unless
 // [WithNewline] disabled it.
 func (p *Printer) Print(ctx context.Context, v any) error {
@@ -387,6 +463,7 @@ func (p *Printer) Print0(ctx context.Context, v any) error {
 func (p *Printer) Printf(ctx context.Context, pattern *expander.Pattern, v any) error {
 	stdout, stderr := p.stdio(ctx)
 	_, err := pattern.Fprint(expander.NewRenderer(stdout, stderr), p.Expander(ctx, v))
+	p.didPrintField = false
 	return err
 }
 
@@ -417,6 +494,7 @@ func (p *Printer) Fprintf(ctx context.Context, file string, pattern *expander.Pa
 		return err
 	}
 	_, err = pattern.Fprint(w, p.Expander(ctx, v))
+	p.didPrintField = false
 	return err
 }
 
@@ -454,6 +532,60 @@ func (p *Printer) Compile(pattern string) *expander.Pattern {
 		p.patterns = map[string]*expander.Pattern{}
 	}
 	p.patterns[pattern] = res
+	return res
+}
+
+// Delimiter obtains the delimiter which the -field operator uses to separate
+// the fields it prints, which is [DefaultDelimiter] unless it has been set.
+func (p *Printer) Delimiter() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.delimiter == nil {
+		return DefaultDelimiter
+	}
+	return *p.delimiter
+}
+
+// SetDelimiter sets the delimiter which the -field operator uses to separate
+// the fields it prints.  Unlike leaving it unset, setting it to the empty
+// string causes the fields to run together.
+func (p *Printer) SetDelimiter(delimiter string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.delimiter = &delimiter
+}
+
+func (p *Printer) fieldPattern(names []string) *expander.Pattern {
+	delimiter := p.Delimiter()
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Include delimiter in the cache key so that if delimiter changes, the
+	// correct pattern is used
+	key := strings.Join(append([]string{delimiter}, names...), nul)
+	if res, ok := p.fields[key]; ok {
+		return res
+	}
+
+	var text strings.Builder
+	for i, name := range names {
+		if i > 0 || p.didPrintField {
+			text.WriteString(delimiter)
+		}
+
+		// Use of the deafult delimiter allows this to work no matter what
+		// SetDelimiter uses
+		fmt.Fprintf(&text, "%%(%s)", name)
+	}
+
+	res := expander.Compile(text.String())
+	if p.fields == nil {
+		p.fields = map[string]*expander.Pattern{}
+	}
+	p.fields[key] = res
 	return res
 }
 
@@ -529,6 +661,7 @@ func (p *Printer) terminator() string {
 
 func (p *Printer) printValue(ctx context.Context, w io.Writer, v any, terminator string) error {
 	_, err := io.WriteString(w, p.Format(ctx, v)+terminator)
+	p.didPrintField = false
 	return err
 }
 
@@ -555,6 +688,14 @@ func addExprs() cli.Action {
 
 func newExprs() []*expr.Expr {
 	return []*expr.Expr{
+		{
+			Name:     "field",
+			Aliases:  []string{"F"},
+			HelpText: "Print the fields of the value to standard output",
+			Args:     []*cli.Arg{{Name: "names", Value: cli.List(), NArg: 1}},
+			Evaluate: expr.BindEvaluator(Field, bind.List("names")),
+			Uses:     tagged,
+		},
 		{
 			Name:     "fprint",
 			HelpText: "Print the value to FILE",
@@ -606,6 +747,15 @@ func bindPattern(name any) bind.Binder[*expander.Pattern] {
 		}
 		return p.Compile(text), nil
 	})
+}
+
+func setDelimiter(c *cli.Context, delimiter string) error {
+	p, err := tryFromContext(c)
+	if err != nil {
+		return err
+	}
+	p.SetDelimiter(delimiter)
+	return nil
 }
 
 func evaluator(fn func(context.Context, *Printer, any) error) expr.Evaluator {
