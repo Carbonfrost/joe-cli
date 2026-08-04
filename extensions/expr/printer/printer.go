@@ -46,7 +46,10 @@
 // the file test.txt.  How the value is converted into the expander which
 // resolves the names within a pattern is controlled by
 // [WithExpanderFactory]; how patterns themselves are parsed is controlled
-// by [WithPatternOptions].
+// by [WithPatternOptions].  The operators which don't take a pattern print the
+// value using the conversion which [WithFormatter] controls, and whether they
+// imply a newline is controlled by [WithNewline], which the flag that
+// [SetNoNewline] defines also provides.
 package printer
 
 import (
@@ -88,11 +91,21 @@ var (
 	// reflection expander adapter [expander.Reflect], which resolves keys to the
 	// fields and no-arg methods of the value.
 	DefaultExpanderFactory ExpanderFactory = defaultExpanderFactory
+
+	// DefaultFormatter provides the default conversion of a value from the
+	// expression evaluation pipeline into the text which the operators that
+	// don't take a pattern print.  The value is formatted with the default
+	// format of the fmt package, which honors [fmt.Stringer].
+	DefaultFormatter Formatter = defaultFormatter
 )
 
 // ExpanderFactory converts a value from the expression evaluation pipeline
 // into the expander which is used to expand patterns.
 type ExpanderFactory func(context.Context, any) expander.Interface
+
+// Formatter converts a value from the expression evaluation pipeline into the
+// text which is printed for it by the operators which don't take a pattern.
+type Formatter func(context.Context, any) string
 
 // SourceAnnotation gets the name and value of the annotation added to the Data
 // of all expression operators that are initialized from this package
@@ -117,7 +130,12 @@ type Printer struct {
 
 	patternOpts []expander.Option
 	factory     ExpanderFactory
+	formatter   Formatter
 	fs          cli.FS
+
+	// noNewline inverts the newline behavior so that the zero value of the
+	// printer implies the newline, which is the default
+	noNewline bool
 
 	mu       sync.Mutex
 	writers  map[string]io.Writer
@@ -125,8 +143,16 @@ type Printer struct {
 	patterns map[string]*expander.Pattern
 }
 
-// Option provides an option for configuring the printer.
-type Option func(*Printer)
+// Option provides an option for configuring the printer.  An option is also an
+// action, which applies it to the printer which is in the context, making it
+// possible to use an option from within a pipeline (see [SetNoNewline] for the
+// idiomatic use).
+type Option interface {
+	cli.Action
+	apply(*Printer)
+}
+
+type optionFunc func(*Printer)
 
 // New creates a printer which uses the default action.  The default action
 // registers the printer as a context service, adds each of the expression
@@ -142,8 +168,17 @@ func New(opts ...Option) *Printer {
 // Apply will apply the given options to the printer.
 func (p *Printer) Apply(opts ...Option) {
 	for _, o := range opts {
-		o(p)
+		o.apply(p)
 	}
+}
+
+func (f optionFunc) apply(p *Printer) {
+	f(p)
+}
+
+func (f optionFunc) Execute(c context.Context) error {
+	f(FromContext(c))
+	return nil
 }
 
 // Pipeline obtains the pipeline which sets up the printer.
@@ -159,22 +194,22 @@ func defaultOptions() []Option {
 
 // WithAction sets the action to use with the printer.
 func WithAction(a cli.Action) Option {
-	return func(p *Printer) {
+	return optionFunc(func(p *Printer) {
 		p.Action = cli.ActionOf(a) // allow action to be nil
-	}
+	})
 }
 
 // WithDefaultAction sets the action to the default, which sets the printer
 // into the context, adds the expression operators, and closes any files which
 // the printer opened.
 func WithDefaultAction() Option {
-	return func(p *Printer) {
+	return optionFunc(func(p *Printer) {
 		p.Action = cli.Pipeline(
 			ContextValue(p),
 			AddExprs(),
 			cli.After(cli.ActionOf(p.Close)),
 		)
-	}
+	})
 }
 
 // WithPatternOptions sets the options which are used when the patterns named
@@ -182,18 +217,38 @@ func WithDefaultAction() Option {
 // available options.  This option is additive; each call appends to the
 // options which are already present.
 func WithPatternOptions(opts ...expander.Option) Option {
-	return func(p *Printer) {
+	return optionFunc(func(p *Printer) {
 		p.patternOpts = append(p.patternOpts, opts...)
-	}
+	})
 }
 
 // WithExpanderFactory sets how a value from the expression evaluation pipeline
 // is converted into the expander which is used to expand patterns.  When
 // unset, [DefaultExpanderFactory] is used.
 func WithExpanderFactory(fn func(context.Context, any) expander.Interface) Option {
-	return func(p *Printer) {
+	return optionFunc(func(p *Printer) {
 		p.factory = ExpanderFactory(fn)
-	}
+	})
+}
+
+// WithFormatter sets how a value from the expression evaluation pipeline is
+// converted into the text which the operators that don't take a pattern print.
+// When unset, [DefaultFormatter] is used.
+func WithFormatter(fn func(context.Context, any) string) Option {
+	return optionFunc(func(p *Printer) {
+		p.formatter = Formatter(fn)
+	})
+}
+
+// WithNewline sets whether a newline is implied by the -print and -fprint
+// operators, which it is by default.  The other operators are unaffected: the
+// terminator of -print0 and -fprint0 is always the null character, and -printf
+// and -fprintf only print what their pattern specifies.  [SetNoNewline]
+// provides the flag which sets this option to false.
+func WithNewline(v bool) Option {
+	return optionFunc(func(p *Printer) {
+		p.noNewline = !v
+	})
 }
 
 // WithFS sets the file system which is used to interpret the file names given
@@ -201,9 +256,25 @@ func WithExpanderFactory(fn func(context.Context, any) expander.Interface) Optio
 // context is used, which also provides the convention that the file named with
 // a dash refers to standard output.
 func WithFS(f cli.FS) Option {
-	return func(p *Printer) {
+	return optionFunc(func(p *Printer) {
 		p.fs = f
-	}
+	})
+}
+
+// SetNoNewline sets up the --no-newline flag and provides reasonable defaults
+// for initializing a flag.  The flag applies [WithNewline] to the printer which
+// is in the context, which stops -print and -fprint from implying a newline:
+//
+//	&cli.Flag{Uses: printer.SetNoNewline()}
+func SetNoNewline(v ...bool) cli.Action {
+	return cli.Pipeline(
+		&cli.Prototype{
+			Name:     "no-newline",
+			HelpText: "Don't print a newline after the value with -print and -fprint",
+			Uses:     cli.OptionalAlias("n"),
+		},
+		bind.Action(WithNewline, bind.Exact(v...).(*bind.BoolBinder).Negated()),
+	)
 }
 
 // ContextValue provides an action that sets the given value into the context.
@@ -298,14 +369,15 @@ func Fprintf(file string, pattern *expander.Pattern) expr.Evaluator {
 	})
 }
 
-// Print prints the value to standard output followed by a newline.
+// Print prints the value to standard output followed by a newline unless
+// [WithNewline] disabled it.
 func (p *Printer) Print(ctx context.Context, v any) error {
-	return printValue(p.stdout(ctx), v, newline)
+	return p.printValue(ctx, p.stdout(ctx), v, p.terminator())
 }
 
 // Print0 prints the value to standard output followed by a null character.
 func (p *Printer) Print0(ctx context.Context, v any) error {
-	return printValue(p.stdout(ctx), v, nul)
+	return p.printValue(ctx, p.stdout(ctx), v, nul)
 }
 
 // Printf prints the value to standard output after expanding the pattern with
@@ -318,13 +390,14 @@ func (p *Printer) Printf(ctx context.Context, pattern *expander.Pattern, v any) 
 	return err
 }
 
-// Fprint prints the value to the named file followed by a newline.
+// Fprint prints the value to the named file followed by a newline unless
+// [WithNewline] disabled it.
 func (p *Printer) Fprint(ctx context.Context, file string, v any) error {
 	w, err := p.file(ctx, file)
 	if err != nil {
 		return err
 	}
-	return printValue(w, v, newline)
+	return p.printValue(ctx, w, v, p.terminator())
 }
 
 // Fprint0 prints the value to the named file followed by a null character.
@@ -333,7 +406,7 @@ func (p *Printer) Fprint0(ctx context.Context, file string, v any) error {
 	if err != nil {
 		return err
 	}
-	return printValue(w, v, nul)
+	return p.printValue(ctx, w, v, nul)
 }
 
 // Fprintf prints the value to the named file after expanding the pattern with
@@ -354,6 +427,16 @@ func (p *Printer) Expander(ctx context.Context, v any) expander.Interface {
 		return DefaultExpanderFactory(ctx, v)
 	}
 	return p.factory(ctx, v)
+}
+
+// Format converts the given value from the expression evaluation pipeline into
+// the text which the operators that don't take a pattern print, using the
+// formatter which was configured with [WithFormatter].
+func (p *Printer) Format(ctx context.Context, v any) string {
+	if p.formatter == nil {
+		return DefaultFormatter(ctx, v)
+	}
+	return p.formatter(ctx, v)
 }
 
 // Compile compiles the given pattern using the pattern options which were
@@ -434,6 +517,19 @@ func (p *Printer) fileSystem(ctx context.Context) cli.FS {
 		}
 	}
 	return cli.DirFS(".")
+}
+
+// terminator obtains the text which -print and -fprint append to the value
+func (p *Printer) terminator() string {
+	if p.noNewline {
+		return ""
+	}
+	return newline
+}
+
+func (p *Printer) printValue(ctx context.Context, w io.Writer, v any, terminator string) error {
+	_, err := io.WriteString(w, p.Format(ctx, v)+terminator)
+	return err
 }
 
 func (p *Printer) stdout(ctx context.Context) io.Writer {
@@ -531,9 +627,8 @@ func definesExpression(c *cli.Context) bool {
 	return ok
 }
 
-func printValue(w io.Writer, v any, terminator string) error {
-	_, err := fmt.Fprintf(w, "%v%s", v, terminator)
-	return err
+func defaultFormatter(_ context.Context, v any) string {
+	return fmt.Sprintf("%v", v)
 }
 
 func defaultExpanderFactory(_ context.Context, v any) expander.Interface {

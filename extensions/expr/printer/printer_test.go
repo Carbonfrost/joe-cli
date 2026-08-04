@@ -7,6 +7,7 @@ package printer_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"time"
@@ -276,9 +277,91 @@ var _ = Describe("Printer", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("WithFormatter controls how values are converted to text", func() {
+			formatter := func(_ context.Context, v any) string {
+				return fmt.Sprintf("<%v>", v)
+			}
+			app := newApp(printer.New(printer.WithFormatter(formatter)), "value")
+
+			Expect(run(app, "-print")).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal("<value>\n"))
+		})
+
+		It("WithFormatter is not used by the operators which take a pattern", func() {
+			formatter := func(_ context.Context, v any) string {
+				return fmt.Sprintf("<%v>", v)
+			}
+			app := newApp(printer.New(printer.WithFormatter(formatter)), item{Name: "f"})
+
+			Expect(run(app, "-printf %(name)")).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal("f"))
+		})
+
+		DescribeTable("WithNewline controls whether a newline is implied",
+			func(newline bool, args string, expected string) {
+				app := newApp(printer.New(printer.WithNewline(newline)), "value")
+
+				Expect(run(app, args)).NotTo(HaveOccurred())
+				Expect(stdout.String()).To(Equal(expected))
+			},
+			Entry("print", true, "-print", "value\n"),
+			Entry("print, disabled", false, "-print", "value"),
+			Entry("print0 is unaffected", false, "-print0", "value\x00"),
+		)
+
+		It("WithNewline also applies to the file operators", func() {
+			app := newApp(printer.New(printer.WithNewline(false)), "first", "second")
+
+			Expect(run(app, "-fprint out.txt")).NotTo(HaveOccurred())
+			Expect(contentsOf("out.txt")).To(Equal("firstsecond"))
+		})
+
 		It("WithAction replaces the default action", func() {
 			app := newApp(printer.New(printer.WithAction(nil)), "value")
 			Expect(run(app, "-print")).To(MatchError(ContainSubstring("unknown expression")))
+		})
+	})
+
+	Describe("SetNoNewline", func() {
+
+		var newFlagApp = func(values ...any) *cli.App {
+			app := newApp(printer.New(), values...)
+			app.Flags = []*cli.Flag{
+				{Uses: printer.SetNoNewline()},
+			}
+			return app
+		}
+
+		DescribeTable("examples", func(args string, expected string) {
+			app := newFlagApp("value")
+
+			arguments, _ := cli.Split("app " + args)
+			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal(expected))
+		},
+			Entry("unset", ". -print", "value\n"),
+			Entry("long name", "--no-newline . -print", "value"),
+			Entry("short alias", "-n . -print", "value"),
+		)
+
+		It("provides the synopsis of the flag", func() {
+			app := newFlagApp()
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(app.Flags[0].Synopsis()).To(Equal("-n, --no-newline"))
+			Expect(app.Flags[0].HelpText).To(Equal("Don't print a newline after the value with -print and -fprint"))
+		})
+
+		It("applies the exact value when it is specified", func() {
+			app := newApp(printer.New(), "value")
+			app.Flags = []*cli.Flag{
+				{Name: "compact", Uses: printer.SetNoNewline(true)},
+			}
+
+			arguments, _ := cli.Split("app --compact . -print")
+			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(stdout.String()).To(Equal("value"))
 		})
 	})
 
@@ -309,6 +392,26 @@ var _ = Describe("Printer", func() {
 				Entry("reflection", item{Name: "f"}, "name", Equal("f")),
 				Entry("reflection, unknown", item{Name: "f"}, "unknown", BeNil()),
 			)
+		})
+
+		Describe("Format", func() {
+
+			DescribeTable("examples", func(value any, expected string) {
+				p := printer.New()
+				Expect(p.Format(context.Background(), value)).To(Equal(expected))
+			},
+				Entry("nil", nil, "<nil>"),
+				Entry("string", "value", "value"),
+				Entry("stringer", item{Name: "f"}, "f"),
+				Entry("int", 420, "420"),
+			)
+
+			It("uses the formatter", func() {
+				p := printer.New(printer.WithFormatter(func(_ context.Context, v any) string {
+					return fmt.Sprintf("<%v>", v)
+				}))
+				Expect(p.Format(context.Background(), "value")).To(Equal("<value>"))
+			})
 		})
 
 		Describe("Close", func() {
