@@ -91,6 +91,10 @@ const (
 
 	// ExpectedRequiredOption occurs when a flag or option is required to be specified
 	ExpectedRequiredOption
+
+	// UnavailablePersistentOption occurs when a flag was narrowed with PersistentIn to commands
+	// other than the one which executed
+	UnavailablePersistentOption
 )
 
 // Exit formats an error message using the default formats for each of the arguments,
@@ -217,6 +221,18 @@ func (e ErrorCode) formatError(name, value string, cause error) string {
 			return "required and must be specified"
 		}
 		return fmt.Sprintf("%s is required and must be specified", name)
+	case UnavailablePersistentOption:
+		if name == "" {
+			return "cannot be used with this command"
+		}
+
+		msg := "with this command"
+
+		// TODO Would be ideal to not use cause for this
+		if cause != nil {
+			msg = cause.Error()
+		}
+		return fmt.Sprintf("%s cannot be used %s", name, msg)
 	}
 	return "unknown error"
 }
@@ -259,6 +275,14 @@ func unexpectedArgument(value string, remaining []string) *ParseError {
 func expectedRequiredOption(name string) *ParseError {
 	return &ParseError{
 		Code: ExpectedRequiredOption,
+		Name: name,
+	}
+}
+
+func optionNotAvailable(name string, command string) *ParseError {
+	return &ParseError{
+		Code: UnavailablePersistentOption,
+		Err:  fmt.Errorf("with %q", command),
 		Name: name,
 	}
 }

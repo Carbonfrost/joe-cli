@@ -346,6 +346,125 @@ var _ = Describe("HasData", func() {
 	})
 })
 
+var _ = Describe("PersistentIn", func() {
+
+	var (
+		globalAction *joeclifakes.FakeAction
+
+		nothing cli.ActionFunc = func(*cli.Context) error { return nil }
+
+		// app defines --global at the root, but it only applies to sub and to the
+		// nested command sub dom
+		newApp = func() *cli.App {
+			globalAction = new(joeclifakes.FakeAction)
+			return &cli.App{
+				Name:   "app",
+				Action: nothing,
+				Flags: []*cli.Flag{
+					{
+						Name:   "global",
+						Value:  cli.Bool(),
+						Uses:   cli.PersistentIn(cli.PatternFilter("app sub, app sub dom")),
+						Action: globalAction,
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name:        "sub",
+						Action:      nothing,
+						Subcommands: []*cli.Command{{Name: "dom", Action: nothing}},
+					},
+					{
+						Name:   "other",
+						Action: nothing,
+					},
+				},
+			}
+		}
+
+		run = func(arguments string) error {
+			args, _ := cli.Split(arguments)
+			return newApp().RunContext(context.Background(), args)
+		}
+	)
+
+	DescribeTable("allowed examples", func(arguments string) {
+		Expect(run(arguments)).NotTo(HaveOccurred())
+		Expect(globalAction.ExecuteCallCount()).To(BeNumerically(">", 0))
+	},
+		Entry("used within the command", "app sub --global"),
+		Entry("used ahead of the command", "app --global sub"),
+		Entry("used within a nested command", "app sub dom --global"),
+		Entry("used ahead of a nested command", "app --global sub dom"),
+	)
+
+	DescribeTable("usage error examples", func(arguments string, expected string) {
+		err := run(arguments)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(expected))
+		Expect(err).To(BeAssignableToTypeOf(&cli.ParseError{}))
+		Expect(err.(*cli.ParseError).Code).To(Equal(cli.UnavailablePersistentOption))
+	},
+		Entry("used within a command that doesn't match",
+			"app other --global", `--global cannot be used with "other"`),
+		Entry("used ahead of a command that doesn't match",
+			"app --global other", `--global cannot be used with "other"`),
+		Entry("used with the command that defines it",
+			"app --global", `--global cannot be used with "app"`),
+	)
+
+	It("does not run the action within a command that doesn't match", func() {
+		_ = run("app other --global")
+		Expect(globalAction.ExecuteCallCount()).To(Equal(0))
+	})
+
+	It("does not run the action while passing through a command that doesn't match", func() {
+		// sub matches, but the root command it was written on does not, so the
+		// action is only invoked once
+		Expect(run("app --global sub")).NotTo(HaveOccurred())
+		Expect(globalAction.ExecuteCallCount()).To(Equal(1))
+	})
+
+	DescribeTable("no error when the flag isn't used", func(arguments string) {
+		Expect(run(arguments)).NotTo(HaveOccurred())
+		Expect(globalAction.ExecuteCallCount()).To(Equal(0))
+	},
+		Entry("command that matches", "app sub"),
+		Entry("command that doesn't match", "app other"),
+	)
+
+	It("is an internal error to use on an arg", func() {
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Name: "a",
+					Uses: cli.PersistentIn(cli.Anything),
+				},
+			},
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).To(MatchError(ContainSubstring("action can only be used with a flag")))
+	})
+
+	It("is too late to use outside of initialization", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:   "global",
+					Value:  cli.Bool(),
+					Before: cli.PersistentIn(cli.Anything),
+				},
+			},
+		}
+		args, _ := cli.Split("app")
+		Expect(app.RunContext(context.Background(), args)).To(
+			MatchError(ContainSubstring("too late for requested action timing")))
+	})
+})
+
 type contextFilterFunc func(context.Context) bool
 
 func (f contextFilterFunc) Matches(c context.Context) bool {

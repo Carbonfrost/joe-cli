@@ -2321,8 +2321,28 @@ func triggerOptions(ctx *Context) error {
 }
 
 func triggerOption(ctx *Context, f option) error {
+	if flag, ok := f.(*Flag); ok && !flag.appliesIn(ctx) {
+		// The flag was narrowed by PersistentIn and doesn't belong to this
+		// command, so it stays dormant here.  checkPersistentInFilters reports the
+		// error if the command which executes is one that can't use it.
+		return nil
+	}
 	if f.Seen() || hasSeenImplied(f, ctx.target()) {
 		return ctx.newChild(f, ctx.Timing()).executeSelf()
+	}
+	return nil
+}
+
+// checkPersistentInFilters fails the command which executes when it uses a flag that
+// PersistentIn narrowed to other commands.
+func checkPersistentInFilters(c *Context) error {
+	for _, f := range c.Flags() {
+		if f.persistentIn == nil || !f.Seen() {
+			continue
+		}
+		if !f.appliesIn(c) {
+			return optionNotAvailable(f.contextName(), c.Name())
+		}
 	}
 	return nil
 }

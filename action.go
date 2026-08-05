@@ -355,6 +355,7 @@ var (
 			ActionFunc(triggerValueTargets),
 			IfMatch(subcommandDidNotExecute,
 				actions(
+					ActionFunc(checkPersistentInFilters),
 					executePipelines(ActionTiming),
 				),
 			),
@@ -434,6 +435,7 @@ var (
 
 	errCantHook     = errors.New("hooks are not supported in this context")
 	errAssertFailed = errors.New("context does not meet requirements for action")
+	errFlagOnly     = errors.New("action can only be used with a flag")
 
 	timingLabels = map[Timing][2]string{
 		ActionTiming:        {"action timing", "ACTION"},
@@ -1457,6 +1459,40 @@ func Assert(filter ContextFilter, a Action) Action {
 			}
 			return errAssertFailed
 		}))
+}
+
+// PersistentIn narrows the commands where a persistent flag can be used.  A flag defined
+// by a command is inherited by all of its sub-commands, which is inconvenient when the
+// flag is meaningful to many but not all of them.  This action, which belongs in the Uses
+// pipeline of the flag, names the command contexts where the flag actually applies:
+//
+//	&cli.Flag{
+//	    Name:  "global",
+//	    Value: cli.Bool(),
+//	    Uses:  cli.PersistentIn(cli.PatternFilter("app sub")),
+//	}
+//
+// The filter is matched against the command that executes rather than the command where
+// the flag happened to be written, so app --global sub and app sub --global are treated
+// the same.  Within a command that doesn't match, the flag continues to parse, but its
+// Action doesn't run and it is left out of the persistent flags shown on the help screen.
+// If the flag was used at all, the command fails with a parse error before its own Action
+// runs.  Compare the NonPersistent option, which stops inheritance outright.
+//
+// PersistentIn only applies to flags, and it can only be used during initialization.
+// Using it more than once replaces the previous filter.
+func PersistentIn(f ContextFilter) Action {
+	return ActionFunc(func(c *Context) error {
+		if err := c.requireInit(); err != nil {
+			return err
+		}
+		flag, ok := c.Target().(*Flag)
+		if !ok {
+			return c.internalError(errFlagOnly)
+		}
+		flag.persistentIn = f
+		return nil
+	})
 }
 
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize

@@ -151,6 +151,10 @@ type Flag struct {
 
 	optionalValue any // set when blank and optional
 
+	// persistentIn restricts the commands where the flag applies.  It is nil
+	// unless PersistentIn was used.
+	persistentIn ContextFilter
+
 	bs BindingState
 }
 
@@ -318,6 +322,21 @@ func (f *Flag) contextName() string {
 		return fmt.Sprintf("-%s", f.Name)
 	}
 	return fmt.Sprintf("--%s", f.Name)
+}
+
+// appliesIn detects whether the flag can be used within the command context c.
+// Flags apply everywhere they are inherited unless PersistentIn narrowed them.
+func (f *Flag) appliesIn(c *Context) bool {
+	return f.persistentIn == nil || f.persistentIn.Matches(c)
+}
+
+func filterInApplicableFlags(c *Context, flags []*Flag) []*Flag {
+	return slices.DeleteFunc(
+		slices.Clone(flags),
+		func(f *Flag) bool {
+			return !f.appliesIn(c)
+		},
+	)
 }
 
 func (f *Flag) setTransform(fn TransformFunc) {

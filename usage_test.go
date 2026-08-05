@@ -620,9 +620,36 @@ var _ = Describe("DisplayHelpScreen", func() {
 				Not(ContainSubstring("hidden persistent flag")),
 				ContainSubstring("visible flag"),
 			)),
+		Entry("does not show a persistent flag that the sub-command can't use",
+			persistentInApp(),
+			"app other --help",
+			Not(ContainSubstring("narrowed persistent flag"))),
+		Entry("shows a persistent flag that the sub-command can use",
+			persistentInApp(),
+			"app sub --help",
+			ContainSubstring("narrowed persistent flag")),
 	)
 
 })
+
+// persistentInApp defines --global at the root, but narrowed to only apply to sub
+func persistentInApp() *cli.App {
+	return &cli.App{
+		Name: "app",
+		Flags: []*cli.Flag{
+			{
+				Name:     "global",
+				Value:    cli.Bool(),
+				HelpText: "narrowed persistent flag",
+				Uses:     cli.PersistentIn(cli.PatternFilter("app sub")),
+			},
+		},
+		Commands: []*cli.Command{
+			{Name: "sub"},
+			{Name: "other"},
+		},
+	}
+}
 
 func disableConsoleColor() func() {
 	os.Setenv("TERM", "dumb")

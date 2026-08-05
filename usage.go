@@ -187,7 +187,8 @@ func DisplayHelpScreen(command ...string) Action {
 			usageColor = c.Stdout.ColorCapable()
 
 			current := ctxt.Command()
-			persistentFlags := filterInVisibleFlags(ctxt.PersistentFlags())
+			persistentFlags := filterInVisibleFlags(
+				filterInApplicableFlags(ctxt, ctxt.PersistentFlags()))
 
 			if len(path) > 0 {
 				path = path[0 : len(path)-1]
