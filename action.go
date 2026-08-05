@@ -973,27 +973,23 @@ func Enum(options ...string) Action {
 		usageText = "(" + strings.Join(options, "|") + ")"
 	}
 
-	return &Prototype{
-		UsageText:  usageText,
-		Completion: ValueCompletion(options...),
-		Uses: Setup{ // Wrapped in Setup because the pipeline is required
-			Uses: ValidatorFunc(func(raw []string) error {
-				for _, occur := range raw {
-					if _, ok := oset[occur]; !ok {
-						expected := listOfValues(options, true)
-						return &ParseError{
-							Code: InvalidArgument,
-							Err: errorTemplate{
-								fallback: fmt.Sprintf("unrecognized value %q, expected %s", occur, expected),
-								format:   fmt.Sprintf("unrecognized value %q for %%[1]s, expected %s", occur, expected),
-							},
-						}
-					}
-				}
-				return nil
-			}),
+	return Pipeline(
+		&Prototype{
+			UsageText:  usageText,
+			Completion: ValueCompletion(options...),
 		},
-	}
+		At(ValidatorTiming, ActionFunc(func(c *Context) error {
+			name := c.Name()
+			expected := listOfValues(options, true)
+			for _, occur := range c.RawOccurrences("") {
+				if _, ok := oset[occur]; !ok {
+					cause := fmt.Errorf("unrecognized value %q for %s, expected %s", occur, name, expected)
+					return argTakerError(name, occur, cause, nil)
+				}
+			}
+			return nil
+		})),
+	)
 }
 
 // Requires indicates a flag that requires another flag be present

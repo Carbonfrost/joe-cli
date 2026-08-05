@@ -7,7 +7,6 @@ package cli
 import (
 	"bytes"
 	"cmp"
-	"errors"
 	"fmt"
 	"strconv"
 )
@@ -60,16 +59,6 @@ type ExitCoder interface {
 type exitError struct {
 	message  any
 	exitCode int
-}
-
-type formattableError interface {
-	error
-	FillTemplate(*ParseError) error
-}
-
-type errorTemplate struct {
-	format   string
-	fallback string
 }
 
 const (
@@ -135,7 +124,7 @@ func Exit(message ...any) ExitCoder {
 		case int:
 			return exitCore(fmt.Sprint(message[0:last]...), code)
 		case ErrorCode:
-			return exitCore(fmt.Sprintf("%s: %s", code.String(), fmt.Sprint(message[0:last]...)), 2)
+			return exitCore(fmt.Sprintf("%s: %s", code.formatError("", "", nil), fmt.Sprint(message[0:last]...)), 2)
 		default:
 			return exitCore(fmt.Sprint(message...), 1)
 		}
@@ -158,15 +147,7 @@ func (e *ParseError) ExitCode() int {
 }
 
 func (e *ParseError) Error() string {
-	if e.Err == nil {
-		return e.Code.String()
-	}
-
-	if t, ok := e.Err.(formattableError); ok {
-		return t.FillTemplate(e).Error()
-	}
-
-	return e.Err.Error()
+	return e.Code.formatError(e.Name, e.Value, e.Err)
 }
 
 // Unwrap returns the internal error
@@ -174,29 +155,68 @@ func (e *ParseError) Unwrap() error {
 	return e.Err
 }
 
-// String produces a textual representation of error code
-func (e ErrorCode) String() string {
+// formatError renders the user-facing error message for the code, weaving in the
+// name and value of the offending flag, arg, command, or expression.  The cause,
+// when present, is the inner error that explains the underlying failure (e.g. a
+// value that could not be parsed by argTakerError, or the count required by
+// expectedArgument); the message is composed here rather than delegated to it.
+func (e ErrorCode) formatError(name, value string, cause error) string {
 	switch e {
 	case UnexpectedArgument:
-		return "unexpected argument"
+		if value == "" {
+			return "unexpected argument"
+		}
+		return fmt.Sprintf("unexpected argument %q", value)
 	case ExpectedArgument:
-		return "expected argument"
+		msg := "expected argument"
+		if cause != nil {
+			// TODO Would be ideal to not use cause for this (see expectedArgument, which carries the count)
+			msg = cause.Error()
+		}
+		if name == "" {
+			return msg
+		}
+		return fmt.Sprintf("%s for %s", msg, name)
 	case CommandNotFound:
-		return "is not a command"
+		if name == "" {
+			return "not a command"
+		}
+		return fmt.Sprintf("%q is not a command", name)
 	case UnknownOption:
-		return "unknown option"
+		if name == "" {
+			return "unknown option"
+		}
+		return fmt.Sprintf("unknown option: %s", name)
 	case MissingArgument:
 		return "missing parameter"
 	case InvalidArgument:
-		return "parameter not valid"
+		if cause != nil {
+			return cause.Error()
+		}
+		if name == "" {
+			return "parameter not valid"
+		}
+		return fmt.Sprintf("option %s does not take a value", name)
 	case UnknownExpr:
-		return "unknown expression"
+		if name == "" {
+			return "unknown expression"
+		}
+		return fmt.Sprintf("unknown expression: %s", name)
 	case ArgsMustPrecedeExprs:
-		return "arguments must precede expressions"
+		if value == "" {
+			return "arguments must precede expressions"
+		}
+		return fmt.Sprintf("arguments must precede expressions: %q", value)
 	case FlagUsedAfterArgs:
-		return "flag used after arguments"
+		if name == "" {
+			return "flag used after arguments"
+		}
+		return fmt.Sprintf("can't use %s after arguments", name)
 	case ExpectedRequiredOption:
-		return "is required and must be specified"
+		if name == "" {
+			return "required and must be specified"
+		}
+		return fmt.Sprintf("%s is required and must be specified", name)
 	}
 	return "unknown error"
 }
@@ -207,17 +227,6 @@ func (e *exitError) Error() string {
 
 func (e *exitError) ExitCode() int {
 	return e.exitCode
-}
-
-func (f errorTemplate) Error() string {
-	return f.fallback
-}
-
-func (f errorTemplate) FillTemplate(p *ParseError) error {
-	if p.Name == "" {
-		return errors.New(f.fallback)
-	}
-	return fmt.Errorf(f.format, p.Name, p.Value)
 }
 
 func (i *InternalError) Unwrap() error {
@@ -235,7 +244,6 @@ func (i *InternalError) Error() string {
 func commandMissing(name string) error {
 	return &ParseError{
 		Code: CommandNotFound,
-		Err:  fmt.Errorf("%q is not a command", name),
 		Name: name,
 	}
 }
@@ -243,7 +251,6 @@ func commandMissing(name string) error {
 func unexpectedArgument(value string, remaining []string) *ParseError {
 	return &ParseError{
 		Code:      UnexpectedArgument,
-		Err:       fmt.Errorf("unexpected argument %q", value),
 		Remaining: remaining,
 		Value:     value,
 	}
@@ -252,14 +259,13 @@ func unexpectedArgument(value string, remaining []string) *ParseError {
 func expectedRequiredOption(name string) *ParseError {
 	return &ParseError{
 		Code: ExpectedRequiredOption,
-		Err:  fmt.Errorf("%s %s", name, ExpectedRequiredOption),
+		Name: name,
 	}
 }
 
 func flagUnexpectedArgument(name string, value string, remaining []string) *ParseError {
 	return &ParseError{
 		Code:      InvalidArgument,
-		Err:       fmt.Errorf("option %s does not take a value", name),
 		Remaining: remaining,
 		Name:      name,
 		Value:     value,
@@ -271,13 +277,9 @@ func expectedArgument(count int) *ParseError {
 	if count > 1 {
 		w = fmt.Sprint(count, " arguments")
 	}
-	fallback := fmt.Sprintf("expected %s", w)
 	return &ParseError{
 		Code: ExpectedArgument,
-		Err: errorTemplate{
-			fallback: fallback,
-			format:   fallback + " for %[1]s",
-		},
+		Err:  fmt.Errorf("expected %s", w),
 	}
 }
 
@@ -287,7 +289,6 @@ func unknownOption(name any, remaining []string) error {
 		Code:      UnknownOption,
 		Name:      nameStr,
 		Remaining: remaining,
-		Err:       fmt.Errorf("unknown option: %s", nameStr),
 	}
 }
 
@@ -296,7 +297,6 @@ func flagAfterArgError(name any) error {
 	return &ParseError{
 		Code: FlagUsedAfterArgs,
 		Name: nameStr,
-		Err:  fmt.Errorf("can't use %s after arguments", nameStr),
 	}
 }
 
@@ -380,4 +380,3 @@ func listOfValues(values []string, useQuotes bool, conjopt ...string) string {
 }
 
 var _ error = (*InternalError)(nil)
-var _ formattableError = errorTemplate{}

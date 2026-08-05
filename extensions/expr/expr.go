@@ -1091,7 +1091,6 @@ func unknownExpr(name string) error {
 	return &cli.ParseError{
 		Code: cli.UnknownExpr,
 		Name: name,
-		Err:  fmt.Errorf("unknown expression: %s", name),
 	}
 }
 
@@ -1099,7 +1098,6 @@ func argsMustPrecedeExprs(arg string) error {
 	return &cli.ParseError{
 		Code:  cli.ArgsMustPrecedeExprs,
 		Value: arg,
-		Err:   fmt.Errorf("arguments must precede expressions: %q", arg),
 	}
 }
 

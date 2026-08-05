@@ -5,7 +5,6 @@
 package cli_test
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -113,7 +112,6 @@ var _ = Describe("RawParse", func() {
 			Equal(&cli.ParseError{
 				Code:      cli.InvalidArgument,
 				Name:      "-t",
-				Err:       errors.New("option -t does not take a value"),
 				Value:     "=always",
 				Remaining: []string{"-t=always"},
 			}),
@@ -124,7 +122,6 @@ var _ = Describe("RawParse", func() {
 			Equal(&cli.ParseError{
 				Code:      cli.UnknownOption,
 				Name:      "--unknown",
-				Err:       errors.New("unknown option: --unknown"),
 				Value:     "",
 				Remaining: []string{"--unknown", "rest", "of", "args"},
 			}),
@@ -135,7 +132,6 @@ var _ = Describe("RawParse", func() {
 			Equal(&cli.ParseError{
 				Code:      cli.UnknownOption,
 				Name:      "-u",
-				Err:       errors.New("unknown option: -u"),
 				Value:     "",
 				Remaining: []string{"-u", "rest", "of", "args"},
 			}),
@@ -148,7 +144,6 @@ var _ = Describe("RawParse", func() {
 			Equal(&cli.ParseError{
 				Code:      cli.UnexpectedArgument,
 				Name:      "",
-				Err:       errors.New("unexpected argument \"unknown\""),
 				Value:     "unknown",
 				Remaining: []string{"unknown", "rest", "of", "args"},
 			}),
@@ -161,7 +156,6 @@ var _ = Describe("RawParse", func() {
 			Equal(&cli.ParseError{
 				Code:      cli.UnknownOption,
 				Name:      "-u",
-				Err:       errors.New("unknown option: -u"),
 				Value:     "",
 				Remaining: []string{"-uvwx", "another"},
 			}),
@@ -217,7 +211,6 @@ var _ = Describe("RawParse", func() {
 			Equal(&cli.ParseError{
 				Code:      cli.UnexpectedArgument,
 				Name:      "",
-				Err:       errors.New(`unexpected argument "other"`),
 				Value:     "other",
 				Remaining: []string{"other", "args"},
 			}),
