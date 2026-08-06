@@ -86,6 +86,16 @@ var _ = Describe("Reflect", func() {
 			Equal("2026-February")),
 		Entry("nil pointer", (*greeter)(nil), "%(greeting)", Equal("<nil>")),
 		Entry("non-struct", "text", "%(unknown)", Equal("<nil>")),
+		Entry("slice nominal", []int{0, 1}, "%(1)", Equal("1")),
+		Entry("array nominal", [...]int{0, 1}, "%(1)", Equal("1")),
+		Entry("slice negative", []int{0, 1, 2}, "%(-1)", Equal("2")),
+		Entry("slice out of range", []int{0}, "%(10)", Equal("<nil>")),
+		Entry("slice non-numeric", []int{0}, "%(x)", Equal("<nil>")),
+		Entry("slice nil", []int(nil), "%(1)", Equal("<nil>")),
+		Entry("map nominal", map[string]string{"a": "b"}, "%(a)", Equal("b")),
+		Entry("map non-existing", map[string]string{}, "%(x)", Equal("<nil>")),
+		Entry("map invalid key type", map[int]string{0: "s"}, "%(0)", Equal("<nil>")),
+		Entry("map nil", map[string]string(nil), "%(0)", Equal("<nil>")),
 	)
 })
 

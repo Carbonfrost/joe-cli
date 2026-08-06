@@ -274,7 +274,9 @@ func Unknown() Interface {
 // no arguments and return a single value.  Methods make it possible to expand
 // values which don't expose their state as fields.  For example, the key
 // "year" applied to a [time.Time] resolves to its Year method.  Fields take
-// precedence over methods, and any other key resolves to nil.
+// precedence over methods. For slices and arrays, keys can be parsed as integers
+// as indexes. Negative indexes can be used. For maps with string keys, keys can
+// retrieve the value. Other keys resolves to nil.
 func Reflect(v any) Interface {
 	if v == nil {
 		return Nil
@@ -295,7 +297,45 @@ func (r *reflectExpander) Expand(k string) any {
 	if res, ok := r.method(k); ok {
 		return res
 	}
+	if res, ok := r.index(k); ok {
+		return res
+	}
+	if res, ok := r.mapIndex(k); ok {
+		return res
+	}
 	return nil
+}
+
+func (r *reflectExpander) index(k string) (any, bool) {
+	v := r.v
+	if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+		i, err := strconv.Atoi(k)
+		if err != nil {
+			return nil, false
+		}
+
+		if i < 0 {
+			i += v.Len()
+		}
+
+		if i < 0 || i >= v.Len() {
+			return nil, false
+		}
+
+		return v.Index(i).Interface(), true
+	}
+	return nil, false
+}
+
+func (r *reflectExpander) mapIndex(k string) (any, bool) {
+	v := r.v
+	if v.Kind() == reflect.Map && v.Type().Key().Kind() == reflect.String {
+		value := v.MapIndex(reflect.ValueOf(k))
+		if value.IsValid() {
+			return value.Interface(), true
+		}
+	}
+	return nil, false
 }
 
 func (r *reflectExpander) field(k string) (any, bool) {
