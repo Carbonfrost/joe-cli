@@ -798,7 +798,7 @@ var _ = Describe("OptionalAlias", func() {
 
 			err := app.RunContext(context.Background(), []string{"app"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(command1.Aliases).NotTo(ContainElement("v"))
+			Expect(command1.Aliases).NotTo(ContainElement("s"))
 			Expect(command2.Name).To(Equal("s"))
 		})
 
