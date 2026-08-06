@@ -99,6 +99,23 @@ var _ = Describe("Reflect", func() {
 	)
 })
 
+var _ = Describe("Dig", func() {
+
+	DescribeTable("examples", func(value any, text string, expected types.GomegaMatcher) {
+		e := expander.Compile(text)
+
+		expander := expander.Dig(value)
+		Expect(e.Expand(expander)).To(expected)
+	},
+		Entry("nominal", struct {
+			S greeter
+			T string
+		}{T: "2"}, "%(S.Greeting)", Equal("hello")),
+		Entry("nil", nil, "%(r)", Equal("<nil>")),
+		Entry("missing value", greeter{}, "%(x)", Equal("<nil>")),
+	)
+})
+
 type greeter struct{}
 
 func (greeter) Greeting() string { return "hello" }

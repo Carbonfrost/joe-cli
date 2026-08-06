@@ -268,6 +268,32 @@ func Unknown() Interface {
 	})
 }
 
+// Dig navigates the object graph of a value using qualified names as keys.
+func Dig(v any) Interface {
+	if v == nil {
+		return Nil
+	}
+	return &digExpander{
+		reflect.ValueOf(v),
+	}
+}
+
+type digExpander struct {
+	v reflect.Value
+}
+
+func (d *digExpander) Expand(k string) any {
+	v := d.v
+	for key := range strings.SplitSeq(k, ".") {
+		result := reflectExpandValue(v, key)
+		if result == nil {
+			return nil
+		}
+		v = reflect.ValueOf(result)
+	}
+	return v
+}
+
 // Reflect provides a simple expander around a given value using
 // reflection.  Keys resolve, case-insensitively, to the exported fields of the
 // value (or of the struct it points to) and to its exported methods which take
@@ -291,23 +317,26 @@ type reflectExpander struct {
 }
 
 func (r *reflectExpander) Expand(k string) any {
-	if res, ok := r.field(k); ok {
+	return reflectExpandValue(r.v, k)
+}
+
+func reflectExpandValue(v reflect.Value, k string) any {
+	if res, ok := reflectExpandField(v, k); ok {
 		return res
 	}
-	if res, ok := r.method(k); ok {
+	if res, ok := reflectExpandMethod(v, k); ok {
 		return res
 	}
-	if res, ok := r.index(k); ok {
+	if res, ok := reflectExpandIndex(v, k); ok {
 		return res
 	}
-	if res, ok := r.mapIndex(k); ok {
+	if res, ok := reflectExpandMapIndex(v, k); ok {
 		return res
 	}
 	return nil
 }
 
-func (r *reflectExpander) index(k string) (any, bool) {
-	v := r.v
+func reflectExpandIndex(v reflect.Value, k string) (any, bool) {
 	if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
 		i, err := strconv.Atoi(k)
 		if err != nil {
@@ -327,8 +356,7 @@ func (r *reflectExpander) index(k string) (any, bool) {
 	return nil, false
 }
 
-func (r *reflectExpander) mapIndex(k string) (any, bool) {
-	v := r.v
+func reflectExpandMapIndex(v reflect.Value, k string) (any, bool) {
 	if v.Kind() == reflect.Map && v.Type().Key().Kind() == reflect.String {
 		value := v.MapIndex(reflect.ValueOf(k))
 		if value.IsValid() {
@@ -338,8 +366,7 @@ func (r *reflectExpander) mapIndex(k string) (any, bool) {
 	return nil, false
 }
 
-func (r *reflectExpander) field(k string) (any, bool) {
-	v := r.v
+func reflectExpandField(v reflect.Value, k string) (any, bool) {
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return nil, false
@@ -364,22 +391,22 @@ func (r *reflectExpander) field(k string) (any, bool) {
 	return field.Interface(), true
 }
 
-// method resolves the key to an exported method which takes no arguments and
+// reflectExpandMethod resolves the key to an exported method which takes no arguments and
 // returns a single value.  The method set of the value as it was given is used,
 // which means that methods with pointer receivers only resolve when the value
 // is itself a pointer.
-func (r *reflectExpander) method(k string) (any, bool) {
-	if r.v.Kind() == reflect.Pointer && r.v.IsNil() {
+func reflectExpandMethod(v reflect.Value, k string) (any, bool) {
+	if v.Kind() == reflect.Pointer && v.IsNil() {
 		return nil, false
 	}
 
-	t := r.v.Type()
+	t := v.Type()
 	for i := range t.NumMethod() {
 		if !strings.EqualFold(t.Method(i).Name, k) {
 			continue
 		}
 
-		m := r.v.Method(i)
+		m := v.Method(i)
 		if m.Type().NumIn() != 0 || m.Type().NumOut() != 1 {
 			continue
 		}
