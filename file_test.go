@@ -5,6 +5,7 @@
 package cli_test
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -726,6 +727,7 @@ var _ = Describe("FileInput", func() {
 		"src/a/b.txt": {Data: []byte("b")},
 		"src/c.txt":   {Data: []byte("c")},
 		"lines.txt":   {Data: []byte("one\ntwo\nthree\n")},
+		"fields.txt":  {Data: []byte("alpha beta\n\tgamma  delta \n")},
 	}
 
 	DescribeTableSubtree("common walker behavior", func(cached bool) {
@@ -869,6 +871,133 @@ var _ = Describe("FileInput", func() {
 				input := createInput(set)
 				Expect(input.Lineno()).To(Equal(0))
 				Expect(input.FileLineno()).To(Equal(0))
+			})
+		})
+
+		Describe("Scanners", func() {
+
+			It("enumerates a scanner for each file", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/a/b.txt", "lines.txt"},
+				}
+
+				var names []string
+				var lines []string
+				for s, input := range createInput(set).Scanners() {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					names = append(names, input.Filename())
+					for s.Scan() {
+						lines = append(lines, s.Text())
+					}
+				}
+
+				Expect(names).To(Equal([]string{"src/a/b.txt", "lines.txt"}))
+				Expect(lines).To(Equal([]string{"b", "one", "two", "three"}))
+			})
+
+			It("uses the split function when specified", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"fields.txt"},
+				}
+
+				var tokens []string
+				for s, input := range createInput(set).Scanners(bufio.ScanWords) {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					for s.Scan() {
+						tokens = append(tokens, s.Text())
+					}
+				}
+
+				Expect(tokens).To(Equal([]string{"alpha", "beta", "gamma", "delta"}))
+			})
+
+			It("yields a nil scanner when the file cannot be opened", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"missing.txt"},
+				}
+
+				var scanners []*bufio.Scanner
+				var errs []error
+				for s, input := range createInput(set).Scanners() {
+					scanners = append(scanners, s)
+					errs = append(errs, input.Err())
+					input.NextFile()
+				}
+
+				Expect(scanners).To(Equal([]*bufio.Scanner{nil}))
+				Expect(errs).To(HaveLen(1))
+				Expect(errs[0]).To(HaveOccurred())
+			})
+		})
+
+		Describe("Fields", func() {
+
+			It("enumerates the fields of each file", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"src/c.txt", "fields.txt"},
+				}
+
+				var fields []string
+				for field, input := range createInput(set).Fields() {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					fields = append(fields, field)
+				}
+
+				Expect(fields).To(Equal([]string{"c", "alpha", "beta", "gamma", "delta"}))
+			})
+		})
+
+		Describe("Tokens", func() {
+
+			It("enumerates the tokens of each file using the split function", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"lines.txt", "src/c.txt"},
+				}
+
+				var tokens []string
+				for token, input := range createInput(set).Tokens(bufio.ScanWords) {
+					Expect(input.Err()).NotTo(HaveOccurred())
+					tokens = append(tokens, string(token))
+				}
+
+				Expect(tokens).To(Equal([]string{"one", "two", "three", "c"}))
+			})
+
+			It("splits into lines when the split function is nil", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"lines.txt"},
+				}
+
+				var tokens []string
+				for token := range createInput(set).Tokens(nil) {
+					tokens = append(tokens, string(token))
+				}
+
+				Expect(tokens).To(Equal([]string{"one", "two", "three"}))
+			})
+
+			It("proceeds to the next file when the error is cleared", func() {
+				set := &cli.FileSet{
+					FS:    testFileSystem,
+					Files: []string{"missing.txt", "src/c.txt"},
+				}
+
+				var tokens []string
+				for token, input := range createInput(set).Tokens(bufio.ScanWords) {
+					if input.Err() != nil {
+						input.NextFile()
+						continue
+					}
+					tokens = append(tokens, string(token))
+				}
+
+				Expect(tokens).To(Equal([]string{"c"}))
 			})
 		})
 

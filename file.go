@@ -149,11 +149,11 @@ var errStopWalk = errors.New("stop walking")
 // FileInput provides a controller for successively reading the files
 // enumerated from a FileSet.  It is obtained from FileSet.Input.
 //
-// The files are enumerated by one of the scanning methods, Readers or
-// Contents.  As iteration proceeds, the state of the FileInput reflects the
-// file currently being processed; use Filename, File, and Err to obtain
-// information about it.  Only one scanning method can be used per FileInput;
-// calling a second one panics.
+// The files are enumerated by one of the scanning methods, Readers,
+// Contents, Scanners, Lines, Fields, or Tokens.  As iteration proceeds, the
+// state of the FileInput reflects the file currently being processed; use
+// Filename, File, and Err to obtain information about it.  Only one scanning
+// method can be used per FileInput; calling a second one panics.
 //
 // When the file set is empty, stdin is implicitly used as the only file
 // unless stdin is connected to a TTY.  When the file set names a directory,
@@ -228,40 +228,64 @@ func (fi *FileInput) Contents() iter.Seq2[[]byte, *FileInput] {
 	}
 }
 
-// Lines enumerates each of the lines from each of the files in the fileset.
-// Line-ending runes are stripped from each line.  As iteration proceeds,
-// Lineno and FileLineno track the current line number.
-func (fi *FileInput) Lines() iter.Seq2[string, *FileInput] {
-	fi.useMethod("Lines")
-	return func(yield func(string, *FileInput) bool) {
+// Scanners produces a scanner for each of the files in the fileset.
+// The split function can optionally be specified; when it is not, the
+// scanner splits its input into lines.
+//
+// Each scanner is bound to the file currently being processed and must be
+// used within the corresponding iteration because the underlying file is
+// closed as iteration advances.  Unlike the other scanning methods, the caller
+// drives the scanner, so any error it encounters is obtained from the scanner
+// itself rather than from Err, and the line numbers reported by Lineno and
+// FileLineno are not tracked.  When the file could not be opened, the scanner
+// is nil and Err provides the error.
+func (fi *FileInput) Scanners(splitfuncopt ...bufio.SplitFunc) iter.Seq2[*bufio.Scanner, *FileInput] {
+	fi.useMethod("Scanners")
+	var split bufio.SplitFunc
+	if len(splitfuncopt) > 0 {
+		split = splitfuncopt[0]
+	}
+
+	return func(yield func(*bufio.Scanner, *FileInput) bool) {
 		fi.drive(func(fi *FileInput) bool {
-			fi.fileLineno = 0
 			if fi.err != nil {
-				return yield("", fi)
+				return yield(nil, fi)
 			}
 
 			r, err := fi.open()
 			if err != nil {
 				fi.err = err
-				return yield("", fi)
+				return yield(nil, fi)
 			}
 			defer fi.closeReader(r)
 
-			scanner := bufio.NewScanner(r)
-			for scanner.Scan() {
-				fi.lineno++
-				fi.fileLineno++
-				if !yield(scanner.Text(), fi) {
-					return false
-				}
-			}
-			if err := scanner.Err(); err != nil {
-				fi.err = err
-				return yield("", fi)
-			}
-			return true
+			return yield(newScanner(r, split), fi)
 		})
 	}
+}
+
+// Lines enumerates each of the lines from each of the files in the fileset.
+// Line-ending runes are stripped from each line.  As iteration proceeds,
+// Lineno and FileLineno track the current line number.
+func (fi *FileInput) Lines() iter.Seq2[string, *FileInput] {
+	fi.useMethod("Lines")
+	return scanTokens(fi, nil, true, (*bufio.Scanner).Text)
+}
+
+// Fields enumerates each of the whitespace-delimited fields from each of
+// the files in the fileset.
+func (fi *FileInput) Fields() iter.Seq2[string, *FileInput] {
+	fi.useMethod("Fields")
+	return scanTokens(fi, bufio.ScanWords, false, (*bufio.Scanner).Text)
+}
+
+// Tokens uses the specified split function to generate tokens for
+// each of the files in the fileset.  When the split function is nil,
+// tokens correspond to lines.  Each token is only valid until iteration
+// proceeds to the next one.
+func (fi *FileInput) Tokens(s bufio.SplitFunc) iter.Seq2[[]byte, *FileInput] {
+	fi.useMethod("Tokens")
+	return scanTokens(fi, s, false, (*bufio.Scanner).Bytes)
 }
 
 // Filename is the name of the file currently being processed.
@@ -406,6 +430,55 @@ func (fi *FileInput) useMethod(name string) {
 		panic("cli: FileInput." + name + " called after FileInput." + fi.method)
 	}
 	fi.method = name
+}
+
+func newScanner(r io.Reader, split bufio.SplitFunc) *bufio.Scanner {
+	scanner := bufio.NewScanner(r)
+	if split != nil {
+		scanner.Split(split)
+	}
+	return scanner
+}
+
+// scanTokens enumerates the tokens of each file in the file input, splitting
+// each file with split and converting each token with convert.  When count is
+// set, each token also advances the line numbers.
+func scanTokens[T any](fi *FileInput, split bufio.SplitFunc, count bool, convert func(*bufio.Scanner) T) iter.Seq2[T, *FileInput] {
+	var zero T
+
+	return func(yield func(T, *FileInput) bool) {
+		fi.drive(func(fi *FileInput) bool {
+			if count {
+				fi.fileLineno = 0
+			}
+			if fi.err != nil {
+				return yield(zero, fi)
+			}
+
+			r, err := fi.open()
+			if err != nil {
+				fi.err = err
+				return yield(zero, fi)
+			}
+			defer fi.closeReader(r)
+
+			scanner := newScanner(r, split)
+			for scanner.Scan() {
+				if count {
+					fi.lineno++
+					fi.fileLineno++
+				}
+				if !yield(convert(scanner), fi) {
+					return false
+				}
+			}
+			if err := scanner.Err(); err != nil {
+				fi.err = err
+				return yield(zero, fi)
+			}
+			return true
+		})
+	}
 }
 
 type fileInputState interface {
