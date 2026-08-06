@@ -239,12 +239,12 @@ func (f *Flag) newSynopsis() *synopsis.Flag {
 
 // SetData sets internal data used by the flag
 func (f *Flag) SetData(key any, value any) {
-	f.privateData(&f.Data).set(key, value)
+	f.privateData(&f.Data).Set(key, value)
 }
 
 // LookupData obtains internal data used by the flag
 func (f *Flag) LookupData(key any) (any, bool) {
-	return f.privateData(&f.Data).lookup(key)
+	return f.privateData(&f.Data).Lookup(key)
 }
 
 func (f *Flag) setDescription(value any) {

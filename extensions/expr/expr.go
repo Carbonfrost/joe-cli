@@ -133,6 +133,8 @@ type Expr struct {
 	// hide the expression operator.
 	Options cli.Option
 
+	private map[any]any
+
 	flags exprFlags
 	*exprSet
 }
@@ -310,7 +312,15 @@ func (e *Expression) Initializer() cli.Action {
 			})
 		}
 
-		return finalizeExprs(e)
+		// Removing finalization into a value initializer ensures that finalization runs
+		// after all other expressions have a chance to run
+		_ = c.ProvideValueInitializer(nil, "<finalize>", cli.Setup{
+			Uses: func() error {
+				return finalizeExprs(e)
+			},
+		})
+
+		return nil
 
 	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(_ *cli.Context) (err error) {
 		var all cli.BindingMap
@@ -659,15 +669,23 @@ func (e *Expr) SetLocalArgs(args []*cli.Arg) error {
 	return nil
 }
 
-// SetData sets the specified metadata on the expression operator
-func (e *Expr) SetData(name string, v any) {
-	e.Data = setData(e.Data, name, v)
+// SetData sets the specified metadata on the expression operator.
+// Despite its signature, Expr does not
+func (e *Expr) SetData(name, v any) {
+	e.privateData().Set(name, v)
+}
+
+func (e *Expr) privateData() support.PD {
+	return support.PrivateData(&e.Data, e.private)
 }
 
 // LookupData obtains the data if it exists
-func (e *Expr) LookupData(name string) (any, bool) {
-	v, ok := e.Data[name]
-	return v, ok
+func (e *Expr) LookupData(name any) (any, bool) {
+	if s, ok := name.(string); ok {
+		v, ok := e.Data[s]
+		return v, ok
+	}
+	return nil, false
 }
 
 // SetName sets the name of the expression
@@ -1134,6 +1152,10 @@ func finalizeExprs(e *Expression) error {
 			continue
 		}
 		errs = append(errs, support.ValidateNames(names, e.Name, e.Aliases, nil)...)
+	}
+
+	for _, expr := range e.Exprs {
+		support.PromoteOptionalAliases(expr, &expr.Aliases, names)
 	}
 
 	if len(errs) > 0 {

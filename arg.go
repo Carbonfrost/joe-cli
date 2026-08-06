@@ -400,12 +400,12 @@ func (a *Arg) value() any {
 
 // SetData sets internal data used by the argument
 func (a *Arg) SetData(key any, value any) {
-	a.privateData(&a.Data).set(key, value)
+	a.privateData(&a.Data).Set(key, value)
 }
 
 // LookupData obtains internal data used by the argument
 func (a *Arg) LookupData(key any) (any, bool) {
-	return a.privateData(&a.Data).lookup(key)
+	return a.privateData(&a.Data).Lookup(key)
 }
 
 func (a *Arg) setCategory(name string) {

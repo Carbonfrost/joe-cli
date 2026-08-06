@@ -528,12 +528,12 @@ func (c *Command) newSynopsis() *synopsis.Command {
 
 // SetData sets internal data used by the command
 func (c *Command) SetData(key any, value any) {
-	c.privateData(&c.Data).set(key, value)
+	c.privateData(&c.Data).Set(key, value)
 }
 
 // LookupData obtains internal data used by the command
 func (c *Command) LookupData(key any) (any, bool) {
-	return c.privateData(&c.Data).lookup(key)
+	return c.privateData(&c.Data).Lookup(key)
 }
 
 func (c *Command) setCategory(name string) {
@@ -729,7 +729,7 @@ func finalizeArgsAndFlags(c *Context) error {
 	}
 
 	for _, f := range c.LocalFlags() {
-		promoteOptionalAliases(f.Data, &f.Aliases, names)
+		promoteOptionalAliases(f, &f.Aliases, names)
 	}
 
 	if len(errs) > 0 {
@@ -756,7 +756,7 @@ func finalizeSubcommands(c *Context) error {
 	}
 
 	for _, cmd := range c.LocalCommands() {
-		promoteOptionalAliases(cmd.Data, &cmd.Aliases, names)
+		promoteOptionalAliases(cmd, &cmd.Aliases, names)
 	}
 
 	if len(errs) > 0 {
@@ -765,15 +765,8 @@ func finalizeSubcommands(c *Context) error {
 	return nil
 }
 
-func promoteOptionalAliases(data map[string]any, aliases *[]string, names map[string]bool) {
-	if optionalAliases, ok := data[optionalAliasesDataKey].([]string); ok {
-		for _, alias := range optionalAliases {
-			if !names[alias] {
-				*aliases = append(*aliases, alias)
-			}
-		}
-		delete(data, optionalAliasesDataKey)
-	}
+func promoteOptionalAliases(data target, aliases *[]string, names map[string]bool) {
+	support.PromoteOptionalAliases(data, aliases, names)
 }
 
 func getGroup(f *Flag) synopsis.OptionGroup {

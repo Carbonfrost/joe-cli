@@ -2107,33 +2107,8 @@ func (s *targetSupport) internalFlags() internalFlags {
 	return s.flags
 }
 
-func (t *targetSupport) privateData(public *map[string]any) privateData {
-	if *public == nil {
-		*public = map[string]any{}
-	}
-	return privateData{public: *public, private: t.private}
-}
-
-type privateData struct {
-	public  map[string]any // a reference to Data
-	private map[any]any
-}
-
-func (p privateData) lookup(key any) (any, bool) {
-	if name, ok := key.(string); ok {
-		value, ok := p.public[name]
-		return value, ok
-	}
-	value, ok := p.private[key]
-	return value, ok
-}
-
-func (p privateData) set(key, value any) {
-	if name, ok := key.(string); ok {
-		p.public[name] = value
-	} else {
-		p.private[key] = value
-	}
+func (t *targetSupport) privateData(public *map[string]any) support.PD {
+	return support.PrivateData(public, t.private)
 }
 
 func (m middlewareFunc) Execute(c context.Context) error {

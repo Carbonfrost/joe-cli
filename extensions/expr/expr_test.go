@@ -1184,6 +1184,103 @@ var _ = Describe("Expr", func() {
 
 	})
 
+	Describe("OptionalAlias", func() {
+
+		var (
+			lookupExpr = func(app *cli.App, name string) *expr.Expr {
+				a, _ := app.Arg("e")
+				for _, x := range a.Value.(*expr.Expression).Exprs {
+					if x.Name == name {
+						return x
+					}
+				}
+				return nil
+			}
+			newExpression = func(exprs []*expr.Expr) *cli.Arg {
+				return &cli.Arg{
+					Name: "e",
+					Value: &expr.Expression{
+						Exprs: exprs,
+					},
+				}
+			}
+		)
+
+		It("adds alias when name is not already defined", func() {
+			app := &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					newExpression([]*expr.Expr{
+						{
+							Name: "status",
+							Uses: cli.OptionalAlias("s"),
+						},
+						{
+							Name: "version",
+						},
+					}),
+				},
+			}
+
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			expr1 := lookupExpr(app, "status")
+			expr2 := lookupExpr(app, "version")
+			Expect(expr1.Aliases).To(ContainElement("s"))
+			Expect(expr2.Aliases).To(BeEmpty())
+		})
+
+		It("does not add alias when name is already defined", func() {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					newExpression([]*expr.Expr{
+						{
+							Name: "status",
+							Uses: cli.OptionalAlias("s"),
+						},
+						{
+							Name: "s", // This conflicts with the optional alias
+						},
+					}),
+				},
+			}
+
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+			expr1 := lookupExpr(app, "status")
+			expr2 := lookupExpr(app, "s")
+			Expect(expr1.Aliases).NotTo(ContainElement("s"))
+			Expect(expr2.Name).To(Equal("s"))
+		})
+
+		It("does not add optional alias when it conflicts with existing alias", func() {
+			app := &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					newExpression([]*expr.Expr{
+						{
+							Name: "status",
+							Uses: cli.OptionalAlias("x"),
+						},
+						{
+							Name:    "version",
+							Aliases: []string{"x"},
+						},
+					}),
+				},
+			}
+
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			expr1 := lookupExpr(app, "status")
+			expr2 := lookupExpr(app, "version")
+			Expect(expr1.Aliases).NotTo(ContainElement("x"))
+			Expect(expr2.Aliases).To(ContainElement("x"))
+		})
+	})
+
 })
 
 var _ = Describe("Predicate", func() {
