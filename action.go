@@ -320,6 +320,7 @@ var (
 					ActionFunc(fixupCommandInternals),
 					ActionFunc(setupDefaultTemplateFuncs),
 					ActionFunc(setupDefaultTemplates),
+					SuggestCommand(),
 				),
 			),
 			actionFunc(preventSetupIfPresent),

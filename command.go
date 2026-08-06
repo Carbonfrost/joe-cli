@@ -256,6 +256,105 @@ func ImplicitCommand(name string) CommandNotFoundHandler {
 	})
 }
 
+// SuggestCommand provides a CommandNotFoundHandler which suggests sub-commands
+// that are similar to the one that could not be found.  When suggestions are found, they are
+// recorded on the ParseError via its Suggestions attribute and rendered using
+// the "Suggestions" template.  SuggestCommand is added to the default pipeline
+// for the root command; the DisableSuggestions option opts out of it.
+func SuggestCommand() CommandNotFoundHandler {
+	return HandleCommandNotFound(func(c *Context, err error) (*Command, error) {
+		if c.flagSetOrAncestor((internalFlags).disableSuggestions) {
+			return nil, err
+		}
+
+		pe, ok := err.(*ParseError)
+		if !ok {
+			return nil, err
+		}
+
+		suggestions := suggestCommandNames(pe.Name, commandSuggestionNames(c.Command()))
+		if len(suggestions) == 0 {
+			return nil, err
+		}
+
+		pe.Suggestions = suggestions
+		if tpl := c.Template("Suggestions"); tpl != nil {
+			var buf strings.Builder
+			if tpl.Execute(&buf, struct{ Suggestions []string }{suggestions}) == nil {
+				pe.detail = strings.TrimRight(buf.String(), "\n")
+			}
+		}
+		return nil, pe
+	})
+}
+
+// commandSuggestionNames obtains the names and aliases of the visible sub-commands
+// of the command, which are the candidates considered when suggesting a command.
+func commandSuggestionNames(cmd *Command) []string {
+	if cmd == nil {
+		return nil
+	}
+	var names []string
+	for _, sub := range cmd.VisibleSubcommands() {
+		names = append(names, sub.Names()...)
+	}
+	return names
+}
+
+// suggestCommandNames returns the candidates which are similar to name, ordered
+// from most to least similar (ties broken alphabetically).
+func suggestCommandNames(name string, candidates []string) []string {
+	if name == "" {
+		return nil
+	}
+
+	threshold := len(name)/2 + 1
+	type scored struct {
+		name string
+		dist int
+	}
+
+	var matches []scored
+	for _, candidate := range candidates {
+		dist := levenshtein(name, candidate)
+		if dist <= threshold {
+			matches = append(matches, scored{candidate, dist})
+		}
+	}
+
+	slices.SortFunc(matches, func(a, b scored) int {
+		return cmp.Or(cmp.Compare(a.dist, b.dist), cmp.Compare(a.name, b.name))
+	})
+
+	res := make([]string, len(matches))
+	for i, m := range matches {
+		res[i] = m.name
+	}
+	return res
+}
+
+// levenshtein computes the Levenshtein edit distance between two strings.
+func levenshtein(a, b string) int {
+	ar, br := []rune(a), []rune(b)
+	prev := make([]int, len(br)+1)
+	curr := make([]int, len(br)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(ar); i++ {
+		curr[0] = i
+		for j := 1; j <= len(br); j++ {
+			cost := 1
+			if ar[i-1] == br[j-1] {
+				cost = 0
+			}
+			curr[j] = min(prev[j]+1, curr[j-1]+1, prev[j-1]+cost)
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(br)]
+}
+
 func groupedByCategory(cmds []*Command) commandsByCategory {
 	res := commandsByCategory{}
 	for _, command := range cmds {

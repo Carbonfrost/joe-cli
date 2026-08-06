@@ -31,6 +31,16 @@ type ParseError struct {
 
 	// Remaining contains arguments which could not be parsed
 	Remaining []string
+
+	// Suggestions contains alternative names that the user may have intended.
+	// For a CommandNotFound error, this is populated by SuggestCommand with the
+	// names of sub-commands that are similar to the one that could not be found.
+	Suggestions []string
+
+	// detail provides supplementary text appended to the error message.  It is
+	// used by SuggestCommand to render the Suggestions using the "Suggestions"
+	// template so that they are displayed after the main error message.
+	detail string
 }
 
 // InternalError represents an error that has occurred because of the
@@ -151,7 +161,11 @@ func (e *ParseError) ExitCode() int {
 }
 
 func (e *ParseError) Error() string {
-	return e.Code.formatError(e.Name, e.Value, e.Err)
+	msg := e.Code.formatError(e.Name, e.Value, e.Err)
+	if e.detail != "" {
+		return msg + "\n" + e.detail
+	}
+	return msg
 }
 
 // Unwrap returns the internal error

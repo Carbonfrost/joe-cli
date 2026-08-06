@@ -5,6 +5,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -1040,5 +1041,95 @@ var _ = Describe("ImplicitCommand", func() {
 		args, _ := cli.Split("app tail /var/output/logs -f")
 		err := app.RunContext(context.Background(), args)
 		Expect(err).To(MatchError(`"tail" is not a command`))
+	})
+})
+
+var _ = Describe("SuggestCommand", func() {
+
+	var newApp = func(opts cli.Option) (*cli.App, *bytes.Buffer) {
+		var stderr bytes.Buffer
+		app := &cli.App{
+			Name:    "app",
+			Options: opts,
+			Commands: []*cli.Command{
+				{Name: "status"},
+				{Name: "stash"},
+				{Name: "checkout"},
+			},
+			Stderr: &stderr,
+		}
+		return app, &stderr
+	}
+
+	It("is enabled by default on the root command", func() {
+		app, _ := newApp(cli.None)
+		args, _ := cli.Split("app stat")
+		err := app.RunContext(context.Background(), args)
+
+		Expect(err).To(HaveOccurred())
+		pe, ok := err.(*cli.ParseError)
+		Expect(ok).To(BeTrue())
+		Expect(pe.Suggestions).To(Equal([]string{"stash", "status"}))
+	})
+
+	It("orders suggestions by similarity then name", func() {
+		app, _ := newApp(cli.None)
+		args, _ := cli.Split("app stab")
+		err := app.RunContext(context.Background(), args)
+
+		pe := err.(*cli.ParseError)
+		// "stash" (distance 2) is more similar than "status" (distance 3)
+		Expect(pe.Suggestions).To(Equal([]string{"stash", "status"}))
+	})
+
+	It("displays the suggestions after the error message", func() {
+		app, _ := newApp(cli.None)
+		args, _ := cli.Split("app stat")
+		err := app.RunContext(context.Background(), args)
+
+		Expect(err.Error()).To(Equal("\"stat\" is not a command\nDid you mean?\n\tstash\n\tstatus"))
+	})
+
+	It("makes no suggestions when nothing is similar", func() { // FIXME Adopt DescribeTable
+		app, _ := newApp(cli.None)
+		args, _ := cli.Split("app totally-different")
+		err := app.RunContext(context.Background(), args)
+
+		pe := err.(*cli.ParseError)
+		Expect(pe.Suggestions).To(BeEmpty())
+		Expect(err.Error()).To(Equal("\"totally-different\" is not a command"))
+	})
+
+	It("can be disabled with DisableSuggestions", func() {
+		app, _ := newApp(cli.DisableSuggestions)
+		args, _ := cli.Split("app stat")
+		err := app.RunContext(context.Background(), args)
+
+		Expect(err).To(HaveOccurred())
+		pe := err.(*cli.ParseError)
+		Expect(pe.Suggestions).To(BeEmpty())
+		Expect(err.Error()).To(Equal("\"stat\" is not a command"))
+	})
+
+	It("defers to a handler that resolves a command", func() {
+		var act = new(joeclifakes.FakeAction)
+		var stderr bytes.Buffer
+		app := &cli.App{
+			Name: "app",
+			Commands: []*cli.Command{
+				{Name: "status", Action: act},
+			},
+			Uses: cli.HandleCommandNotFound(func(c *cli.Context, _ error) (*cli.Command, error) {
+				cmd, _ := c.Command().Command("status")
+				return cmd, nil
+			}),
+			Stderr: &stderr,
+		}
+
+		args, _ := cli.Split("app stat")
+		err := app.RunContext(context.Background(), args)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 })

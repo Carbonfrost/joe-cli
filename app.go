@@ -138,6 +138,9 @@ var (
 		"Version": func() string {
 			return VersionTemplate
 		},
+		"Suggestions": func() string {
+			return SuggestionsTemplate
+		},
 		"License": func() string {
 			return LicenseTemplate
 		},

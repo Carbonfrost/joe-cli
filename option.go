@@ -213,6 +213,12 @@ const (
 	// See also SynopsisCategory.
 	DisableSynopsisCategories
 
+	// DisableSuggestions opts out of displaying command suggestions when a
+	// sub-command cannot be found.  By default, the root command uses
+	// SuggestCommand to display similarly named sub-commands when one is not
+	// found; this option prevents that behavior.
+	DisableSuggestions
+
 	// ReservedOption1 provides an option which is reserved. This value
 	// can be used within extensions to denote additional options that are
 	// applied within the scope of the extension. The extension or client must remove the
@@ -282,6 +288,7 @@ const (
 	internalFlagEachOccurrence
 	internalFlagNumeric
 	internalFlagDisableSynopsisCategories
+	internalFlagDisableSuggestions
 )
 
 var (
@@ -312,6 +319,7 @@ var (
 		Trigger:                 setInternalFlag(internalFlagTriggerRequested),
 		ParseUnknownFlagsAsArgs: setInternalFlag(internalFlagParseUnknownFlagsAsArgs),
 		Numeric:                 ActionFunc(numericOption),
+		DisableSuggestions:      setInternalFlag(internalFlagDisableSuggestions),
 		ReservedOption1:         ActionFunc(nil), // Reserved options are enforced in the default pipelines
 		ReservedOption2:         ActionFunc(nil),
 		ReservedOption3:         ActionFunc(nil),
@@ -347,6 +355,7 @@ var (
 		Trigger:                 "TRIGGER",
 		ParseUnknownFlagsAsArgs: "PARSE_UNKNOWN_FLAGS_AS_ARGS",
 		Numeric:                 "NUMERIC",
+		DisableSuggestions:      "DISABLE_SUGGESTIONS",
 		ReservedOption1:         "RESERVED_OPTION_1",
 		ReservedOption2:         "RESERVED_OPTION_2",
 		ReservedOption3:         "RESERVED_OPTION_3",
@@ -524,6 +533,10 @@ func (f internalFlags) numeric() bool {
 
 func (f internalFlags) disableSynopsisCategories() bool {
 	return f&internalFlagDisableSynopsisCategories == internalFlagDisableSynopsisCategories
+}
+
+func (f internalFlags) disableSuggestions() bool {
+	return f&internalFlagDisableSuggestions == internalFlagDisableSuggestions
 }
 
 func (f internalFlags) toRaw() RawParseFlag {

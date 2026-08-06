@@ -172,6 +172,12 @@ Expressions:
 {{- template "Description" .Description -}}
 `
 
+	// SuggestionsTemplate specifies the Go template that renders the command
+	// suggestions displayed when a sub-command cannot be found.  It is rendered
+	// with data that exposes a Suggestions field, which is the list of similarly
+	// named sub-commands.  See also SuggestCommand.
+	SuggestionsTemplate = `Did you mean?{{ range .Suggestions }}{{ "\n" }}{{ "\t" }}{{ . }}{{ end }}`
+
 	// VersionTemplate specifies the Go template for what is printed when
 	//   the version flag or command is used.
 	VersionTemplate = "{{ .App.Name }}, version {{ .App.Version }}\n"
