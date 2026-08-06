@@ -22,6 +22,8 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
+type contextTestKey struct{}
+
 var _ = Describe("Expr", func() {
 
 	It("context contains the expression", func() {
@@ -1422,6 +1424,20 @@ var _ = Describe("EvaluatorOf", func() {
 		Entry("func() bool", func() (_ bool) { act(); return }),
 		Entry("func()", func() { act() }),
 		Entry("Action", &joeclifakes.FakeAction{ExecuteStub: func(context.Context) (_ error) { act(); return }}),
+
+		// The same signatures also allow a value that is more specific than any
+		Entry("func(*Context, string, func(any) error) error", func(*cli.Context, string, func(any) error) error { act(); return nil }),
+		Entry("func(*Context, string) error", func(*cli.Context, string) error { act(); return nil }),
+		Entry("func(*Context, string) bool", func(*cli.Context, string) bool { act(); return false }),
+		Entry("func(*Context, string)", func(*cli.Context, string) { act() }),
+		Entry("func(context.Context, string, func(any) error) error", func(context.Context, string, func(any) error) error { act(); return nil }),
+		Entry("func(context.Context, string) error", func(context.Context, string) error { act(); return nil }),
+		Entry("func(context.Context, string) bool", func(context.Context, string) bool { act(); return false }),
+		Entry("func(context.Context, string)", func(context.Context, string) { act() }),
+		Entry("func(string, func(any) error) error", func(string, func(any) error) error { act(); return nil }),
+		Entry("func(string) error", func(string) error { act(); return nil }),
+		Entry("func(string) bool", func(string) bool { act(); return false }),
+		Entry("func(string)", func(string) { act() }),
 	)
 
 	It("always yields from boolean", func() {
@@ -1431,5 +1447,128 @@ var _ = Describe("EvaluatorOf", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(yield.CallCount()).To(Equal(1))
 		Expect(ev).To(BeAssignableToTypeOf(expr.Invariant(false)))
+	})
+
+	Describe("specific value types", func() {
+
+		It("passes the value to the function", func() {
+			var actual string
+			ev := expr.EvaluatorOf(func(v string) bool {
+				actual = v
+				return true
+			})
+
+			yield := new(exprfakes.FakeYielder)
+			err := ev.Evaluate(context.Background(), "hello", yield.Spy)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal("hello"))
+			Expect(yield.CallCount()).To(Equal(1))
+			Expect(yield.ArgsForCall(0)).To(Equal("hello"))
+		})
+
+		It("filters out the value when the function returns false", func() {
+			ev := expr.EvaluatorOf(func(v string) bool { return v == "other" })
+
+			yield := new(exprfakes.FakeYielder)
+			err := ev.Evaluate(context.Background(), "hello", yield.Spy)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(yield.CallCount()).To(Equal(0))
+		})
+
+		It("returns the error from the function", func() {
+			ev := expr.EvaluatorOf(func(string) error { return errors.New("an error") })
+
+			yield := new(exprfakes.FakeYielder)
+			err := ev.Evaluate(context.Background(), "hello", yield.Spy)
+			Expect(err).To(MatchError("an error"))
+			Expect(yield.CallCount()).To(Equal(0))
+		})
+
+		It("returns an error when the value can't be used with the function", func() {
+			var called bool
+			ev := expr.EvaluatorOf(func(string) bool {
+				called = true
+				return true
+			})
+
+			yield := new(exprfakes.FakeYielder)
+			err := ev.Evaluate(context.Background(), 420, yield.Spy)
+			Expect(err).To(MatchError("unsupported value: int"))
+			Expect(called).To(BeFalse())
+			Expect(yield.CallCount()).To(Equal(0))
+		})
+
+		It("uses the value when it implements an interface parameter", func() {
+			var actual error
+			ev := expr.EvaluatorOf(func(v error) error {
+				actual = v
+				return nil
+			})
+
+			expected := errors.New("an error")
+			Expect(ev.Evaluate(context.Background(), expected, new(exprfakes.FakeYielder).Spy)).NotTo(HaveOccurred())
+			Expect(actual).To(BeIdenticalTo(expected))
+		})
+
+		It("uses the zero value when the value is nil", func() {
+			var actual = "unset"
+			ev := expr.EvaluatorOf(func(v string) { actual = v })
+
+			Expect(ev.Evaluate(context.Background(), nil, new(exprfakes.FakeYielder).Spy)).NotTo(HaveOccurred())
+			Expect(actual).To(BeEmpty())
+		})
+
+		It("passes the context to the function", func() {
+			var actual context.Context
+			ev := expr.EvaluatorOf(func(c context.Context, _ string) { actual = c })
+
+			expected := context.WithValue(context.Background(), contextTestKey{}, "value")
+			Expect(ev.Evaluate(expected, "hello", new(exprfakes.FakeYielder).Spy)).NotTo(HaveOccurred())
+			Expect(actual).To(BeIdenticalTo(expected))
+		})
+
+		It("passes the cli.Context to the function", func() {
+			var actual *cli.Context
+			ev := expr.EvaluatorOf(func(c *cli.Context, _ string) { actual = c })
+
+			expected := &cli.Context{}
+			Expect(ev.Evaluate(expected, "hello", new(exprfakes.FakeYielder).Spy)).NotTo(HaveOccurred())
+			Expect(actual).To(BeIdenticalTo(expected))
+		})
+
+		It("delegates yielding to the function when it takes the yielder", func() {
+			ev := expr.EvaluatorOf(func(v string, y func(any) error) error {
+				return y(strings.ToUpper(v))
+			})
+
+			yield := new(exprfakes.FakeYielder)
+			err := ev.Evaluate(context.Background(), "hello", yield.Spy)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(yield.CallCount()).To(Equal(1))
+			Expect(yield.ArgsForCall(0)).To(Equal("HELLO"))
+		})
+
+		It("does nothing when the function is nil", func() {
+			ev := expr.EvaluatorOf((func(string) bool)(nil))
+
+			yield := new(exprfakes.FakeYielder)
+			err := ev.Evaluate(context.Background(), "hello", yield.Spy)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(yield.CallCount()).To(Equal(0))
+		})
+
+		DescribeTable("panics on unsupported signatures", func(thunk any) {
+			Expect(func() {
+				expr.EvaluatorOf(thunk)
+			}).To(Panic())
+		},
+			Entry("not a function", 420),
+			Entry("variadic", func(...string) bool { return true }),
+			Entry("too many parameters", func(context.Context, string, string) error { return nil }),
+			Entry("yielder is not covariant", func(string, func(string) error) error { return nil }),
+			Entry("unsupported result", func(string) string { return "" }),
+			Entry("too many results", func(string) (bool, error) { return true, nil }),
+			Entry("bool result with a yielder", func(string, func(any) error) bool { return true }),
+		)
 	})
 })

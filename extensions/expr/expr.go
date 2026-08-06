@@ -425,6 +425,14 @@ func NewBindingEvaluator(ev Evaluator, exprlookup ...any) BindingEvaluator {
 //   - func() bool
 //   - func() error
 //   - func()
+//
+// Each of these signatures can also name a type that is more specific than any
+// for the value parameter, in which case reflection is used to invoke the
+// function.  For example, func(context.Context, string) bool is valid, and
+// each value in the expression pipeline is passed to it as a string; a value
+// which can't be used as a string causes evaluation to return an error.  The
+// yield function is not covariant, however: it must always be spelled
+// func(any) error.
 func EvaluatorOf(v any) Evaluator {
 	switch a := v.(type) {
 	case nil:
@@ -555,7 +563,7 @@ func EvaluatorOf(v any) Evaluator {
 	case error:
 		return Error(a)
 	}
-	panic(fmt.Sprintf("unexpected type: %T", v))
+	return reflectEvaluatorOf(v)
 }
 
 // Evaluate implements the Evaluator interface for Predicate
