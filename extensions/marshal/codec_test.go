@@ -249,11 +249,36 @@ var _ = Describe("Dump", func() {
 			),
 		}
 
-		// TODO An upstream bug in providers prevents testing --output-arg indent_size=2
 		args, _ := cli.Split("app --output=toml,indent_size=2")
 		_ = app.RunContext(context.Background(), args)
 		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n  t = 3\n\n"))
+	})
 
+	It("configures via context provider arg", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Action: marshal.Dump(struct {
+				Name  string           `toml:"name"`
+				ID    uint             `toml:"id"`
+				Table []map[string]int `toml:"table"`
+			}{
+				Name: "J",
+				ID:   234,
+				Table: []map[string]int{
+					{"t": 3},
+				},
+			}),
+			Uses: cli.Pipeline(
+				marshal.NewCodecProvider(),
+			),
+		}
+
+		args, _ := cli.Split("app --output-arg indent_size=4 --output=toml")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n    t = 3\n\n"))
 	})
 
 })

@@ -56,12 +56,29 @@ const (
 	contextProviderKey key = "contextProvider"
 )
 
+type codecDir int
+
+const (
+	outputCodec codecDir = iota
+	inputCodec
+)
+
+func (c codecDir) String() string {
+	if c == inputCodec {
+		return "input"
+	}
+	return "output"
+}
+
 // CodecProvider provides the context-bound provider that can be
 // used as a codec.
+// An input and output codecs can be set with SetInputCodec
+// and SetOutputCodec, respectively. If no codec is specified, the
+// default is JSON.
 type CodecProvider struct {
 	cli.Action
 
-	c codec.Interface
+	in, out codec.Interface
 }
 
 // Apply will apply the given options to the provider
@@ -77,20 +94,29 @@ func (c *CodecProvider) Pipeline() cli.Action {
 // MarshalWrite provides marshaling by delegating to the internal codec if it exists.
 // JSON is used by default
 func (c *CodecProvider) MarshalWrite(w io.Writer, in any) error {
-	return c.impl().MarshalWrite(w, in)
+	return c.impl(outputCodec).MarshalWrite(w, in)
 }
 
 // UnmarshalRead provides unmarshaling by delegating to the internal codec if it exists.
 // JSON is used by default
 func (c *CodecProvider) UnmarshalRead(r io.Reader, out any) error {
-	return c.impl().UnmarshalRead(r, out)
+	return c.impl(inputCodec).UnmarshalRead(r, out)
 }
 
-func (c *CodecProvider) impl() codec.Interface {
-	if c == nil || c.c == nil {
+func (c *CodecProvider) impl(dir codecDir) codec.Interface {
+	if c == nil {
 		return codec.NewJSONCodec()
 	}
-	return c.c
+	var result codec.Interface
+	if dir == inputCodec {
+		result = c.InputCodec()
+	} else {
+		result = c.OutputCodec()
+	}
+	if result == nil {
+		return codec.NewJSONCodec()
+	}
+	return result
 }
 
 // NewCodecProvider provides a value that provides the codec to
@@ -122,7 +148,9 @@ func WithAction(a cli.Action) CodecProviderOption {
 
 // WithDefaultAction sets the action to the default, which sets the
 // CodecProvider into the context and sets up the flags:
-// SetOutput, SetOutputArgument, and ListCodecs
+// SetOutput, SetOutputArgument, and ListCodecs.
+// However, SetInput and SetInputArgument are not added by the default
+// action.
 func WithDefaultAction() CodecProviderOption {
 	return CodecProviderOption(func(v *CodecProvider) {
 		v.Action = cli.Pipeline(
@@ -295,47 +323,92 @@ func codecProviderFlagsAndArgs() cli.Action {
 	}...)
 }
 
-// SetOutput provides a flag which sets the codec to use for dumping
-func SetOutput(v ...Codec) cli.Action {
+func (c *CodecProvider) setCodecHelper(name codecDir, v codec.Interface) error {
+	if name == inputCodec {
+		c.SetInputCodec(v)
+	} else {
+		c.SetOutputCodec(v)
+	}
+	return nil
+}
+
+// InputCodec gets the codec used internally by the provider for input
+func (c *CodecProvider) InputCodec() codec.Interface {
+	return c.in
+}
+
+// OutputCodec gets the codec used internally by the provider for output
+func (c *CodecProvider) OutputCodec() codec.Interface {
+	return c.out
+}
+
+func (c *CodecProvider) SetInputCodec(v codec.Interface) {
+	c.in = v
+}
+
+func (c *CodecProvider) SetOutputCodec(v codec.Interface) {
+	c.out = v
+}
+
+// SetOutput provides a flag which sets the codec to use for input
+func SetOutput(v ...codec.Interface) cli.Action {
+	return setCodec(outputCodec, v...)
+}
+
+// SetOutputArgument provides a flag which sets an argument on the codec
+// uses for input
+func SetOutputArgument() cli.Action {
+	return setCodecArgument(outputCodec)
+}
+
+// SetInput provides a flag which sets the codec to use for input
+func SetInput(v ...codec.Interface) cli.Action {
+	return setCodec(inputCodec, v...)
+}
+
+// SetInputArgument provides a flag which sets an argument on the codec
+// uses for input
+func SetInputArgument() cli.Action {
+	return setCodecArgument(inputCodec)
+}
+
+func setCodec(name codecDir, v ...codec.Interface) cli.Action {
+	actualBind := provider.Bind[codec.Interface]()
+	if len(v) > 0 {
+		actualBind = bind.Exact(v...)
+	}
+
 	return cli.Pipeline(
 		cli.Prototype{
-			Name: "output",
+			Name: name.String(),
 			Value: &provider.Value{
 				Registry: codecRegistryName,
 				Args:     structure.Of(&codec.Options{}),
 			},
 		},
-		bind.Call2(
+		bind.Call3(
 			(*CodecProvider).setCodecHelper,
 			bind.FromContext(CodecProviderFromContext),
-			provider.Bind[codec.Interface](),
+			bind.Exact(name),
+			actualBind,
 		),
 	)
 }
 
-func (c *CodecProvider) setCodecHelper(in codec.Interface) error {
-	c.SetCodec(in)
-	return nil
-}
-
-// SetCodec sets the codec used internally by the provider
-func (c *CodecProvider) SetCodec(in codec.Interface) {
-	c.c = in
-}
-
-// Codec gets the codec used internally by the provider
-func (c *CodecProvider) Codec() codec.Interface {
-	return c.c
-}
-
-// SetOutputArgument provides a flag which sets an argument on the codec
-// uses for dumping
-func SetOutputArgument(v ...Codec) cli.Action {
+func setCodecArgument(name codecDir) cli.Action {
 	return cli.Pipeline(
 		cli.Prototype{
-			Name: "output-arg",
+			Name: name.String() + "-arg",
 		},
-		provider.SetArgument("output"),
+		provider.SetArgument(name.String()),
+		// We must set the codec again after an argument because of its internal
+		// provider factory (provider.Bind)
+		bind.Call3(
+			(*CodecProvider).setCodecHelper,
+			bind.FromContext(CodecProviderFromContext),
+			bind.Exact(name),
+			provider.Bind[codec.Interface](name.String()),
+		),
 	)
 }
 
