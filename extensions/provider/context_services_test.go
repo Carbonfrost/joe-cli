@@ -62,9 +62,16 @@ var _ = Describe("ContextServices", func() {
 		},
 			Entry("string", "codecs"),
 			Entry("Flag", &cli.Flag{Name: "codecs"}),
+			Entry("Arg", &cli.Arg{Name: "codecs"}),
 			Entry(
 				"Flag registry",
 				&cli.Flag{
+					Name:  "c",
+					Value: &provider.Value{Registry: "codecs"},
+				}),
+			Entry(
+				"Arg registry",
+				&cli.Arg{
 					Name:  "c",
 					Value: &provider.Value{Registry: "codecs"},
 				}),

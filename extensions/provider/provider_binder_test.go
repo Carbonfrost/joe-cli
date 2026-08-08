@@ -93,6 +93,54 @@ var _ = Describe("Bind", func() {
 		flag, _ = app.Flag("format2")
 		Expect(flag.Value).To(BeAssignableToTypeOf(new(provider.Value)))
 	})
+
+	It("can redirect to other value", func() {
+		type providerType any
+
+		var calledWith *providerType
+
+		discreteValue := new(providerType)
+		call := func(pro *providerType) error {
+			calledWith = pro
+			return nil
+		}
+
+		registry := &provider.Registry{
+			Name: "custom",
+			Providers: provider.Details{
+				"b": {
+					Value: discreteValue,
+				},
+			},
+		}
+
+		app := &cli.App{
+			Name: "app",
+			Uses: registry,
+			Flags: []*cli.Flag{
+				{
+					Name: "format",
+					Value: &provider.Value{
+						Registry: "custom",
+					},
+				},
+				{
+					// --other references --format's value in its action binding.
+					Name:  "other",
+					Value: new(bool),
+					Action: cli.Pipeline(
+						bind.Redirect("format", "b"),
+						bind.Call(call, provider.Bind[*providerType]("format")),
+					),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app --other")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(calledWith).To(Equal(discreteValue))
+	})
 })
 
 var _ = Describe("ValueBinder", func() {
@@ -131,4 +179,5 @@ var _ = Describe("ValueBinder", func() {
 		Expect(calledWith.name).To(Equal("csv"))
 		Expect(calledWith.args).To(gstruct.PointTo(Equal(map[string]string{"comma": "b", "useCRLF": "false"})))
 	})
+
 })

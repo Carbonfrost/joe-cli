@@ -72,6 +72,11 @@ func registryName(name any) string {
 			return cmp.Or(value.Registry, v.Name)
 		}
 		return v.Name
+	case *cli.Arg:
+		if value, ok := v.Value.(*Value); ok {
+			return cmp.Or(value.Registry, v.Name)
+		}
+		return v.Name
 	default:
 		panic(fmt.Sprintf("unexpected type: %T", name))
 	}

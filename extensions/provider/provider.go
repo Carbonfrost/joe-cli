@@ -251,8 +251,9 @@ func SetArgument(name string) cli.Action {
 			Name:     name + "-arg",
 			Value:    new(string),
 			HelpText: fmt.Sprintf("Sets an argument for %s", name),
+			Uses:     cli.DependsOn(name),
 		},
-		bind.Indirect(name, (*Value).Set),
+		bind.Indirect(name, (*Value).setArgument),
 	)
 }
 
@@ -294,9 +295,6 @@ func fallbackTemplate(c *cli.Context) error {
 
 // Set the text of the value.  Can be called successively to append.
 func (v *Value) Set(arg string) error {
-	if v.Args == nil {
-		v.Args = &map[string]string{}
-	}
 	if !v.setName {
 		args := strings.SplitN(arg, ",", 2)
 		v.Name = args[0]
@@ -314,9 +312,26 @@ func (v *Value) Set(arg string) error {
 	} else {
 		args = cli.SplitList(arg, ",", -1)
 	}
+	for _, a := range args {
+		err := v.setArgument(a)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	cli.Set(&v.rawArgs, args...)
-	return cli.Set(v.Args, args...)
+func (v *Value) setArgument(arg string) error {
+	if !v.setName {
+		return fmt.Errorf("must set name before args")
+	}
+	cli.Set(&v.rawArgs, arg)
+
+	if v.Args == nil {
+		v.Args = &map[string]string{}
+	}
+
+	return cli.Set(v.Args, arg)
 }
 
 // String obtains the textual representation

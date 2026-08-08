@@ -14,6 +14,7 @@ type ValueBinder struct {
 
 type binder[T any] struct {
 	delegateBinder[*Value]
+	name any
 }
 
 type delegateBinder[T any] struct {
@@ -31,8 +32,14 @@ type binderInit interface {
 // Bind provides the binder the invokes the provider factory with
 // its configured arguments
 func Bind[T any](nameopt ...any) bind.Binder[T] {
+	var name any = nil
+	if len(nameopt) > 0 && nameopt[0] != "" {
+		name = nameopt[0]
+	}
+
 	return &binder[T]{
-		delegate(bind.Value[*Value](nameopt...)),
+		delegateBinder: delegate(bind.Value[*Value](nameopt...)),
+		name:           name,
 	}
 }
 
@@ -51,11 +58,31 @@ func (v *binder[T]) Bind(ctx context.Context) (T, error) {
 	}
 
 	c := cli.FromContext(ctx)
-	result, err := Services(c).New(c.Target(), value.Name, value.Args)
+	target := v.findTarget(c)
+
+	result, err := Services(c).New(target, value.Name, value.Args)
 	if err != nil {
 		return zero, err
 	}
 	return result.(T), nil
+}
+
+func (v *binder[_]) findTarget(c *cli.Context) any {
+	if v.name != nil {
+		// When present, the name is interpreted as the name of a flag
+		// or arg
+		flag, ok := c.LookupFlag(v.name)
+		if ok {
+			return flag
+		}
+
+		arg, ok := c.LookupArg(v.name)
+		if !ok {
+			return arg
+		}
+		return v.name
+	}
+	return c.Target()
 }
 
 func (v delegateBinder[_]) Initializer() cli.Action {
