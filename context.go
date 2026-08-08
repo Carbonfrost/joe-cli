@@ -944,6 +944,13 @@ func (c *Context) SetTransform(fn TransformFunc) error {
 	return nil
 }
 
+// DependentFlag retrieves the flag the current flag is dependent upon
+// because it was set up as its accessory.
+func (c *Context) DependentFlag() string {
+	s, _ := c.target().LookupData("DependentFlag")
+	return s.(string)
+}
+
 // Data obtains the data for the current target.  This could be a nil map.
 func (c *Context) Data() map[string]any {
 	return c.target().data()

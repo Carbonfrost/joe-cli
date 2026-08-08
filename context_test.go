@@ -1574,6 +1574,24 @@ var _ = Describe("Context", func() {
 			Expect(value.Args).To(HaveLen(4))
 		})
 	})
+
+	var _ = Describe("DependentFlag", func() {
+		It("is set through accessories", func() {
+			act := new(joeclifakes.FakeAction)
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name:  "a",
+						Value: new(cli.FileSet),
+						Uses:  cli.Accessory("c", (*cli.FileSet).RecursiveFlag, act),
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			actual := cli.FromContext(act.ExecuteArgsForCall(0)).DependentFlag()
+			Expect(actual).To(Equal("a"))
+		})
+	})
 })
 
 var _ = Describe("FromContext", func() {

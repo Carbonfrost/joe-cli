@@ -3365,10 +3365,12 @@ var _ = Describe("Accessory", func() {
 		_ = app.RunContext(context.Background(), []string{"app"})
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
+		dep, _ := flag.LookupData("DependentFlag")
 
 		Expect(flag.Name).To(Equal("custom"))
 		Expect(flag.Value).To(Equal(new(bool)))
 		Expect(flag.Category).To(Equal("same category"))
+		Expect(dep).To(Equal("files"))
 	})
 
 	It("creates the flag with user specified name", func() {
