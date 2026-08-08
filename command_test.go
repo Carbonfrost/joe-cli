@@ -1061,44 +1061,21 @@ var _ = Describe("SuggestCommand", func() {
 		return app, &stderr
 	}
 
-	It("is enabled by default on the root command", func() {
+	DescribeTable("default behavior examples", func(arguments string, expected types.GomegaMatcher) {
 		app, _ := newApp(cli.None)
-		args, _ := cli.Split("app stat")
-		err := app.RunContext(context.Background(), args)
-
-		Expect(err).To(HaveOccurred())
-		pe, ok := err.(*cli.ParseError)
-		Expect(ok).To(BeTrue())
-		Expect(pe.Suggestions).To(Equal([]string{"stash", "status"}))
-	})
-
-	It("orders suggestions by similarity then name", func() {
-		app, _ := newApp(cli.None)
-		args, _ := cli.Split("app stab")
+		args, _ := cli.Split(arguments)
 		err := app.RunContext(context.Background(), args)
 
 		pe := err.(*cli.ParseError)
+
+		Expect(pe).To(expected)
+	},
+
 		// "stash" (distance 2) is more similar than "status" (distance 3)
-		Expect(pe.Suggestions).To(Equal([]string{"stash", "status"}))
-	})
-
-	It("displays the suggestions after the error message", func() {
-		app, _ := newApp(cli.None)
-		args, _ := cli.Split("app stat")
-		err := app.RunContext(context.Background(), args)
-
-		Expect(err.Error()).To(Equal("\"stat\" is not a command\nDid you mean?\n\tstash\n\tstatus"))
-	})
-
-	It("makes no suggestions when nothing is similar", func() { // FIXME Adopt DescribeTable
-		app, _ := newApp(cli.None)
-		args, _ := cli.Split("app totally-different")
-		err := app.RunContext(context.Background(), args)
-
-		pe := err.(*cli.ParseError)
-		Expect(pe.Suggestions).To(BeEmpty())
-		Expect(err.Error()).To(Equal("\"totally-different\" is not a command"))
-	})
+		Entry("by similarity then name", "app stab", HaveField("Suggestions", []string{"stash", "status"})),
+		Entry("displays the suggestions", "app stat", MatchError("\"stat\" is not a command\nDid you mean?\n\tstash\n\tstatus")),
+		Entry("no suggestions", "app totally-different", MatchError("\"totally-different\" is not a command")),
+	)
 
 	It("can be disabled with DisableSuggestions", func() {
 		app, _ := newApp(cli.DisableSuggestions)
