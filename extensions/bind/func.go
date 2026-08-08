@@ -326,13 +326,23 @@ func Redirect[V any](name any, valopt ...V) cli.Action {
 
 	switch len(valopt) {
 	case 0:
-		return Call3(call, Context(), Value[V](""), Value[V](name))
+		return Call3(call, Context(), Value[V](""), stub[V](name))
 
 	case 1:
-		return Call3(call, Context(), Exact(valopt[0]), Value[V](name))
+		return Call3(call, Context(), Exact(valopt[0]), stub[V](name))
 
 	default:
 		panic("expected 0 or 1 args for valopt")
+	}
+}
+
+// stub doesn't lookup a value - it just facilitates wrapping the binder initializer
+func stub[T any](name any) *binder[T] {
+	return &binder[T]{
+		binderSupport: binderSupport[T]{impliedName: name},
+		lookupValue: func(ctx *cli.Context, a any) (_ T) {
+			return
+		},
 	}
 }
 
