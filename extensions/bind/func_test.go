@@ -102,6 +102,29 @@ var _ = Describe("Action", func() {
 	})
 })
 
+var _ = Describe("Action0", func() {
+
+	It("calls the function", func() {
+		var (
+			action = new(joeclifakes.FakeAction)
+			called bool
+		)
+		factory := func() cli.Action {
+			called = true
+			return action
+		}
+
+		app := &cli.App{
+			Uses: bind.Action0(factory),
+		}
+
+		err := app.RunContext(context.Background(), []string{"app"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(action.ExecuteCallCount()).To(Equal(1))
+		Expect(called).To(BeTrue())
+	})
+})
+
 var _ = Describe("Action2", func() {
 
 	Describe("binding arguments", func() {

@@ -47,6 +47,29 @@
 //	bind.Call2(myFunction, bind.String(), bind.Int())   // names omitted
 //	bind.Call2(myFunction, bind.String(0), bind.Int(1))
 //	bind.Call2(myFunction, bind.String("first"), bind.Int("second"))
+//
+// # Functions
+//
+// There are multiple functions in this package which specify the form of the
+// binding function and their timing. They have the form:
+//
+//	(Before|Action|After) (Call)? <arg-count>
+//
+// For example, [Before] takes a function that takes one argument and returns the
+// [cli.Action] that is actually run during the Before timing. The [BeforeCall3] function
+// takes three arguments and simply returns an error. The function gets
+// directly invoked during the Before timing.
+// Instead of "ActionCall", since it is so common, the plain name [Call] is used.
+//
+// These functions can be added to the Uses timing, but will actually be run in the
+// corresponding timing, and the binders can also provide initializers if they
+// have the method Initializer() Action (as the binders in this package do).
+// Notice that these functions are generic, allowing covariance over the type of
+// cli.Action that is returned.
+//
+// There are some zero arity functions, Action0, Before0, etc. that provide completeness
+// but since they don't take parameters, have no special semantic over [cli.At].
+// The thunk and its output will actually run during the corresponding timings.
 package bind
 
 import (
@@ -76,6 +99,7 @@ type Binder[T any] interface {
 // Func provides a function that binds
 type Func[T any] func(c *cli.Context) (T, error)
 
+// Bind provides the implementation of Binder
 func (f Func[T]) Bind(c context.Context) (T, error) {
 	return f(cli.FromContext(c))
 }
@@ -655,6 +679,7 @@ type BoolBinder struct {
 	binderSupportInterface[bool]
 }
 
+// Bind obtains the Boolean value from the context
 func (b *BoolBinder) Bind(c context.Context) (bool, error) {
 	return b.binderSupportInterface.Bind(c)
 }
@@ -671,6 +696,7 @@ type FileBinder struct {
 	binderSupportInterface[*cli.File]
 }
 
+// Bind obtains the *File value from the context
 func (f *FileBinder) Bind(c context.Context) (*cli.File, error) {
 	return f.binderSupportInterface.Bind(c)
 }
@@ -717,6 +743,7 @@ type NameValueBinder struct {
 	binderSupportInterface[*cli.NameValue]
 }
 
+// Bind obtains the *NameValue value from the context
 func (f *NameValueBinder) Bind(c context.Context) (*cli.NameValue, error) {
 	return f.binderSupportInterface.Bind(c)
 }

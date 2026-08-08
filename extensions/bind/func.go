@@ -12,9 +12,6 @@ import (
 
 // Action obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Action timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Action[T any, Action cli.Action](fn func(T) Action, t Binder[T]) cli.Action {
 	return cli.Pipeline(
 		initializers(t),
@@ -22,11 +19,13 @@ func Action[T any, Action cli.Action](fn func(T) Action, t Binder[T]) cli.Action
 	)
 }
 
+// Action0 obtains an action that invokes the function to derive another action.
+func Action0[Action cli.Action](fn func() Action) cli.Action {
+	return actioner0(cli.ActionTiming, fn)
+}
+
 // Action2 obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Action timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Action2[T, U any, Action cli.Action](fn func(T, U) Action, t Binder[T], u Binder[U]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u),
@@ -36,9 +35,6 @@ func Action2[T, U any, Action cli.Action](fn func(T, U) Action, t Binder[T], u B
 
 // Action3 obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Action timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Action3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u, v),
@@ -49,9 +45,6 @@ func Action3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T
 // Call obtains an action that invokes the function, binding the parameters.
 // The binder is optional. When not present, it defaults to the
 // binder representing the value of the current flag or arg.
-// If this is added to the Uses timing, it will actually be run in the
-// Action timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Call[T any](call func(T) error, binderopt ...Binder[T]) cli.Action {
 	var t Binder[T]
 	switch len(binderopt) {
@@ -69,10 +62,12 @@ func Call[T any](call func(T) error, binderopt ...Binder[T]) cli.Action {
 	)
 }
 
+// Call0 obtains an action that invokes the function, binding the parameters.
+func Call0[Action cli.Action](fn func() error) cli.Action {
+	return caller0(cli.ActionTiming, fn)
+}
+
 // Call2 obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Action timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Call2[T, U any](call func(T, U) error, t Binder[T], u Binder[U]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u),
@@ -81,9 +76,6 @@ func Call2[T, U any](call func(T, U) error, t Binder[T], u Binder[U]) cli.Action
 }
 
 // Call3 obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Action timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Call3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u, v),
@@ -92,9 +84,6 @@ func Call3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U], v Bi
 }
 
 // BeforeCall obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Before timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func BeforeCall[T any](call func(T) error, t Binder[T]) cli.Action {
 	return cli.Pipeline(
 		initializers(t),
@@ -102,10 +91,12 @@ func BeforeCall[T any](call func(T) error, t Binder[T]) cli.Action {
 	)
 }
 
+// BeforeCall0 obtains an action that invokes the function, binding the parameters.
+func BeforeCall0[Action cli.Action](fn func() error) cli.Action {
+	return caller0(cli.BeforeTiming, fn)
+}
+
 // BeforeCall2 obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Before timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func BeforeCall2[T, U any](call func(T, U) error, t Binder[T], u Binder[U]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u),
@@ -114,9 +105,6 @@ func BeforeCall2[T, U any](call func(T, U) error, t Binder[T], u Binder[U]) cli.
 }
 
 // BeforeCall3 obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Before timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func BeforeCall3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u, v),
@@ -126,9 +114,6 @@ func BeforeCall3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U]
 
 // Before obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Before timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Before[T any, Action cli.Action](fn func(T) Action, t Binder[T]) cli.Action {
 	return cli.Pipeline(
 		initializers(t),
@@ -136,11 +121,13 @@ func Before[T any, Action cli.Action](fn func(T) Action, t Binder[T]) cli.Action
 	)
 }
 
+// Before0 obtains an action that invokes the function to derive another action.
+func Before0[Action cli.Action](fn func() Action) cli.Action {
+	return actioner0(cli.BeforeTiming, fn)
+}
+
 // Before2 obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Before timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Before2[T, U any, Action cli.Action](fn func(T, U) Action, t Binder[T], u Binder[U]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u),
@@ -150,9 +137,6 @@ func Before2[T, U any, Action cli.Action](fn func(T, U) Action, t Binder[T], u B
 
 // Before3 obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// Before timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func Before3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u, v),
@@ -161,9 +145,6 @@ func Before3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T
 }
 
 // AfterCall obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// After timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func AfterCall[T any](call func(T) error, t Binder[T]) cli.Action {
 	return cli.Pipeline(
 		initializers(t),
@@ -171,10 +152,12 @@ func AfterCall[T any](call func(T) error, t Binder[T]) cli.Action {
 	)
 }
 
+// AfterCall0 obtains an action that invokes the function, binding the parameters.
+func AfterCall0[Action cli.Action](fn func() error) cli.Action {
+	return caller0(cli.AfterTiming, fn)
+}
+
 // AfterCall2 obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// After timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func AfterCall2[T, U any](call func(T, U) error, t Binder[T], u Binder[U]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u),
@@ -183,9 +166,6 @@ func AfterCall2[T, U any](call func(T, U) error, t Binder[T], u Binder[U]) cli.A
 }
 
 // AfterCall3 obtains an action that invokes the function, binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// After timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func AfterCall3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u, v),
@@ -195,9 +175,6 @@ func AfterCall3[T, U, V any](call func(T, U, V) error, t Binder[T], u Binder[U],
 
 // After obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// After timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func After[T any, Action cli.Action](fn func(T) Action, t Binder[T]) cli.Action {
 	return cli.Pipeline(
 		initializers(t),
@@ -205,11 +182,13 @@ func After[T any, Action cli.Action](fn func(T) Action, t Binder[T]) cli.Action 
 	)
 }
 
+// After0 obtains an action that invokes the function to derive another action.
+func After0[Action cli.Action](fn func() Action) cli.Action {
+	return actioner0(cli.AfterTiming, fn)
+}
+
 // After2 obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// After timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func After2[T, U any, Action cli.Action](fn func(T, U) Action, t Binder[T], u Binder[U]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u),
@@ -219,9 +198,6 @@ func After2[T, U any, Action cli.Action](fn func(T, U) Action, t Binder[T], u Bi
 
 // After3 obtains an action that invokes the function to derive another action
 // whilst binding the parameters.
-// If this is added to the Uses timing, it will actually be run in the
-// After timing and the binders can also provide initializers if they
-// have the method Initializer() Action (as the binders in this package do).
 func After3[T, U, V any, Action cli.Action](fn func(T, U, V) Action, t Binder[T], u Binder[U], v Binder[V]) cli.Action {
 	return cli.Pipeline(
 		initializers(t, u, v),
@@ -236,6 +212,12 @@ func actioner[T any, Action cli.Action](time cli.Timing, fn func(T) Action, t Bi
 			return err
 		}
 		return cli.Do(c, fn(a0))
+	}))
+}
+
+func actioner0[Action cli.Action](time cli.Timing, fn func() Action) cli.Action {
+	return cli.At(time, cli.ActionOf(func(c context.Context) error {
+		return cli.Do(c, fn())
 	}))
 }
 
@@ -267,6 +249,10 @@ func caller[T any](time cli.Timing, call func(T) error, t Binder[T]) cli.Action 
 		}
 		return call(a0)
 	}))
+}
+
+func caller0(time cli.Timing, call func() error) cli.Action {
+	return cli.At(time, cli.ActionOf(call))
 }
 
 func caller2[T, U any](time cli.Timing, call func(T, U) error, t Binder[T], u Binder[U]) cli.Action {
