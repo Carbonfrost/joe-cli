@@ -9,4 +9,5 @@ const (
 	CompletionRequest = "_CompletionRequest"
 	PanicData         = "__PanicData"
 	OptionalAliases   = "__OptionalAliases"
+	DependsOn         = "__DependsOn"
 )

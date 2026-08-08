@@ -103,6 +103,11 @@ type Command struct {
 
 	fromApp *App
 	ifRoot  *rootCommandData
+
+	// flagOrder contains Flags in the order in which they are executed and hooked,
+	// which differs from Flags only when DependsOn, OrderFirst, or OrderLast is used.
+	// It is nil when the definition order applies.
+	flagOrder []*Flag
 }
 
 type rootCommandData struct {
@@ -835,6 +840,144 @@ func finalizeArgsAndFlags(c *Context) error {
 		return c.internalError(fmt.Errorf("errors initializing command: %w", errors.Join(errs...)))
 	}
 	return nil
+}
+
+func orderFlags(c *Context) error {
+	if !c.IsCommand() {
+		return nil
+	}
+
+	cmd := c.Command()
+	flags := cmd.Flags
+	deps := make([][]int, len(flags))
+	var errs []error
+	anyOrdering := false
+
+	for i, f := range flags {
+		if f.internalFlags().orderClass() != 0 {
+			anyOrdering = true
+		}
+
+		names := dependsOnNames(f)
+		if len(names) == 0 {
+			continue
+		}
+		anyOrdering = true
+
+		for _, name := range names {
+			trimmed := strings.TrimLeft(name, "-")
+			self := optionName(f.Name)
+
+			if trimmed == "" {
+				errs = append(errs, fmt.Errorf("flag %s: a dependency must be named", self))
+				continue
+			}
+			if dep, index, found := findFlagByName(flags, trimmed); found {
+				if dep == f {
+					errs = append(errs, fmt.Errorf("flag %s can't depend upon itself", self))
+					continue
+				}
+				deps[i] = append(deps[i], index)
+				continue
+			}
+			if _, _, found := findArgByName(cmd.Args, trimmed); found {
+				errs = append(errs, fmt.Errorf("flag %s can't depend upon arg %s", self, trimmed))
+				continue
+			}
+			// Naming a persistent flag is redundant rather than an error because
+			// ancestor flags always run first anyway
+			if _, ok := c.Parent().LookupFlag(trimmed); ok {
+				continue
+			}
+			errs = append(errs, fmt.Errorf("flag %s depends upon %s, which does not exist", self, optionName(trimmed)))
+		}
+	}
+
+	if len(errs) > 0 {
+		return c.internalError(fmt.Errorf("errors initializing command: %w", errors.Join(errs...)))
+	}
+	if !anyOrdering {
+		cmd.flagOrder = nil
+		return nil
+	}
+
+	order, err := topoSortFlags(flags, deps)
+	if err != nil {
+		return c.internalError(fmt.Errorf("errors initializing command: %w", err))
+	}
+	cmd.flagOrder = order
+	return nil
+}
+
+func dependsOnNames(f *Flag) []string {
+	names, _ := f.Data[dependsOnDataKey].([]string)
+	return names
+}
+
+// topoSortFlags implements Kahn's algorithm, which selects among the flags that are
+// available at each step using the sort key implied by OrderFirst, OrderLast, and the
+// index of the flag.  This makes the dependencies hard constraints and the absolute
+// ordering a tiebreaker.
+func topoSortFlags(flags []*Flag, deps [][]int) ([]*Flag, error) {
+	remaining := make([]int, len(flags))
+	dependents := make([][]int, len(flags))
+	for i, dd := range deps {
+		for _, j := range dd {
+			// Guard against a dependency named more than once
+			if slices.Contains(dependents[j], i) {
+				continue
+			}
+			dependents[j] = append(dependents[j], i)
+			remaining[i]++
+		}
+	}
+
+	// Among the available flags, the one with the lowest order class wins, and ties
+	// are broken by the order in which the flags were defined
+	better := func(x, y int) bool {
+		return cmp.Or(
+			cmp.Compare(flags[x].internalFlags().orderClass(), flags[y].internalFlags().orderClass()),
+			cmp.Compare(x, y),
+		) < 0
+	}
+
+	available := make([]int, 0, len(flags))
+	for i := range flags {
+		if remaining[i] == 0 {
+			available = append(available, i)
+		}
+	}
+
+	res := make([]*Flag, 0, len(flags))
+	for len(available) > 0 {
+		best := 0
+		for k, i := range available[1:] {
+			if better(i, available[best]) {
+				best = k + 1
+			}
+		}
+		next := available[best]
+		available = slices.Delete(available, best, best+1)
+		res = append(res, flags[next])
+
+		for _, d := range dependents[next] {
+			remaining[d]--
+			if remaining[d] == 0 {
+				available = append(available, d)
+			}
+		}
+	}
+
+	if len(res) < len(flags) {
+		var names []string
+		for i, f := range flags {
+			if remaining[i] > 0 {
+				names = append(names, optionName(f.Name))
+			}
+		}
+		return nil, fmt.Errorf("cyclic flag dependency among %s", listOfValues(names, false, "and"))
+	}
+	return res, nil
 }
 
 func finalizeSubcommands(c *Context) error {

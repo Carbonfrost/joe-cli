@@ -265,6 +265,7 @@ const (
 const (
 	panicDataKey           = privatekey.PanicData
 	optionalAliasesDataKey = privatekey.OptionalAliases
+	dependsOnDataKey       = privatekey.DependsOn
 )
 
 const (
@@ -347,6 +348,7 @@ var (
 			ActionFunc(initializeSubcommands),
 			ActionFunc(initializeValueTargets),
 			ActionFunc(finalizeArgsAndFlags),
+			ActionFunc(orderFlags),
 			ActionFunc(finalizeSubcommands),
 			ActionFunc(enforceReservedOptions),
 			At(ActionTiming, actionFunc(triggerRobustParsingAndCompletion)),
@@ -1014,6 +1016,44 @@ func Requires(names ...string) Action {
 
 		return nil
 	}))
+}
+
+// DependsOn declares that the flag must run after the named flags, which provides
+// the topological sort order in which the flags of a command are actually executed
+// and hooked.  This action is set up within the Uses pipeline, and it does not itself
+// affect the Uses pipeline: flags always initialize in no guaranteed order, though
+// likely in the order in which they were defined.  When present, the ordering applies
+// to the other timings, which is to say the Before, Action, and After pipelines of
+// the flag along with the hooks that were registered on it.
+//
+//	&cli.Flag{
+//	    Name: "output",
+//	    Uses: cli.DependsOn("format"),  // --format runs before --output
+//	}
+//
+// The ordering does not affect the relative order of flags, persistent flags, and args
+// as a whole; flags always run before args and persistent flags before local flags.
+// It is an internal error for a flag to name an arg as a dependency or to name a
+// flag which doesn't exist by the conclusion of the command's initialization.  Naming a
+// persistent flag is redundant though not an error, because the general ordering
+// already implies that local flags depend upon the ones defined by an ancestor command.
+// It is also an internal error for the dependencies to introduce a cycle.
+//
+// The options OrderFirst and OrderLast provide absolute ordering.  They only break ties;
+// the more specific ordering from DependsOn supersedes them.
+func DependsOn(flags ...string) Action {
+	return ActionFunc(func(c *Context) error {
+		if err := c.requireInit(); err != nil {
+			return err
+		}
+		if !c.IsFlag() {
+			return c.internalError(errFlagOnly)
+		}
+
+		existing, _ := c.target().LookupData(dependsOnDataKey)
+		names, _ := existing.([]string)
+		return c.SetData(dependsOnDataKey, append(names, flags...))
+	})
 }
 
 // Mutex validates that explicit values are used mutually exclusively.

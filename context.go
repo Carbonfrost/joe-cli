@@ -479,6 +479,47 @@ func (c *Context) LocalFlags() []*Flag {
 	return c.Target().(*Command).Flags
 }
 
+// flagsInOrder is the counterpart of Flags which uses the order in which flags are
+// executed and hooked rather than the order in which they were defined
+func (c *Context) flagsInOrder() []*Flag {
+	if !c.IsCommand() {
+		return nil
+	}
+	return append(c.persistentFlagsInOrder(), c.localFlagsInOrder()...)
+}
+
+func (c *Context) persistentFlagsInOrder() []*Flag {
+	if !c.IsCommand() || c.Parent() == nil {
+		return nil
+	}
+	return c.Parent().flagsInOrder()
+}
+
+// localFlagsInOrder is the counterpart of LocalFlags which uses the order in which
+// flags are executed and hooked, as established by DependsOn, OrderFirst, and OrderLast
+func (c *Context) localFlagsInOrder() []*Flag {
+	if !c.IsCommand() {
+		return nil
+	}
+
+	cmd := c.Target().(*Command)
+	if cmd.flagOrder == nil {
+		return cmd.Flags
+	}
+	if len(cmd.flagOrder) == len(cmd.Flags) {
+		return cmd.flagOrder
+	}
+
+	// Flags introduced after the order was computed simply run last
+	res := slices.Clone(cmd.flagOrder)
+	for _, f := range cmd.Flags {
+		if !slices.Contains(cmd.flagOrder, f) {
+			res = append(res, f)
+		}
+	}
+	return res
+}
+
 // LocalArgs obtains the args from the command or value target.  If the current context
 // is not a command or value target, this is nil.
 func (c *Context) LocalArgs() []*Arg {
@@ -1708,7 +1749,7 @@ func (c *Context) setTiming(t Timing) *Context {
 
 func triggerOptionsHO(t Timing, on func(*Context) error) ActionFunc {
 	return func(ctx *Context) error {
-		for _, f := range ctx.LocalFlags() {
+		for _, f := range ctx.localFlagsInOrder() {
 			child := ctx.newChild(f, t)
 			err := on(child)
 			if err != nil {
@@ -2304,7 +2345,7 @@ func executePipelines(at Timing) Action {
 func triggerOptions(ctx *Context) error {
 	// Invoke the Before action on all flags and args, but only the actual
 	// Action when the flag or arg was set
-	for _, f := range ctx.Flags() {
+	for _, f := range ctx.flagsInOrder() {
 		err := triggerOption(ctx, f)
 		if err != nil {
 			return err

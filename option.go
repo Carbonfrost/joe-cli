@@ -219,6 +219,20 @@ const (
 	// found; this option prevents that behavior.
 	DisableSuggestions
 
+	// OrderFirst causes a flag to run before the other flags of its command.
+	// This affects the order in which the flag's Before, Action, and After pipelines
+	// (and the hooks registered on it) are executed; it has no effect on the
+	// Uses pipeline, on the order in which flags are displayed, or on the relative
+	// order of flags, persistent flags, and args as a whole.  Any ordering implied by
+	// DependsOn is more specific and supersedes this option.
+	// See also DependsOn and OrderLast.
+	OrderFirst
+
+	// OrderLast causes a flag to run after the other flags of its command.
+	// It is the counterpart of OrderFirst.  If a flag sets both OrderFirst and
+	// OrderLast, OrderFirst wins.
+	OrderLast
+
 	// ReservedOption1 provides an option which is reserved. This value
 	// can be used within extensions to denote additional options that are
 	// applied within the scope of the extension. The extension or client must remove the
@@ -289,6 +303,8 @@ const (
 	internalFlagNumeric
 	internalFlagDisableSynopsisCategories
 	internalFlagDisableSuggestions
+	internalFlagOrderFirst
+	internalFlagOrderLast
 )
 
 var (
@@ -320,6 +336,8 @@ var (
 		ParseUnknownFlagsAsArgs: setInternalFlag(internalFlagParseUnknownFlagsAsArgs),
 		Numeric:                 ActionFunc(numericOption),
 		DisableSuggestions:      setInternalFlag(internalFlagDisableSuggestions),
+		OrderFirst:              setInternalFlag(internalFlagOrderFirst),
+		OrderLast:               setInternalFlag(internalFlagOrderLast),
 		ReservedOption1:         ActionFunc(nil), // Reserved options are enforced in the default pipelines
 		ReservedOption2:         ActionFunc(nil),
 		ReservedOption3:         ActionFunc(nil),
@@ -356,6 +374,8 @@ var (
 		ParseUnknownFlagsAsArgs: "PARSE_UNKNOWN_FLAGS_AS_ARGS",
 		Numeric:                 "NUMERIC",
 		DisableSuggestions:      "DISABLE_SUGGESTIONS",
+		OrderFirst:              "ORDER_FIRST",
+		OrderLast:               "ORDER_LAST",
 		ReservedOption1:         "RESERVED_OPTION_1",
 		ReservedOption2:         "RESERVED_OPTION_2",
 		ReservedOption3:         "RESERVED_OPTION_3",
@@ -537,6 +557,26 @@ func (f internalFlags) disableSynopsisCategories() bool {
 
 func (f internalFlags) disableSuggestions() bool {
 	return f&internalFlagDisableSuggestions == internalFlagDisableSuggestions
+}
+
+func (f internalFlags) orderFirst() bool {
+	return f&internalFlagOrderFirst == internalFlagOrderFirst
+}
+
+func (f internalFlags) orderLast() bool {
+	return f&internalFlagOrderLast == internalFlagOrderLast
+}
+
+// orderClass produces a sort key to break ties when DependsOn is used
+func (f internalFlags) orderClass() int {
+	switch {
+	case f.orderFirst():
+		return -1
+	case f.orderLast():
+		return 1
+	default:
+		return 0
+	}
 }
 
 func (f internalFlags) toRaw() RawParseFlag {

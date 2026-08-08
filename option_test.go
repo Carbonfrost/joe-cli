@@ -51,6 +51,8 @@ var _ = Describe("Option", func() {
 			Entry("ParseUnknownFlagsAsArgs", cli.ParseUnknownFlagsAsArgs, "PARSE_UNKNOWN_FLAGS_AS_ARGS"),
 			Entry("Numeric", cli.Numeric, "NUMERIC"),
 			Entry("DisableSynopsisCategories", cli.DisableSynopsisCategories, "DISABLE_SYNOPSIS_CATEGORIES"),
+			Entry("OrderFirst", cli.OrderFirst, "ORDER_FIRST"),
+			Entry("OrderLast", cli.OrderLast, "ORDER_LAST"),
 			Entry("ReservedOption1", cli.ReservedOption1, "RESERVED_OPTION_1"),
 			Entry("ReservedOption2", cli.ReservedOption2, "RESERVED_OPTION_2"),
 			Entry("ReservedOption3", cli.ReservedOption3, "RESERVED_OPTION_3"),

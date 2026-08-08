@@ -3847,6 +3847,220 @@ var _ = Describe("Mutex", func() {
 
 })
 
+var _ = Describe("DependsOn", func() {
+
+	// orderedFlags creates flags named for each key of the given specification,
+	// tracking the order in which their Before, Action, and After pipelines run.
+	// The value of each entry provides the Uses pipeline and options of the flag.
+	type flagSpec struct {
+		Name    string
+		Uses    cli.Action
+		Options cli.Option
+	}
+
+	var (
+		app       func(...flagSpec) *cli.App
+		before    *callTracker
+		action    *callTracker
+		after     *callTracker
+		orderedBy = func(t *callTracker) []string { return t.called }
+	)
+
+	BeforeEach(func() {
+		before, action, after = trackCalls(), trackCalls(), trackCalls()
+		app = func(specs ...flagSpec) *cli.App {
+			flags := make([]*cli.Flag, len(specs))
+			for i, s := range specs {
+				flags[i] = &cli.Flag{
+					Name:    s.Name,
+					Value:   cli.Bool(),
+					Options: s.Options,
+					Uses:    s.Uses,
+					Before:  before.makeAction(s.Name),
+					Action:  action.makeAction(s.Name),
+					After:   after.makeAction(s.Name),
+				}
+			}
+			return &cli.App{
+				Name:  "app",
+				Flags: flags,
+			}
+		}
+	})
+
+	It("orders the flag after its dependencies in Before timing", func() {
+		err := app(
+			flagSpec{Name: "a", Uses: cli.DependsOn("b")},
+			flagSpec{Name: "b"},
+			flagSpec{Name: "c", Uses: cli.DependsOn("a")},
+		).RunContext(context.Background(), []string{"app"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(orderedBy(before)).To(Equal([]string{"b", "a", "c"}))
+	})
+
+	It("applies to the Action and After timings", func() {
+		err := app(
+			flagSpec{Name: "a", Uses: cli.DependsOn("b")},
+			flagSpec{Name: "b"},
+			flagSpec{Name: "c", Uses: cli.DependsOn("a")},
+		).RunContext(context.Background(), []string{"app", "-a", "-b", "-c"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(orderedBy(action)).To(Equal([]string{"b", "a", "c"}))
+		Expect(orderedBy(after)).To(Equal([]string{"b", "a", "c"}))
+	})
+
+	It("applies to the hooks which were registered on the flags", func() {
+		hooked := trackCalls()
+		res := app(
+			flagSpec{Name: "a", Uses: cli.DependsOn("b")},
+			flagSpec{Name: "b"},
+		)
+		res.Uses = cli.HookBefore("-", cli.ActionFunc(func(c *cli.Context) error {
+			return cli.Do(c, hooked.makeAction(c.Name()))
+		}))
+
+		Expect(res.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(hooked.called[0:2]).To(Equal([]string{"-b", "-a"}))
+	})
+
+	It("supersedes OrderFirst", func() {
+		err := app(
+			flagSpec{Name: "a", Options: cli.OrderFirst, Uses: cli.DependsOn("b")},
+			flagSpec{Name: "b"},
+			flagSpec{Name: "c"},
+		).RunContext(context.Background(), []string{"app"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(orderedBy(before)).To(Equal([]string{"b", "a", "c"}))
+	})
+
+	It("supersedes OrderLast", func() {
+		err := app(
+			flagSpec{Name: "a"},
+			flagSpec{Name: "b", Options: cli.OrderLast},
+			flagSpec{Name: "c", Uses: cli.DependsOn("b")},
+		).RunContext(context.Background(), []string{"app"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(orderedBy(before)).To(Equal([]string{"a", "b", "c"}))
+	})
+
+	It("accumulates dependencies from multiple uses", func() {
+		err := app(
+			flagSpec{Name: "a", Uses: cli.Pipeline(cli.DependsOn("b"), cli.DependsOn("c"))},
+			flagSpec{Name: "b", Uses: cli.DependsOn("c")},
+			flagSpec{Name: "c"},
+		).RunContext(context.Background(), []string{"app"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(orderedBy(before)).To(Equal([]string{"c", "b", "a"}))
+	})
+
+	It("allows the name of an alias", func() {
+		a := &cli.Flag{Name: "a", Value: cli.Bool(), Uses: cli.DependsOn("bee"), Before: before.makeAction("a")}
+		b := &cli.Flag{Name: "b", Aliases: []string{"bee"}, Value: cli.Bool(), Before: before.makeAction("b")}
+		err := (&cli.App{Name: "app", Flags: []*cli.Flag{a, b}}).RunContext(context.Background(), []string{"app"})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(orderedBy(before)).To(Equal([]string{"b", "a"}))
+	})
+
+	It("does not affect the order in which flags are displayed", func() {
+		res := app(
+			flagSpec{Name: "a", Uses: cli.DependsOn("b")},
+			flagSpec{Name: "b"},
+		)
+		Expect(res.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(res.Flags[0].Name).To(Equal("a"))
+		Expect(res.Flags[1].Name).To(Equal("b"))
+	})
+
+	It("treats a dependency upon a persistent flag as redundant", func() {
+		res := &cli.App{
+			Name:  "app",
+			Flags: []*cli.Flag{{Name: "g", Value: cli.Bool(), Before: before.makeAction("g")}},
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Flags: []*cli.Flag{
+						{Name: "a", Value: cli.Bool(), Uses: cli.DependsOn("g"), Before: before.makeAction("a")},
+					},
+				},
+			},
+		}
+		Expect(res.RunContext(context.Background(), []string{"app", "sub"})).NotTo(HaveOccurred())
+		Expect(orderedBy(before)).To(Equal([]string{"g", "a"}))
+	})
+
+	DescribeTable("errors", func(a *cli.App, expected types.GomegaMatcher) {
+		Expect(a.RunContext(context.Background(), []string{"app"})).To(expected)
+	},
+		Entry("name of an arg",
+			&cli.App{
+				Name:  "app",
+				Flags: []*cli.Flag{{Name: "a", Uses: cli.DependsOn("f")}},
+				Args:  []*cli.Arg{{Name: "f"}},
+			},
+			MatchError(ContainSubstring("flag -a can't depend upon arg f"))),
+		Entry("name which does not exist",
+			&cli.App{
+				Name:  "app",
+				Flags: []*cli.Flag{{Name: "a", Uses: cli.DependsOn("nope")}},
+			},
+			MatchError(ContainSubstring("flag -a depends upon --nope, which does not exist"))),
+		Entry("own name",
+			&cli.App{
+				Name:  "app",
+				Flags: []*cli.Flag{{Name: "a", Uses: cli.DependsOn("a")}},
+			},
+			MatchError(ContainSubstring("flag -a can't depend upon itself"))),
+		Entry("cycle",
+			&cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{Name: "a", Uses: cli.DependsOn("b")},
+					{Name: "b", Uses: cli.DependsOn("a")},
+				},
+			},
+			MatchError(ContainSubstring("cyclic flag dependency among -a and -b"))),
+		Entry("used on an arg",
+			&cli.App{
+				Name: "app",
+				Args: []*cli.Arg{{Name: "f", Uses: cli.DependsOn("a")}},
+			},
+			MatchError(ContainSubstring("action can only be used with a flag"))),
+	)
+})
+
+var _ = Describe("OrderFirst and OrderLast", func() {
+
+	DescribeTable("examples", func(options [3]cli.Option, expected []string) {
+		tracker := trackCalls()
+		flags := make([]*cli.Flag, 3)
+		for i, name := range []string{"a", "b", "c"} {
+			flags[i] = &cli.Flag{
+				Name:    name,
+				Value:   cli.Bool(),
+				Options: options[i],
+				Before:  tracker.makeAction(name),
+			}
+		}
+
+		app := &cli.App{Name: "app", Flags: flags}
+		Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(tracker.called).To(Equal(expected))
+	},
+		Entry("none", [3]cli.Option{}, []string{"a", "b", "c"}),
+		Entry("OrderFirst", [3]cli.Option{2: cli.OrderFirst}, []string{"c", "a", "b"}),
+		Entry("OrderLast", [3]cli.Option{0: cli.OrderLast}, []string{"b", "c", "a"}),
+		Entry("both on the same flag prefers first", [3]cli.Option{1: cli.OrderFirst | cli.OrderLast}, []string{"b", "a", "c"}),
+		Entry("several OrderFirst keep their relative order",
+			[3]cli.Option{1: cli.OrderFirst, 2: cli.OrderFirst}, []string{"b", "c", "a"}),
+	)
+})
+
 var _ = Describe("Numeric", func() {
 
 	It("sets up implied int type", func() {
