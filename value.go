@@ -115,8 +115,8 @@ type BindingLookup interface {
 	// including the flag or arg name and grouped into occurrences.
 	Bindings(name string) [][]string
 
-	// BindingNames obtains the names of the flags/args which are available.
-	// Even if it is available, the empty string "" is not returned from this list.
+	// BindingNames obtains the names of the flags/args which are available,
+	// in the order in which they first occurred.
 	BindingNames() []string
 
 	// OccurrenceValue obtains the value which occurred at the particular index

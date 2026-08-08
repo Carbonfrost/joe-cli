@@ -216,7 +216,37 @@ var _ = Describe("RawParse", func() {
 			}),
 		),
 	)
+
+	It("contains the input args", func() {
+		args, _ := cli.Split("app -s a arg")
+		actual, err := cli.RawParse(args, newTestFlagSet(), cli.RawSkipProgramName)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual.Args()).To(Equal([]string{"app", "-s", "a", "arg"}))
+	})
+
+	It("contains binding names in the order they occurred", func() {
+		args, _ := cli.Split("app --long b -s a --long c arg")
+		actual, err := cli.RawParse(args, newTestFlagSet(), cli.RawSkipProgramName)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual.BindingNames()).To(Equal([]string{"long", "short", "arg"}))
+	})
 })
+
+func newTestFlagSet() *testFlagSet {
+	return &testFlagSet{
+		args: []string{"arg"},
+		counters: map[string]cli.ArgCounter{
+			"arg":   cli.ArgCount(cli.TakeUntilNextFlag),
+			"long":  cli.DefaultFlagCounter(),
+			"short": cli.ArgCount(1),
+		},
+		aliases: map[string]string{
+			"s": "short",
+		},
+	}
+}
 
 type testFlagSet struct {
 	args     []string
@@ -263,13 +293,10 @@ func (*testFlagSet) SetOccurrence(name string, values ...string) error {
 }
 
 // Flatten actual one layer to simplify comparisons
-func flattenParseResults(actual map[string][][]string) map[string][]string {
+func flattenParseResults(actual *cli.BindingResult) map[string][]string {
 	actualFlat := map[string][]string{}
-	for n, v := range actual {
-		// skip over "", which represents the inputs
-		if n == "" {
-			continue
-		}
+	for _, n := range actual.BindingNames() {
+		v := actual.Bindings(n)
 		flat := make([]string, len(v))
 		for i, occur := range v {
 			flat[i] = strings.Join(occur, " ")

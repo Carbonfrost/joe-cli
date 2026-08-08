@@ -233,7 +233,7 @@ type exprBinding struct {
 type exprSet struct {
 	cli.Lookup
 	cli.Binding
-	cli.BindingMap
+	*cli.BindingResult
 }
 
 const (
@@ -254,10 +254,10 @@ func newBoundExpr(e *Expr) *boundExpr {
 	}
 }
 
-func newExprSet(b cli.Binding, all cli.BindingMap) *exprSet {
+func newExprSet(b cli.Binding, all *cli.BindingResult) *exprSet {
 	result := &exprSet{
-		BindingMap: all,
-		Binding:    b,
+		BindingResult: all,
+		Binding:       b,
 	}
 	result.Lookup = cli.LookupFunc(result.lookupValue)
 	return result
@@ -289,8 +289,7 @@ func (e *Expression) Initializer() cli.Action {
 		// Set up the expression set early so that events related to Expr can access it without
 		// special checks
 		for _, sub := range e.Exprs {
-			var all cli.BindingMap
-			es := newExprSet(cli.NewBinding(nil, sub.Args, nil), all)
+			es := newExprSet(cli.NewBinding(nil, sub.Args, nil), nil)
 			sub.exprSet = es
 		}
 		return nil
@@ -323,16 +322,16 @@ func (e *Expression) Initializer() cli.Action {
 		return nil
 
 	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(_ *cli.Context) (err error) {
-		var all cli.BindingMap
+		var all *cli.BindingResult
 		e.items, all, err = parseExpressions(e)
 		if err != nil {
 			return
 		}
 
 		for _, sub := range e.Exprs {
-			// Provide a view of the binding map that is global
+			// Provide a view of the binding result that is global
 			// to each of the Exprs
-			sub.exprSet.BindingMap = all
+			sub.exprSet.BindingResult = all
 		}
 
 		for _, eb := range e.items {
@@ -341,7 +340,7 @@ func (e *Expression) Initializer() cli.Action {
 			tryResetIfSupported(eb)
 
 			if known, ok := eb.(*boundExpr); ok {
-				err = known.BindingMap().ApplyTo(known.exprSet)
+				err = known.BindingResult().ApplyTo(known.exprSet)
 				if err != nil {
 					return
 				}
@@ -857,8 +856,8 @@ func (b *boundExpr) LocalArgs() []*cli.Arg {
 	return b.expr.Args
 }
 
-func (b *boundExpr) BindingMap() cli.BindingMap {
-	return b.exprSet.BindingMap
+func (b *boundExpr) BindingResult() *cli.BindingResult {
+	return b.exprSet.BindingResult
 }
 
 func (b *boundExpr) Reset() {
@@ -869,7 +868,7 @@ func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) er
 	ctx := cli.FromContext(c).ValueContextOf(b.Expr().Name, b)
 	tryResetIfSupported(b)
 
-	err := b.BindingMap().ApplyTo(b.exprSet)
+	err := b.BindingResult().ApplyTo(b.exprSet)
 	if err != nil {
 		return err
 	}
@@ -1019,11 +1018,11 @@ func (e *Expression) findExpr(exprName string) (result *Expr, isShortInlineAlias
 	return expr, false, ok
 }
 
-func parseExpressions(e *Expression) ([]BindingEvaluator, cli.BindingMap, error) {
+func parseExpressions(e *Expression) ([]BindingEvaluator, *cli.BindingResult, error) {
 	args := e.args
 
 	results := make([]BindingEvaluator, 0)
-	all := cli.BindingMap{}
+	all := make([]*cli.BindingResult, 0)
 	for len(args) > 0 {
 		arg := args[0]
 		args = args[1:]
@@ -1067,21 +1066,42 @@ func parseExpressions(e *Expression) ([]BindingEvaluator, cli.BindingMap, error)
 
 		// Update the bound expression with the data which was copied,
 		// and collect it within a global view across the whole pipeline
-		boundExpr.exprSet.BindingMap = bin
-		for k, v := range bin {
-			all[k] = append(all[k], v...)
-		}
+		boundExpr.exprSet.BindingResult = bin
+		all = append(all, bin)
 
 		// If the parse completed successfully, there is nothing else to do
 		if pe == nil {
 			break
 		}
 	}
-	return results, all, nil
+	return results, cli.MergeBindingResults(all...), nil
 }
 
 func (b *exprBinding) Expr() *Expr {
 	return b.expr
+}
+
+// Raw obtains the values which were specified for an arg.  The empty name
+// designates the expression itself, whose raw value is the args it was parsed from.
+func (s *exprSet) Raw(name string) []string {
+	if name == "" {
+		return s.Args()
+	}
+	return s.BindingResult.Raw(name)
+}
+
+// RawOccurrences obtains the values which were specified for an arg, excluding
+// the name that was used.  The empty name designates the expression itself, whose
+// occurrences are the args it was parsed from excluding the name of the expression.
+func (s *exprSet) RawOccurrences(name string) []string {
+	if name == "" {
+		args := s.Args()
+		if len(args) == 0 {
+			return args
+		}
+		return args[1:]
+	}
+	return s.BindingResult.RawOccurrences(name)
 }
 
 func (s *exprSet) lookupValue(name string) (any, bool) {

@@ -9,13 +9,18 @@ import (
 	"strings"
 )
 
-// BindingMap contains the occurrences of the values passed to each flag and arg.
-type BindingMap map[string][][]string
+// BindingResult contains the occurrences of the values passed to each flag and arg
+// along with the input args which produced them.
+type BindingResult struct {
+	args     []string
+	bindings map[string][][]string
+	names    []string
+}
 
 type set struct {
 	Lookup
 	Binding
-	BindingMap
+	*BindingResult
 }
 
 type bindingImpl struct {
@@ -207,8 +212,8 @@ const (
 
 func newSet(b Binding) *set {
 	result := &set{
-		Binding:    b,
-		BindingMap: BindingMap{},
+		Binding:       b,
+		BindingResult: newBindingResult(nil),
 	}
 	result.Lookup = LookupFunc(result.lookupValue)
 	return result
@@ -293,15 +298,13 @@ func (f RawParseFlag) skipFlagParsing() bool {
 }
 
 // RawParse does low-level parsing that will parse from the given input arguments.   (This is for
-// advanced use.) The bindings parameter determines how to resolve flags and args.  The return values
-// are a map of data corresponding to the raw occurrences using the same names.  An error,
+// advanced use.) The bindings parameter determines how to resolve flags and args.  The return value
+// is the binding result, which contains the raw occurrences indexed by the same names.  An error,
 // if it occurs is ParseError, which can provide more information about why the
 // parse did not complete.
-func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings BindingMap, err error) {
+func RawParse(arguments []string, b Binding, flags RawParseFlag) (bindings *BindingResult, err error) {
 	args := argList(arguments)
-	bindings = BindingMap{
-		"": [][]string{arguments},
-	}
+	bindings = newBindingResult(arguments)
 	positionalOpts := newArgBinding(b)
 
 	disallowFlagsAfterArgs := flags.disallowFlagsAfterArgs()
@@ -544,11 +547,30 @@ Parsing:
 
 func (s *set) parse(args argList, flags RawParseFlag) error {
 	bindings, err := RawParse(args, s.Binding, flags)
-	s.BindingMap = bindings
+	s.BindingResult = bindings
 	if err != nil {
 		return err
 	}
-	return s.BindingMap.ApplyTo(s)
+	return s.BindingResult.ApplyTo(s)
+}
+
+// Raw obtains the values which were specified for a flag or arg.  The empty
+// name designates the set itself, whose raw value is the input args.
+func (s *set) Raw(name string) []string {
+	if name == "" {
+		return s.Args()
+	}
+	return s.BindingResult.Raw(name)
+}
+
+// RawOccurrences obtains the values which were specified for a flag or arg,
+// excluding the name that was used.  The empty name designates the set itself,
+// whose occurrences are the input args excluding the name of the command.
+func (s *set) RawOccurrences(name string) []string {
+	if name == "" {
+		return trimFirstArg(s.Args())
+	}
+	return s.BindingResult.RawOccurrences(name)
 }
 
 func (b *bindingImpl) Reset() {
@@ -644,47 +666,92 @@ func (s *set) OccurrenceValues(name string) []any {
 	return nil
 }
 
-func (m BindingMap) appendOutput(name string, args []string) {
-	if e, ok := m[name]; ok {
-		m[name] = append(e, args)
-	} else {
-		m[name] = [][]string{args}
+func newBindingResult(args []string) *BindingResult {
+	return &BindingResult{
+		args:     args,
+		bindings: map[string][][]string{},
 	}
 }
 
-func (m BindingMap) lookup(name string, occurs bool) []string {
+// MergeBindingResults combines binding results into a single result.  Occurrences
+// are appended in the order of the results given, and names are ordered by when
+// they first occurred.  The input args of the combined result are taken from the
+// first result which provides them.  This is for advanced use.
+func MergeBindingResults(results ...*BindingResult) *BindingResult {
+	merged := newBindingResult(nil)
+	for _, m := range results {
+		if m == nil {
+			continue
+		}
+		if merged.args == nil {
+			merged.args = m.args
+		}
+		for _, name := range m.names {
+			for _, occur := range m.bindings[name] {
+				merged.appendOutput(name, occur)
+			}
+		}
+	}
+	return merged
+}
+
+func (m *BindingResult) appendOutput(name string, args []string) {
+	if e, ok := m.bindings[name]; ok {
+		m.bindings[name] = append(e, args)
+		return
+	}
+	m.bindings[name] = [][]string{args}
+	m.names = append(m.names, name)
+}
+
+func (m *BindingResult) lookup(name string, occurs bool) []string {
 	res := make([]string, 0)
+	if m == nil {
+		return res
+	}
 	var index int
 	if occurs {
 		index = 1
 	}
-	for _, v := range m[name] {
+	for _, v := range m.bindings[name] {
 		res = append(res, v[index:]...)
 	}
 	return res
 }
 
+// Args obtains the input args which were parsed to produce the result.  For the
+// args of a command, this includes the name of the command itself.
+func (m *BindingResult) Args() []string {
+	if m == nil {
+		return []string{}
+	}
+	return append([]string{}, m.args...)
+}
+
 // Raw obtains values which were specified for a flag or arg
 // including the flag or arg name
-func (m BindingMap) Raw(name string) []string {
+func (m *BindingResult) Raw(name string) []string {
 	return m.lookup(name, false)
 }
 
 // RawOccurrences obtains values which were specified for a flag or arg
 // but not including the flag or arg name
-func (m BindingMap) RawOccurrences(name string) []string {
+func (m *BindingResult) RawOccurrences(name string) []string {
 	return m.lookup(name, true)
 }
 
 // ApplyTo uses the given binding to apply the values in the
-// map
-func (m BindingMap) ApplyTo(b Binding) error {
-	for name, v := range m {
+// result
+func (m *BindingResult) ApplyTo(b Binding) error {
+	if m == nil {
+		return nil
+	}
+	for _, name := range m.names {
 		transform, _, value, ok := b.LookupOption(name)
 		if !ok {
 			continue
 		}
-		err := rawApplyToOption(v, transform, value)
+		err := rawApplyToOption(m.bindings[name], transform, value)
 		if err != nil {
 			return err
 		}
@@ -694,21 +761,27 @@ func (m BindingMap) ApplyTo(b Binding) error {
 
 // Bindings obtains values which were specified for a flag or arg
 // including the flag or arg name and grouped into occurrences.
-func (m BindingMap) Bindings(name string) [][]string {
-	return m[name]
+func (m *BindingResult) Bindings(name string) [][]string {
+	if m == nil {
+		return nil
+	}
+	return m.bindings[name]
 }
 
-// BindingNames obtains the names of the flags/args which are available.
-// Even if it is available, the empty string "" is not returned from this list.
-func (m BindingMap) BindingNames() []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		if k == "" {
-			continue
-		}
-		keys = append(keys, k)
+// BindingNames obtains the names of the flags/args which are available,
+// in the order in which they first occurred.
+func (m *BindingResult) BindingNames() []string {
+	if m == nil {
+		return []string{}
 	}
-	return keys
+	return append([]string{}, m.names...)
+}
+
+func trimFirstArg(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+	return args[1:]
 }
 
 func rawApplyToOption(v [][]string, transform TransformFunc, value BindingState) error {

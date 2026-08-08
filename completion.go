@@ -41,7 +41,7 @@ type CompletionRequest struct {
 	Incomplete string
 
 	// Bindings gets the bindings that were partially parsed
-	Bindings BindingMap
+	Bindings *BindingResult
 
 	// Err gets the error that occurred during parsing, likely *ParserError
 	Err error

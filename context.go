@@ -273,7 +273,7 @@ func (c *Context) parse(args []string) *robustParseResult {
 	set := root.buildSet(c)
 	flags := root.internalFlags().toRaw() | RawSkipProgramName
 	err := set.parse(args, flags)
-	return &robustParseResult{bindings: set.BindingMap, err: err}
+	return &robustParseResult{bindings: set.BindingResult, err: err}
 }
 
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
@@ -824,8 +824,8 @@ func (c *Context) Bindings(name any) [][]string {
 	return c.state.getInternal().Bindings(nameToString(name))
 }
 
-// BindingNames obtains the names of the flags/args which are available.
-// Even if it is available, the empty string "" is not returned from this list.
+// BindingNames obtains the names of the flags/args which are available,
+// in the order in which they first occurred.
 func (c *Context) BindingNames() []string {
 	return c.state.getInternal().BindingNames()
 }

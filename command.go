@@ -111,7 +111,7 @@ type rootCommandData struct {
 }
 
 type robustParseResult struct {
-	bindings BindingMap
+	bindings *BindingResult
 	err      error
 }
 
@@ -564,7 +564,7 @@ func defaultCommandCompletion(c *Context) []CompletionItem {
 		var last *Arg
 		for _, a := range cmd.Args {
 			last = a
-			if len(cc.Bindings[a.Name]) == 0 {
+			if len(cc.Bindings.Bindings(a.Name)) == 0 {
 				break
 			}
 		}
