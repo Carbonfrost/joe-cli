@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.20.0 (August 8, 2026)
+
+### New Features
+
+* `DependentFlag` (fc92af9d)
+* `DependsOn` to set ordering of flag execution (1d64485b)
+* `PersistentIn` (2b51ad1c)
+* Add `SuggestCommand`; suggestions (fb2e5384)
+* Add support for scanners, fields, and tokens to `FileInput` (a5b693c0)
+* Log extension: flags, args, context services (2037a7cd)
+* Expr extension: accept more specific value types in `EvaluatorOf` via reflection (c64f3aa6)
+* Expander extension:
+    * `Dig` (f86cc07b)
+    * `Reflect` adds support for map, slice (c6c3b7f4)
+
+
+### Bug fixes and improvements
+
+* Encapsulate and rename `BindingMap` to `BindingResult` (cb6a124f)
+* Support `ISOWeek`, `Clock`, `Date` on time expander (7a3491c4)
+* Bind extension: niladic variations (47d5a3e4)
+* Support optional aliases and private data in `Expr` (79fdc421)
+* Simplify error generation (bd29d100)
+* Provider extension:
+    * Bug fix: Provider extension: unwrap structures on provider factories (750d97f1)
+    * Bug fix: Provider extension: support named redirections (9e253e66)
+* Expression printer improvements:
+    * Fields (a6af7739)
+    * Allow configuring new line (08c10bfb)
+    * Make Printer.File into API (2dfc05df)
+* Codec extension: split input and output (023f3eed)
+* Bug fix: allow `bind.Redirect` to utilize applied string parsing (8a6f3e1f)
+* Bug fix: address bad assertion in test (76deca46)
+* Improve command suggestions unit tests (6c7e703e)
+* Bind extension: improve documentation (47d5a3e4)
+* Simplify `codec.SetOutput` by making provider type conversion more robust (eed5fd7a)
+
+
 ## v0.19.0 (August 1, 2026)
 
 ### New Features
