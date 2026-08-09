@@ -773,8 +773,8 @@ type Options struct {
 }
 
 type csvProvider struct {
-	Comma   string
-	UseCRLF bool
+	Comma   string `mapstructure:"comma"`
+	UseCRLF bool   `mapstructure:"use_crlf"`
 }
 
 type formatProvider any

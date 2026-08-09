@@ -10,6 +10,7 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
+	"github.com/Carbonfrost/joe-cli/extensions/structure"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -57,6 +58,50 @@ var _ = Describe("Bind", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(calledWith).To(BeAssignableToTypeOf(new(csvProvider)))
 		Expect(calledWith).To(Equal(&csvProvider{"b", false}))
+	})
+
+	It("allows expected value from structure options", func() {
+		var calledWith formatProvider
+		call := func(s formatProvider) error {
+			calledWith = s
+			return nil
+		}
+		global := new(csvProvider)
+
+		registry := &provider.Registry{
+			Name: "format",
+			Providers: provider.Details{
+				"csv": {
+					Defaults: map[string]any{
+						"comma":    "",
+						"use_crlf": "",
+					},
+					Factory: provider.FactoryOf(func(opts csvProvider) (any, error) {
+						return &opts, nil
+					}),
+				},
+			},
+		}
+
+		app := &cli.App{
+			Name: "app",
+			Uses: registry,
+			Flags: []*cli.Flag{
+				{
+					Name: "format",
+					Value: &provider.Value{
+						Args: structure.Of(global),
+					},
+					Action: bind.Call(call, provider.Bind[formatProvider]()),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app --format csv,comma=x,use_crlf=true")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(calledWith).To(BeAssignableToTypeOf(new(csvProvider)))
+		Expect(calledWith).To(Equal(&csvProvider{"x", true}))
 	})
 
 	It("implicitly sets the type of the argument", func() {

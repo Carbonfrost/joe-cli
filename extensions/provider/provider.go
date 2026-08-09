@@ -533,6 +533,12 @@ func optsMap(opts any) map[string]any {
 		return untypedMap(ss)
 	}
 
+	// Unwrap structure.Value into its args and decoder options
+	if sv, ok := opts.(*structure.Value); ok {
+		_ = structure.Decode(sv.V, &r, sv.Options...)
+		return r
+	}
+
 	_ = structure.Decode(opts, &r)
 	return r
 }
