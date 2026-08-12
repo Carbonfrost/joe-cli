@@ -1219,20 +1219,28 @@ func HandleSignal(s ...os.Signal) Action {
 	}))
 }
 
-// OptionalValue makes the flag's value optional, and when its value is not specified, the implied value
-// is set to this value v.  Say that a flag is defined as:
+// OptionalValue makes the flag's value optional, and when its value is not specified
+// or is blank, the value of the flag is set to the value v.  Say a flag is defined as:
 //
 //	&Flag {
 //	  Name: "secure",
+//	  Aliases: []string{"s"},
 //	  Value: cli.String(),
 //	  Uses: cli.OptionalValue("TLS1.2"),
 //	}
 //
-// This example implies that --secure without a value is set to the value TLS1.2 (presumably other versions
-// are allowed).  This example is a fair use case of this feature: making a flag opt-in to some sort of default
-// configuration and allowing an expert configuration by using a value.
-// For short options, no space can be between the flag and value (e.g. you need -sString to
-// specify a String to the -s option).
+// This example means that --secure without a value is the same as --secure=TLS1.2.
+// As a special case, the trailing equal sign does not set the value; that is, --secure= and --secure
+// are the same and both equivalent to --secure=TLS1.2. The idiomatic way to allow clearing the value
+// is to enable the [No] option, which would create the --no-secure flag whose behavior is to
+// explicitly set the --secure flag to the empty string.
+// This main use case for this feature is when you have a flag that has three
+// configurations: an implied default value (when the flag is not present at all),
+// a common and often different opt-in shorthand value (when the flag is specified
+// but no value is), and an explicit value (when the flag is specified in the
+// typical fashion). For short options, no space can be between the flag and value
+// (e.g. you need -sTLS1.2 to specify a String to the -s option, which in the example
+// is set up as its alias).
 // In general, making the value of a non-Boolean flag optional is not recommended when
 // the command also allows arguments because it can make the syntax ambiguous.
 func OptionalValue(v any) Action {

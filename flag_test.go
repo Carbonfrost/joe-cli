@@ -443,6 +443,7 @@ var _ = Describe("Flag", func() {
 						Aliases: []string{"s"},
 						Value:   flag,
 						Uses:    cli.OptionalValue(expected),
+						Options: cli.No,
 					},
 				},
 				Action: func(c *cli.Context) {
@@ -464,6 +465,7 @@ var _ = Describe("Flag", func() {
 			Entry("Bytes", cli.Bytes(), "app -s", []byte("ab")),
 
 			Entry("trailing equal sign", cli.Bytes(), "app --show=", []byte("ab")), // Interpreted as resetting value
+			Entry("Only No will reset", cli.Bytes(), "app --no-show", []byte{}),
 		)
 
 		It("following is treated as argument", func() {
