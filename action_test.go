@@ -458,6 +458,29 @@ var _ = Describe("timings", func() {
 				})
 
 			})
+
+			Context("when the flag is not Boolean", func() {
+				BeforeEach(func() {
+					flags = []*cli.Flag{
+						{
+							Name:    "planet",
+							Options: cli.No,
+							Value:   cli.List(),
+						},
+						{
+							Name:    "name",
+							Options: cli.No,
+							Value:   cli.String(),
+						},
+					}
+					arguments = []string{"app", "--planet", "Mars", "--no-planet", "--name", "Bob", "--no-name"}
+				})
+
+				It("resets the value to the zero value of its type", func() {
+					Expect(captured.Value("planet")).To(BeEmpty())
+					Expect(captured.Value("name")).To(Equal(""))
+				})
+			})
 		})
 
 	})

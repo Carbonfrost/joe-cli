@@ -85,12 +85,18 @@ const (
 	//
 	Optional
 
-	// No introduces a mirror flag to a Boolean flag that provides the false value.
+	// No introduces a mirror flag which resets a flag to the zero value of its type.
 	// When set as the option on a flag, this causes a mirror flag to be created with the
 	// prefix no-.  For example, for the flag --color, --no-color gets generated.  In addition,
 	// the mirror flag is hidden and the help screen provides a concise summary.  The mirror
 	// flag inherits the Before, After, and Action middleware pipelines; however, the Value
 	// for the flag in the context always matches the original flag.
+	//
+	// The typical use case is a Boolean flag, where the mirror flag provides the false
+	// value; however, any flag whose value can be reset is supported.  For example, for a
+	// list flag --planet, the generated --no-planet empties the list.  Resetting uses the
+	// Reset() convention (see the overview for Value), and it panics if a custom Value
+	// does not implement the convention.
 	No
 
 	// NonPersistent marks a flag as being non-persistent.  By default, any flag defined by an ancestor
@@ -711,7 +717,9 @@ func noOption(c *Context) error {
 			return nil
 		},
 		Action: func(c *Context) error {
-			return c.ContextOf(f).SetValue(false)
+			// nil resets the flag to the zero value of its type, which is false
+			// for the usual case of a Boolean flag
+			return c.ContextOf(f).SetValue(nil)
 		},
 	}))
 }
