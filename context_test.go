@@ -673,6 +673,28 @@ var _ = Describe("Context", func() {
 			Entry("not supported TextMarshaler", new(textMarshaler), textMarshaler("")),
 			Entry("not supported Value", new(customValue), &customValue{}),
 		)
+
+		DescribeTable("nil resets the value", func(value any, expected any) {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "flag",
+						Value: value,
+						Before: func(c *cli.Context) error {
+							return c.SetValue(nil)
+						},
+					},
+				},
+			}
+			args, _ := cli.Split("app --flag 419")
+			Expect(app.RunContext(context.Background(), args)).NotTo(HaveOccurred())
+			Expect(app.Flags[0].Value).To(PointTo(Equal(expected)))
+		},
+			Entry("Int", cli.Int(), 0),
+			Entry("String", cli.String(), ""),
+			Entry("List", cli.List(), []string(nil)),
+			Entry("Map", cli.Map(), map[string]string{}),
+		)
 	})
 
 	Describe("Before", func() {

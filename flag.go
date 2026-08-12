@@ -488,20 +488,26 @@ func (f *Flag) Names() []string {
 	return res
 }
 
-// Set will update the value of the flag
+// Set will update the value of the flag.  A string is parsed and applied to the value,
+// and any other value is set directly.  As a special case, nil resets the value to its
+// zero value.  (See Set for more information about how values are set.)
 func (f *Flag) Set(v any) error {
 	return optionSet(f.Value, f.flags, f.optionalValue, v)
 }
 
 func optionSet(value any, flags internalFlags, optionalValue, arg any) error {
-	if arg, ok := arg.(string); ok {
+	switch a := arg.(type) {
+	case nil:
+		return setReset(value)
+
+	case string:
 		if trySetOptional(value, func() (any, bool) {
-			return optionalValue, (arg == "" && flags.optional())
+			return optionalValue, (a == "" && flags.optional())
 		}) {
 			return nil
 		}
 
-		return setCore(value, flags.disableSplitting(), arg)
+		return setCore(value, flags.disableSplitting(), a)
 	}
 
 	return setDirect(value, arg)

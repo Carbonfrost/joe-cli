@@ -551,6 +551,69 @@ var _ = Describe("Value", func() {
 	})
 })
 
+var _ = Describe("Set", func() {
+
+	DescribeTable("direct values",
+		func(dest any, args []any, expected any) {
+			Expect(cli.Set(dest, args...)).NotTo(HaveOccurred())
+			Expect(dest).To(PointTo(Equal(expected)))
+		},
+		Entry("bool", new(bool), []any{true}, true),
+		Entry("string", new(string), []any{"hello"}, "hello"),
+		Entry("int", new(int), []any{419}, 419),
+		Entry("float64", new(float64), []any{4.19}, 4.19),
+		Entry("duration", new(time.Duration), []any{5 * time.Second}, 5*time.Second),
+		Entry("list", new([]string), []any{[]string{"a", "b"}}, []string{"a", "b"}),
+		Entry("bytes", cli.Bytes(), []any{[]byte("abc")}, []byte("abc")),
+		Entry("mixed with strings", new(int), []any{419, "420"}, 420),
+	)
+
+	DescribeTable("nil resets the value",
+		func(dest any, args []any, expected any) {
+			Expect(cli.Set(dest, args...)).NotTo(HaveOccurred())
+			Expect(dest).To(PointTo(Equal(expected)))
+		},
+		Entry("bool", new(bool), []any{"true", nil}, false),
+		Entry("string", new(string), []any{"hello", nil}, ""),
+		Entry("int", new(int), []any{"419", nil}, 0),
+		Entry("duration", new(time.Duration), []any{"5s", nil}, time.Duration(0)),
+		Entry("list", new([]string), []any{"a", nil}, []string(nil)),
+		Entry("map", new(map[string]string), []any{"a=b", nil}, map[string]string{}),
+		Entry("URL", new(*url.URL), []any{"https://example.com", nil}, (*url.URL)(nil)),
+		Entry("bytes", cli.Bytes(), []any{"abcd", nil}, []byte(nil)),
+		Entry("reset then set", new(int), []any{"419", nil, "420"}, 420),
+	)
+
+	It("resets name values", func() {
+		actual := cli.NameValues()
+		Expect(cli.Set(actual, "a=b", nil)).NotTo(HaveOccurred())
+		Expect(*actual).To(BeEmpty())
+	})
+
+	It("resets a Value using the Reset convention", func() {
+		actual := new(resettableValue)
+		Expect(cli.Set(actual, "hello", nil)).NotTo(HaveOccurred())
+		Expect(actual.resets).To(Equal(1))
+		Expect(actual.value).To(BeEmpty())
+	})
+
+	It("panics when the Reset convention is not implemented", func() {
+		Expect(func() {
+			cli.Set(new(customValue), nil)
+		}).To(PanicWith(MatchError("unsupported flag type for copying or resetting: *cli_test.customValue")))
+	})
+
+	It("returns a parse error when a string arg is invalid", func() {
+		Expect(cli.Set(new(int), "not an int value")).To(HaveOccurred())
+	})
+
+	It("panics when a direct value has the wrong type", func() {
+		Expect(func() {
+			cli.Set(new(int), 4.19)
+		}).To(Panic())
+	})
+})
+
 var _ = Describe("NameValue", func() {
 
 	Describe("Set", func() {
@@ -755,6 +818,18 @@ func (*customValue) String() string            { return "" }
 func (c *customValue) Initializer() cli.Action { return c.init }
 func (c *customValue) DisableSplitting() {
 	c.calledDisableSplitting = true
+}
+
+type resettableValue struct {
+	value  string
+	resets int
+}
+
+func (r *resettableValue) Set(arg string) error { r.value = arg; return nil }
+func (r *resettableValue) String() string       { return r.value }
+func (r *resettableValue) Reset() {
+	r.value = ""
+	r.resets++
 }
 
 type hasDereference struct {

@@ -281,10 +281,22 @@ func NameValues(namevalue ...string) *[]*NameValue {
 
 // Set will set the destination value if supported.  If the destination value is not supported,
 // this panics.  See the overview for Value for which destination types are supported.
-// No additional splitting is performed on arguments.
-func Set(dest any, args ...string) error {
+// Each arg is handled according to its type.  When the arg is a string, it is parsed and
+// applied to dest; no additional splitting is performed on it.  Any other arg is set directly
+// onto dest, which requires that it correspond to the type of dest.  As a special case, when
+// the arg is nil, dest is reset to its zero value.  Resetting a Value uses the Reset()
+// convention (see the overview for Value), and it panics if the convention is not implemented.
+func Set(dest any, args ...any) error {
 	for _, arg := range args {
-		err := setCore(dest, true, arg)
+		var err error
+		switch a := arg.(type) {
+		case nil:
+			err = setReset(dest)
+		case string:
+			err = setCore(dest, true, a)
+		default:
+			err = setDirect(dest, a)
+		}
 		if err != nil {
 			return err
 		}
@@ -604,6 +616,64 @@ func setDirect(dest any, v any) error {
 		*p = v.([]byte)
 	default:
 		panic(fmt.Sprintf("cannot set value directly: %T %v", dest, v))
+	}
+	return nil
+}
+
+// setReset restores dest to its zero value.  Built-in destination types are zeroed
+// directly; anything else must implement the Reset() convention.
+func setReset(dest any) error {
+	switch p := dest.(type) {
+	case *bool:
+		*p = false
+	case *string:
+		*p = ""
+	case *[]string:
+		*p = nil
+	case *map[string]string:
+		*p = map[string]string{}
+	case *[]*NameValue:
+		*p = []*NameValue{}
+	case *int:
+		*p = 0
+	case *int8:
+		*p = 0
+	case *int16:
+		*p = 0
+	case *int32:
+		*p = 0
+	case *int64:
+		*p = 0
+	case *uint:
+		*p = 0
+	case *uint8:
+		*p = 0
+	case *uint16:
+		*p = 0
+	case *uint32:
+		*p = 0
+	case *uint64:
+		*p = 0
+	case *float32:
+		*p = 0
+	case *float64:
+		*p = 0
+	case *time.Duration:
+		*p = 0
+	case **url.URL:
+		*p = nil
+	case *net.IP:
+		*p = nil
+	case **regexp.Regexp:
+		*p = nil
+	case **big.Int:
+		*p = nil
+	case **big.Float:
+		*p = nil
+	case *[]byte:
+		*p = nil
+	default:
+		support.MustValueReset(dest)
 	}
 	return nil
 }

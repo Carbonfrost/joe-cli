@@ -316,7 +316,9 @@ func (a *Arg) Seen() bool {
 	return a.requireBindingState().Seen()
 }
 
-// Set will set the value of the argument
+// Set will set the value of the argument.  A string is parsed and applied to the value,
+// and any other value is set directly.  As a special case, nil resets the value to its
+// zero value.  (See Set for more information about how values are set.)
 func (a *Arg) Set(v any) error {
 	return optionSet(a.Value, a.flags, nil, v)
 }

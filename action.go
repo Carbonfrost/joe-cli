@@ -898,7 +898,9 @@ func cancelAfter(fn context.CancelFunc) Action {
 	return After(ActionOf(f))
 }
 
-// SetValue provides an action which sets the value of the flag or argument.
+// SetValue provides an action which sets the value of the flag or argument.  As a special
+// case, nil resets the value to its zero value.  (See Set for more information about how
+// values are set.)
 func SetValue(v any) Action {
 	return actionThunk1((*Context).SetValue, v)
 }
