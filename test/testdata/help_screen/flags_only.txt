@@ -1,0 +1,14 @@
+usage: app {--help | --version} [-n] [--normal=STRING] [--config=FILE] [--verbose] [--count=COUNT]
+           [--output=<destination>] [--level=NUMBER] [--tag=TAG]
+
+      --normal=STRING         
+      --config=FILE           Loads configuration from FILEs
+  -v, --verbose               Display verbose output
+      --count=COUNT           Stop after COUNT items
+      --output=<destination>  Write results to destination
+      --level=NUMBER          Set the verbosity level
+      --tag=TAG               Add TAG to the output
+  -n                          Perform a dry run
+  -h, --help                  Display this help screen then exit
+      --version               Print the build version then exit
+
