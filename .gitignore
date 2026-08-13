@@ -5,6 +5,6 @@ bin/darwin_*
 dist
 
 # samples, assuming they were built according to their READMEs
-joefind
-joegit
-joeopen
+/joefind
+/joegit
+/joeopen

@@ -1,6 +1,7 @@
-// Copyright 2023 The Joe-cli Authors. All rights reserved.
+// Copyright 2023, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package main
 
 import (
@@ -9,6 +10,7 @@ import (
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/expr"
 )
 
 func main() {
@@ -21,23 +23,23 @@ func main() {
 					Name: ".",
 				},
 			}, {
-				Value: &cli.Expression{
-					Exprs: []*cli.Expr{
+				Value: &expr.Expression{
+					Exprs: []*expr.Expr{
 						{Name: "cnewer", Args: cli.Args("file", new(cli.File))},
 						{Name: "ctime", Args: cli.Args("n", cli.Int())},
 						{Name: "empty"},
 						{Name: "false"},
 						{Name: "readable"},
 						{Name: "writable"},
-						{Name: "executable", Evaluate: cli.Predicate(isExecutable)},
+						{Name: "executable", Evaluate: expr.Predicate(isExecutable)},
 					},
 				},
 			},
 		},
 		Action: func(c *cli.Context) {
-			exp := c.Expression("expression")
-			exp.Prepend(cli.NewExprBinding(cli.EvaluatorFunc(walker)))
-			exp.Append(cli.NewExprBinding(cli.Predicate(printer)))
+			exp := expr.FromContext(c, "expression")
+			exp.Prepend(expr.NewBindingEvaluator(expr.EvaluatorFunc(walker)))
+			exp.Append(expr.NewBindingEvaluator(expr.Predicate(printer)))
 
 			// Pass true to the expression pipeline in order to ensure that the
 			// first expression binding has an input
