@@ -799,6 +799,33 @@ var _ = Describe("OptionalAlias", func() {
 			Expect(command2.Aliases).To(BeEmpty())
 		})
 
+		It("adds alias only once when name is not already defined", func() {
+			var command1, command2 *cli.Command
+			app := &cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "status",
+						Uses: cli.OptionalAlias("X"),
+					},
+					{
+						Name: "version",
+						Uses: cli.OptionalAlias("X"),
+					},
+				},
+				Action: func(c *cli.Context) error {
+					command1, _ = c.LookupCommand("status")
+					command2, _ = c.LookupCommand("version")
+					return nil
+				},
+			}
+
+			err := app.RunContext(context.Background(), []string{"app"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(command1.Aliases).To(ContainElement("X"))
+			Expect(command2.Aliases).To(BeEmpty())
+		})
+
 		It("does not add alias when name is already defined", func() {
 			var command1, command2 *cli.Command
 			app := &cli.App{

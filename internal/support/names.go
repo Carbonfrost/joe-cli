@@ -25,6 +25,7 @@ func PromoteOptionalAliases(data targetDataAccessor, aliases *[]string, names ma
 		for _, alias := range optionalAliases {
 			if !names[alias] {
 				*aliases = append(*aliases, alias)
+				names[alias] = true
 			}
 		}
 		data.SetData(optionalAliasesDataKey, nil)
