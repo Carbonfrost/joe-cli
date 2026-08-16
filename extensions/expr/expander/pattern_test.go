@@ -6,8 +6,12 @@ package expander_test
 
 import (
 	"bytes"
+	"context"
+	"io"
 	"os"
 
+	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/expr/expander"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -244,4 +248,49 @@ var _ = Describe("Env", func() {
 		Entry("os env", "%(env.ENV_VAR)", Equal("an env var")),
 		Entry("os env non-existing", "%(env.ENV_VAR__NON_EXISTENT)", Equal("<nil>")),
 	)
+})
+
+var _ = Describe("PatternValue", func() {
+
+	Describe("Set", func() {
+		It("initializes and compiles a pattern with custom delimiters", func() {
+			actual := &expander.PatternValue{
+				Options: []expander.Option{
+					expander.WithDelimiters("${", "}"),
+				},
+			}
+			err := actual.Set("${ce}E")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual.Value().String()).To(Equal("${ce}E"))
+			Expect(actual.Value().Expand(expander.Map{
+				"ce": "C",
+			})).To(Equal("CE"))
+		})
+	})
+
+	It("integrates with flag", func() {
+		var buffer bytes.Buffer
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Value: &expander.PatternValue{
+						Options: []expander.Option{
+							expander.SyntaxRecursive,
+						},
+					},
+				},
+			},
+			Action: bind.Call2(func(w io.Writer, p *expander.Pattern) error {
+				_, err := p.Fprint(w, nil)
+				return err
+			}, bind.Stdout(), bind.Value[*expander.Pattern]("f")),
+			Stdout: &buffer,
+		}
+
+		arguments, _ := cli.Split("app -f %(hello:fallthrough)")
+		err := app.RunContext(context.Background(), arguments)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(buffer.String()).To(Equal("fallthrough"))
+	})
 })

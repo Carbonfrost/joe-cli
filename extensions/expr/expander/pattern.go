@@ -6,6 +6,7 @@ package expander
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"iter"
@@ -684,3 +685,52 @@ func tryNopExpr(name string) (expr, bool) {
 	}
 	return nil, false
 }
+
+// PatternValue provides a wrapper around Pattern which
+// can specify options and be used as the value for a flag or arg
+type PatternValue struct {
+	text    string
+	Options []Option
+}
+
+// AppendText implements [encoding.TextAppender]. The output
+// matches that of calling the [Pattern.String] method.
+func (p *PatternValue) AppendText(b []byte) ([]byte, error) {
+	return append(b, p.String()...), nil
+}
+
+// MarshalText implements [encoding.TextMarshaler]. The output
+// matches that of calling the [Pattern.AppendText] method.
+func (p *PatternValue) MarshalText() ([]byte, error) {
+	return p.AppendText(nil)
+}
+
+// UnmarshalText implements [encoding.TextUnmarshaler] by calling
+// [Compile] on the encoded value using the default delimiters
+func (p *PatternValue) UnmarshalText(text []byte) error {
+	p.text = string(text)
+	return nil
+}
+
+// String provides the string representation of the value
+func (p *PatternValue) String() string {
+	return p.text
+}
+
+// Set provides the implementation of [flag.Value]
+func (p *PatternValue) Set(s string) error {
+	return p.UnmarshalText([]byte(s))
+}
+
+// Reset clears the pattern for re-use. Options are considered
+// configuration and are not reset.
+func (p *PatternValue) Reset() {
+	p.text = ""
+}
+
+// Value compiles and obtains the pattern
+func (p *PatternValue) Value() *Pattern {
+	return Compile(p.String(), p.Options...)
+}
+
+var _ flag.Value = (*PatternValue)(nil)
