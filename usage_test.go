@@ -342,6 +342,16 @@ var _ = Describe("DisplayHelpScreen", func() {
 				Description: "description text",
 			},
 			ContainSubstring("description text")),
+		Entry("display default text",
+			&cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:        "s",
+						DefaultText: "easy",
+					},
+				},
+			},
+			ContainSubstring("(default: easy)")),
 		Entry("display expression",
 			&cli.App{
 				Args: cli.Args("expression", &expr.Expression{}),

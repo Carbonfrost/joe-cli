@@ -966,9 +966,14 @@ func (c *Context) Description() any {
 	return c.target().description()
 }
 
-// HelpText obtains the helpText for the current target.
+// HelpText obtains the help text for the current target.
 func (c *Context) HelpText() string {
 	return c.target().helpText()
+}
+
+// DefaultTExt obtains the default text for the current target.
+func (c *Context) DefaultText() string {
+	return c.target().defaultText()
 }
 
 // UsageText obtains the usageText for the current target.
@@ -1044,6 +1049,12 @@ func (c *Context) SetDescription(v any) error {
 // SetHelpText sets the help text on the current target
 func (c *Context) SetHelpText(s string) error {
 	c.target().setHelpText(s)
+	return nil
+}
+
+// SetDefaultText sets the default text on the current target
+func (c *Context) SetDefaultText(name string) error {
+	c.target().setDefaultText(name)
 	return nil
 }
 

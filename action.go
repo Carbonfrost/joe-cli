@@ -1155,6 +1155,12 @@ func HelpText(s string) Action {
 	return actionThunk1((*Context).SetHelpText, s)
 }
 
+// DefaultText sets the default text of a command, flag, or expression.  This handler is generally
+// set up inside a Uses pipeline.
+func DefaultText(name string) Action {
+	return actionThunk1((*Context).SetDefaultText, name)
+}
+
 // UsageText sets the help text for the current target
 func UsageText(s string) Action {
 	return actionThunk1((*Context).SetUsageText, s)

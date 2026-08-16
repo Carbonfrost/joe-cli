@@ -40,6 +40,7 @@ type flagData struct {
 	Synopsis    *synopsisWrapper[*synopsis.Flag]
 	HelpText    string
 	ManualText  string
+	DefaultText string
 	Description any
 	Data        map[string]any
 }
@@ -82,6 +83,9 @@ var (
 
 {{- define "Flag" -}}
 {{ "\t" }}{{ .Synopsis | print | ExtraSpaceBeforeFlag }}{{ "\t" }}{{.HelpText}}
+{{- if .DefaultText -}}
+ (default: {{.DefaultText}})
+{{- end -}}
 {{- end -}}
 
 {{- define "Flags" -}}
@@ -321,6 +325,7 @@ func flagAdapter(val *Flag) *flagData {
 		HelpText:    renderHelp(syn.Value.Usage),
 		ManualText:  val.ManualText,
 		Description: val.Description,
+		DefaultText: val.DefaultText,
 		Synopsis:    wrapSynopsis(syn),
 		Data:        val.Data,
 	}
