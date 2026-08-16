@@ -332,6 +332,9 @@ func (p *Pattern) UnmarshalText(text []byte) error {
 // the expander e. The main use of this convention is to allow writers
 // to supply control expressions. For an example, see [Renderer].
 func (p *Pattern) Fprint(w io.Writer, e Interface) (count int, err error) {
+	if e == nil {
+		e = Nil
+	}
 	// Implicitly upgrade w to *Renderer, etc.
 	if r, ok := w.(interface{ Expander() Interface }); ok {
 		e = Compose(r.Expander(), e)

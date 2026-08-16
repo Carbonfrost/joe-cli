@@ -5,6 +5,7 @@
 package expander_test
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"runtime"
@@ -16,7 +17,7 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-var _ = Describe("Interface", func() {
+var _ = Describe("Env", func() {
 
 	os.Setenv("ENV_VAR", "an env var")
 
@@ -29,6 +30,23 @@ var _ = Describe("Interface", func() {
 		Entry("os env", "%(env.ENV_VAR)", Equal("an env var")),
 		Entry("os env non-existing", "%(env.ENV_VAR__NON_EXISTENT)", Equal("<nil>")),
 	)
+})
+
+var _ = Describe("Nil", func() {
+
+	It("provides nil", func() {
+		e := expander.Compile("%(s)")
+		Expect(e.Expand(nil)).To(Equal("<nil>"))
+	})
+
+	It("is implied by nil argument to Expand", func() {
+		var buffer bytes.Buffer
+		e := expander.Compile("%(s)")
+		e.Fprint(&buffer, nil)
+
+		Expect(e.Expand(nil)).To(Equal("<nil>"))
+		Expect(buffer.String()).To(Equal("<nil>"))
+	})
 })
 
 var _ = Describe("Unknown", func() {
@@ -223,6 +241,4 @@ var _ = Describe("ExpandSlice", func() {
 		Entry("out of range", expander.ExpandSlice([]int{0}), "10", BeNil()),
 		Entry("non-numeric", expander.ExpandSlice([]int{0}), "x", BeNil()),
 	)
-	Describe("Expand", func() {
-	})
 })
