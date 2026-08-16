@@ -366,7 +366,7 @@ var _ = Describe("Flag", func() {
 	})
 
 	Context("when the value is Optional", func() {
-		DescribeTable("examples", func(flag any, args string, expected any) {
+		DescribeTable("examples", func(flag any, expected any) {
 			var actual any
 			app := &cli.App{
 				Flags: []*cli.Flag{
@@ -382,33 +382,38 @@ var _ = Describe("Flag", func() {
 				},
 			}
 
-			arguments, _ := cli.Split(args)
+			arguments, _ := cli.Split("app -s")
 			err := app.RunContext(context.Background(), arguments)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(expected))
 		},
-			Entry("bool", cli.Bool(), "app -s", true),
-			Entry("float32", cli.Float32(), "app -s", float32(1.0)),
-			Entry("float64", cli.Float64(), "app -s", float64(1.0)),
-			Entry("int", cli.Int(), "app -s", 1),
-			Entry("int64", cli.Int64(), "app -s", int64(1)),
-			Entry("int32", cli.Int32(), "app -s", int32(1)),
-			Entry("int16", cli.Int16(), "app -s", int16(1)),
-			Entry("int8", cli.Int8(), "app -s", int8(1)),
-			Entry("uint64", cli.Uint64(), "app -s", uint64(1)),
-			Entry("uint32", cli.Uint32(), "app -s", uint32(1)),
-			Entry("uint16", cli.Uint16(), "app -s", uint16(1)),
-			Entry("uint8", cli.Uint8(), "app -s", uint8(1)),
-			Entry("IP", cli.IP(), "app -s", net.ParseIP("127.0.0.1")),
-			Entry("Duration", cli.Duration(), "app -s", time.Second),
+			Entry("bool", cli.Bool(), true),
+			Entry("float32", cli.Float32(), float32(1.0)),
+			Entry("float64", cli.Float64(), float64(1.0)),
+			Entry("int", cli.Int(), 1),
+			Entry("int64", cli.Int64(), int64(1)),
+			Entry("int32", cli.Int32(), int32(1)),
+			Entry("int16", cli.Int16(), int16(1)),
+			Entry("int8", cli.Int8(), int8(1)),
+			Entry("uint64", cli.Uint64(), uint64(1)),
+			Entry("uint32", cli.Uint32(), uint32(1)),
+			Entry("uint16", cli.Uint16(), uint16(1)),
+			Entry("uint8", cli.Uint8(), uint8(1)),
+			Entry("IP", cli.IP(), net.ParseIP("127.0.0.1")),
+			Entry("Duration", cli.Duration(), time.Second),
 
-			Entry("long bool", cli.Bool(), "app --show", true),
-			Entry("long float32", cli.Float32(), "app --show", float32(1.0)),
-			Entry("long float64", cli.Float64(), "app --show", float64(1.0)),
-			Entry("long int", cli.Int(), "app --show", 1),
-			Entry("long uint64", cli.Uint64(), "app --show", uint64(1)),
-			Entry("long IP", cli.IP(), "app --show", net.ParseIP("127.0.0.1")),
-			Entry("long Duration", cli.Duration(), "app --show", time.Second),
+			Entry("long bool", cli.Bool(), true),
+			Entry("long float32", cli.Float32(), float32(1.0)),
+			Entry("long float64", cli.Float64(), float64(1.0)),
+			Entry("long int", cli.Int(), 1),
+			Entry("long uint64", cli.Uint64(), uint64(1)),
+			Entry("long IP", cli.IP(), net.ParseIP("127.0.0.1")),
+			Entry("long Duration", cli.Duration(), time.Second),
+			Entry("string", new("x"), ""),
+			Entry("[]string", new([]string{"x"}), []string{}),
+			Entry("[]byte", new([]byte{2}), []byte{}),
+
+			Entry("resettable Value", new(resettableValue), &resettableValue{resets: 1}),
 		)
 
 		DescribeTable("errors", func(flag any) {
@@ -428,9 +433,6 @@ var _ = Describe("Flag", func() {
 			Expect(err).To(MatchError(ContainSubstring(`internal error, at "app --show" (initial timing):`)))
 			Expect(err).To(MatchError(MatchRegexp(`invalid type .+ for Optional flag`)))
 		},
-			Entry("string", new(string)),
-			Entry("[]string", new([]string)),
-			Entry("[]byte", new([]byte)),
 			Entry("Value", new(joeclifakes.FakeValue)),
 		)
 

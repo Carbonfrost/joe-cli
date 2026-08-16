@@ -377,6 +377,10 @@ func trySetOptional(dest any, trySetOptional func() (any, bool)) bool {
 		return false
 	}
 	if v, ok := trySetOptional(); ok {
+		if v == nil {
+			setReset(dest)
+			return true
+		}
 		setDirect(dest, v)
 		return true
 	}
@@ -963,6 +967,15 @@ func valueSmartOptionalDefault(v any) (any, error) {
 		return time.Second, nil
 	case *net.IP:
 		return net.ParseIP("127.0.0.1"), nil
+
+	case *[]string:
+		return []string{}, nil
+	case *[]byte:
+		return []byte{}, nil
+
+	// Returning nil here will reset the value
+	case *string, valueResetOrMerge:
+		return nil, nil
 	}
 	return "", fmt.Errorf("invalid type %T for Optional flag", v)
 }

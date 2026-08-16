@@ -70,13 +70,18 @@ const (
 	//   floats (float32, float64, etc.)        1.0
 	//   time.Duration                          1 second
 	//   bool                                   true
-	//   string                                 *
-	//   []string                               *
-	//   []byte                                 *
+	//   string                                 empty
+	//   []string                               empty
+	//   []byte                                 empty
+	//   resettable Value                       reset
 	//   other Value                            *
 	//
-	//   * For string, []string, []byte, and any other Value implementation, using this option generates
-	//     an internal error during initialization.
+	//   * For Value implementations, using this option generates an internal error
+	//     during initialization.
+	//
+	// By default, meaningful non-zero values are used; however, for strings, bytes, and
+	// other Values where there is no logical non-zero value that could be a meaningful default,
+	// the value is reset. To use a different value, use the [OptionalValue] action in the Uses pipeline.
 	//
 	// For short options, no space can be between the flag and value (e.g. you need -sString to
 	// specify a String to the -s option).
