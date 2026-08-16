@@ -232,6 +232,7 @@ func (a *App) createRoot() *Command {
 				Subcommands: a.Commands,
 				Action:      a.Action,
 				Description: a.Description,
+				HelpText:    a.HelpText,
 				Comment:     a.Comment,
 				Data:        a.Data,
 				After:       a.After,

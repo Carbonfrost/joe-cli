@@ -16,6 +16,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("App", func() {
@@ -277,6 +278,28 @@ var _ = Describe("App", func() {
 			ctx, _ := app.Initialize(context.Background())
 			Expect(ctx.Value(privateKey("a"))).To(Equal(value))
 			Expect(ctx.Value(privateKey("b"))).To(Equal(value))
+		})
+
+		It("copies attributes to the root command", func() {
+			app := &cli.App{
+				Name:        "Name",
+				HelpText:    "HelpText",
+				Description: "Description",
+				Comment:     "Comment",
+				Data:        map[string]any{"Data": "L"},
+				Options:     cli.Visible,
+			}
+
+			_, _ = app.Initialize(context.Background())
+			root, _ := app.Command("")
+			Expect(root).To(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Name":        Equal("Name"),
+				"HelpText":    Equal("HelpText"),
+				"Description": Equal("Description"),
+				"Comment":     Equal("Comment"),
+				"Data":        HaveKeyWithValue("Data", "L"),
+				"Options":     Equal(cli.Visible),
+			})))
 		})
 	})
 
