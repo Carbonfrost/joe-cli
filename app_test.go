@@ -322,7 +322,7 @@ var _ = Describe("App", func() {
 		})
 
 		It("applies global extension uses", func() {
-			cli.Use(cli.Data("_added_by_global", "1"))
+			cli.Extend(cli.Data("_added_by_global", "1"))
 
 			var actual any
 			app := cli.NewApp(&cli.Command{

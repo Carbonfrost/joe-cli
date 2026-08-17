@@ -23,7 +23,7 @@ type contextKey string
 var servicesKey contextKey = "provider.services"
 
 func init() {
-	cli.Use(registerServices())
+	cli.Extend(registerServices())
 }
 
 func registerServices() cli.Action {

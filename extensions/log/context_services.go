@@ -39,7 +39,7 @@ type binding struct {
 var currentBinding atomic.Pointer[binding]
 
 func init() {
-	cli.Use(registerServices())
+	cli.Extend(registerServices())
 }
 
 func registerServices() cli.Action {

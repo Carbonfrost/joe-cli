@@ -670,9 +670,9 @@ func SourceAnnotation() (string, string) {
 	return "Source", pkgPath
 }
 
-// Use inserts an action into the initialization of new apps.  Generally, this is used
+// Extend inserts an action into the initialization of new apps.  Generally, this is used
 // within extensions to simplify integration of extensions with apps.
-func Use(a Action) {
+func Extend(a Action) {
 	globals.Lock()
 	defer globals.Unlock()
 
