@@ -1498,12 +1498,6 @@ func (c *Context) SkipImplicitSetup() bool {
 	return c.flagSetOrAncestor((internalFlags).taintSetup)
 }
 
-// PreventSetup causes implicit setup options to be skipped.  The function
-// returns an error if the timing is not initial timing.
-func (c *Context) PreventSetup() error {
-	return c.Use(setInternalFlag(internalFlagTaintSetup))
-}
-
 // SetColor sets whether terminal color and styles are enabled on stdout.
 func (c *Context) SetColor(v bool) {
 	c.Stderr.SetColorCapable(v)
@@ -1516,14 +1510,6 @@ func (c *Context) SetColor(v bool) {
 func (c *Context) AutodetectColor() {
 	c.Stderr.ResetColorCapable()
 	c.Stdout.ResetColorCapable()
-}
-
-// Trigger marks a flag or arg action to be triggered. Generally,
-// a flag or arg Action is only triggered if it is set or if it or its
-// parent command is marked with ImpliedAction. To mark the Action to be triggered for some
-// other reason, you can use this action.
-func (c *Context) Trigger() error {
-	return Do(c, Trigger)
 }
 
 // ProvideValueInitializer causes an additional child context to be created

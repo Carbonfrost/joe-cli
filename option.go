@@ -335,7 +335,7 @@ var (
 		DisableSplitting:        setInternalFlag(internalFlagDisableSplitting),
 		Merge:                   setInternalFlag(internalFlagMerge | internalFlagMergeExplicitlyRequested),
 		RightToLeft:             setInternalFlag(internalFlagRightToLeft),
-		PreventSetup:            ActionOf((*Context).PreventSetup),
+		PreventSetup:            Initializer(setInternalFlag(internalFlagTaintSetup)),
 		EachOccurrence:          setInternalFlag(internalFlagEachOccurrence),
 		AllowFileReference:      actionFunc(allowFileReferenceOpt),
 		FileReference:           actionFunc(fileReferenceOpt),
@@ -717,7 +717,7 @@ func noOption(c *Context) error {
 		Options:   Hidden,
 		Before: func(c *Context) error {
 			if c.Seen("") {
-				return c.ContextOf(f).Trigger()
+				return Do(c.ContextOf(f), Trigger)
 			}
 			return nil
 		},
