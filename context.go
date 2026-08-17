@@ -1019,8 +1019,17 @@ func (c *Context) SetOptionalValue(v any) error {
 	return nil
 }
 
-// SetName sets the name on the current target
+// SetName sets the name on the current target. This method can
+// only be called in or prior to initialization. Names are validated
+// within their parents during initialization, which can lead to
+// an internal error being generated when they contain illegal characters,
+// duplicate other names in the scope, or are empty when they are
+// required.
 func (c *Context) SetName(name string) error {
+	err := c.requireInit()
+	if err != nil {
+		return err
+	}
 	switch o := c.target().(type) {
 	case *Arg:
 		o.Name = name

@@ -956,7 +956,7 @@ func accessory(ctx context.Context, proto Action, name string, actionopt ...Acti
 					return c.SetName(dep + "-" + withoutDecorators(c.Name()))
 				})
 			default:
-				return Named(name)
+				return Name(name)
 			}
 		}()
 	)
@@ -1114,9 +1114,9 @@ func SynopsisCategory(name string) Action {
 	return Data(synopsis.CategoryData, name)
 }
 
-// Named sets the name of a command, flag, or expression.  This handler is generally
+// Name sets the name of a command, flag, or expression.  This handler is generally
 // set up inside a Uses pipeline.
-func Named(name string) Action {
+func Name(name string) Action {
 	return actionThunk1((*Context).SetName, name)
 }
 

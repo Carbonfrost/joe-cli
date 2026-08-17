@@ -636,11 +636,11 @@ var _ = Describe("timings", func() {
 			})
 		})
 
-		Context("Named", func() {
+		Context("Name", func() {
 			BeforeEach(func() {
 				initializer = cli.Pipeline(
 					cli.Alias("sub"), // so that the invocation 'app sub' still works
-					cli.Named("subcommand"),
+					cli.Name("subcommand"),
 				)
 			})
 
@@ -3252,7 +3252,7 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes a command that was renamed",
-			cli.Customize("sub", cli.Named("par")),
+			cli.Customize("sub", cli.Name("par")),
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				cmd, _ := root.Command("par")
@@ -3260,7 +3260,7 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes an arg",
-			cli.Customize("<arg>", cli.Named("renamed")),
+			cli.Customize("<arg>", cli.Name("renamed")),
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				arg, _ := root.Arg(0)
@@ -3268,7 +3268,7 @@ var _ = Describe("Customize", func() {
 			}),
 
 		Entry("customizes an arg within a value",
-			cli.Customize("<arg> <-value> <m>", cli.Named("renamed")),
+			cli.Customize("<arg> <-value> <m>", cli.Name("renamed")),
 			func(app *cli.App) {
 				root, _ := app.Command("")
 				arg, _ := root.Arg(0)
@@ -3507,7 +3507,7 @@ var _ = Describe("Accessory", func() {
 					Name:     "files",
 					Value:    new(cli.FileSet),
 					Category: "same category",
-					Uses:     cli.Accessory0("custom", cli.Category(""), cli.Named("recursive")),
+					Uses:     cli.Accessory0("custom", cli.Category(""), cli.Name("recursive")),
 				},
 			},
 			Action: act,
