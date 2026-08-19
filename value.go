@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -978,6 +979,27 @@ func valueSmartOptionalDefault(v any) (any, error) {
 		return nil, nil
 	}
 	return "", fmt.Errorf("invalid type %T for Optional flag", v)
+}
+
+func valueOptionalText(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return t
+	case []string:
+		return strings.Join(t, ",")
+	case []byte:
+		return hex.EncodeToString(t)
+	case map[string]string:
+		items := make([]string, 0, len(t))
+		for k, val := range t {
+			items = append(items, k+"="+val)
+		}
+		slices.Sort(items)
+		return strings.Join(items, ",")
+	}
+	return fmt.Sprint(v)
 }
 
 var (

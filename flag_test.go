@@ -761,6 +761,95 @@ var _ = Describe("Flag", func() {
 			),
 		)
 
+		Describe("optional values", func() {
+			DescribeTable("examples",
+				func(f *cli.Flag, expected string) {
+					app := &cli.App{
+						Name:   "app",
+						Flags:  []*cli.Flag{f},
+						Action: func() {},
+					}
+					_, err := app.Initialize(context.Background())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(f.Synopsis()).To(Equal(expected))
+				},
+				Entry(
+					"OptionalValue nominal",
+					&cli.Flag{
+						Name:    "secure",
+						Aliases: []string{"s"},
+						Value:   cli.String(),
+						Uses:    cli.OptionalValue("TLS1.2"),
+					},
+					"-s, --secure[=TLS1.2]",
+				),
+				Entry(
+					"OptionalValue (short flag only)",
+					&cli.Flag{
+						Name:  "s",
+						Value: cli.String(),
+						Uses:  cli.OptionalValue("TLS1.2"),
+					},
+					"-s[TLS1.2]",
+				),
+				Entry(
+					"Duration",
+					&cli.Flag{
+						Name:  "timeout",
+						Value: cli.Duration(),
+						Uses:  cli.OptionalValue(30 * time.Second),
+					},
+					"--timeout[=30s]",
+				),
+				Entry(
+					"List",
+					&cli.Flag{
+						Name:  "tag",
+						Value: cli.List(),
+						Uses:  cli.OptionalValue([]string{"latest", "stable"}),
+					},
+					"--tag[=latest,stable]",
+				),
+				Entry(
+					"OptionalValue (user authored placeholder)",
+					&cli.Flag{
+						Name:     "secure",
+						HelpText: "Use {VERSION} of TLS",
+						Value:    cli.String(),
+						Uses:     cli.OptionalValue("TLS1.2"),
+					},
+					"--secure[=VERSION]",
+				),
+				Entry(
+					"OptionalValue (value synopsis convention)",
+					&cli.Flag{
+						Name:  "temp",
+						Value: new(temperature),
+						Uses:  cli.OptionalValue(temperature("Fahrenheit")),
+					},
+					"--temp[={Fahrenheit|Celsius}]",
+				),
+				Entry(
+					"Optional nominal",
+					&cli.Flag{
+						Name:    "level",
+						Value:   cli.Int(),
+						Options: cli.Optional,
+					},
+					"--level[=NUMBER]",
+				),
+				Entry(
+					"Optional (boolean flag)",
+					&cli.Flag{
+						Name:    "verbose",
+						Value:   cli.Bool(),
+						Options: cli.Optional,
+					},
+					"--verbose",
+				),
+			)
+		})
+
 	})
 
 	Describe("Names", func() {

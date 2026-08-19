@@ -60,6 +60,8 @@ type Flag struct {
 	// Category names the synopsis category that the flag belongs to, which is
 	// empty for most flags.  See Command.CondenseCategories.
 	Category string
+
+	OptionalValue bool
 }
 
 type Arg struct {
@@ -83,6 +85,8 @@ type Value struct {
 	Placeholder string
 	helpText    string
 	Usage       *Usage
+
+	derived bool // true when inferred from the type of the value rather than authored by user
 }
 
 type OptionGroup int
@@ -394,14 +398,38 @@ func (a *Arg) WithUsage(text string) *Arg {
 
 func (f *Flag) WriteTo(sb styleWriter) {
 	f.Style.write(sb, strings.Join(f.Names, ", "))
-	sb.WriteString(f.Separator)
-	f.Value.WriteTo(sb)
+	f.valueWriteTo(sb)
 }
 
 func (f *Flag) primaryWriteTo(sb styleWriter) {
 	f.Style.write(sb, f.Primary)
-	sb.WriteString(f.Separator)
+	f.valueWriteTo(sb)
+}
+
+func (f *Flag) valueWriteTo(sb styleWriter) {
+	if !f.OptionalValue {
+		sb.WriteString(f.Separator)
+		f.Value.WriteTo(sb)
+		return
+	}
+
+	sb.WriteString("[")
+
+	// Trimming from separator applies to short flags so that the value runs in (-s[TLS1.2])
+	sb.WriteString(strings.TrimSpace(f.Separator))
 	f.Value.WriteTo(sb)
+	sb.WriteString("]")
+}
+
+func (f *Flag) WithOptionalValue(text string) {
+	if f.Value == nil || f.Value.Placeholder == "" {
+		return
+	}
+
+	f.OptionalValue = true
+	if text != "" && f.Value.derived {
+		f.Value.Placeholder = text
+	}
 }
 
 func (f *Flag) WithNo() {
@@ -543,10 +571,12 @@ func getValueSynopsis(helpText, usageString string, value any) *Value {
 			helpText:    usage.WithoutPlaceholders(),
 		}
 	}
+	_, provided := value.(valueProvidesSynopsis)
 	return &Value{
 		Placeholder: Placeholder(value),
 		helpText:    usage.WithoutPlaceholders(),
 		Usage:       usage,
+		derived:     !provided,
 	}
 }
 

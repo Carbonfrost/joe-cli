@@ -149,7 +149,8 @@ type Flag struct {
 	// overview in cli.Transform for information.
 	Transform TransformFunc
 
-	optionalValue any // set when blank and optional
+	optionalValue     any    // set when blank and optional
+	optionalValueText string // when empty, use the placeholder of the value
 
 	// persistentIn restricts the commands where the flag applies.  It is nil
 	// unless PersistentIn was used.
@@ -234,6 +235,9 @@ func (f *Flag) newSynopsis() *synopsis.Flag {
 	syn := synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
 	syn.Style = synopsis.StyleFromData(f.Data)
 	syn.Category = synopsis.CategoryFromData(f.Data)
+	if f.internalFlags().optional() {
+		syn.WithOptionalValue(f.optionalValueText)
+	}
 	return syn
 }
 
@@ -298,6 +302,12 @@ func (f *Flag) manualText() string {
 func (f *Flag) setOptionalValue(v any) {
 	f.setInternalFlags(internalFlagOptional, true)
 	f.optionalValue = v
+	f.optionalValueText = valueOptionalText(v) // Print the value (e.g. --secure[=TLS1.2])
+}
+
+func (f *Flag) setImpliedOptionalValue(v any) {
+	f.setOptionalValue(v)
+	f.optionalValueText = "" // Don't print smart optional values; the type or user-specified label is more useful (e.g --level=[NUMBER])
 }
 
 func (f *Flag) pipeline(t Timing) any {

@@ -41,8 +41,8 @@ var _ = Describe("Features", func() {
 	},
 		Entry("boolean flag", color.FlagFeature, "app [--color]"),
 		Entry("both boolean flags", color.FlagFeature|color.NoFlagFeature, "app [--[no-]color]"),
-		Entry("both flags with mode", color.ModeFeature|color.FlagFeature|color.NoFlagFeature, "app [--color={auto|always|never}] [--no-color]"),
-		Entry("mode", color.ModeFeature, "app [--color={auto|always|never}]"),
+		Entry("both flags with mode", color.ModeFeature|color.FlagFeature|color.NoFlagFeature, "app [--color[={auto|always|never}]] [--no-color]"),
+		Entry("mode", color.ModeFeature, "app [--color[={auto|always|never}]]"),
 	)
 
 	DescribeTable("set color", func(arguments string, resetColorCapableCallCount int, setColorCapable types.GomegaMatcher) {

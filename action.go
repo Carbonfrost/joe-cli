@@ -1236,6 +1236,8 @@ func HandleSignal(s ...os.Signal) Action {
 //	}
 //
 // This example means that --secure without a value is the same as --secure=TLS1.2.
+// The synopsis of the flag names the value and encloses it in brackets to convey that it
+// can be omitted, which in this example reads --secure[=TLS1.2].
 // As a special case, the trailing equal sign does not set the value; that is, --secure= and --secure
 // are the same and both equivalent to --secure=TLS1.2. The idiomatic way to allow clearing the value
 // is to enable the [No] option, which would create the --no-secure flag whose behavior is to

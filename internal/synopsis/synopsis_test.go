@@ -111,6 +111,22 @@ var _ = Describe("String", func() {
 			}(),
 			ContainSubstring("[**--timeout**=_VALUE_]")),
 
+		Entry("optional value",
+			withOptionalValue(synopsis.NewFlag("secure", []string{"s"}, "", "", new(string), synopsis.OtherOptional), "TLS1.2"),
+			Equal("**-s, --secure**[=_TLS1.2_]")),
+
+		Entry("optional value (short flag)",
+			withOptionalValue(synopsis.NewFlag("s", nil, "", "", new(string), synopsis.OtherOptional), "TLS1.2"),
+			Equal("**-s**[_TLS1.2_]")),
+
+		Entry("optional value keeps the placeholder when it is not named",
+			withOptionalValue(synopsis.NewFlag("level", nil, "", "", new(int), synopsis.OtherOptional), ""),
+			Equal("**--level**[=_NUMBER_]")),
+
+		Entry("optional value prefers user-specified placeholder",
+			withOptionalValue(synopsis.NewFlag("secure", nil, "{VERSION}", "", new(string), synopsis.OtherOptional), "TLS1.2"),
+			Equal("**--secure**[=_VERSION_]")),
+
 		Entry(
 			"arg",
 			&synopsis.Arg{Value: "STRING"},
@@ -152,6 +168,11 @@ var basicValue = &synopsis.Value{Placeholder: "STRING"}
 
 func withCategory(f *synopsis.Flag, category string) *synopsis.Flag {
 	f.Category = category
+	return f
+}
+
+func withOptionalValue(f *synopsis.Flag, text string) *synopsis.Flag {
+	f.WithOptionalValue(text)
 	return f
 }
 

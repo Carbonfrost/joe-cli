@@ -83,6 +83,9 @@ const (
 	// other Values where there is no logical non-zero value that could be a meaningful default,
 	// the value is reset. To use a different value, use the [OptionalValue] action in the Uses pipeline.
 	//
+	// The synopsis of the flag encloses its value in brackets to convey that the value
+	// can be omitted (e.g. --level[=NUMBER]).
+	//
 	// For short options, no space can be between the flag and value (e.g. you need -sString to
 	// specify a String to the -s option).
 	// This option is available to but not useful for bool because this is the default behavior
@@ -684,7 +687,7 @@ func optionalOption(c *Context) error {
 	if err != nil {
 		return c.internalError(err)
 	}
-	f.setOptionalValue(v)
+	f.setImpliedOptionalValue(v)
 	return nil
 }
 
