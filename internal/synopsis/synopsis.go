@@ -326,6 +326,7 @@ func (c *Command) WriteTo(sb styleWriter) {
 
 	if flags := groups[Other]; len(flags) > 0 {
 		for _, f := range flags {
+			sb.WriteString(" ")
 			f.primaryWriteTo(sb)
 		}
 	}
