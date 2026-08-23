@@ -774,10 +774,10 @@ func Seq[T, U any](binder Binder[T], then func(T) (U, error)) Binder[U] {
 // special case, if the original binder implements additional conventions, those are propagated
 // into the result.
 func SeqContext[T, U any](binder Binder[T], then func(context.Context, T) (U, error)) Binder[U] {
-	return &thenBinder[T, U]{
+	return wrapWithComposite(&thenBinder[T, U]{
 		binder: binder,
 		thunk:  then,
-	}
+	}).(Binder[U])
 }
 
 func then[T, U any](b Binder[T], fn func(T) U) Binder[U] {

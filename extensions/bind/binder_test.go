@@ -702,6 +702,23 @@ var _ = Describe("Seen", func() {
 
 })
 
+var _ = Describe("Seq", func() {
+
+	var src = bind.Func[any](func(*cli.Context) (any, error) {
+		return nil, nil
+	})
+
+	Describe("composite binder types", func() {
+		DescribeTable("examples", func(actual any, expected types.GomegaMatcher) {
+			Expect(actual).To(expected)
+		},
+			Entry("File", bind.Seq(src, func(any) (*cli.File, error) { return nil, nil }), BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("Boolean", bind.Seq(src, func(any) (bool, error) { return false, nil }), BeAssignableToTypeOf(new(bind.BoolBinder))),
+			Entry("NameValue", bind.Seq(src, func(any) (*cli.NameValue, error) { return nil, nil }), BeAssignableToTypeOf(new(bind.NameValueBinder))),
+		)
+	})
+})
+
 var _ = Describe("Value", func() {
 
 	DescribeTable("examples", func(fn any) {
