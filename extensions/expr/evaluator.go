@@ -150,7 +150,7 @@ func (s *reflectSignature) evaluate(c context.Context, v any, y func(any) error)
 	res := s.function.Call(args)
 	switch s.result {
 	case errorResult:
-		if err, _ := res[0].Interface().(error); err != nil {
+		if err, _ := reflect.TypeAssert[error](res[0]); err != nil {
 			return err
 		}
 	case boolResult:

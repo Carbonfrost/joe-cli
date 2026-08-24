@@ -579,7 +579,7 @@ func (r *reflectedFactory) New(opts map[string]any) (any, error) {
 
 	out := r.v.Call([]reflect.Value{reflect.ValueOf(o)})
 	if len(out) > 1 {
-		err, _ = out[1].Interface().(error)
+		err, _ = reflect.TypeAssert[error](out[1])
 	}
 	return out[0].Interface(), err
 }
