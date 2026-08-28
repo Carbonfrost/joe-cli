@@ -48,6 +48,19 @@
 //	bind.Call2(myFunction, bind.String(0), bind.Int(1))
 //	bind.Call2(myFunction, bind.String("first"), bind.Int("second"))
 //
+// ## Struct Binders
+//
+// The binder obtained from [Struct] creates an instance of a struct from the values
+// in the context.  The name of each exported field is inflected to the naming
+// convention of flags, which is lower case words delimited by hyphens, in order to
+// retrieve the corresponding value.  Acronyms and words with digits have special
+// handling. Here are some examples:
+//
+//	ConfigFile     => config-file
+//	HTTPPort       => http-port
+//	IDs            => ids
+//	IPv4Address    => ipv4-address
+//
 // # Functions
 //
 // There are multiple functions in this package which specify the form of the
