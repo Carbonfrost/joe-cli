@@ -283,18 +283,14 @@ func Occurrences[T any](name any, value T, valuesopt ...T) Binder[T] {
 
 	if re.IsZero() && reflect.TypeFor[int]() == re.Type() && len(valuesopt) == 0 {
 		return wrapWithComposite(&occurrenceCountBinder{
-			binderSupport: binderSupport[int]{
-				impliedName: name,
-			},
+			impliedName: name,
 		}).(Binder[T])
 	}
 
 	values := append([]T{value}, valuesopt...)
 	return wrapWithComposite(&occurrencesBinder[T]{
-		binderSupport: binderSupport[T]{
-			impliedName: name,
-		},
-		values: values,
+		impliedName: name,
+		values:      values,
 	}).(Binder[T])
 }
 
@@ -654,8 +650,8 @@ func byName[T any](f func(*cli.Context, any) T, nameopt []any) *binder[T] {
 		panic("expected 0 or 1 args for nameopt")
 	}
 	return &binder[T]{
-		binderSupport: binderSupport[T]{impliedName: name},
-		lookupValue:   f,
+		impliedName: name,
+		lookupValue: f,
 	}
 }
 

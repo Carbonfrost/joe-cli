@@ -227,10 +227,8 @@ func newValueTarget(v any, name string, action Action) *valueTarget {
 	return &valueTarget{
 		v:    v,
 		name: name,
-		targetSupport: targetSupport{
-			p: actionPipelines{
-				Initializers: action,
-			},
+		p: actionPipelines{
+			Initializers: action,
 		},
 	}
 }

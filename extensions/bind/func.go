@@ -339,7 +339,7 @@ func Redirect[V any](name any, valopt ...V) cli.Action {
 // stub doesn't lookup a value - it just facilitates wrapping the binder initializer
 func stub[T any](name any) *binder[T] {
 	return &binder[T]{
-		binderSupport: binderSupport[T]{impliedName: name},
+		impliedName: name,
 		lookupValue: func(ctx *cli.Context, a any) (_ T) {
 			return
 		},
