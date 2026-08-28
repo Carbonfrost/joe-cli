@@ -642,6 +642,216 @@ var _ = Describe("DisplayHelpScreen", func() {
 
 })
 
+var _ = Describe("HelpTopic", func() {
+
+	DescribeTable("registration examples",
+		func(app *cli.App) {
+			Expect(renderScreen(app, "app --help")).To(And(
+				ContainSubstring("Additional help topics:"),
+				ContainSubstring("environment"),
+				ContainSubstring("Environment variables"),
+			))
+		},
+		Entry("from the app Uses pipeline",
+			&cli.App{
+				Name: "app",
+				Uses: environmentTopic(),
+			}),
+		Entry("from a sub-command Uses pipeline",
+			&cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+						Uses: environmentTopic(),
+					},
+				},
+			}),
+		Entry("from a flag Uses pipeline",
+			&cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+						Uses: environmentTopic(),
+					},
+				},
+			}),
+		Entry("from an arg Uses pipeline",
+			&cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						Name: "a",
+						Uses: environmentTopic(),
+					},
+				},
+			}),
+	)
+
+	It("does not display the heading when there are no topics", func() {
+		app := &cli.App{
+			Name: "app",
+		}
+		Expect(renderScreen(app, "app --help")).NotTo(ContainSubstring("Additional help topics:"))
+	})
+
+	It("is not displayed on the help screen of a sub-command", func() {
+		app := &cli.App{
+			Name: "app",
+			Uses: environmentTopic(),
+			Commands: []*cli.Command{
+				{Name: "sub"},
+			},
+		}
+		Expect(renderScreen(app, "app help sub")).NotTo(ContainSubstring("Additional help topics:"))
+	})
+
+	It("replaces a topic which was registered with the same name", func() {
+		app := &cli.App{
+			Name: "app",
+			Uses: cli.Pipeline(
+				environmentTopic(),
+				cli.HelpTopic{
+					Name:        "environment",
+					HelpText:    "Newer help text",
+					Description: "Newer description",
+				},
+			),
+		}
+		Expect(renderScreen(app, "app --help")).To(And(
+			ContainSubstring("Newer help text"),
+			Not(ContainSubstring("Environment variables that are used")),
+		))
+	})
+
+	Describe("help sub-command", func() {
+
+		It("displays the contents of the topic", func() {
+			app := &cli.App{
+				Name:     "app",
+				Uses:     environmentTopic(),
+				Commands: []*cli.Command{{Name: "sub"}},
+			}
+			Expect(renderScreen(app, "app help environment")).To(
+				Equal("PAGER is used to page output\n\n"))
+		})
+
+		It("uses the HelpTopic template", func() {
+			app := &cli.App{
+				Name:     "app",
+				Uses:     environmentTopic(),
+				Commands: []*cli.Command{{Name: "sub"}},
+
+				// Must be done in Before so as to be ready after built-in templates
+				Before: cli.RegisterTemplate("HelpTopic", "custom topic template {{ .Name }}"),
+			}
+			Expect(renderScreen(app, "app help environment")).To(
+				ContainSubstring("custom topic template environment"))
+		})
+
+		It("prefers a sub-command which has the same name", func() {
+			app := &cli.App{
+				Name: "app",
+				Uses: cli.HelpTopic{
+					Name:        "sub",
+					Description: "topic description",
+				},
+				Commands: []*cli.Command{
+					{Name: "sub", HelpText: "the sub-command"},
+				},
+			}
+			Expect(renderScreen(app, "app help sub")).To(And(
+				ContainSubstring("usage: app sub"),
+				Not(ContainSubstring("topic description")),
+			))
+		})
+
+		It("is an error when the topic doesn't exist", func() {
+			app := &cli.App{
+				Name:     "app",
+				Uses:     environmentTopic(),
+				Commands: []*cli.Command{{Name: "sub"}},
+				Stderr:   io.Discard,
+			}
+			err := app.RunContext(context.Background(), []string{"app", "help", "unknown"})
+			Expect(err).To(MatchError(ContainSubstring(`"unknown" is not a command`)))
+		})
+	})
+
+	Describe("help flag", func() {
+		It("does not display the topic", func() {
+			app := &cli.App{
+				Name:   "app",
+				Uses:   environmentTopic(),
+				Stderr: io.Discard,
+				Stdout: io.Discard,
+			}
+			Expect(renderScreen(app, "app --help environment")).NotTo(
+				ContainSubstring("PAGER is used to page output"))
+		})
+	})
+})
+
+var _ = Describe("ListHelpTopics", func() {
+
+	DescribeTable("examples",
+		func(action func() cli.Action, expected types.GomegaMatcher) {
+			app := &cli.App{
+				Name: "app",
+				Uses: cli.Pipeline(
+					environmentTopic(),
+					cli.HelpTopic{
+						Name:     "tutorial",
+						HelpText: "A gentle introduction",
+					},
+				),
+				Action: action(),
+			}
+			Expect(renderScreen(app, "app")).To(expected)
+		},
+		Entry("lists each topic", cli.ListHelpTopics, And(
+			ContainSubstring("environment"),
+			ContainSubstring("Environment variables that are used"),
+			ContainSubstring("tutorial"),
+			ContainSubstring("A gentle introduction"),
+		)),
+		Entry("does not display the heading", cli.ListHelpTopics,
+			Not(ContainSubstring("Additional help topics:"))),
+	)
+
+	It("uses the HelpTopicListing template", func() {
+		app := &cli.App{
+			Name: "app",
+			Uses: environmentTopic(),
+
+			// Must be done in Before so as to be done after built-in templates
+			Before: cli.RegisterTemplate("HelpTopicListing", `{{ range . }}custom listing {{ .Name }}{{ end }}`),
+			Action: cli.ListHelpTopics(),
+		}
+		Expect(renderScreen(app, "app")).To(ContainSubstring("custom listing environment"))
+	})
+
+	It("can be used within a Uses pipeline", func() {
+		app := &cli.App{
+			Name: "app",
+			Uses: cli.Pipeline(
+				environmentTopic(),
+				cli.ListHelpTopics(),
+			),
+		}
+		Expect(renderScreen(app, "app")).To(ContainSubstring("Environment variables that are used"))
+	})
+})
+
+func environmentTopic() cli.HelpTopic {
+	return cli.HelpTopic{
+		Name:        "environment",
+		HelpText:    "Environment variables that are used",
+		Description: "PAGER is used to page output",
+	}
+}
+
 // persistentInApp defines --global at the root, but narrowed to only apply to sub
 func persistentInApp() *cli.App {
 	return &cli.App{

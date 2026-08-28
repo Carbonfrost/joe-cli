@@ -81,6 +81,23 @@ var (
 {{- end -}}
 {{- end -}}
 
+{{- define "HelpTopics" -}}
+{{- if . -}}
+{{ "\n" }}Additional help topics:{{ "\n" }}{{ "\n" }}
+{{- template "HelpTopicListing" . -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "HelpTopicListing" -}}
+{{- range . -}}
+{{ "\t" }}{{ .Name }}{{ "\t" }}{{ .HelpText }}{{ "\n" }}
+{{- end -}}
+{{- end -}}
+
+{{- define "HelpTopic" -}}
+{{ .Description | Wrap 0 }}{{ "\n" }}
+{{- end -}}
+
 {{- define "Flag" -}}
 {{ "\t" }}{{ .Synopsis | print | ExtraSpaceBeforeFlag }}{{ "\t" }}{{.HelpText}}
 {{- if .DefaultText -}}
@@ -144,6 +161,7 @@ usage: {{ if .SelectedCommand.Lineage -}}
 {{- end -}}
 {{- template "Flags" .SelectedCommand -}}
 {{- template "Subcommands" .SelectedCommand -}}
+{{- template "HelpTopics" .HelpTopics -}}
 {{- template "PersistentFlags" .SelectedCommand -}}
 {{- template "ExtendedDescription" .SelectedCommand -}}
 {{- end -}}

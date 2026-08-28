@@ -171,14 +171,18 @@ func DisplayHelpScreen(command ...string) Action {
 			),
 		},
 		At(ActionTiming, ActionFunc(func(c *Context) error {
+			if topic, ok := findHelpTopicToDisplayFor(c, command); ok {
+				return displayHelpTopic(c, topic)
+			}
+
 			ctxt, path, err := findCommandToDisplayHelpFor(c, command)
 			if err != nil {
 				return err
 			}
 
-			tpl := c.Template("Help")
-			if tpl == nil {
-				panic("help template not registered")
+			tpl, err := c.builtinTemplate("Help")
+			if err != nil {
+				return err
 			}
 
 			// HACK Using global state to set up the usage screen rather
@@ -198,10 +202,12 @@ func DisplayHelpScreen(command ...string) Action {
 				SelectedCommand *commandData
 				App             *App
 				Debug           bool
+				HelpTopics      []*HelpTopic
 			}{
 				SelectedCommand: commandAdapter(current).withLineage(lineage, persistentFlags),
 				App:             c.App(),
 				Debug:           tpl.Debug,
+				HelpTopics:      visibleHelpTopics(c, ctxt),
 			}
 
 			w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
@@ -211,6 +217,14 @@ func DisplayHelpScreen(command ...string) Action {
 			return Exit("", 2)
 		}),
 		))
+}
+
+func visibleHelpTopics(c *Context, selected *Context) []*HelpTopic {
+	// Only the root command can display help topics
+	if selected.Parent() != nil {
+		return nil
+	}
+	return c.HelpTopics()
 }
 
 func findCommandToDisplayHelpFor(c *Context, command []string) (*Context, ContextPath, error) {
@@ -546,5 +560,125 @@ func sprintSynopsis(s synopsis.Stringer) string {
 		s.WriteTo(sw)
 	})
 }
+
+// HelpTopic provides additional help content which is displayed by name using the
+// help sub-command; for example, app help <topicname>.  (The help flag doesn't
+// display help topics.)  A sub-command whose name matches a topic takes precedence.
+// Note that the help sub-command is only implicitly added to apps which define
+// sub-commands, so an app which has none must name the topic some other way, such
+// as with a command that uses DisplayHelpScreen.
+//
+// HelpTopic is itself an Action, which registers the topic by name.  It is usually
+// added to the Uses pipeline of a command, flag, or arg.  Topics are always
+// registered with the root command, which means that a topic defined within a
+// nested command is still named on the top-level help screen and can still be
+// displayed by name.  Registering a topic whose name was already used replaces the
+// previous topic.
+//
+// The contents of the topic are rendered with the "HelpTopic" template, which by
+// default simply displays Description.  Each topic is named on the help screen for
+// the app under the heading "Additional help topics:", which lists the Name and
+// HelpText of each topic.  (See also ListHelpTopics.)
+type HelpTopic struct {
+	// Name of the help topic, which is how it is named on the command line
+	Name string
+
+	// Description provides the actual contents of the help topic.  The type of
+	// Description should be string or fmt.Stringer.  Refer to func Description
+	// for details.
+	Description any
+
+	// HelpText provides the short text which is displayed next to the name of the
+	// topic on the help screen
+	HelpText string
+
+	// ManualText provides the text shown in the manual.  The default templates
+	// don't use this value
+	ManualText string
+}
+
+// ListHelpTopics provides an action which prints the table of help topics that have
+// been registered.  It is rendered using the
+// "HelpTopicListing" template.
+func ListHelpTopics() Action {
+	return At(ActionTiming, ActionFunc(listHelpTopics))
+}
+
+// Execute implements the Action interface by registering the help topic with the
+// root command.
+func (t HelpTopic) Execute(ctx context.Context) error {
+	return FromContext(ctx).registerHelpTopic(&t)
+}
+
+func (c *Context) registerHelpTopic(t *HelpTopic) error {
+	root := c.root()
+	if i := slices.IndexFunc(root.helpTopics, func(e *HelpTopic) bool {
+		return e.Name == t.Name
+	}); i >= 0 {
+		root.helpTopics[i] = t
+		return nil
+	}
+	root.helpTopics = append(root.helpTopics, t)
+	return nil
+}
+
+// HelpTopics obtains the help topics which have been registered with the root command
+func (c *Context) HelpTopics() []*HelpTopic {
+	return slices.Clone(c.root().helpTopics)
+}
+
+func (c *Context) helpTopic(name string) (*HelpTopic, bool) {
+	for _, t := range c.root().helpTopics {
+		if t.Name == name {
+			return t, true
+		}
+	}
+	return nil, false
+}
+
+func listHelpTopics(c *Context) error {
+	tpl, err := c.builtinTemplate("HelpTopicListing")
+	if err != nil {
+		return err
+	}
+
+	w := ansiterm.NewTabWriter(c.Stdout, 1, 8, 2, ' ', tabwriter.StripEscape)
+	if err := tpl.Execute(w, c.HelpTopics()); err != nil {
+		return err
+	}
+	return w.Flush()
+}
+
+// findHelpTopicToDisplayFor locates the help topic which was named on the command line.
+// Only the help sub-command displays help topics, and only when the name doesn't
+// belong to a sub-command, which takes precedence.
+func findHelpTopicToDisplayFor(c *Context, command []string) (*HelpTopic, bool) {
+	if len(command) > 0 || c.isOption() {
+		return nil, false
+	}
+
+	list, _ := c.Value("command").([]string)
+	if len(list) != 1 {
+		return nil, false
+	}
+	if _, exists := c.Parent().Command().Command(list[0]); exists {
+		return nil, false
+	}
+	return c.helpTopic(list[0])
+}
+
+func displayHelpTopic(c *Context, topic *HelpTopic) error {
+	tpl, err := c.builtinTemplate("HelpTopic")
+	if err != nil {
+		return err
+	}
+
+	w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
+	_ = tpl.Execute(w, topic)
+	_ = w.Flush()
+	return Exit("", 2)
+}
+
+var _ Action = (*HelpTopic)(nil)
 
 var _ support.ColorCapableWriter = (Writer)(nil)

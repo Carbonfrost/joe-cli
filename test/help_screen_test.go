@@ -32,6 +32,22 @@ var _ = Describe("help screen", HelpScreen, func() {
 			expectGoldenFile(fixture, renderScreen(app, "app --help"))
 		},
 
+		Entry("help topic listing", "help_topic_listing", &cli.App{
+			Name: "app",
+			Commands: []*cli.Command{
+				{Name: "init", HelpText: "Initialize the workspace"},
+			},
+			Uses: cli.Pipeline(
+				cli.HelpTopic{Name: "credentials", HelpText: "Providing usernames and passwords"},
+				cli.HelpTopic{Name: "everyday", HelpText: "A useful minimum set of commands for everyday use"},
+				cli.HelpTopic{Name: "faq", HelpText: "Frequently asked questions about using the app"},
+				cli.HelpTopic{Name: "glossary", HelpText: "A glossary of terminology"},
+				cli.HelpTopic{Name: "migration", HelpText: "How to migrate from other tools"},
+				cli.HelpTopic{Name: "namespaces", HelpText: "How to use namespaces"},
+				cli.HelpTopic{Name: "tutorial", HelpText: "A tutorial for new users"},
+				cli.HelpTopic{Name: "workflows", HelpText: "An overview of recommended workflows with the app"},
+			),
+		}),
 		Entry("flags only", "flags_only", &cli.App{
 			Name: "app",
 			Flags: []*cli.Flag{

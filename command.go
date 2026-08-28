@@ -113,6 +113,7 @@ type Command struct {
 type rootCommandData struct {
 	templateFuncs map[string]any
 	templates     *template.Template
+	helpTopics    []*HelpTopic
 }
 
 type robustParseResult struct {

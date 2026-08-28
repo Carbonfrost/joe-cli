@@ -1235,6 +1235,14 @@ func (c *Context) Template(name string) *Template {
 	}
 }
 
+func (c *Context) builtinTemplate(name string) (*Template, error) {
+	tpl := c.Template(name)
+	if tpl == nil {
+		return nil, c.internalError(fmt.Errorf("template does not exist: %q", "HelpTopicListing"))
+	}
+	return tpl, nil
+}
+
 func withExecute(funcMap template.FuncMap, self *template.Template) template.FuncMap {
 	// Execute function needs a closure containing the template itself, so is
 	// added afterwards

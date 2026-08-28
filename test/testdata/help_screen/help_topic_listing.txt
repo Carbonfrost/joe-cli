@@ -1,0 +1,23 @@
+usage: app {--help | --version} <command> [<args>]...
+
+  -h, --help     Display this help screen then exit
+      --version  Print the build version then exit
+
+Sub-commands:
+
+  init     Initialize the workspace
+  help, h  Display help for a command
+  version  Print the build version then exit
+
+
+Additional help topics:
+
+  credentials  Providing usernames and passwords
+  everyday     A useful minimum set of commands for everyday use
+  faq          Frequently asked questions about using the app
+  glossary     A glossary of terminology
+  migration    How to migrate from other tools
+  namespaces   How to use namespaces
+  tutorial     A tutorial for new users
+  workflows    An overview of recommended workflows with the app
+
