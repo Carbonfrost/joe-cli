@@ -98,3 +98,9 @@ func GuessWidth() int {
 	}
 	return 80
 }
+
+var startDir, _ = os.Getwd()
+
+func StartDir() string {
+	return startDir
+}

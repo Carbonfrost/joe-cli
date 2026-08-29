@@ -9,10 +9,12 @@ import (
 	"context"
 	"maps"
 	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
+	"github.com/Carbonfrost/joe-cli/internal/shell"
 )
 
 //go:generate go tool counterfeiter -generate
@@ -152,6 +154,13 @@ func findOutput(ctx context.Context) (fsys cli.FS, out cli.Writer) {
 }
 
 func (r *Root) Generate(ctx context.Context, c *OutputContext) error {
+	// Provide a hint about the working directory if it is different from the one
+	// that started the process
+	wd, err := filepath.Abs(c.WorkDir())
+	if err == nil && shell.StartDir() != wd {
+		c.trace("working dir", wd)
+	}
+
 	return r.Generator.Generate(ctx, c)
 }
 

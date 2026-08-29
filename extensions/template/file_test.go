@@ -266,6 +266,20 @@ type C    struct {  }`,
 				Expect(res).To(Equal("      create  bin/new.txt\n"))
 			})
 
+			It("reports start directory", func() {
+				SkipOnWindows()
+				os.Chdir(GinkgoT().TempDir())
+
+				app := &cli.App{
+					Name:   "app",
+					FS:     testFileSystem(),
+					Action: template.New(template.Dir("bin", template.File("new.txt", template.ContentsString("new")))),
+				}
+
+				res := renderScreen(app, "app")
+				Expect(res).To(HavePrefix(" working dir  /"))
+			})
+
 		})
 	})
 })
