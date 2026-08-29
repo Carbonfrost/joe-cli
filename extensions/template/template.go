@@ -8,6 +8,8 @@ package template
 import (
 	"context"
 	"maps"
+	"os"
+	"slices"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
@@ -18,12 +20,24 @@ import (
 //counterfeiter:generate . Generator
 
 // Root is the root of a template, used to compose a sequence and
-// configuration
+// configuration.
+// You typically create an instance using the [New] function,
+// which in addition to specifying the generator you want, sets
+// up the default action for the template when it runs in the
+// pipeline, which is to register the flags and run Generate
+// at the action timing.
 type Root struct {
 	Generator Generator
 	Overwrite bool
 	DryRun    bool
 	Path      string
+
+	// MakeDirs controls whether to implicitly create directories.
+	// It is set to true by default by [New]. When set to false, the
+	// [Dir] generator becomes a container only and does not create directories.
+	// To ensure a directory exists, add a FileMode, usually FileMode(0755),
+	// as the first generator argument.
+	MakeDirs bool
 }
 
 // Sequence is a sequence of template generators
@@ -43,10 +57,13 @@ type dataSetter struct {
 	value any
 }
 
-// New creates a new template using the given sequence of generators
+// New creates a new template using the given sequence of generators.
+// Directories will automatically be created by default because MakeDirs will
+// also be set to true.
 func New(items ...Generator) *Root {
 	return &Root{
 		Generator: Sequence(items),
+		MakeDirs:  true,
 	}
 }
 
@@ -55,8 +72,8 @@ func Data(namevalue ...any) Generator {
 		panic("expected name, value in pairs")
 	}
 	res := make(Sequence, 0, len(namevalue)/2)
-	for i := 0; i < len(namevalue); i += 2 {
-		res = append(res, &dataSetter{namevalue[i].(string), namevalue[i+1]})
+	for namevalue := range slices.Chunk(namevalue, 2) {
+		res = append(res, &dataSetter{namevalue[0].(string), namevalue[1]})
 	}
 	return res
 }
@@ -100,8 +117,8 @@ func (r *Root) Pipeline() cli.Action {
 	return cli.Pipeline(
 		cli.Prototype{
 			Uses: cli.AddFlags([]*cli.Flag{
-				{Uses: r.DryRunFlag()},
-				{Uses: r.OverwriteFlag()},
+				{Uses: cli.Accessory0("", r.DryRunFlag())},
+				{Uses: cli.Accessory0("", r.OverwriteFlag())},
 			}...),
 		},
 		cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) error {
@@ -109,17 +126,29 @@ func (r *Root) Pipeline() cli.Action {
 			if workDir == "" {
 				workDir = "."
 			}
-			ctx := &OutputContext{
-				Vars:      map[string]any{},
-				Overwrite: r.Overwrite,
-				DryRun:    r.DryRun,
-				FS:        c.FS.(cli.FS),
-				working:   []string{workDir},
-				out:       c.Stdout,
-			}
-			return r.Generate(c, ctx)
+			fsys, out := findOutput(c)
+			return r.Generate(c, r.outputContext(fsys, out, workDir))
 		})),
 	)
+}
+
+func (r *Root) outputContext(fsys cli.FS, out cli.Writer, workDir string) *OutputContext {
+	return &OutputContext{
+		Vars:      map[string]any{},
+		Overwrite: r.Overwrite,
+		DryRun:    r.DryRun,
+		MakeDirs:  r.MakeDirs,
+		FS:        fsys,
+		working:   []string{workDir},
+		out:       out,
+	}
+}
+func findOutput(ctx context.Context) (fsys cli.FS, out cli.Writer) {
+	c, ok := cli.TryFromContext(ctx)
+	if !ok {
+		return cli.NewSysFS(cli.DirFS("."), os.Stdin, os.Stdout), cli.NewWriter(os.Stdout)
+	}
+	return c.FS.(cli.FS), c.Stdout
 }
 
 func (r *Root) Generate(ctx context.Context, c *OutputContext) error {

@@ -24,6 +24,7 @@ type OutputContext struct {
 	Vars      map[string]any
 	Overwrite bool
 	DryRun    bool
+	MakeDirs  bool
 	FS        cli.FS
 
 	working []string

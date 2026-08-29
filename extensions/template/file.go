@@ -221,6 +221,14 @@ func (m FileMode) GenerateFile(_ context.Context, c *OutputContext, name string)
 	return c.Chmod(name, fs.FileMode(int(m)))
 }
 
+func (m FileMode) Generate(_ context.Context, c *OutputContext) error {
+	if c.DryRun {
+		return nil
+	}
+
+	return c.MkdirAll(".", fs.FileMode(m))
+}
+
 func (f *fileGenerator) Generate(ctx context.Context, c *OutputContext) error {
 	if len(f.ops) == 0 {
 		c.identical(f.name)
@@ -264,4 +272,5 @@ func doFileGenerate(ctx context.Context, c *OutputContext, name string, ops ...F
 
 var (
 	_ FileGenerator = FileMode(0)
+	_ Generator     = FileMode(0)
 )
