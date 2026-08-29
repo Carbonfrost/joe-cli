@@ -112,6 +112,8 @@ var _ = Describe("help screen", HelpScreen, func() {
 func expectGoldenFile(fixture, actual string) {
 	GinkgoHelper()
 
+	actual = normalizeLineEndings(actual)
+
 	// Guard against a fixture which captures a screen that never rendered
 	Expect(actual).NotTo(BeEmpty())
 
@@ -122,8 +124,14 @@ func expectGoldenFile(fixture, actual string) {
 	}
 
 	expected, err := os.ReadFile(name)
+	expected = normalizeLineEndings(expected)
+
 	Expect(err).NotTo(HaveOccurred(), "missing fixture %s; re-run with JOE_UPDATE_GOLDEN=1", name)
 	Expect(actual).To(Equal(string(expected)))
+}
+
+func normalizeLineEndings[T ~string | ~[]byte](src T) T {
+	return T(bytes.ReplaceAll([]byte(src), []byte("\r\n"), []byte("\n")))
 }
 
 func disableConsoleColor() func() {
