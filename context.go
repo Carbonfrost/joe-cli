@@ -401,6 +401,12 @@ func (c *Context) IsAfter() bool { return c.Timing() == AfterTiming }
 // IsAction returns true if the context represents actions running for the actual execution of the command
 func (c *Context) IsAction() bool { return c.Timing() == ActionTiming }
 
+// IsInteractive returns true if TTY is connected to stdin
+func (c *Context) IsInteractive() bool {
+	_, ok := terminalReaderFD(c.Stdin)
+	return ok
+}
+
 // Timing retrieves the timing
 func (c *Context) Timing() Timing {
 	return c.state.getTiming()

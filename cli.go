@@ -119,12 +119,9 @@ func SplitMap(s string) map[string]string {
 // ReadPasswordString securely gets a password, without the trailing '\n'.
 // An error will be returned if the reader is not stdin connected to TTY.
 func ReadPasswordString(in io.Reader) (string, error) {
-	if f, ok := in.(interface{ Fd() uintptr }); ok {
-		fd := int(f.Fd())
-		if fd == 0 {
-			data, err := term.ReadPassword(fd)
-			return string(data), err
-		}
+	if fd, ok := terminalReaderFD(in); ok {
+		data, err := term.ReadPassword(int(fd))
+		return string(data), err
 	}
 	return "", errorNotTty
 }
@@ -132,16 +129,13 @@ func ReadPasswordString(in io.Reader) (string, error) {
 // ReadString gets a line of text, without the trailing '\n'.
 // An error will be returned if the reader is not stdin connected to TTY.
 func ReadString(in io.Reader) (string, error) {
-	if f, ok := in.(interface{ Fd() uintptr }); ok {
-		fd := int(f.Fd())
-		if fd == 0 {
-			reader := bufio.NewReader(in)
-			s, err := reader.ReadString('\n')
-			if err != nil {
-				return "", err
-			}
-			return s[0 : len(s)-1], nil
+	if _, ok := terminalReaderFD(in); ok {
+		reader := bufio.NewReader(in)
+		s, err := reader.ReadString('\n')
+		if err != nil {
+			return "", err
 		}
+		return s[0 : len(s)-1], nil
 	}
 
 	return "", errorNotTty

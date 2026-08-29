@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/Carbonfrost/joe-cli"
 	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
@@ -174,6 +175,20 @@ var _ = Describe("IfMatch", func() {
 				Action: cli.IfMatch(mode, appendTiming),
 			}
 		}
+
+		interactiveApp = func(mode cli.ContextFilter) (string, *cli.App) {
+			SkipOnWindows()
+
+			// Need to actually re-open the device because Ginkgo or other module
+			// may change os.Stdin to prevent the test suite itself from expecting input
+			tty, _ := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+
+			return "a", &cli.App{
+				Name:   "q",
+				Stdin:  tty,
+				Action: cli.IfMatch(mode, appendName),
+			}
+		}
 	)
 
 	JustBeforeEach(func() {
@@ -213,6 +228,7 @@ var _ = Describe("IfMatch", func() {
 		Entry("pattern multi", targetApp, cli.PatternFilter("c -f, c, <a>"), ConsistOf([]string{"-f", "c", "<a>"})),
 		Entry("pattern tag", targetApp, cli.PatternFilter("{tag:t}"), ConsistOf([]string{"-f"})),
 		Entry("pattern tag bool", targetApp, cli.PatternFilter("{tag}"), ConsistOf([]string{"-f", "<a>"})),
+		Entry("interactive", interactiveApp, cli.Interactive, ConsistOf([]string{"q"})),
 	)
 })
 
@@ -237,6 +253,7 @@ var _ = Describe("FilterModes", func() {
 			Entry("Seen", cli.Seen, "SEEN"),
 			Entry("Completing", cli.Completing, "COMPLETING"),
 			Entry("Defines", cli.Defines, "DEFINES"),
+			Entry("Interactive", cli.Interactive, "INTERACTIVE"),
 		)
 	})
 
@@ -254,6 +271,7 @@ var _ = Describe("FilterModes", func() {
 			Entry("Seen", cli.Seen, "option that has been seen"),
 			Entry("Completing", cli.Completing, "in shell completion"),
 			Entry("Defines", cli.Defines, "defined in joe-cli pkg"),
+			Entry("Interactive", cli.Interactive, "interactive"),
 		)
 	})
 

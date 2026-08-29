@@ -72,6 +72,9 @@ const (
 	// Defines filters the context to detect if the current flag or arg was defined by Joe-cli package
 	Defines
 
+	// Interactive indicates that the context has TTY connected to stdin
+	Interactive
+
 	subcommandDidNotExecute
 
 	// Anything matches any kind of target
@@ -89,6 +92,7 @@ var (
 		RootCommand:             ContextFilterFunc(isRoot),
 		Completing:              ContextFilterFunc(completingThis),
 		Defines:                 HasData(SourceAnnotation()),
+		Interactive:             ContextFilterFunc((*Context).IsInteractive),
 		subcommandDidNotExecute: ContextFilterFunc((*Context).subcommandDidNotExecute),
 	}
 
@@ -102,6 +106,7 @@ var (
 		HasValue:    {"target with value", "HAS_VALUE"},
 		Completing:  {"in shell completion", "COMPLETING"},
 		Defines:     {"defined in joe-cli pkg", "DEFINES"},
+		Interactive: {"interactive", "INTERACTIVE"},
 	}
 )
 

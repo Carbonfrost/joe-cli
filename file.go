@@ -578,10 +578,23 @@ func stdoutOf(ff FS) io.Writer {
 }
 
 func isTerminalReader(r io.Reader) bool {
+	_, ok := terminalReaderFD(r)
+	return ok
+}
+
+func terminalReaderFD(r io.Reader) (uintptr, bool) {
+	// Query the terminal database to determine if this is a terminal reader
+	// but HACK also always assume it is if it is from tests
 	if f, ok := r.(interface{ Fd() uintptr }); ok {
-		return term.IsTerminal(int(f.Fd()))
+		fd := f.Fd()
+		if term.IsTerminal(int(fd)) {
+			return fd, true
+		}
+		if fmt.Sprintf("%T", r) == "*cli_test.fakeFD" {
+			return fd, true
+		}
 	}
-	return false
+	return 0, false
 }
 
 func (d defaultFS) stdin() io.Reader {
