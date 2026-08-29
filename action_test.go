@@ -485,115 +485,6 @@ var _ = Describe("timings", func() {
 
 	})
 
-	Describe("action", func() {
-		var (
-			flags     []*cli.Flag
-			arguments string
-		)
-
-		JustBeforeEach(func() {
-			act := new(joeclifakes.FakeAction)
-			app := &cli.App{
-				Name:   "app",
-				Action: act,
-				Flags:  flags,
-			}
-			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		Context("WorkingDirectory", func() {
-			var original string
-
-			AfterEach(func() {
-				os.Chdir(original)
-			})
-
-			BeforeEach(func() {
-				original, _ = os.Getwd()
-				arguments = "app --dir=/usr"
-				SkipOnWindows()
-			})
-
-			Context("string flag", func() {
-				BeforeEach(func() {
-					flags = []*cli.Flag{
-						{
-							Name:    "dir",
-							Value:   cli.String(),
-							Options: cli.WorkingDirectory,
-						},
-					}
-				})
-
-				It("WorkingDirectory sets the working directory", func() {
-					Expect(os.Getwd()).To(Equal("/usr"))
-				})
-			})
-
-			Context("when unset", func() {
-				BeforeEach(func() {
-					arguments = "app"
-					flags = []*cli.Flag{
-						{
-							Name:    "dir",
-							Value:   cli.String(),
-							Options: cli.WorkingDirectory,
-						},
-					}
-				})
-
-				It("WorkingDirectory does nothing", func() {
-					Expect(os.Getwd()).To(Equal(original))
-				})
-
-				// It also generates no error (this is checked in JustBeforeEach for the context)
-			})
-
-			Context("File flag", func() {
-				BeforeEach(func() {
-					flags = []*cli.Flag{
-						{
-							Name:    "dir",
-							Value:   &cli.File{},
-							Options: cli.WorkingDirectory,
-						},
-					}
-				})
-
-				It("WorkingDirectory sets the working directory", func() {
-					Expect(os.Getwd()).To(Equal("/usr"))
-				})
-
-				Context("when unset File", func() {
-					BeforeEach(func() {
-						arguments = "app"
-					})
-
-					It("WorkingDirectory does nothing", func() {
-						Expect(os.Getwd()).To(Equal(original))
-					})
-
-					// It also generates no error (this is checked in JustBeforeEach for the context)
-				})
-
-				Context("when set to blank", func() {
-					BeforeEach(func() {
-						arguments = "app --dir="
-					})
-
-					It("WorkingDirectory does nothing", func() {
-						Expect(os.Getwd()).To(Equal(original))
-					})
-
-					// It also generates no error (this is checked in JustBeforeEach for the context)
-				})
-
-			})
-		})
-	})
-
 	Describe("initialization", func() {
 		var (
 			captured               *cli.Context
@@ -732,6 +623,58 @@ var _ = Describe("timings", func() {
 		Expect(events).To(Equal([]string{"validator", "before", "implicitValue"}))
 	})
 
+})
+
+var _ = Context("WorkingDirectory", func() {
+
+	DescribeTableSubtree("examples", func(valueFn func() any) {
+
+		original, _ := os.Getwd()
+
+		runApp := func(arguments string) {
+			SkipOnWindows()
+
+			app := &cli.App{
+				Name:   "app",
+				Action: new(joeclifakes.FakeAction),
+				Flags: []*cli.Flag{
+					&cli.Flag{
+						Name:    "dir",
+						Value:   valueFn(),
+						Options: cli.WorkingDirectory,
+					},
+				},
+			}
+
+			args, _ := cli.Split(arguments)
+			err := app.RunContext(context.Background(), args)
+
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		BeforeEach(func() {
+			os.Chdir(original)
+		})
+
+		It("sets the working directory", func() {
+			runApp("app --dir=/usr")
+			Expect(os.Getwd()).To(Equal("/usr"))
+		})
+
+		It("does nothing when unset", func() {
+			runApp("app")
+			Expect(os.Getwd()).To(Equal(original))
+		})
+
+		It("does nothing when blank", func() {
+			runApp("app --dir=")
+			Expect(os.Getwd()).To(Equal(original))
+		})
+	},
+
+		Entry("Flag flag", func() any { return new(cli.File) }),
+		Entry("string flag", func() any { return new(string) }),
+	)
 })
 
 var _ = Describe("At", func() {
