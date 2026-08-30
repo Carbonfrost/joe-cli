@@ -23,7 +23,8 @@ type FileGenerator interface {
 
 type FileGeneratorFunc func(context.Context, *OutputContext, string) error
 
-type FileMode int
+// FileMode provides a step that applies the file mode to the file or directory
+type FileMode fs.FileMode
 
 type fileGenerator struct {
 	name string
@@ -201,12 +202,6 @@ func Exec(name string, arg ...string) FileGenerator {
 
 		_, err = doFileGenerate(ctx, c, filename, Contents(result))
 		return err
-	})
-}
-
-func Mode(mode fs.FileMode) FileGenerator {
-	return FileGeneratorFunc(func(_ context.Context, c *OutputContext, name string) error {
-		return c.Chmod(name, mode)
 	})
 }
 
