@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
@@ -177,11 +178,17 @@ var _ = Describe("IfMatch", func() {
 		}
 
 		interactiveApp = func(mode cli.ContextFilter) (string, *cli.App) {
-			SkipOnWindows()
-
 			// Need to actually re-open the device because Ginkgo or other module
 			// may change os.Stdin to prevent the test suite itself from expecting input
-			tty, _ := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+			var err error
+			var tty io.Reader
+			tty, err = os.OpenFile("/dev/tty", os.O_RDWR, 0)
+
+			if err != nil {
+				// But, it may ultimately not work, so improve interop in environments where
+				// this test wouldn't work
+				tty = new(fakeFD)
+			}
 
 			return "a", &cli.App{
 				Name:   "q",
