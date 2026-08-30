@@ -259,15 +259,14 @@ func Exact[T any](valopt ...T) Binder[T] {
 
 // Seen provides a binder which sets the value according to whether the value
 // has been seen.
-// Seen provides a binder which sets
-func Seen(nameopt ...any) Binder[bool] {
+func Seen(nameopt ...any) *BoolBinder {
 	if len(nameopt) == 0 {
-		return Occurrences(nil, false, true)
+		return Occurrences(nil, false, true).(*BoolBinder)
 	}
 	if len(nameopt) > 1 {
 		panic("expected 0 or 1 args for valopt")
 	}
-	return Occurrences(nameopt[0], false, true)
+	return Occurrences(nameopt[0], false, true).(*BoolBinder)
 }
 
 // Occurrences provides a binder that maps the occurrence count of the named flag
