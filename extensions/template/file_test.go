@@ -172,6 +172,9 @@ type C    struct {  }`,
 			Expect(err).NotTo(HaveOccurred())
 
 			path, _ := ff.MkdirAllArgsForCall(0)
+			Expect(path).To(Equal("."))
+
+			path, _ = ff.MkdirAllArgsForCall(1)
 			Expect(path).To(Equal("a/b"))
 		})
 

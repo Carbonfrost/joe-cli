@@ -29,6 +29,11 @@ import (
 // pipeline, which is to register the flags and run Generate
 // at the action timing.
 type Root struct {
+
+	// Action provides the action for when the Root value is added to
+	// a pipeline.
+	cli.Action
+
 	Generator Generator
 	Overwrite bool
 	DryRun    bool
@@ -61,12 +66,27 @@ type dataSetter struct {
 
 // New creates a new template using the given sequence of generators.
 // Directories will automatically be created by default because MakeDirs will
-// also be set to true.
+// also be set to true. The Action will be set to the default action, which
+// registers the flags if used as an initializer and invokes the generator in
+// the action timing.
 func New(items ...Generator) *Root {
-	return &Root{
+	return withDefaultAction(&Root{
 		Generator: Sequence(items),
 		MakeDirs:  true,
-	}
+	})
+}
+
+func withDefaultAction(r *Root) *Root {
+	r.Action = cli.Pipeline(
+		cli.Prototype{
+			Uses: cli.AddFlags([]*cli.Flag{
+				{Uses: cli.Accessory0("", r.DryRunFlag())},
+				{Uses: cli.Accessory0("", r.OverwriteFlag())},
+			}...),
+		},
+		cli.At(cli.ActionTiming, cli.ActionOf(r.Generate)),
+	)
+	return r
 }
 
 func Data(namevalue ...any) Generator {
@@ -109,42 +129,22 @@ func (r *Root) DryRunFlag() cli.Prototype {
 	}
 }
 
-// Execute implements the action interface
-func (r *Root) Execute(ctx context.Context) error {
-	return r.Pipeline().Execute(ctx)
-}
-
 // Pipeline converts the root into a pipeline
 func (r *Root) Pipeline() cli.Action {
-	return cli.Pipeline(
-		cli.Prototype{
-			Uses: cli.AddFlags([]*cli.Flag{
-				{Uses: cli.Accessory0("", r.DryRunFlag())},
-				{Uses: cli.Accessory0("", r.OverwriteFlag())},
-			}...),
-		},
-		cli.At(cli.ActionTiming, cli.ActionFunc(func(c *cli.Context) error {
-			workDir := r.Path
-			if workDir == "" {
-				workDir = "."
-			}
-			fsys, out := findOutput(c)
-			return r.Generate(c, r.outputContext(fsys, out, workDir))
-		})),
-	)
+	return r.Action
 }
 
-func (r *Root) outputContext(fsys cli.FS, out cli.Writer, workDir string) *OutputContext {
+func (r *Root) outputContext(fsys cli.FS, out cli.Writer) *OutputContext {
 	return &OutputContext{
 		Vars:      map[string]any{},
 		Overwrite: r.Overwrite,
 		DryRun:    r.DryRun,
 		MakeDirs:  r.MakeDirs,
 		FS:        fsys,
-		working:   []string{workDir},
 		out:       out,
 	}
 }
+
 func findOutput(ctx context.Context) (fsys cli.FS, out cli.Writer) {
 	c, ok := cli.TryFromContext(ctx)
 	if !ok {
@@ -153,15 +153,38 @@ func findOutput(ctx context.Context) (fsys cli.FS, out cli.Writer) {
 	return c.FS.(cli.FS), c.Stdout
 }
 
-func (r *Root) Generate(ctx context.Context, c *OutputContext) error {
+// Generate provides the behavior of generating the output from the template
+func (r *Root) Generate(ctx context.Context) error {
+	fsys, out := findOutput(ctx)
+	return r.makeGenerator().Generate(ctx, r.outputContext(fsys, out))
+}
+
+// makeGenerator treats the root as a directory, reports on it location,
+// and runs the rest
+func (r *Root) makeGenerator() Generator {
+	workDir := r.Path
+	if workDir == "" {
+		workDir = "."
+	}
+
+	return Dir(workDir, GeneratorFunc(r.reportWorkDir), r.Generator)
+}
+
+// GeneratorFunc provides a function that can be used as a generator
+type GeneratorFunc func(_ context.Context, c *OutputContext) error
+
+func (f GeneratorFunc) Generate(ctx context.Context, c *OutputContext) error {
+	return f(ctx, c)
+}
+
+func (r *Root) reportWorkDir(_ context.Context, c *OutputContext) error {
 	// Provide a hint about the working directory if it is different from the one
 	// that started the process
 	wd, err := filepath.Abs(c.WorkDir())
 	if err == nil && shell.StartDir() != wd {
 		c.trace("working dir", wd)
 	}
-
-	return r.Generator.Generate(ctx, c)
+	return nil
 }
 
 func (s Sequence) Generate(ctx context.Context, c *OutputContext) error {
@@ -198,7 +221,7 @@ func (v Vars) applyFSOption(g *fsGenerator) {
 
 var (
 	_ cli.Action = (*Root)(nil)
-	_ Generator  = (*Root)(nil)
 	_ Generator  = (Sequence)(nil)
 	_ Option     = (Vars)(nil)
+	_ Generator  = (GeneratorFunc)(nil)
 )

@@ -74,10 +74,11 @@ func (c *OutputContext) PushDir(name string) error {
 }
 
 func (c *OutputContext) PopDir() error {
-	c.working = c.working[0 : len(c.working)-1]
 	if len(c.working) == 0 {
 		return fmt.Errorf("cannot pop dir")
 	}
+
+	c.working = c.working[0 : len(c.working)-1]
 	return nil
 }
 
