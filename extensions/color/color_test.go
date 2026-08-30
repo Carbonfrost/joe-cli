@@ -5,16 +5,16 @@
 package color_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/clitest"
 	"github.com/Carbonfrost/joe-cli/extensions/color"
-	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	"github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -343,9 +343,6 @@ var _ = Describe("Synopsis styling", func() {
 
 func renderScreen(app *cli.App, args string) string {
 	arguments, _ := cli.Split(args)
-	var buffer bytes.Buffer
-	app.Stderr = &buffer
-	app.Stdout = &buffer
-	_ = app.RunContext(context.Background(), arguments)
-	return buffer.String()
+	buffer, _ := clitest.Command(app, arguments...).CombinedOutput()
+	return string(buffer)
 }

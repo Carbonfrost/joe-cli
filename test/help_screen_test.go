@@ -6,12 +6,12 @@ package test_test
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/clitest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -145,9 +145,6 @@ func renderScreen(app *cli.App, args string) string {
 	defer disableConsoleColor()()
 
 	arguments, _ := cli.Split(args)
-	var buffer bytes.Buffer
-	app.Stderr = &buffer
-	app.Stdout = &buffer
-	_ = app.RunContext(context.Background(), arguments)
-	return buffer.String()
+	buffer, _ := clitest.Command(app, arguments...).CombinedOutput()
+	return string(buffer)
 }

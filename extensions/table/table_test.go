@@ -1,18 +1,17 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package table_test
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/clitest"
 	"github.com/Carbonfrost/joe-cli/extensions/table"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -61,21 +60,17 @@ var _ = Describe("template functions", func() {
 	)
 })
 
-func renderScreen(app *cli.App, args string) string {
-	defer disableConsoleColor()()
-
-	arguments, _ := cli.Split(args)
-	var buffer bytes.Buffer
-	app.Stderr = &buffer
-	app.Stdout = &buffer
-	err := app.RunContext(context.Background(), arguments)
-	Expect(err).NotTo(HaveOccurred())
-	return buffer.String()
-}
-
 func disableConsoleColor() func() {
 	os.Setenv("TERM", "dumb")
 	return func() {
 		os.Setenv("TERM", "0")
 	}
+}
+
+func renderScreen(app *cli.App, args string) string {
+	defer disableConsoleColor()()
+
+	arguments, _ := cli.Split(args)
+	buffer, _ := clitest.Command(app, arguments...).CombinedOutput()
+	return string(buffer)
 }

@@ -15,6 +15,7 @@ import (
 	tt "text/template"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/clitest"
 	"github.com/Carbonfrost/joe-cli/extensions/template"
 	"github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
@@ -324,11 +325,8 @@ func renderScreen(app *cli.App, args string) string {
 	defer disableConsoleColor()()
 
 	arguments, _ := cli.Split(args)
-	var buffer bytes.Buffer
-	app.Stderr = &buffer
-	app.Stdout = &buffer
-	_ = app.RunContext(context.Background(), arguments)
-	return buffer.String()
+	buffer, _ := clitest.Command(app, arguments...).CombinedOutput()
+	return string(buffer)
 }
 
 func SkipOnWindows() {
