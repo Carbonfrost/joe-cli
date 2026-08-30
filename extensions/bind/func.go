@@ -321,7 +321,11 @@ func Indirect[T, V any](name any, call func(T, V) error, valopt ...V) cli.Action
 // the value is read from the flag.
 func Redirect[V any](name any, valopt ...V) cli.Action {
 	call := func(c *cli.Context, val V, _ V) error {
-		return c.ContextOf(name).SetValue(val)
+		target := c.ContextOf(name)
+		if target == nil {
+			return undefinedError(c, name)
+		}
+		return target.SetValue(val)
 	}
 
 	switch len(valopt) {

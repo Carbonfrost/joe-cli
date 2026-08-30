@@ -497,7 +497,31 @@ var _ = Describe("Redirect", func() {
 		Expect(app.Flags[0].Value).To(PointTo(Equal(must(url.Parse("https://v.example")))))
 		Expect(app.Flags[1].Value).To(PointTo(Equal(true)))
 	})
+
+	It("generates an error on missing name", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "t",
+					Value: cli.BigInt(),
+				},
+				{
+					Name:    "set",
+					Aliases: []string{"S"},
+					Uses:    bind.Action2(redirect, bind.NameValue().Name(), bind.NameValue().Value()),
+				},
+			},
+		}
+
+		args, _ := cli.Split("app -Smissing=2")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(MatchError(ContainSubstring(`flag or arg named in binding but not defined "missing"`)))
+	})
 })
+
+func redirect(name, value string) cli.Action {
+	return bind.Redirect(name, value)
+}
 
 func must[T any](v T, _ any) T {
 	return v
