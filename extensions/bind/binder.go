@@ -101,7 +101,7 @@ import (
 )
 
 //go:generate go tool counterfeiter -generate
-//counterfeiter:generate . Binder
+//counterfeiter:generate -o ../../internal/bindfakes . Binder
 
 // Binder provides a strategy for obtaining a value from the context
 type Binder[T any] interface {

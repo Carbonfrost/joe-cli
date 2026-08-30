@@ -23,7 +23,7 @@ import (
 	"golang.org/x/term"
 )
 
-//counterfeiter:generate . FS
+//counterfeiter:generate -o internal/joe-clifakes . FS
 
 // FS provides a read-write file system.  In addition to the read-only behavior of io/fs.FS, it
 // provides all the semantics available from the package os.  To obtain an instance for the file

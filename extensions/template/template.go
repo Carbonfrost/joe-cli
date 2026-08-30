@@ -12,14 +12,14 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/internal/shell"
 )
 
 //go:generate go tool counterfeiter -generate
 
-//counterfeiter:generate . Generator
+//counterfeiter:generate -o ../../internal/templatefakes . Generator
 
 // Root is the root of a template, used to compose a sequence and
 // configuration.

@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,8 +14,8 @@ import (
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
-	"github.com/Carbonfrost/joe-cli/extensions/expr/exprfakes"
-	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
+	"github.com/Carbonfrost/joe-cli/internal/exprfakes"
+	joeclifakes "github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"

@@ -18,10 +18,10 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
-	"github.com/Carbonfrost/joe-cli/extensions/bind/bindfakes"
+	"github.com/Carbonfrost/joe-cli/internal/bindfakes"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
-	"github.com/Carbonfrost/joe-cli/extensions/expr/exprfakes"
-	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
+	"github.com/Carbonfrost/joe-cli/internal/exprfakes"
+	joeclifakes "github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
 	"github.com/onsi/gomega/types"
 
 	. "github.com/onsi/ginkgo/v2"

@@ -14,7 +14,7 @@ import (
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/config"
-	"github.com/Carbonfrost/joe-cli/extensions/config/configfakes"
+	"github.com/Carbonfrost/joe-cli/internal/configfakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"

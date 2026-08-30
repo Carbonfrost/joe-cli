@@ -53,7 +53,7 @@ import (
 //   - Completion() Completion   called to obtain the default completion for a value
 type Value = flag.Value
 
-//counterfeiter:generate . Value
+//counterfeiter:generate -o internal/joe-clifakes . Value
 
 // NameValue encapsulates a name-value pair.  This is a flag value specified
 // using the syntax name=value.  When only the name is specified, this is interpreted

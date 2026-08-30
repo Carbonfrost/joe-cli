@@ -32,7 +32,7 @@ type ActionFunc func(*Context) error
 
 type actionFunc func(context.Context) error
 
-//counterfeiter:generate . Action
+//counterfeiter:generate -o internal/joe-clifakes . Action
 
 // Action represents the building block of the various actions
 // to perform when an app, command, flag, or argument is being evaluated.
@@ -71,7 +71,7 @@ type actionTiming interface {
 	action() Action
 }
 
-//counterfeiter:generate . Middleware
+//counterfeiter:generate -o internal/joe-clifakes . Middleware
 
 // Middleware provides an action which controls how and whether the next
 // action in the pipeline is executed

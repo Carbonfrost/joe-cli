@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import (
 	"testing/fstest"
 
 	cli "github.com/Carbonfrost/joe-cli"
-	joeclifakes "github.com/Carbonfrost/joe-cli/joe-clifakes"
+	joeclifakes "github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
 	"github.com/Carbonfrost/joe-cli/value"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

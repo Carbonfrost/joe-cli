@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -37,7 +37,7 @@ type Template struct {
 	Debug bool
 }
 
-//counterfeiter:generate . Writer
+//counterfeiter:generate -o internal/joe-clifakes . Writer
 
 // Writer provides a terminal output writer which can provide access to color and styles
 type Writer interface {

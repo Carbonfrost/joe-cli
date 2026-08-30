@@ -124,7 +124,7 @@ type Arg struct {
 	bs BindingState
 }
 
-//counterfeiter:generate . ArgCounter
+//counterfeiter:generate -o internal/joe-clifakes . ArgCounter
 
 // ArgCounter provides the behavior of counting the values that
 // are specified to an Arg.  The method Take is called repeatedly

@@ -1,4 +1,4 @@
-// Copyright 2023 The Joe-cli Authors. All rights reserved.
+// Copyright 2023, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/Carbonfrost/joe-cli/extensions/template"
-	"github.com/Carbonfrost/joe-cli/extensions/template/templatefakes"
+	"github.com/Carbonfrost/joe-cli/internal/templatefakes"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -52,7 +52,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-//counterfeiter:generate . Evaluator
+//counterfeiter:generate -o ../../internal/exprfakes . Evaluator
 
 // Evaluator provides the evaluation function for an expression operator.
 type Evaluator interface {
@@ -213,7 +213,7 @@ type evaluatorFunc func(context.Context, any, func(any) error) error
 
 //go:generate go tool counterfeiter -generate
 
-//counterfeiter:generate . Yielder
+//counterfeiter:generate -o ../../internal/exprfakes . Yielder
 
 // Yielder provides the signature of the function used to yield
 // values to the expression pipeline

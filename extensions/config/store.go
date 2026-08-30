@@ -10,7 +10,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Carbonfrost/joe-cli"
+	cli "github.com/Carbonfrost/joe-cli"
 )
 
 // Store provides configuration storage based on the Lookup interface.
@@ -31,7 +31,7 @@ type ReloadableStore interface {
 	Reload(context.Context) error
 }
 
-//counterfeiter:generate . Loader
+//counterfeiter:generate -o ../../internal/configfakes . Loader
 
 // Loader loads the configuration system
 type Loader interface {

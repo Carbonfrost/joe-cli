@@ -13,7 +13,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
 	"github.com/Carbonfrost/joe-cli/extensions/structure"
-	"github.com/Carbonfrost/joe-cli/joe-clifakes"
+	"github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
