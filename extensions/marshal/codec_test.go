@@ -151,12 +151,29 @@ var _ = Describe("CodecRegistry", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		c := codec.Codec{co.(codec.Interface)}
+		c := codec.Codec{Interface: co.(codec.Interface)}
 		actual, _ := c.Marshal(struct {
 			F string
 		}{F: "<o></o>"})
 		Expect(string(actual)).To(MatchJSON(`{"F": "\u003co\u003e\u003c/o\u003e"}`))
 		Expect(string(actual)).To(MatchRegexp(`(?m)^    "F"`)) // indented
+	})
+})
+
+var _ = Describe("SetOutput", func() {
+
+	It("provides the synopsis of the flag", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Uses: marshal.SetOutput()},
+			},
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(app.Flags[0].Synopsis()).To(Equal("--output={json|toml|yaml}"))
+		Expect(app.Flags[0].HelpText).To(Equal("Set the output {FORMAT}"))
 	})
 })
 

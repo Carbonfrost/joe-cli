@@ -7,6 +7,7 @@ package synopsis
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 
@@ -110,6 +111,18 @@ const (
 	StyleData    = "_synopsisStyle"
 	CategoryData = "_synopsisCategory"
 )
+
+func Choices(opts []string) string {
+	if len(opts) <= 1 {
+		return strings.Join(opts, "")
+	}
+
+	slices.Sort(opts)
+	if len(opts) > 3 {
+		opts = append(opts[:3], "...")
+	}
+	return fmt.Sprintf("{%v}", strings.Join(opts, "|"))
+}
 
 // Style controls how the name of a flag, command, or expression is rendered in
 // the synopsis.  The zero value renders the name in Bold.  When a color is set,

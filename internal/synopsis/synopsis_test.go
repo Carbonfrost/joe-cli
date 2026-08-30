@@ -160,6 +160,19 @@ var _ = Describe("String", func() {
 	)
 })
 
+var _ = Describe("Choices", func() {
+
+	DescribeTable("examples", func(s []string, expected types.GomegaMatcher) {
+		Expect(synopsis.Choices(s)).To(expected)
+	},
+		Entry("nominal", []string{"s", "t"}, Equal("{s|t}")),
+		Entry("single", []string{"s"}, Equal("s")),
+		Entry("empty", []string{}, Equal("")),
+		Entry("limit at 3", []string{"s", "t", "u"}, Equal("{s|t|u}")),
+		Entry("over 3", []string{"s", "t", "u", "v"}, Equal("{s|t|u|...}")),
+	)
+})
+
 type Writer struct {
 	strings.Builder
 }

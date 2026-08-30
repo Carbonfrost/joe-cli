@@ -15,6 +15,7 @@ import (
 	"github.com/Carbonfrost/joe-cli/extensions/marshal/codec"
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
 	"github.com/Carbonfrost/joe-cli/extensions/structure"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
 // Codec identifies the support codecs. The JSON codec is supported by default.
@@ -380,7 +381,9 @@ func setCodec(name codecDir, v ...codec.Interface) cli.Action {
 
 	return cli.Pipeline(
 		cli.Prototype{
-			Name: name.String(),
+			Name:      name.String(),
+			HelpText:  "Set the output {FORMAT}",
+			UsageText: synopsis.Choices(CodecRegistry.ProviderNames()),
 			Value: &provider.Value{
 				Registry: codecRegistryName,
 				Args:     structure.Of(&codec.Options{}),
