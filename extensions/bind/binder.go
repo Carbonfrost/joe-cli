@@ -379,6 +379,13 @@ func Stdout() Binder[io.Writer] {
 	})
 }
 
+// Stderr binds stderr.
+func Stderr() Binder[io.Writer] {
+	return then(Context(), func(c *cli.Context) io.Writer {
+		return c.Stderr
+	})
+}
+
 // Stdin binds stdin.
 func Stdin() Binder[io.Reader] {
 	return then(Context(), func(c *cli.Context) io.Reader {

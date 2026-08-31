@@ -5,7 +5,9 @@
 package bind_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"math/big"
@@ -18,8 +20,8 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
-	"github.com/Carbonfrost/joe-cli/internal/bindfakes"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
+	"github.com/Carbonfrost/joe-cli/internal/bindfakes"
 	"github.com/Carbonfrost/joe-cli/internal/exprfakes"
 	joeclifakes "github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
 	"github.com/onsi/gomega/types"
@@ -674,7 +676,7 @@ var _ = Describe("Occurrences", func() {
 var _ = Describe("Seen", func() {
 
 	It("invokes with bind func with value from flag", func() {
-		var value1, value2, value3 bool
+		var value1, value2, value3, value4 bool
 		app := &cli.App{
 			Flags: []*cli.Flag{
 				{
@@ -690,14 +692,53 @@ var _ = Describe("Seen", func() {
 					Value: new(true),
 					Uses:  bind.AfterCall(callFactory(&value3), bind.Seen("z")),
 				},
+				{
+					Name: "o",
+					Uses: bind.Call(callFactory(&value4), bind.Seen()),
+				},
 			},
 		}
-		args, _ := cli.Split("app -mn")
+		args, _ := cli.Split("app -mno")
 		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value1).To(BeTrue())
 		Expect(value2).To(BeTrue())
 		Expect(value3).To(BeFalse())
+		Expect(value4).To(BeTrue())
+	})
+
+	It("panics on invalid arguments", func() {
+		Expect(func() { bind.Seen(1, 2, 3) }).To(Panic())
+	})
+
+})
+
+var _ = Describe("Stdout", func() {
+
+	It("invokes with bind func with output buffer", func() {
+		testFunc := func(stdout, stderr io.Writer) error {
+			fmt.Fprintln(stdout, "hello out")
+			fmt.Fprintln(stderr, "hello err")
+			return nil
+		}
+		var stdout, stderr bytes.Buffer
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: bind.Call2(testFunc, bind.Stdout(), bind.Stderr()),
+				},
+			},
+			Stdout: &stdout,
+			Stderr: &stderr,
+		}
+
+		args, _ := cli.Split("app -f r")
+		err := app.RunContext(context.Background(), args)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stdout.String()).To(Equal("hello out\n"))
+		Expect(stderr.String()).To(Equal("hello err\n"))
 	})
 
 })
@@ -754,6 +795,129 @@ var _ = Describe("Value", func() {
 		Entry("Bytes", bind.Value[[]byte]),
 		Entry("Interface", bind.Value[any]),
 	)
+
+	It("supports all the binder built-ins", func() {
+		var fix struct {
+			Bool       bool
+			String     string
+			List       []string
+			Int        int
+			Int8       int8
+			Int16      int16
+			Int32      int32
+			Int64      int64
+			Uint       uint
+			Uint8      uint8
+			Uint16     uint16
+			Uint32     uint32
+			Uint64     uint64
+			Float32    float32
+			Float64    float64
+			Duration   time.Duration
+			File       *cli.File
+			FileSet    *cli.FileSet
+			Map        map[string]string
+			NameValue  *cli.NameValue
+			NameValues []*cli.NameValue
+			URL        *url.URL
+			Regexp     *regexp.Regexp
+			IP         net.IP
+			BigInt     *big.Int
+			BigFloat   *big.Float
+			Bytes      []byte
+		}
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{Name: "bool", Uses: bind.SetPointer(&fix.Bool, bind.Bool())},
+				{Name: "string", Uses: bind.SetPointer(&fix.String, bind.String())},
+				{Name: "list", Uses: bind.SetPointer(&fix.List, bind.List())},
+				{Name: "int", Uses: bind.SetPointer(&fix.Int, bind.Int())},
+				{Name: "int8", Uses: bind.SetPointer(&fix.Int8, bind.Int8())},
+				{Name: "int16", Uses: bind.SetPointer(&fix.Int16, bind.Int16())},
+				{Name: "int32", Uses: bind.SetPointer(&fix.Int32, bind.Int32())},
+				{Name: "int64", Uses: bind.SetPointer(&fix.Int64, bind.Int64())},
+				{Name: "uint", Uses: bind.SetPointer(&fix.Uint, bind.Uint())},
+				{Name: "uint8", Uses: bind.SetPointer(&fix.Uint8, bind.Uint8())},
+				{Name: "uint16", Uses: bind.SetPointer(&fix.Uint16, bind.Uint16())},
+				{Name: "uint32", Uses: bind.SetPointer(&fix.Uint32, bind.Uint32())},
+				{Name: "uint64", Uses: bind.SetPointer(&fix.Uint64, bind.Uint64())},
+				{Name: "float32", Uses: bind.SetPointer(&fix.Float32, bind.Float32())},
+				{Name: "float64", Uses: bind.SetPointer(&fix.Float64, bind.Float64())},
+				{Name: "duration", Uses: bind.SetPointer(&fix.Duration, bind.Duration())},
+				{Name: "file", Uses: bind.SetPointer(&fix.File, bind.File())},
+				{Name: "fileset", Uses: bind.SetPointer(&fix.FileSet, bind.FileSet())},
+				{Name: "map", Uses: bind.SetPointer(&fix.Map, bind.Map())},
+				{Name: "namevalue", Uses: bind.SetPointer(&fix.NameValue, bind.NameValue())},
+				{Name: "namevalues", Uses: bind.SetPointer(&fix.NameValues, bind.NameValues())},
+				{Name: "url", Uses: bind.SetPointer(&fix.URL, bind.URL())},
+				{Name: "regexp", Uses: bind.SetPointer(&fix.Regexp, bind.Regexp())},
+				{Name: "ip", Uses: bind.SetPointer(&fix.IP, bind.IP())},
+				{Name: "bigint", Uses: bind.SetPointer(&fix.BigInt, bind.BigInt())},
+				{Name: "bigfloat", Uses: bind.SetPointer(&fix.BigFloat, bind.BigFloat())},
+				{Name: "bytes", Uses: bind.SetPointer(&fix.Bytes, bind.Bytes())},
+			},
+		}
+
+		arguments, _ := cli.Split(`app --bool=true
+										--string=string
+										--list=a,b
+										--int=300
+										--int8=60
+										--int16=1000
+										--int32=2000
+										--int64=3000
+										--uint=301
+										--uint8=61
+										--uint16=1001
+										--uint32=2001
+										--uint64=3001
+										--float32=0.32
+										--float64=0.64
+										--duration=8s
+										--file=filename
+										--fileset=./filename
+										--map=k=v
+										--namevalue=n=v
+										--namevalues=n=v,o=w
+										--url=https://example.com
+										--regexp=^hello$
+										--ip=127.0.0.1
+										--bigint=808080
+										--bigfloat=1.08
+										--bytes=deadbeef`)
+		err := app.RunContext(context.Background(), arguments)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fix.Int).To(Equal(300))
+		Expect(fix.Bool).To(Equal(true))
+		Expect(fix.String).To(Equal("string"))
+		Expect(fix.List).To(Equal([]string{"a", "b"}))
+		Expect(fix.Int).To(Equal(300))
+		Expect(fix.Int8).To(Equal(int8(60)))
+		Expect(fix.Int16).To(Equal(int16(1000)))
+		Expect(fix.Int32).To(Equal(int32(2000)))
+		Expect(fix.Int64).To(Equal(int64(3000)))
+		Expect(fix.Uint).To(Equal(uint(301)))
+		Expect(fix.Uint8).To(Equal(uint8(61)))
+		Expect(fix.Uint16).To(Equal(uint16(1001)))
+		Expect(fix.Uint32).To(Equal(uint32(2001)))
+		Expect(fix.Uint64).To(Equal(uint64(3001)))
+		Expect(fix.Float32).To(Equal(float32(0.32)))
+		Expect(fix.Float64).To(Equal(float64(0.64)))
+		Expect(fix.Duration).To(Equal(8 * time.Second))
+		Expect(fix.File.Name).To(Equal("filename"))
+		Expect(fix.FileSet.Files).To(Equal([]string{"./filename"}))
+		Expect(fix.Map).To(HaveKeyWithValue("k", "v"))
+		Expect(fix.NameValue).To(Equal(&cli.NameValue{Name: "n", Value: "v"}))
+		Expect(fix.NameValues).To(Equal([]*cli.NameValue{{Name: "n", Value: "v"}, {Name: "o", Value: "w"}}))
+		Expect(fix.URL).To(Equal(must(url.Parse("https://example.com"))))
+		Expect(fix.Regexp).To(Equal(regexp.MustCompile("^hello$")))
+		Expect(fix.IP).To(Equal(net.ParseIP("127.0.0.1")))
+		Expect(fix.BigInt).To(Equal(big.NewInt(808080)))
+		Expect(fix.BigFloat.String()).To(Equal("1.08"))
+		Expect(fix.Bytes).To(Equal([]byte{0xde, 0xad, 0xbe, 0xef}))
+
+	})
 
 	Describe("composite binder types", func() {
 		DescribeTable("examples", func(fn any, expected types.GomegaMatcher) {
