@@ -1,5 +1,57 @@
 # Changelog
 
+## v0.21.0 (August 30, 2026)
+
+### New Features
+
+* `Set`: make args untyped, support reset (0a9c34af)
+* `PatternValue` (a1ee3e1a)
+* Help topics (bce8672d)
+* Bind extension:
+    * `Stderr` (b8282a6c)
+    * `bind.Struct` (89f4f56a)
+* Introduce `clitest` and basic rendering tests (89963681)
+* Template extension: `GeneratorFunc` (9242994b)
+* `Interactive` filter mode (b232e583)
+* `DefaultText` actions and helpers (85ec7631)
+
+### Bug fixes and improvements
+
+* Breaking change: Rename `Name` to `Named`; update documentation of `SetName` (255ef50a)
+* Breaking change: Remove `Trigger` and `PreventSetup` from Context (04779a64)
+* Breaking change: Rename `cli.Use` to `Extend` (f722ebd2)
+* Bug fix: `PromoteOptionalAliases` support two optional aliases same name (b73b8f3c)
+* Bug fix: expander pattern should handle nil without panic (8f6022cd)
+* Bug fix: ensure app copies `HelpText` to root command (c5bb1fc6)
+* Bug fix: missing space between flags on help screen (d70be85a)
+* Bug fix: improve Interactive tests on other OSes (ec6026aa)
+* Bug fix: fix joefind example build (805bb02a)
+* Display optional values in synopsis text (d4f4c0d1)
+* Make `Optional` eligibile in more use cases for ease of use (a1bfb80c)
+* Allow `No` to support any type generically (d17ac564)
+* `OptionalValue`: update documentation, synopsis, support `No` (cb1ec8ce)
+* Bind extension:
+    * Update `Seen` to `BoolBinder` return type (388bd847)
+    * Bug fix: Return error rather than panic on missing name in `bind.Redirect` (653530a4)
+    * Wrap results of `Seq` with composite (c8be8173)
+* Marshal extension: Add help text and usage text to codec `SetOutput` (7c472d60)
+* Template extension:
+    * Remove `Mode`; make `FileMode` use `fs.FileMode` (365bd936)
+    * Encapsulate Root as a Dir (9242994b)
+    * Template extension fixes (ceca1b70)
+    * Track start process workdir and hint in output (23376019)
+* Test improvements:
+    * Add golden-file test for help screen layout (4d37b60f)
+    * Remove `WorkingDirectory` unit tests to own scope (3db50003)
+    * Fix integration tests on Windows: normalize line endings (05714b7e)
+* Chores:
+    * Remove fake generation to an internal package (vanity) (75dd6d15)
+    * Improve test coverage over binders (b8282a6c)
+    * Modernize: inline embedded structs (5c1e234a)
+    * Modernize: modern type assertions (bc222872)
+    * Update to go1.27 (674398f3)
+
+
 ## v0.20.0 (August 8, 2026)
 
 ### New Features
