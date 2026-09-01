@@ -270,6 +270,21 @@ var _ = Describe("DisplayHelpScreen", func() {
 		Expect(renderScreen(app, "demo")).To(ContainSubstring("usage: demo"))
 	})
 
+	It("is the default action for a sub-command with sub-commands", func() {
+		app := &cli.App{
+			Name: "demo",
+			Commands: []*cli.Command{
+				{
+					Name: "sub",
+					Subcommands: []*cli.Command{
+						{Name: "bent"},
+					},
+				},
+			},
+		}
+		Expect(renderScreen(app, "demo sub")).To(ContainSubstring("usage: demo sub"))
+	})
+
 	It("returns exit code 2", func() {
 		app := &cli.App{
 			Name:   "demo",

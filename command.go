@@ -465,11 +465,12 @@ func (c *Command) buildSet(ctx *Context) *set {
 }
 
 func ensureSubcommands(ctx context.Context) error {
-	cmd := FromContext(ctx).target().(*Command)
+	c := FromContext(ctx)
+	cmd := c.target().(*Command)
 
 	if len(cmd.Subcommands) > 0 {
 		if cmd.Action == nil {
-			cmd.Action = DisplayHelpScreen()
+			cmd.Action = DisplayHelpScreen(c.Path()...)
 		}
 		return Do(ctx, AddArg(&Arg{
 			Name: "command",
