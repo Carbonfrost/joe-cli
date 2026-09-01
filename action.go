@@ -436,9 +436,10 @@ var (
 		),
 	}
 
-	errCantHook     = errors.New("hooks are not supported in this context")
-	errAssertFailed = errors.New("context does not meet requirements for action")
-	errFlagOnly     = errors.New("action can only be used with a flag")
+	errCantHook      = errors.New("hooks are not supported in this context")
+	errAssertFailed  = errors.New("context does not meet requirements for action")
+	errFlagOnly      = errors.New("action can only be used with a flag")
+	errFlagOrArgOnly = errors.New("action can only be used with a flag or arg")
 
 	timingLabels = map[Timing][2]string{
 		ActionTiming:        {"action timing", "ACTION"},
@@ -916,6 +917,9 @@ func SetValue(v any) Action {
 // named "files", then the accessory flag would be named --files-recursive.
 func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) Action {
 	return ActionFunc(func(c *Context) error {
+		if !c.isOption() {
+			return c.internalError(errFlagOrArgOnly)
+		}
 		val := c.Value("").(T)
 		var proto Action
 		if fn != nil {
@@ -934,7 +938,11 @@ func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) 
 // For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
 // named "files", then the accessory flag would be named --files-recursive.
 func Accessory0(name string, actionopt ...Action) Action {
-	return actionFunc(func(c context.Context) error {
+	return actionFunc(func(ctx context.Context) error {
+		c := FromContext(ctx)
+		if !c.isOption() {
+			return c.internalError(errFlagOrArgOnly)
+		}
 		return Do(c, AddFlag(nil, accessory(c, nil, name, actionopt...)))
 	})
 }

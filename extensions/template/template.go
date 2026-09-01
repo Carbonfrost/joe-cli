@@ -80,8 +80,8 @@ func withDefaultAction(r *Root) *Root {
 	r.Action = cli.Pipeline(
 		cli.Prototype{
 			Uses: cli.AddFlags([]*cli.Flag{
-				{Uses: cli.Accessory0("", r.DryRunFlag())},
-				{Uses: cli.Accessory0("", r.OverwriteFlag())},
+				{Uses: r.DryRunFlag()},
+				{Uses: r.OverwriteFlag()},
 			}...),
 		},
 		cli.At(cli.ActionTiming, cli.ActionOf(r.Generate)),

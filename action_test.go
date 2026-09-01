@@ -3466,6 +3466,27 @@ var _ = Describe("Accessory", func() {
 		Expect(flag.Category).To(Equal(""))
 
 	})
+
+	It("is an error to use it on commands", func() {
+
+		app := &cli.App{
+			Uses: cli.Accessory("", (*cli.FileSet).RecursiveFlag),
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).To(MatchError(ContainSubstring("action can only be used with a flag or arg")))
+	})
+
+})
+
+var _ = Describe("Accessory0", func() {
+
+	It("is an error to use it on commands", func() {
+		app := &cli.App{
+			Uses: cli.Accessory0(""),
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).To(MatchError(ContainSubstring("action can only be used with a flag or arg")))
+	})
 })
 
 var _ = Describe("EachOccurrence", func() {
