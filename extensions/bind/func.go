@@ -63,7 +63,7 @@ func Call[T any](call func(T) error, binderopt ...Binder[T]) cli.Action {
 }
 
 // Call0 obtains an action that invokes the function, binding the parameters.
-func Call0[Action cli.Action](fn func() error) cli.Action {
+func Call0(fn func() error) cli.Action {
 	return caller0(cli.ActionTiming, fn)
 }
 
@@ -92,7 +92,7 @@ func BeforeCall[T any](call func(T) error, t Binder[T]) cli.Action {
 }
 
 // BeforeCall0 obtains an action that invokes the function, binding the parameters.
-func BeforeCall0[Action cli.Action](fn func() error) cli.Action {
+func BeforeCall0(fn func() error) cli.Action {
 	return caller0(cli.BeforeTiming, fn)
 }
 
@@ -153,7 +153,7 @@ func AfterCall[T any](call func(T) error, t Binder[T]) cli.Action {
 }
 
 // AfterCall0 obtains an action that invokes the function, binding the parameters.
-func AfterCall0[Action cli.Action](fn func() error) cli.Action {
+func AfterCall0(fn func() error) cli.Action {
 	return caller0(cli.AfterTiming, fn)
 }
 
