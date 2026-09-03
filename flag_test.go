@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/Carbonfrost/joe-cli"
-	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	"github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"

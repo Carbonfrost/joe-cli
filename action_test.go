@@ -3839,28 +3839,80 @@ var _ = Describe("Requires", func() {
 })
 
 var _ = Describe("Mutex", func() {
-	DescribeTable("examples", func(arguments string, expected types.GomegaMatcher) {
+	DescribeTableSubtree("examples", func(arguments string, expected types.GomegaMatcher) {
+
+		It("when applied at command level", func() {
+			app := cli.App{
+				Uses: cli.Mutex("a", "b", "c", "d"),
+				Flags: []*cli.Flag{
+					{Name: "a", Value: cli.Bool()},
+					{Name: "b", Value: cli.Bool()},
+					{Name: "c", Value: cli.Bool()},
+					{Name: "d", Value: cli.Bool()},
+					{
+						Name:  "e",
+						Uses:  cli.Mutex("z"),
+						Value: cli.Bool(),
+					},
+				},
+				Args: []*cli.Arg{
+					{Name: "z"},
+				},
+			}
+			args, _ := cli.Split(arguments)
+			err := app.RunContext(context.Background(), args)
+			Expect(err).To(expected)
+
+		})
+
+		It("when applied on flag", func() {
+			app := cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "a",
+						Uses:  cli.Mutex("b", "c", "d"),
+						Value: cli.Bool(),
+					},
+					{Name: "b", Value: cli.Bool()},
+					{Name: "c", Value: cli.Bool()},
+					{Name: "d", Value: cli.Bool()},
+					{
+						Name:  "e",
+						Uses:  cli.Mutex("z"),
+						Value: cli.Bool(),
+					},
+				},
+				Args: []*cli.Arg{
+					{Name: "z"},
+				},
+			}
+			args, _ := cli.Split(arguments)
+			err := app.RunContext(context.Background(), args)
+			Expect(err).To(expected)
+		})
+
+	},
+		Entry("nominal", "app", Succeed()),
+		Entry("one other", "app -ab", MatchError("either -a or -b can be used, but not both")),
+		Entry("two others", "app -abc", MatchError("can't use -a together with -b or -c")),
+		Entry("three others", "app -abcd", MatchError("can't use -a together with -b, -c, or -d")),
+		Entry("arg", "app -e z", MatchError("either -e or <z> can be used, but not both")),
+	)
+
+	It("flag can specify itself but is redundant", func() {
 		app := cli.App{
 			Flags: []*cli.Flag{
 				{
 					Name:  "a",
-					Uses:  cli.Mutex("b", "c", "d"),
+					Uses:  cli.Mutex("a"),
 					Value: cli.Bool(),
 				},
-				{Name: "b", Value: cli.Bool()},
-				{Name: "c", Value: cli.Bool()},
-				{Name: "d", Value: cli.Bool()},
 			},
 		}
-		args, _ := cli.Split(arguments)
+		args, _ := cli.Split("app -a")
 		err := app.RunContext(context.Background(), args)
-		Expect(err).To(expected)
-	},
-		Entry("one other", "app -ab", MatchError("either -a or -b can be used, but not both")),
-		Entry("two others", "app -abc", MatchError("can't use -a together with -b or -c")),
-		Entry("three others", "app -abcd", MatchError("can't use -a together with -b, -c, or -d")),
-	)
-
+		Expect(err).NotTo(HaveOccurred())
+	})
 })
 
 var _ = Describe("DependsOn", func() {

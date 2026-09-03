@@ -1069,28 +1069,46 @@ func DependsOn(flags ...string) Action {
 // Mutex validates that explicit values are used mutually exclusively.
 // When used on any flag in a mutex group, the other named flags are not allowed to be
 // used.
-func Mutex(names ...string) Action {
+func Mutex(names ...any) Action {
 	return At(ValidatorTiming, ActionFunc(func(c *Context) error {
-		if c.Seen("") {
+		if c.isOption() && c.Seen("") {
 			alsoSeen := make([]string, 0, len(names))
 			for _, o := range names {
-				if c.Seen(o) {
-					alsoSeen = append(alsoSeen, optionName(o))
+				if opt, ok := c.lookupOption(o); ok && c.Seen(o) {
+					if c.option() == opt {
+						continue // Don't count self
+					}
+					alsoSeen = append(alsoSeen, opt.contextName())
 				}
 			}
+			return alsoSeenError(c.Name(), alsoSeen)
 
-			switch len(alsoSeen) {
-			case 0:
-				return nil
-			case 1:
-				return fmt.Errorf("either %s or %s can be used, but not both", c.Name(), alsoSeen[0])
-			default:
-				return fmt.Errorf("can't use %s together with %s", c.Name(), listOfValues(alsoSeen, false))
+		} else if c.IsCommand() {
+			seen := make([]string, 0, len(names))
+			for _, o := range names {
+				if opt, ok := c.lookupOption(o); ok && c.Seen(o) {
+					seen = append(seen, opt.contextName())
+				}
 			}
+			if len(seen) == 0 {
+				return nil
+			}
+			return alsoSeenError(seen[0], seen[1:])
 		}
 
 		return nil
 	}))
+}
+
+func alsoSeenError(name string, alsoSeen []string) error {
+	switch len(alsoSeen) {
+	case 0:
+		return nil
+	case 1:
+		return fmt.Errorf("either %s or %s can be used, but not both", name, alsoSeen[0])
+	default:
+		return fmt.Errorf("can't use %s together with %s", name, listOfValues(alsoSeen, false))
+	}
 }
 
 // Data sets metadata for a command, flag, arg, or expression.  This handler is generally
