@@ -9,6 +9,7 @@ package codec
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -71,8 +72,11 @@ func WithOptions(i Interface, opts ...Option) (Interface, error) {
 	return i, nil
 }
 
-type commonInterfaceOptioner interface {
+type disallowUnknownFieldsOptioner interface {
 	DisallowUnknownFields()
+}
+
+type setIndentOptioner interface {
 	SetIndent(indent string)
 }
 
@@ -83,19 +87,19 @@ type escapeHTMLInterfaceOptioner interface {
 // DisallowUnknownFields affects unmarshaling and prevents unknown fields from
 // being specified.
 func DisallowUnknownFields() Option {
-	return booleanOption((commonInterfaceOptioner).DisallowUnknownFields)
+	return booleanOption("DisallowUnknownFields", (disallowUnknownFieldsOptioner).DisallowUnknownFields)
 }
 
 // EscapeHTML affects marshaling and generates escaped HTML within JSON.
 // For other codecs, this option generates an error.
 func EscapeHTML() Option {
-	return booleanOption((escapeHTMLInterfaceOptioner).EscapeHTML)
+	return booleanOption("EscapeHTML", (escapeHTMLInterfaceOptioner).EscapeHTML)
 }
 
 // WithIndent affects marshaling and sets the string used for each level of
 // indentation in the encoded output.
 func WithIndent(indent string) Option {
-	return valueOption((commonInterfaceOptioner).SetIndent, indent)
+	return valueOption("WithIndent", (setIndentOptioner).SetIndent, indent)
 }
 
 // WithIndentStyleSize sets the indent based on style and style
@@ -103,22 +107,22 @@ func WithIndentStyleSize(style IndentStyle, size int) Option {
 	return WithIndent(strings.Repeat(style.unit(), size))
 }
 
-func booleanOption[C any](fn func(C)) Option {
+func booleanOption[C any](name string, fn func(C)) Option {
 	return optionFunc(func(i Interface) error {
 		c, ok := i.(C)
 		if !ok {
-			return errors.ErrUnsupported
+			return fmt.Errorf("%s option: %w", name, errors.ErrUnsupported)
 		}
 		fn(c)
 		return nil
 	})
 }
 
-func valueOption[C, V any](fn func(C, V), value V) Option {
+func valueOption[C, V any](name string, fn func(C, V), value V) Option {
 	return optionFunc(func(i Interface) error {
 		c, ok := i.(C)
 		if !ok {
-			return errors.ErrUnsupported
+			return fmt.Errorf("%s option: %w", name, errors.ErrUnsupported)
 		}
 		fn(c, value)
 		return nil
