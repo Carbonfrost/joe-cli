@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.21.1 (September 4, 2026)
+
+### New Features
+
+* `Time` value (43183cf2)
+* Log extension: `Action` action (2ea1572a)
+
+### Bug fixes and improvements
+
+* Default to help screen on nested sub-commands (d67f5131)
+* Remove exit status 2 from help screen (0dfb3191)
+* Bug fix: Improve provider argument flag parity with SetArgument (949e83d3)
+* Bug fix: Codec extension: separate the conventional interfaces for the common codec options into two (e2de8be1)
+* Bug fix: remove extraneous generics from `Call0`, etc. (59cb7e69)
+* Bug fix: Enforce `Accessory` can only be used on flags/args (6b6fedcd)
+* Bug fix: use flags instead of accessory flags in template extension (6b6fedcd)
+* `Accessory`: fix documentation and tests (25dd711f)
+* Mutex improvements and fixes (df194f91)
+* Chores:
+    * Bump actions/setup-go from 6 to 7 (b0bae2db)
+
+
 ## v0.21.0 (August 30, 2026)
 
 ### New Features
