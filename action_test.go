@@ -3450,7 +3450,7 @@ var _ = Describe("Accessory", func() {
 					Name:     "files",
 					Value:    new(cli.FileSet),
 					Category: "same category",
-					Uses:     cli.Accessory0("custom", cli.Category(""), cli.Name("recursive")),
+					Uses:     cli.Accessory("", (*cli.FileSet).RecursiveFlag, cli.Category(""), cli.Name("recursive")),
 				},
 			},
 			Action: act,
@@ -3462,7 +3462,7 @@ var _ = Describe("Accessory", func() {
 		flag := flags[len(flags)-1]
 
 		Expect(flag.Name).To(Equal("recursive"))
-		Expect(flag.Value).To(Equal(new(string)))
+		Expect(flag.Value).To(Equal(new(bool)))
 		Expect(flag.Category).To(Equal(""))
 
 	})
@@ -3479,6 +3479,31 @@ var _ = Describe("Accessory", func() {
 })
 
 var _ = Describe("Accessory0", func() {
+
+	It("works with actions pipelines", func() {
+		act := new(joeclifakes.FakeAction)
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name:     "files",
+					Value:    new(cli.FileSet),
+					Category: "same category",
+					Uses:     cli.Accessory0("custom", cli.Category(""), cli.Name("recursive")),
+				},
+			},
+			Action: act,
+		}
+		Expect(func() {
+			_ = app.RunContext(context.Background(), []string{"app"})
+		}).NotTo(Panic())
+		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
+		flag := flags[len(flags)-1]
+
+		Expect(flag.Name).To(Equal("recursive"))
+		Expect(flag.Value).To(Equal(new(string)))
+		Expect(flag.Category).To(Equal(""))
+
+	})
 
 	It("is an error to use it on commands", func() {
 		app := &cli.App{

@@ -933,10 +933,10 @@ func Accessory[T any, A Action](name string, fn func(T) A, actionopt ...Action) 
 // Accessory0 provides an action which sets up an accessory flag for the current flag or argument.
 // A common pattern is that a flag has a related sibling flag that can be used to refine the value.
 //
-// The value of name determines the accessory flag name.  There are two special cases.  If it is blank,
-// then the name from the prototype will be used.  If it is "-", then it will be derived from the other flag.
-// For example, in the case of the FileSet recursive flag as described earlier, if the FileSet flag were
-// named "files", then the accessory flag would be named --files-recursive.
+// The value of name determines the accessory flag name.  There are two special cases.
+// If it is "-", then it will be derived from the other flag.
+// For example, if a FileSet flag were named "files", then the accessory flag for the
+// recursive option would be named--files-recursive.
 func Accessory0(name string, actionopt ...Action) Action {
 	return actionFunc(func(ctx context.Context) error {
 		c := FromContext(ctx)
