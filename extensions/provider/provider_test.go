@@ -303,7 +303,10 @@ var _ = Describe("SetArgument", func() {
 				{
 					Name:  "provider",
 					Value: value,
-					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
+				},
+				{
+					Name: "provider-arg",
+					Uses: provider.SetArgument("provider"),
 				},
 			},
 			Uses: &provider.Registry{
@@ -360,7 +363,10 @@ var _ = Describe("SetArgument", func() {
 				{
 					Name:  "provider",
 					Value: new(provider.Value),
-					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
+				},
+				{
+					Name: "provider-arg",
+					Uses: provider.SetArgument("provider"),
 				},
 			},
 		}
@@ -371,6 +377,88 @@ var _ = Describe("SetArgument", func() {
 	})
 })
 
+var _ = Describe("ArgumentFlag", func() {
+
+	It("sets up the argument by value", func() {
+		value := new(provider.Value)
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:  "provider",
+					Value: value,
+					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
+				},
+			},
+			Uses: &provider.Registry{
+				Name: "provider",
+				Providers: provider.Map{
+					"hello": {
+						"world": "a",
+					},
+				},
+			},
+		}
+
+		arguments, _ := cli.Split("app --provider hello --provider-arg world=2")
+		err := app.RunContext(context.Background(), arguments)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value.Name).To(Equal("hello"))
+		Expect(value.Args).To(Equal(&map[string]string{
+			"world": "2",
+		}))
+	})
+
+	It("uses correct accessory flag HelpText", func() {
+		// Addresses a bug where the incorrect HelpText was being used
+		// since automatic %s expansion was removed in 3e976a
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:  "provider",
+					Value: new(provider.Value),
+					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
+				},
+			},
+		}
+
+		_, _ = app.Initialize(context.Background())
+		flag, _ := app.Flag("provider-arg")
+		Expect(flag.HelpText).To(Equal("Sets an argument for provider"))
+	})
+
+	It("works in dependency order", func() {
+		value := new(provider.Value)
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name:  "provider",
+					Value: value,
+					Uses:  cli.Accessory("-", (*provider.Value).ArgumentFlag),
+				},
+			},
+			Uses: &provider.Registry{
+				Name: "provider",
+				Providers: provider.Map{
+					"hello": {
+						"world": "a",
+					},
+				},
+			},
+		}
+
+		arguments, _ := cli.Split("app --provider-arg world=2 --provider hello") // provider specified after arg
+		err := app.RunContext(context.Background(), arguments)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value.Name).To(Equal("hello"))
+		Expect(value.Args).To(Equal(&map[string]string{
+			"world": "2",
+		}))
+	})
+
+})
 var _ = Describe("ListProviders", func() {
 
 	It("prints output", func() {

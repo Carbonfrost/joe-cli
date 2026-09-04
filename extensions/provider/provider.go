@@ -215,9 +215,10 @@ func (v *Value) ArgumentFlag() cli.Prototype {
 		Name:  "arg",
 		Value: new(string),
 		Uses: cli.Pipeline(
-			bind.Call(v.Set),
+			bind.Call2((*Value).setArgument, bind.Exact(v), bind.String("")),
 			func(c *cli.Context) {
 				c.SetHelpText(fmt.Sprintf("Sets an argument for %s", c.Data()["DependentFlag"]))
+				c.Do(cli.DependsOn(c.Data()["DependentFlag"].(string)))
 			},
 		),
 	}
