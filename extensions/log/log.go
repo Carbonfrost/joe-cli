@@ -23,6 +23,8 @@ import (
 	"log/slog"
 	"runtime"
 	"time"
+
+	cli "github.com/Carbonfrost/joe-cli"
 )
 
 // Level is the severity of a log message
@@ -118,4 +120,12 @@ func newRecord(level Level, msg string) slog.Record {
 	runtime.Callers(4, pcs[:])
 
 	return slog.NewRecord(time.Now(), level, msg, pcs[0])
+}
+
+// Action returns an action that wraps log.Log for convenient use in pipelines
+func Action(level Level, msg string, args ...any) cli.Action {
+	return cli.ActionOf(func(c context.Context) error {
+		Log(c, level, msg, args...)
+		return nil
+	})
 }
