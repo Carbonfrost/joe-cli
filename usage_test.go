@@ -292,7 +292,7 @@ var _ = Describe("DisplayHelpScreen", func() {
 			Stderr: io.Discard,
 		}
 		err := app.RunContext(context.Background(), []string{"app"})
-		Expect(err).To(beExitCode(2))
+		Expect(err).To(Succeed())
 	})
 
 	It("uses the help template", func() {

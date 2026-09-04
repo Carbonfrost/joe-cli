@@ -264,7 +264,7 @@ var _ = Describe("Flag", func() {
 		err := app.RunContext(context.Background(), []string{"app"})
 
 		// In particular, we expect --do-not-show to be hidden
-		Expect(err).To(beExitCode(2))
+		Expect(err).To(Succeed())
 		Expect(capture.String()).NotTo(ContainSubstring("--do-not-show"))
 	})
 

@@ -214,7 +214,7 @@ func DisplayHelpScreen(command ...string) Action {
 
 			_ = tpl.Execute(w, data)
 			_ = w.Flush()
-			return Exit("", 2)
+			return nil
 		}),
 		))
 }
@@ -676,7 +676,7 @@ func displayHelpTopic(c *Context, topic *HelpTopic) error {
 	w := ansiterm.NewTabWriter(c.Stderr, 1, 8, 2, ' ', tabwriter.StripEscape)
 	_ = tpl.Execute(w, topic)
 	_ = w.Flush()
-	return Exit("", 2)
+	return nil
 }
 
 var _ Action = (*HelpTopic)(nil)

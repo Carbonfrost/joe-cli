@@ -40,9 +40,3 @@ var _ = Describe("Exit", func() {
 		Entry("empty", []any{}, Equal("exited with status 1"), 1),
 	)
 })
-
-func beExitCode(c int) types.GomegaMatcher {
-	return WithTransform(func(v any) any {
-		return v.(cli.ExitCoder).ExitCode()
-	}, Equal(2))
-}
