@@ -9,6 +9,7 @@ import (
 	"context"
 	"math"
 	"testing/fstest"
+	"time"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	joeclifakes "github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
@@ -57,6 +58,19 @@ var _ = Describe("Value", func() {
 				&cli.Flag{Name: "o", Value: new(value.Octal)},
 				"app -o 127",
 				Equal(value.Octal(0o127)),
+			),
+			Entry(
+				"Time",
+				&cli.Flag{Name: "o", Value: new(value.Time)},
+				"app -o '2026-09-03 14:25:42'",
+				Equal(time.Date(2026, 9, 3, 14, 25, 42, 0, time.Local)),
+			),
+
+			Entry(
+				"Time (date-only)",
+				&cli.Flag{Name: "o", Value: new(value.Time)},
+				"app -o 2026-03-25",
+				Equal(time.Date(2026, 3, 25, 0, 0, 0, 0, time.Local)),
 			),
 		)
 	})
