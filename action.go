@@ -1181,6 +1181,15 @@ func HelpText(s string) Action {
 	return actionThunk1((*Context).SetHelpText, s)
 }
 
+// ValueHelpText describes one of the values which is possible for a flag.  This handler is
+// generally set up inside a Uses pipeline, and each use appends to the table of values for
+// the flag.  The table is rendered on the default help screen indented beneath the flag.
+// The table is only descriptive; it does not affect which values the flag accepts.
+// Use a validator or a Value implementation for that purpose.
+func ValueHelpText(value any, helpText string) Action {
+	return actionThunk2((*Context).SetValueHelpText, value, helpText)
+}
+
 // DefaultText sets the default text of a command, flag, or expression.  This handler is generally
 // set up inside a Uses pipeline.
 func DefaultText(name string) Action {

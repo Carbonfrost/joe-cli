@@ -182,6 +182,7 @@ type contextKeyType struct{}
 const (
 	synopsisKey          = privatekey.Synopsis
 	completionRequestKey = privatekey.CompletionRequest
+	valueHelpTextKey     = privatekey.ValueHelpText
 )
 
 var (
@@ -995,6 +996,15 @@ func (c *Context) Completion() Completion {
 	return c.target().completion()
 }
 
+// ValueHelpText obtains the table which describes the values that are possible for the
+// current target.  The table is in the order that the values were added.  The result is
+// nil when no values have been described.
+func (c *Context) ValueHelpText() []*ValueHelp {
+	res, _ := c.target().LookupData(valueHelpTextKey)
+	table, _ := res.([]*ValueHelp)
+	return table
+}
+
 // SetData sets data on the current target.  Despite the return value,
 // this method never returns an error.
 func (c *Context) SetData(key any, value any) error {
@@ -1080,6 +1090,17 @@ func (c *Context) SetUsageText(s string) error {
 // SetManualText sets the manualText on the current target
 func (c *Context) SetManualText(v string) error {
 	c.target().setManualText(v)
+	return nil
+}
+
+// SetValueHelpText appends the help text which describes one of the values that is
+// possible for the current target to the table of values.  Despite the return value,
+// this method never returns an error.
+func (c *Context) SetValueHelpText(value any, helpText string) error {
+	c.target().SetData(valueHelpTextKey, append(c.ValueHelpText(), &ValueHelp{
+		Value:    value,
+		HelpText: helpText,
+	}))
 	return nil
 }
 

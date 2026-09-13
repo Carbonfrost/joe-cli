@@ -523,6 +523,46 @@ var _ = Describe("DisplayHelpScreen", func() {
 			Not(ContainSubstring("--hidden"))),
 	)
 
+	Describe("value help text", func() {
+		var app *cli.App
+
+		BeforeEach(func() {
+			app = &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:      "g",
+						HelpText:  "Select a feature",
+						UsageText: "<action>",
+						Uses: cli.Pipeline(
+							cli.ValueHelpText("build", "(default) Build the given target or artifact"),
+							cli.ValueHelpText("api", "Invoke API for the given target"),
+							cli.ValueHelpText("artifact", "Retrieve the given artifact"),
+						),
+					},
+					{
+						Name:     "other",
+						HelpText: "Some other flag",
+					},
+				},
+			}
+		})
+
+		It("displays the values indented beneath the flag", func() {
+			Expect(renderScreen(app, "app --help")).To(ContainSubstring(
+				"  -g <action>  Select a feature\n" +
+					"\n" +
+					"     build     (default) Build the given target or artifact\n" +
+					"     api       Invoke API for the given target\n" +
+					"     artifact  Retrieve the given artifact\n" +
+					"\n"))
+		})
+
+		It("displays the other flags which follow", func() {
+			Expect(renderScreen(app, "app --help")).To(
+				ContainSubstring("--other=STRING  Some other flag"))
+		})
+	})
+
 	DescribeTable("arg examples",
 		func(arg *cli.Arg, expected types.GomegaMatcher) {
 			app := &cli.App{

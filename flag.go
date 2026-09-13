@@ -159,6 +159,19 @@ type Flag struct {
 	bs BindingState
 }
 
+// ValueHelp describes one of the values which is possible for a flag.  The values
+// of a flag are aggregated into a table using the ValueHelpText action, and the table
+// is rendered on the default help screen indented beneath the flag.
+type ValueHelp struct {
+	// Value provides one of the values which the flag can be set to.  Any type can be
+	// used; the value is formatted using fmt.Sprint when it is displayed.
+	Value any
+
+	// HelpText contains text which briefly describes the value.  For style, generally
+	// the help text should be limited to about 40 characters and use sentence case.
+	HelpText string
+}
+
 type flagsByCategory []*flagCategory
 
 type flagCategory struct {

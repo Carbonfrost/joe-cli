@@ -36,13 +36,14 @@ type persistentCommandData struct {
 }
 
 type flagData struct {
-	Name        string
-	Synopsis    *synopsisWrapper[*synopsis.Flag]
-	HelpText    string
-	ManualText  string
-	DefaultText string
-	Description any
-	Data        map[string]any
+	Name          string
+	Synopsis      *synopsisWrapper[*synopsis.Flag]
+	HelpText      string
+	ManualText    string
+	DefaultText   string
+	Description   any
+	ValueHelpText []*ValueHelp
+	Data          map[string]any
 }
 
 type commandDataCategory struct {
@@ -102,6 +103,16 @@ var (
 {{ "\t" }}{{ .Synopsis | print | ExtraSpaceBeforeFlag }}{{ "\t" }}{{.HelpText}}
 {{- if .DefaultText -}}
  (default: {{.DefaultText}})
+{{- end -}}
+{{- if .ValueHelpText -}}
+{{ "\n" }}{{ template "ValueHelpTextListing" .ValueHelpText }}
+{{- end -}}
+{{- end -}}
+
+{{- define "ValueHelpTextListing" -}}
+{{ "\n" }}
+{{- range . -}}
+{{ "   " }}{{ "\t" }}{{ .Value }}{{ "\t" }}{{ .HelpText }}{{ "\n" }}
 {{- end -}}
 {{- end -}}
 
@@ -339,22 +350,30 @@ func renderHelp(us *synopsis.Usage) string {
 func flagAdapter(val *Flag) *flagData {
 	syn := val.newSynopsis()
 	return &flagData{
-		Name:        val.Name,
-		HelpText:    renderHelp(syn.Value.Usage),
-		ManualText:  val.ManualText,
-		Description: val.Description,
-		DefaultText: val.DefaultText,
-		Synopsis:    wrapSynopsis(syn),
-		Data:        val.Data,
+		Name:          val.Name,
+		HelpText:      renderHelp(syn.Value.Usage),
+		ManualText:    val.ManualText,
+		Description:   val.Description,
+		DefaultText:   val.DefaultText,
+		Synopsis:      wrapSynopsis(syn),
+		ValueHelpText: valueHelpText(val),
+		Data:          val.Data,
 	}
+}
+
+func valueHelpText(val target) []*ValueHelp {
+	res, _ := val.LookupData(valueHelpTextKey)
+	table, _ := res.([]*ValueHelp)
+	return table
 }
 
 func argAdapter(val *Arg) *flagData {
 	return &flagData{
-		Name:        val.Name,
-		HelpText:    val.HelpText,
-		ManualText:  val.ManualText,
-		Description: val.Description,
-		Data:        val.Data,
+		Name:          val.Name,
+		HelpText:      val.HelpText,
+		ManualText:    val.ManualText,
+		Description:   val.Description,
+		ValueHelpText: valueHelpText(val),
+		Data:          val.Data,
 	}
 }

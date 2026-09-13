@@ -1597,6 +1597,69 @@ var _ = Describe("Context", func() {
 		})
 	})
 
+	var _ = Describe("ValueHelpText", func() {
+		It("aggregates the values that were described in order", func() {
+			var actual []*cli.ValueHelp
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: cli.Pipeline(
+							cli.ValueHelpText("build", "Build the given target"),
+							cli.ValueHelpText("api", "Invoke the API"),
+							func(c *cli.Context) {
+								actual = c.ValueHelpText()
+							},
+						),
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(Equal([]*cli.ValueHelp{
+				{Value: "build", HelpText: "Build the given target"},
+				{Value: "api", HelpText: "Invoke the API"},
+			}))
+		})
+
+		It("is nil when no values were described", func() {
+			var actual []*cli.ValueHelp
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: func(c *cli.Context) {
+							actual = c.ValueHelpText()
+						},
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(BeNil())
+		})
+
+		It("can describe values which are not strings", func() {
+			var actual []*cli.ValueHelp
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "g",
+						Value: cli.Int(),
+						Uses: cli.Pipeline(
+							cli.ValueHelpText(1, "The first level"),
+							func(c *cli.Context) {
+								actual = c.ValueHelpText()
+							},
+						),
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(Equal([]*cli.ValueHelp{
+				{Value: 1, HelpText: "The first level"},
+			}))
+		})
+	})
+
 	var _ = Describe("DependentFlag", func() {
 		It("is set through accessories", func() {
 			act := new(joeclifakes.FakeAction)

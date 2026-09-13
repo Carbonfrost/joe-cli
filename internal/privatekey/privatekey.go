@@ -10,4 +10,5 @@ const (
 	PanicData         = "__PanicData"
 	OptionalAliases   = "__OptionalAliases"
 	DependsOn         = "__DependsOn"
+	ValueHelpText     = "_ValueHelpText"
 )
