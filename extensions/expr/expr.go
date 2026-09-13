@@ -30,6 +30,24 @@
 // Notice that the bind.String() call doesn't require you to name the argument from
 // which to obtain the value. When unspecified, it uses the first argument in the
 // argument list for the Expr.
+//
+// # Compilers
+//
+// When an expression is evaluated, the sequence of binding evaluators that was
+// parsed is compiled into the evaluator which implements the evaluation
+// pipeline. The default compiler, Compile, chains each binding evaluator to the
+// next one. Setting Expression.Compiler replaces this behavior, which is
+// typically used to rewrite the sequence of binding evaluators before delegating
+// to Compile:
+//
+//	&expr.Expression{
+//	    Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+//	        return expr.Compile(append(items, implicitPrint))
+//	    },
+//	}
+//
+// Expression.Compile applies the compiler eagerly, producing a copy of the
+// expression which evaluates using the pipeline that was compiled.
 package expr
 
 import (
@@ -142,8 +160,9 @@ type Expr struct {
 // Expression provides the parsed result of the expression that can be evaluated
 // with the given inputs.
 type Expression struct {
-	items []BindingEvaluator
-	args  []string
+	items    []BindingEvaluator
+	args     []string
+	pipeline Evaluator
 
 	parseInlineValues bool
 	nameLookupCache   map[string]*Expr
@@ -151,6 +170,14 @@ type Expression struct {
 
 	// Exprs identifies the expression operators that are allowed
 	Exprs []*Expr
+
+	// Compiler provides the function which converts the binding evaluators that
+	// were parsed into the evaluator which is used as the evaluation pipeline.
+	// When nil, the default behavior, which is implemented by Compile, is used.
+	// A custom compiler is typically used to rewrite the sequence of binding
+	// evaluators before delegating to Compile.  The sequence passed to the
+	// compiler is a copy, so it is safe to rewrite it.
+	Compiler Compiler
 }
 
 // BindingEvaluator provides the relationship between an evaluator and the evaluation
@@ -164,6 +191,11 @@ type BindingEvaluator interface {
 	// Expr retrieves the expression operator if it is available
 	Expr() *Expr
 }
+
+// Compiler converts the sequence of binding evaluators within an expression into
+// the evaluator which implements the evaluation pipeline.  A compiler is set on
+// Expression.Compiler, and when unset, the default compiler, Compile, is used.
+type Compiler func([]BindingEvaluator) Evaluator
 
 // Predicate provides a simple predicate which filters values.  The function
 // takes the prior operand and returns true or false depending upon whether the
@@ -581,6 +613,34 @@ func (i Invariant) Evaluate(_ context.Context, v any, y func(any) error) error {
 	return nil
 }
 
+// Compile provides the default compiler for an expression, which converts the
+// sequence of binding evaluators into the evaluator that implements the
+// evaluation pipeline.  Each binding evaluator yields the values it produces to
+// the next one in the sequence, and the last one yields to the yielder which is
+// passed to the resulting evaluator's Evaluate method.
+func Compile(items []BindingEvaluator) Evaluator {
+	items = slices.Clone(items)
+
+	return evaluatorFunc(func(ctx context.Context, v any, yield func(any) error) error {
+		yielders := make([]Yielder, len(items))
+		yielderThunk := func(i int) Yielder {
+			if i >= len(yielders) || yielders[i] == nil {
+				return emptyYielder
+			}
+			return yielders[i]
+		}
+
+		for i := range items {
+			yielders[i] = func(in any) error {
+				return items[i].Evaluate(ctx, in, yielderThunk(i+1))
+			}
+		}
+		yielders = append(yielders, yield)
+
+		return yielderThunk(0)(v)
+	})
+}
+
 // ComposeEvaluator produces an evaluator which considers each evaluator in
 // turn. If any evaluator yields the value, evaluation stops. If any evaluator
 // returns an error, the evaluation stops and returns the error. This evaluator
@@ -894,8 +954,12 @@ func (e *Expression) String() string {
 	return strings.Join(e.args, " ")
 }
 
+// Evaluate evaluates the expression pipeline for each of the items.  The pipeline
+// is obtained from the compiler, which is Expression.Compiler or the default
+// compiler, Compile, when it is unset.  If the expression was compiled using
+// Expression.Compile, the pipeline that was compiled is used as-is.
 func (e *Expression) Evaluate(ctx context.Context, items ...any) error {
-	return e.evaluateCore(ctx, items...)
+	return evaluateItems(ctx, e.compile(), items)
 }
 
 // EvaluateParallel evaluates the expression pipeline in parallel for multiple items.
@@ -908,35 +972,63 @@ func (e *Expression) EvaluateParallel(ctx context.Context, jobs int, items ...an
 		jobs = runtime.NumCPU()
 	}
 
+	pipe := e.compile()
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(jobs)
 
 	for _, item := range items {
 		g.Go(func() error {
-			return e.evaluateCore(ctx, item)
+			return evaluateItems(ctx, pipe, []any{item})
 		})
 	}
 
 	return g.Wait()
 }
 
-func (e *Expression) evaluateCore(ctx context.Context, items ...any) error {
-	yielders := make([]Yielder, len(e.items))
-	yielderThunk := func(i int) Yielder {
-		if i >= len(yielders) || yielders[i] == nil {
-			return emptyYielder
-		}
-		return yielders[i]
+// Clone provides a copy of the expression.  The expression operators, the
+// arguments which were parsed, and the binding evaluators are shallow copied,
+// which makes it possible to rewrite or add to the binding evaluators of the
+// copy without affecting the original expression.
+func (e *Expression) Clone() *Expression {
+	return &Expression{
+		items:             slices.Clone(e.items),
+		args:              slices.Clone(e.args),
+		pipeline:          e.pipeline,
+		parseInlineValues: e.parseInlineValues,
+		numeric:           e.numeric,
+		Exprs:             slices.Clone(e.Exprs),
+		Compiler:          e.Compiler,
 	}
+}
 
-	for ik := range e.items {
-		i := ik
-		yielders[i] = func(in any) error {
-			return e.items[i].Evaluate(ctx, in, yielderThunk(i+1))
-		}
+// Compile provides a copy of the expression with the compiler step applied.  The
+// resulting expression evaluates using the pipeline which was compiled from the
+// binding evaluators as they exist now rather than compiling the pipeline when
+// it is evaluated.  Consequently, binding evaluators which are added to the copy
+// using Append or Prepend take no part in its evaluation.
+func (e *Expression) Compile() *Expression {
+	res := e.Clone()
+	res.pipeline = e.compiler()(slices.Clone(e.items))
+	return res
+}
+
+func (e *Expression) compile() Evaluator {
+	if e.pipeline != nil {
+		return e.pipeline
 	}
+	return e.compiler()(slices.Clone(e.items))
+}
+
+func (e *Expression) compiler() Compiler {
+	if e.Compiler == nil {
+		return Compile
+	}
+	return e.Compiler
+}
+
+func evaluateItems(ctx context.Context, pipe Evaluator, items []any) error {
 	for _, v := range items {
-		err := yielderThunk(0)(v)
+		err := pipe.Evaluate(ctx, v, emptyYielder)
 		if err != nil {
 			return err
 		}

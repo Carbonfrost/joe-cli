@@ -1285,6 +1285,237 @@ var _ = Describe("Expr", func() {
 
 })
 
+var _ = Describe("Compile", func() {
+
+	var (
+		captured bytes.Buffer
+		step     = func(name string) expr.BindingEvaluator {
+			return expr.NewBindingEvaluator(expr.EvaluatorOf(func(_ context.Context, v any, yield func(any) error) error {
+				fmt.Fprintf(&captured, "%s(%v) ", name, v)
+				return yield(v)
+			}))
+		}
+	)
+
+	BeforeEach(func() {
+		captured.Reset()
+	})
+
+	It("chains each binding evaluator in the sequence", func() {
+		pipe := expr.Compile([]expr.BindingEvaluator{step("a"), step("b")})
+
+		Expect(pipe.Evaluate(context.Background(), "in", nil)).NotTo(HaveOccurred())
+		Expect(captured.String()).To(Equal("a(in) b(in) "))
+	})
+
+	It("yields from the last binding evaluator to the yielder", func() {
+		yield := new(exprfakes.FakeYielder)
+		pipe := expr.Compile([]expr.BindingEvaluator{step("a")})
+
+		Expect(pipe.Evaluate(context.Background(), "in", yield.Spy)).NotTo(HaveOccurred())
+		Expect(yield.CallCount()).To(Equal(1))
+		Expect(yield.ArgsForCall(0)).To(Equal("in"))
+	})
+
+	It("yields the input value when the sequence is empty", func() {
+		yield := new(exprfakes.FakeYielder)
+		pipe := expr.Compile(nil)
+
+		Expect(pipe.Evaluate(context.Background(), "in", yield.Spy)).NotTo(HaveOccurred())
+		Expect(yield.ArgsForCall(0)).To(Equal("in"))
+	})
+
+	It("copies the sequence that was compiled", func() {
+		items := []expr.BindingEvaluator{step("a")}
+		pipe := expr.Compile(items)
+		items[0] = step("b")
+
+		Expect(pipe.Evaluate(context.Background(), "in", nil)).NotTo(HaveOccurred())
+		Expect(captured.String()).To(Equal("a(in) "))
+	})
+
+	It("returns the error from a binding evaluator", func() {
+		pipe := expr.Compile([]expr.BindingEvaluator{
+			expr.NewBindingEvaluator(expr.Error(errors.New("an error"))),
+			step("a"),
+		})
+
+		Expect(pipe.Evaluate(context.Background(), "in", nil)).To(MatchError("an error"))
+		Expect(captured.String()).To(BeEmpty())
+	})
+})
+
+var _ = Describe("Expression", func() {
+
+	var (
+		captured bytes.Buffer
+		step     = func(name string) expr.BindingEvaluator {
+			return expr.NewBindingEvaluator(expr.EvaluatorOf(func(_ context.Context, v any, yield func(any) error) error {
+				fmt.Fprintf(&captured, "%s(%v) ", name, v)
+				return yield(v)
+			}))
+		}
+	)
+
+	BeforeEach(func() {
+		captured.Reset()
+	})
+
+	Describe("Compiler", func() {
+
+		It("uses the default compiler when unset", func() {
+			e := new(expr.Expression)
+			e.Append(step("a"))
+
+			Expect(e.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(captured.String()).To(Equal("a(in) "))
+		})
+
+		It("uses the compiler that was set", func() {
+			e := &expr.Expression{
+				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+					return expr.Compile(append(items, step("implicit")))
+				},
+			}
+			e.Append(step("a"))
+
+			Expect(e.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(captured.String()).To(Equal("a(in) implicit(in) "))
+		})
+
+		It("provides the binding evaluators that were parsed", func() {
+			var actual []string
+			app := &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{
+						Name: "start",
+						NArg: -2,
+					},
+					{
+						Name: "e",
+						Value: &expr.Expression{
+							Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+								for _, i := range items {
+									actual = append(actual, i.Expr().Name)
+								}
+								return expr.Compile(items)
+							},
+							Exprs: []*expr.Expr{
+								{Name: "first", Evaluate: expr.AlwaysTrue},
+								{Name: "second", Evaluate: expr.AlwaysTrue},
+							},
+						},
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return expr.FromContext(c, "e").Evaluate(c, "in")
+				},
+			}
+			args, _ := cli.Split("app x -first -second")
+
+			Expect(app.RunContext(context.Background(), args)).NotTo(HaveOccurred())
+			Expect(actual).To(Equal([]string{"first", "second"}))
+		})
+
+		It("is applied on each evaluation when the expression is not compiled", func() {
+			var calls int
+			e := &expr.Expression{
+				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+					calls++
+					return expr.Compile(items)
+				},
+			}
+			e.Append(step("a"))
+
+			Expect(e.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(e.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(calls).To(Equal(2))
+		})
+	})
+
+	Describe("Clone", func() {
+
+		It("copies the expression operators and compiler", func() {
+			exprs := []*expr.Expr{{Name: "first"}}
+			compiler := expr.Compiler(expr.Compile)
+			e := &expr.Expression{Exprs: exprs, Compiler: compiler}
+
+			actual := e.Clone()
+			Expect(actual).NotTo(BeIdenticalTo(e))
+			Expect(actual.Exprs).To(Equal(exprs))
+			Expect(actual.Compiler).NotTo(BeNil())
+		})
+
+		It("copies the binding evaluators", func() {
+			e := new(expr.Expression)
+			e.Append(step("a"))
+
+			actual := e.Clone()
+			Expect(actual.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(captured.String()).To(Equal("a(in) "))
+		})
+
+		It("does not affect the original when the copy is appended to", func() {
+			e := new(expr.Expression)
+			e.Append(step("a"))
+
+			actual := e.Clone()
+			actual.Append(step("b"))
+
+			Expect(e.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(captured.String()).To(Equal("a(in) "))
+		})
+	})
+
+	Describe("Compile", func() {
+
+		It("applies the compiler step to the copy", func() {
+			e := &expr.Expression{
+				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+					return expr.Compile(append(items, step("implicit")))
+				},
+			}
+			e.Append(step("a"))
+
+			actual := e.Compile()
+			Expect(actual).NotTo(BeIdenticalTo(e))
+			Expect(actual.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(captured.String()).To(Equal("a(in) implicit(in) "))
+		})
+
+		It("applies the compiler step exactly once", func() {
+			var calls int
+			e := &expr.Expression{
+				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+					calls++
+					return expr.Compile(items)
+				},
+			}
+			e.Append(step("a"))
+
+			actual := e.Compile()
+			Expect(actual.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(actual.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(calls).To(Equal(1))
+		})
+
+		It("does not affect the original expression", func() {
+			e := &expr.Expression{
+				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+					return expr.Compile(append(items, step("implicit")))
+				},
+			}
+			e.Append(step("a"))
+			_ = e.Compile()
+			captured.Reset()
+
+			Expect(e.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
+			Expect(captured.String()).To(Equal("a(in) implicit(in) "))
+		})
+	})
+})
+
 var _ = Describe("Predicate", func() {
 
 	It("yields if true", func() {
