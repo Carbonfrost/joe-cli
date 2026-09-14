@@ -9,6 +9,7 @@
 package exec
 
 import (
+	"errors"
 	eexec "os/exec"
 	"time"
 
@@ -66,3 +67,85 @@ func HaveLookPath(pathname string) cli.ContextFilter {
 		return err == nil
 	})
 }
+
+// ExternalCommand provides a CommandNotFoundHandler that dispatches to external
+// executables found on the PATH, with the name "<prefix>-<name>", where name is the missing
+// sub-command.
+//
+// By default, the prefix is the name of the app.  An alternate prefix can be supplied
+// as the optional argument.
+//
+// The external process inherits the context's Stdin, Stdout, and Stderr and is run
+// with the context so that cancellation propagates to it.  All arguments that follow
+// the sub-command name are passed through verbatim.
+func ExternalCommand(prefix ...string) cli.CommandNotFoundHandler {
+	var override string
+	switch len(prefix) {
+	case 0:
+	case 1:
+		override = prefix[0]
+	default:
+		panic("expected zero or one arg")
+	}
+
+	return cli.HandleCommandNotFound(func(c *cli.Context, err error) (*cli.Command, error) {
+		args := c.Args()
+		if len(args) == 0 {
+			return nil, err
+		}
+		sub := args[0]
+
+		name := override
+		if name == "" {
+			name = c.App().Name
+		}
+
+		path, lookErr := eexec.LookPath(name + "-" + sub)
+		if lookErr != nil {
+			return nil, err
+		}
+
+		return &cli.Command{
+			Name:    sub,
+			Options: cli.SkipFlagParsing,
+			Args: []*cli.Arg{
+				{
+					Name:  "args",
+					NArg:  cli.TakeRemaining,
+					Value: cli.List(),
+				},
+			},
+			Action: cli.ActionFunc(func(c *cli.Context) error {
+				return runExternal(c, path, c.List("args"))
+			}),
+
+			// TODO May have to propagate signals/child process group so ^C works as expected
+		}, nil
+	})
+}
+
+func runExternal(c *cli.Context, path string, args []string) error {
+	cmd := eexec.CommandContext(c, path, args...)
+	cmd.Stdin = c.Stdin
+	cmd.Stdout = c.Stdout
+	cmd.Stderr = c.Stderr
+
+	if err := cmd.Run(); err != nil {
+		var exitErr *eexec.ExitError
+
+		// Wrap the exit error so that a redundant message is not printed.
+		if errors.As(err, &exitErr) {
+			return exitStatus(exitErr.ExitCode())
+		}
+		return err
+	}
+	return nil
+}
+
+type exitStatus int
+
+// Error prints no message so that the built-in exit handler does not print anything
+func (exitStatus) Error() string   { return "" }
+func (e exitStatus) ExitCode() int { return int(e) }
+
+var _ cli.ExitCoder = exitStatus(0)
