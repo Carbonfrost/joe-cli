@@ -378,6 +378,31 @@ var _ = Describe("ContextValue", func() {
 
 })
 
+var _ = Describe("Getenv", func() {
+
+	BeforeEach(func() {
+		GinkgoT().Setenv("EXISTING_TEST_ENV", "r")
+	})
+
+	It("retrieves existing value", func() {
+		actual, err := bind.Getenv("EXISTING_TEST_ENV").Bind(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(Equal("r"))
+	})
+
+	It("falls back to alternate value", func() {
+		actual, err := bind.Getenv("NON_EXISTING_TEST_ENV", "fallback").Bind(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(Equal("fallback"))
+	})
+
+	It("generates error on missing", func() {
+		_, err := bind.Getenv("NON_EXISTING_TEST_ENV").Bind(context.Background())
+		Expect(err).To(HaveOccurred())
+	})
+
+})
+
 var _ = Describe("FS", func() {
 
 	It("retrieves the FS from context", func() {

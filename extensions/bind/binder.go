@@ -92,6 +92,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"os"
 	"reflect"
 	"regexp"
 	"time"
@@ -363,6 +364,24 @@ func ContextValue[T any](key any) Binder[T] {
 // Context binds the context as a parameter.
 func Context() Binder[*cli.Context] {
 	return FromContext(cli.FromContext)
+}
+
+// Getenv provides a binder which looks up a variable from the environment. If the
+// variable is unset, a fallback value can be specified. An error occurs if the
+// variable is unset but there is no fallback.
+func Getenv(name string, fallbackopt ...string) Binder[string] {
+	if len(fallbackopt) > 1 {
+		panic("expected zero or one arg")
+	}
+	return bindFunc[string](func(context.Context) (string, error) {
+		if result, ok := os.LookupEnv(name); ok {
+			return result, nil
+		}
+		if len(fallbackopt) == 0 {
+			return "", fmt.Errorf("env var %s must be set", name)
+		}
+		return fallbackopt[0], nil
+	})
 }
 
 // FS binds the file system as a parameter.
