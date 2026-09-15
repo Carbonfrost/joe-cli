@@ -399,6 +399,7 @@ var (
 	}
 )
 
+// String provides a string representation of the Option
 func (o Option) String() string {
 	var res []string
 	splitOptionsHO(o, func(current Option) {
@@ -443,6 +444,11 @@ func (o Option) Execute(c context.Context) (err error) {
 // Pipeline converts the option into a pipeline
 func (o Option) Pipeline() Action {
 	return builtinOptions.Pipeline(o)
+}
+
+// IsReserved detects whether the option is a reserved option
+func (o Option) IsReserved() bool {
+	return (o & reservedOptionMask) > 0
 }
 
 func (m FeatureMap[T]) Pipeline(values T) Action {
@@ -815,7 +821,7 @@ func sortedExprsOpt(c *Context) error {
 func enforceReservedOptions(c *Context) error {
 	if c.target().options() != nil {
 		opts := *c.target().options()
-		if (opts & reservedOptionMask) > 0 {
+		if opts.IsReserved() {
 			return c.internalError(fmt.Errorf("cannot use reserved options"))
 		}
 	}

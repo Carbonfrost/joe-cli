@@ -88,6 +88,10 @@ var _ = Describe("Option", func() {
 				Expect(err.Error()).To(Equal(`internal error, at "app" (initial timing): cannot use reserved options`))
 			})
 
+			It("is reserved", func() {
+				Expect(o.IsReserved()).To(BeTrue())
+			})
+
 			It("applies to option", func() {
 				app := &cli.App{
 					Name: "app",
