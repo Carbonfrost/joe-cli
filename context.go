@@ -949,6 +949,16 @@ func (c *Context) SetTransform(fn TransformFunc) error {
 	return nil
 }
 
+// Transform retrieves the transform func for the option. If the current
+// context does not refer to an option or the transform is not specified,
+// the result will be nil
+func (c *Context) Transform() TransformFunc {
+	if option, ok := c.target().(option); ok {
+		return option.transformFunc()
+	}
+	return nil
+}
+
 // DependentFlag retrieves the flag the current flag is dependent upon
 // because it was set up as its accessory.
 func (c *Context) DependentFlag() string {
