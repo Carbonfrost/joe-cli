@@ -6,6 +6,7 @@ package expr_test
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
@@ -68,6 +69,69 @@ var _ = Describe("Do", func() {
 
 		_, item, _ := generic.EvaluateArgsForCall(0)
 		Expect(item).To(Equal("item"))
+	})
+
+})
+
+var _ = Describe("NewEvaluator", func() {
+
+	It("passes the typed value and yields", func() {
+		var (
+			seen    string
+			yielded any
+		)
+		ev := expr.NewEvaluator(func(_ context.Context, v string, yield func(any) error) error {
+			seen = v
+			return yield(v + "!")
+		})
+
+		err := ev.Evaluate(context.Background(), "item", func(v any) error {
+			yielded = v
+			return nil
+		})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(seen).To(Equal("item"))
+		Expect(yielded).To(Equal("item!"))
+	})
+
+})
+
+var _ = Describe("NewEvaluator0", func() {
+
+	It("passes the typed value and yields it on success", func() {
+		var (
+			seen    string
+			yielded any
+		)
+		ev := expr.NewEvaluator0(func(_ context.Context, v string) error {
+			seen = v
+			return nil
+		})
+
+		err := ev.Evaluate(context.Background(), "item", func(v any) error {
+			yielded = v
+			return nil
+		})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(seen).To(Equal("item"))
+		Expect(yielded).To(Equal("item"))
+	})
+
+	It("stops evaluation when the function returns an error", func() {
+		var yielded bool
+		ev := expr.NewEvaluator0(func(_ context.Context, _ string) error {
+			return errors.New("boom")
+		})
+
+		err := ev.Evaluate(context.Background(), "item", func(any) error {
+			yielded = true
+			return nil
+		})
+
+		Expect(err).To(MatchError("boom"))
+		Expect(yielded).To(BeFalse())
 	})
 
 })

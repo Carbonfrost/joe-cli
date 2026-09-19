@@ -59,6 +59,29 @@ func Do(a cli.Action) Evaluator {
 	})
 }
 
+// NewEvaluator creates an evaluator from a strongly typed function.  The value
+// flowing through the expression pipeline is converted to V before fn is
+// invoked
+func NewEvaluator[V any](fn func(context.Context, V, func(any) error) error) Evaluator {
+	return evaluatorFunc(func(ctx context.Context, v any, y func(any) error) error {
+		return fn(ctx, v.(V), y)
+	})
+}
+
+// NewEvaluator0 creates an evaluator from a strongly typed function which does
+// not yield values directly.  The value flowing through the expression pipeline
+// is converted to V before fn is invoked, and if fn returns no error, the value is
+// yielded to continue the pipeline.
+func NewEvaluator0[V any](fn func(context.Context, V) error) Evaluator {
+	return evaluatorFunc(func(ctx context.Context, v any, y func(any) error) error {
+		err := fn(ctx, v.(V))
+		if err != nil {
+			return err
+		}
+		return y(v)
+	})
+}
+
 // reflectEvaluatorOf creates an evaluator from a function using reflection,
 // which makes it possible to use the signatures which EvaluatorOf accepts
 // while naming types that are more specific than any.  For example,
