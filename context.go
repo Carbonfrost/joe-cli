@@ -1015,6 +1015,16 @@ func (c *Context) ValueHelpText() []*ValueHelp {
 	return table
 }
 
+// Validator obtains the validator for the current target, which is the composition of
+// each ValidatorFunc that was registered on it (see ComposeValidatorFunc), or nil if
+// none was registerd. Validators are not inherited from the lineage contexts nor are
+// standalone Actions registered at the ValidatorTiing.
+func (c *Context) Validator() ValidatorFunc {
+	res, _ := c.target().LookupData(validatorDataKey)
+	validator, _ := res.(ValidatorFunc)
+	return validator
+}
+
 // SetData sets data on the current target.  Despite the return value,
 // this method never returns an error.
 func (c *Context) SetData(key any, value any) error {
@@ -2467,6 +2477,13 @@ func setupOptionFromEnv(c context.Context) error {
 		FromEnv(opt.envVars()...),
 		FromFilePath(nil, opt.filePath()),
 	))
+}
+
+func triggerValidator(c *Context) error {
+	if v := c.Validator(); v != nil {
+		return v(c)
+	}
+	return nil
 }
 
 func checkForRequiredOption(c *Context) error {

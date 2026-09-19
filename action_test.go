@@ -1561,7 +1561,7 @@ var _ = Describe("ValidatorFunc", func() {
 			Args: []*cli.Arg{
 				{
 					Name: "r",
-					Uses: cli.ValidatorFunc(func(raw []string) error { return e }),
+					Uses: cli.ValidatorFunc(func(context.Context) error { return e }),
 				},
 			},
 		}
@@ -1570,6 +1570,240 @@ var _ = Describe("ValidatorFunc", func() {
 		err := app.RunContext(context.Background(), args)
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("validator err"))
+	})
+
+	It("invokes the function at validator timing", func() {
+		var actual cli.Timing
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "r",
+					Uses: cli.ValidatorFunc(func(ctx context.Context) error {
+						actual = cli.FromContext(ctx).Timing()
+						return nil
+					}),
+				},
+			},
+		}
+		args, _ := cli.Split("app 0")
+
+		Expect(app.RunContext(context.Background(), args)).To(Succeed())
+		Expect(actual).To(Equal(cli.BeforeTiming))
+	})
+
+	It("runs before actions which were registered directly at validator timing", func() {
+		var events []string
+		stub := func(evt string) cli.ActionFunc {
+			return func(*cli.Context) error {
+				events = append(events, evt)
+				return nil
+			}
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						cli.At(cli.ValidatorTiming, stub("timing")),
+						cli.ValidatorFunc(func(context.Context) error {
+							events = append(events, "validator")
+							return nil
+						}),
+					),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f S")
+
+		Expect(app.RunContext(context.Background(), args)).To(Succeed())
+		Expect(events).To(Equal([]string{"validator", "timing"}))
+	})
+
+	It("composes with the validator which was previously registered", func() {
+		var events []string
+		validator := func(evt string) cli.ValidatorFunc {
+			return func(context.Context) error {
+				events = append(events, evt)
+				return fmt.Errorf("%s err", evt)
+			}
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(validator("first"), validator("second")),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f S")
+
+		err := app.RunContext(context.Background(), args)
+
+		// Each validator runs and the errors are aggregated
+		Expect(events).To(Equal([]string{"first", "second"}))
+		Expect(err).To(MatchError("first err\nsecond err"))
+	})
+
+	It("is an internal error to register after the Uses pipeline", func() {
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Before(cli.ValidatorFunc(func(context.Context) error { return nil })),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f S")
+
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(BeAssignableToTypeOf(&cli.InternalError{}))
+		Expect(err).To(MatchError(ContainSubstring("too late")))
+	})
+
+	It("resets the behavior when nil", func() {
+		var called bool
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						cli.ValidatorFunc(func(context.Context) error {
+							called = true
+							return nil
+						}),
+						cli.ValidatorFunc(nil),
+					),
+				},
+			},
+		}
+		args, _ := cli.Split("app -f S")
+
+		Expect(app.RunContext(context.Background(), args)).To(Succeed())
+		Expect(called).To(BeFalse())
+	})
+
+	Describe("Validate", func() {
+		It("retrieves the value to check", func() {
+			var actual int
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: new(int),
+						Uses: cli.Validate(func(v int) error {
+							actual = v
+							return nil
+						}),
+					},
+				},
+			}
+			args, _ := cli.Split("app -f 420")
+
+			Expect(app.RunContext(context.Background(), args)).To(Succeed())
+			Expect(actual).To(Equal(420))
+		})
+
+		It("propagates the error from the function", func() {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: new(int),
+						Uses:  cli.Validate(func(int) error { return fmt.Errorf("validate err") }),
+					},
+				},
+			}
+			args, _ := cli.Split("app -f 420")
+
+			Expect(app.RunContext(context.Background(), args)).To(MatchError("validate err"))
+		})
+
+		It("detects an incompatible value as an internal error", func() {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "f",
+						Value: new(string),
+						Uses:  cli.Validate(func(int) error { return nil }),
+					},
+				},
+			}
+			args, _ := cli.Split("app -f S")
+
+			err := app.RunContext(context.Background(), args)
+			Expect(err).To(BeAssignableToTypeOf(&cli.InternalError{}))
+			Expect(err).To(MatchError(ContainSubstring("value is not int")))
+		})
+	})
+
+	Describe("ValidateRawOccurrences", func() {
+		It("retrieves the raw occurrences to check", func() {
+			var actual []string
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "f",
+						Value:   new([]string),
+						Options: cli.EachOccurrence,
+						Uses: cli.ValidateRawOccurrences(func(raw []string) error {
+							actual = raw
+							return nil
+						}),
+					},
+				},
+			}
+			args, _ := cli.Split("app -f a -f b")
+
+			Expect(app.RunContext(context.Background(), args)).To(Succeed())
+			Expect(actual).To(Equal([]string{"a", "b"}))
+		})
+
+		It("names the flag in the resulting error", func() {
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "f",
+						Uses: cli.ValidateRawOccurrences(func([]string) error {
+							return fmt.Errorf("raw err")
+						}),
+					},
+				},
+			}
+			args, _ := cli.Split("app -f S")
+
+			err := app.RunContext(context.Background(), args)
+			Expect(err).To(BeAssignableToTypeOf(&cli.ParseError{}))
+			Expect(err.(*cli.ParseError).Name).To(Equal("-f"))
+		})
+	})
+})
+
+var _ = Describe("ComposeValidatorFunc", func() {
+	It("aggregates the errors of each validator", func() {
+		validator := cli.ComposeValidatorFunc(
+			func(context.Context) error { return fmt.Errorf("a") },
+			nil,
+			func(context.Context) error { return nil },
+			func(context.Context) error { return fmt.Errorf("b") },
+		)
+
+		Expect(validator(context.Background())).To(MatchError("a\nb"))
+	})
+
+	It("preserves the error as-is when only one validator fails", func() {
+		expected := cli.Exit("exit err")
+		validator := cli.ComposeValidatorFunc(
+			func(context.Context) error { return nil },
+			func(context.Context) error { return expected },
+		)
+
+		// The type is retained rather than aggregated, which ExitCoder depends upon
+		Expect(validator(context.Background())).To(BeIdenticalTo(expected))
+	})
+
+	It("is nil when no validator remains", func() {
+		Expect(cli.ComposeValidatorFunc()).To(BeNil())
+		Expect(cli.ComposeValidatorFunc(nil, nil)).To(BeNil())
 	})
 })
 
@@ -3937,6 +4171,45 @@ var _ = Describe("Mutex", func() {
 		args, _ := cli.Split("app -a")
 		err := app.RunContext(context.Background(), args)
 		Expect(err).NotTo(HaveOccurred())
+	})
+})
+
+var _ = Describe("validation composition", func() {
+	It("aggregates the errors of each validator on the flag", func() {
+		app := cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "a",
+					Uses:  cli.Pipeline(cli.Requires("b"), cli.Mutex("c")),
+					Value: cli.Bool(),
+				},
+				{Name: "b", Value: cli.Bool()},
+				{Name: "c", Value: cli.Bool()},
+			},
+		}
+		args, _ := cli.Split("app -ac")
+
+		// Both rules are violated, and each is reported
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(MatchError("-a must be specified with -b\neither -a or -c can be used, but not both"))
+	})
+
+	It("aggregates the error of a user validator with the built-in ones", func() {
+		app := cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "a",
+					Uses: cli.Pipeline(
+						cli.Enum("ok", "no"),
+						cli.Validate(func(string) error { return fmt.Errorf("validate err") }),
+					),
+				},
+			},
+		}
+		args, _ := cli.Split("app -a yes")
+
+		err := app.RunContext(context.Background(), args)
+		Expect(err).To(MatchError("unrecognized value \"yes\" for -a, expected `ok' or `no'\nvalidate err"))
 	})
 })
 

@@ -141,9 +141,20 @@ type Prototype struct {
 	After  any
 }
 
-// ValidatorFunc defines an Action that applies a validation rule to
-// the explicit raw occurrence values for a flag or argument.
-type ValidatorFunc func(s []string) error
+// ValidatorFunc defines an Action that applies a validation rule to a command, flag,
+// or argument.  The factories Validate and ValidateRawOccurrences provide the common
+// cases of obtaining the value or the explicit raw occurrence values to check.
+//
+// ValidatorFunc implements Action: executing it registers the validator so that it is
+// run at ValidatorTiming.  Composition occurs with validators already registered (see
+// ComposeValidatorFunc), which is the difference between using a ValidatorFunc and
+// running an Action directly at ValidatorTiming.
+//
+// Because the composition is consulted at ValidatorTiming, a ValidatorFunc has to be
+// registered within the Uses pipeline; registering one later is an internal error.
+//
+// The composed validator for the current target is available from Context.Validator.
+type ValidatorFunc func(context.Context) error
 
 // TransformFunc implements a transformation from raw occurrences, which customizes
 // the behavior of parsing. The function can return string, []byte, or io.Reader.
@@ -249,6 +260,17 @@ const (
 	// for an arg or flag.  This timing can be set with the At function which affects
 	// the sort order of actions so that validation occurs before all other actions in Before
 	// pipeline.  When the action runs, the actual timing will be BeforeTiming.
+	//
+	// Two kinds of validation run at this timing, in this order:
+	//
+	//   - The validator composed from any ValidatorFunc which was registered on the
+	//     target (see ComposeValidatorFunc and Context.Validator).  It runs once, and
+	//     because the composition aggregates errors, every validator in it runs even
+	//     when an earlier one fails.
+	//   - Actions which were registered directly with At(ValidatorTiming, …), in the
+	//     order they were registered.  These stop the pipeline on the first error, so
+	//     use them when a rule only makes sense once the preceding ones have passed and
+	//     use a ValidatorFunc when the rules are independent.
 	ValidatorTiming
 
 	// ImplicitValueTiming represents timing that happens when an implied value is being
@@ -266,6 +288,7 @@ const (
 	panicDataKey           = privatekey.PanicData
 	optionalAliasesDataKey = privatekey.OptionalAliases
 	dependsOnDataKey       = privatekey.DependsOn
+	validatorDataKey       = privatekey.Validator
 )
 
 const (
@@ -364,6 +387,9 @@ var (
 			),
 		),
 		Before: beforePipeline{
+			actualBeforeIndexValidatorTiming: actions(
+				ActionFunc(triggerValidator),
+			),
 			actualBeforeIndexBeforeTiming: actions(
 				actionFunc(executeBeforeHooks),
 				executePipelines(BeforeTiming),
@@ -394,6 +420,9 @@ var (
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
 		),
 		Before: beforePipeline{
+			actualBeforeIndexValidatorTiming: actions(
+				ActionFunc(triggerValidator),
+			),
 			actualBeforeIndexBeforeTiming: actions(
 				executePipelines(BeforeTiming),
 				ActionFunc(triggerBeforeValueTargets),
@@ -421,6 +450,9 @@ var (
 			ActionFunc(copyFlagsFromValueTarget),
 		),
 		Before: beforePipeline{
+			actualBeforeIndexValidatorTiming: actions(
+				ActionFunc(triggerValidator),
+			),
 			actualBeforeIndexBeforeTiming: actions(
 				executePipelines(BeforeTiming),
 				ActionFunc(triggerBeforeOptions),
@@ -993,7 +1025,8 @@ func Enum(options ...string) Action {
 			UsageText:  usageText,
 			Completion: ValueCompletion(options...),
 		},
-		At(ValidatorTiming, ActionFunc(func(c *Context) error {
+		ValidatorFunc(func(ctx context.Context) error {
+			c := FromContext(ctx)
 			name := c.Name()
 			expected := listOfValues(options, true)
 			for _, occur := range c.RawOccurrences("") {
@@ -1003,13 +1036,14 @@ func Enum(options ...string) Action {
 				}
 			}
 			return nil
-		})),
+		}),
 	)
 }
 
-// Requires indicates a flag that requires another flag be present
-func Requires(names ...string) Action {
-	return At(ValidatorTiming, ActionFunc(func(c *Context) error {
+// Requires indicates a flag that requires another flag be present.
+func Requires(names ...string) ValidatorFunc {
+	return func(ctx context.Context) error {
+		c := FromContext(ctx)
 		if c.Seen("") {
 			unseen := make([]string, 0, len(names))
 			for _, o := range names {
@@ -1025,7 +1059,7 @@ func Requires(names ...string) Action {
 		}
 
 		return nil
-	}))
+	}
 }
 
 // DependsOn declares that the flag must run after the named flags, which provides
@@ -1069,8 +1103,9 @@ func DependsOn(flags ...string) Action {
 // Mutex validates that explicit values are used mutually exclusively.
 // When used on any flag in a mutex group, the other named flags are not allowed to be
 // used.
-func Mutex(names ...any) Action {
-	return At(ValidatorTiming, ActionFunc(func(c *Context) error {
+func Mutex(names ...any) ValidatorFunc {
+	return func(ctx context.Context) error {
+		c := FromContext(ctx)
 		if c.isOption() && c.Seen("") {
 			alsoSeen := make([]string, 0, len(names))
 			for _, o := range names {
@@ -1097,7 +1132,7 @@ func Mutex(names ...any) Action {
 		}
 
 		return nil
-	}))
+	}
 }
 
 func alsoSeenError(name string, alsoSeen []string) error {
@@ -1108,6 +1143,87 @@ func alsoSeenError(name string, alsoSeen []string) error {
 		return fmt.Errorf("either %s or %s can be used, but not both", name, alsoSeen[0])
 	default:
 		return fmt.Errorf("can't use %s together with %s", name, listOfValues(alsoSeen, false))
+	}
+}
+
+// Validate provides a validator which obtains the value of the flag or arg and checks it
+// against the specified function.  The value is converted to the type T, which is an
+// internal error if the flag or arg was not defined with a compatible Value.
+//
+//	&cli.Flag{
+//	    Name: "port",
+//	    Value: new(int),
+//	    Uses: cli.Validate(func(port int) error {
+//	        if port < 1024 {
+//	            return errors.New("must be a non-privileged port")
+//	        }
+//	        return nil
+//	    }),
+//	}
+//
+// The validator runs whether or not the flag or arg was actually specified, which means
+// that it also applies to the default value.  Compare ValidateRawOccurrences which checks
+// the values as they were specified rather than as they were parsed.
+func Validate[T any](fn func(T) error) ValidatorFunc {
+	if fn == nil {
+		return nil
+	}
+	return func(ctx context.Context) error {
+		c := FromContext(ctx)
+		value, ok := c.Value("").(T)
+		if !ok {
+			return c.internalError(fmt.Errorf("can't validate %s: value is not %v", c.Name(), reflect.TypeFor[T]()))
+		}
+		return fn(value)
+	}
+}
+
+// ValidateRawOccurrences provides a validator which applies a validation rule to the
+// explicit raw occurrence values for a flag or argument.  The resulting error names the
+// flag or arg which was being validated.  Compare Validate which checks the parsed
+// value.
+func ValidateRawOccurrences(rawOccurrences func([]string) error) ValidatorFunc {
+	if rawOccurrences == nil {
+		return nil
+	}
+	return func(ctx context.Context) error {
+		c := FromContext(ctx)
+		if err := rawOccurrences(c.RawOccurrences("")); err != nil {
+			return argTakerError(c.Name(), "", err, nil)
+		}
+		return nil
+	}
+}
+
+// ComposeValidatorFunc combines validators into a single validator.  Every validator is
+// invoked, even when an earlier one fails, and the errors are aggregated using
+// [errors.Join].  When only one validator fails, its error is returned as-is so that its
+// type is preserved (which matters to ExitCoder and ParseError).  Nil validators are
+// ignored, and the result is nil if no validator remains.
+func ComposeValidatorFunc(validators ...ValidatorFunc) ValidatorFunc {
+	actual := make([]ValidatorFunc, 0, len(validators))
+	for _, v := range validators {
+		if v != nil {
+			actual = append(actual, v)
+		}
+	}
+	if len(actual) == 0 {
+		return nil
+	}
+	if len(actual) == 1 {
+		return actual[0]
+	}
+	return func(ctx context.Context) error {
+		errs := make([]error, 0, len(actual))
+		for _, v := range actual {
+			if err := v(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if len(errs) == 1 {
+			return errs[0]
+		}
+		return errors.Join(errs...)
 	}
 }
 
@@ -2224,16 +2340,18 @@ func (m MiddlewareFunc) ExecuteWithNext(ctx context.Context, a Action) error {
 	return m(c, a)
 }
 
-// Execute provides the implementation of the Action interface
+// Execute provides the Action implementation for ValidatorFunc, which is the behavior
+// of registering and composing validators and enforcing the timing, which must be in
+// the Uses pipeline.
 func (v ValidatorFunc) Execute(ctx context.Context) error {
-	return Do(ctx, At(ValidatorTiming, ActionFunc(func(c *Context) error {
-		occur := c.RawOccurrences("")
-		if err := v(occur); err != nil {
-			return argTakerError(c.Name(), "", err, nil)
-		}
-
-		return nil
-	})))
+	c := FromContext(ctx)
+	if err := c.requireInit(); err != nil {
+		return err
+	}
+	if v == nil {
+		return c.SetData(validatorDataKey, nil)
+	}
+	return c.SetData(validatorDataKey, ComposeValidatorFunc(c.Validator(), v))
 }
 
 // Execute provides the implementation of the Action interface
@@ -2318,5 +2436,6 @@ var (
 	_ Action       = Setup{}
 	_ Action       = Prototype{}
 	_ Action       = beforePipeline{}
+	_ Action       = ValidatorFunc(nil)
 	_ hookable     = (*hooksSupport)(nil)
 )

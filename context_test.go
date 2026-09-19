@@ -1597,6 +1597,73 @@ var _ = Describe("Context", func() {
 		})
 	})
 
+	var _ = Describe("Validator", func() {
+		It("obtains the composition of the validators which were registered", func() {
+			var (
+				events []string
+				actual cli.ValidatorFunc
+				stub   = func(evt string) cli.ValidatorFunc {
+					return func(context.Context) error {
+						events = append(events, evt)
+						return nil
+					}
+				}
+			)
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: cli.Pipeline(
+							stub("first"),
+							stub("second"),
+							func(c *cli.Context) {
+								actual = c.Validator()
+							},
+						),
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).NotTo(BeNil())
+
+			Expect(actual(context.Background())).To(Succeed())
+			Expect(events).To(Equal([]string{"first", "second"}))
+		})
+
+		It("is nil when no validator was registered", func() {
+			var actual cli.ValidatorFunc
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: func(c *cli.Context) {
+							actual = c.Validator()
+						},
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(BeNil())
+		})
+
+		It("is not inherited from the lineage contexts", func() {
+			var actual cli.ValidatorFunc
+			app := &cli.App{
+				Uses: cli.ValidatorFunc(func(context.Context) error { return nil }),
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: func(c *cli.Context) {
+							actual = c.Validator()
+						},
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(BeNil())
+		})
+	})
+
 	var _ = Describe("ValueHelpText", func() {
 		It("aggregates the values that were described in order", func() {
 			var actual []*cli.ValueHelp
