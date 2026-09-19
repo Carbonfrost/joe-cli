@@ -101,6 +101,21 @@ var _ = Describe("help screen", HelpScreen, func() {
 					Name:    "hidden",
 					Options: cli.Hidden,
 				},
+				{
+					Name:     "method",
+					HelpText: "Set the request {METHOD}",
+					Uses:     cli.Enum("get", "post", "patch"),
+				},
+				{
+					Name:     "read-timeout",
+					HelpText: "Maximum {DURATION} to read the response",
+					Uses:     cli.SynopsisCategory("http"),
+				},
+				{
+					Name:     "cert",
+					HelpText: "Specify a client certificate {FILE}",
+					Uses:     cli.SynopsisCategory("tls"),
+				},
 			},
 		}),
 	)
