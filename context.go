@@ -1025,6 +1025,14 @@ func (c *Context) Validator() ValidatorFunc {
 	return validator
 }
 
+// OptionErrorHandler obtains the handler for the current command, which intercepts
+// the errors on options.
+func (c *Context) OptionErrorHandler() OptionErrorHandler {
+	res, _ := c.target().LookupData(privatekey.OptionError)
+	fn, _ := res.(OptionErrorHandler)
+	return fn
+}
+
 // SetData sets data on the current target.  Despite the return value,
 // this method never returns an error.
 func (c *Context) SetData(key any, value any) error {
@@ -2411,23 +2419,31 @@ func executePipelines(at Timing) Action {
 func triggerOptions(ctx *Context) error {
 	// Invoke the Before action on all flags and args, but only the actual
 	// Action when the flag or arg was set
-	for _, f := range ctx.flagsInOrder() {
-		err := triggerOption(ctx, f)
-		if err != nil {
+	handler := ctx.OptionErrorHandler()
+	if handler == nil {
+		handler = func(_ context.Context, err error) error {
 			return err
+		}
+	}
+
+	for _, f := range ctx.flagsInOrder() {
+		err := triggerOption(ctx, f, handler)
+		if err != nil {
+			return handler(ctx, err)
 		}
 	}
 
 	for _, f := range ctx.LocalArgs() {
-		err := triggerOption(ctx, f)
+		err := triggerOption(ctx, f, handler)
 		if err != nil {
-			return err
+			return handler(ctx, err)
 		}
 	}
-	return nil
+
+	return handler(ctx, nil)
 }
 
-func triggerOption(ctx *Context, f option) error {
+func triggerOption(ctx *Context, f option, handler OptionErrorHandler) error {
 	if flag, ok := f.(*Flag); ok && !flag.appliesIn(ctx) {
 		// The flag was narrowed by PersistentIn and doesn't belong to this
 		// command, so it stays dormant here.  checkPersistentInFilters reports the
@@ -2435,7 +2451,8 @@ func triggerOption(ctx *Context, f option) error {
 		return nil
 	}
 	if f.Seen() || hasSeenImplied(f, ctx.target()) {
-		return ctx.newChild(f, ctx.Timing()).executeSelf()
+		child := ctx.newChild(f, ctx.Timing())
+		return handler(child, child.executeSelf())
 	}
 	return nil
 }

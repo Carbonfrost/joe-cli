@@ -982,6 +982,80 @@ var _ = Describe("HandleCommandNotFound", func() {
 
 })
 
+var _ = Describe("HandleOptionError", func() {
+	type calledWith struct {
+		ctx *cli.Context
+		err error
+	}
+
+	var runApp = func() ([]calledWith, error) {
+		var actual []calledWith
+		app := cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "e", Action: fmt.Errorf("e error")},
+				{Name: "f", Action: fmt.Errorf("f error")},
+			},
+			Uses: cli.HandleOptionError(func(ctx *cli.Context, err error) error {
+				actual = append(actual, calledWith{ctx, err})
+				return nil
+			}),
+			Stderr: io.Discard,
+		}
+		args, _ := cli.Split("app -e _ -f _")
+		err := app.RunContext(context.Background(), args)
+		return actual, err
+	}
+
+	It("filter on each option and error", func() {
+		actual, _ := runApp()
+		Expect(len(actual)).To(BeNumerically(">=", 2))
+		Expect(actual[0].ctx.Name()).To(Equal("-e"))
+		Expect(actual[0].err).To(MatchError("e error"))
+		Expect(actual[1].ctx.Name()).To(Equal("-f"))
+		Expect(actual[1].err).To(MatchError("f error"))
+	})
+
+	It("called last with the command itself", func() {
+		actual, _ := runApp()
+
+		last := actual[len(actual)-1]
+		Expect(last.ctx.Name()).To(Equal("app"))
+		Expect(last.err).To(BeNil())
+	})
+
+	It("composes function call", func() {
+		var called []string
+		fn1 := func(*cli.Context, error) error {
+			called = append(called, "fn1")
+			return nil
+		}
+		fn2 := func(*cli.Context, error) error {
+			called = append(called, "fn2")
+			return nil
+		}
+
+		app := cli.App{
+			Flags: []*cli.Flag{
+				{Name: "e", Action: fmt.Errorf("e error")},
+				{Name: "f", Action: fmt.Errorf("f error")},
+			},
+			Uses: cli.Pipeline(
+				cli.HandleOptionError(fn1),
+				cli.HandleOptionError(fn2),
+			),
+			Stderr: io.Discard,
+		}
+
+		args, _ := cli.Split("app -e _ -f _")
+		_ = app.RunContext(context.Background(), args)
+
+		// It gets called once for each flag and then for the command itself
+		Expect(called).To(ConsistOf("fn2", "fn1", "fn2", "fn1", "fn2", "fn1"))
+	})
+
+})
+
 var _ = Describe("ImplicitCommand", func() {
 
 	It("invokes with the correct arguments", func() {

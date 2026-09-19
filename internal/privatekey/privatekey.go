@@ -12,4 +12,5 @@ const (
 	DependsOn         = "__DependsOn"
 	Validator         = "__Validator"
 	ValueHelpText     = "_ValueHelpText"
+	OptionError       = "_OptionError"
 )

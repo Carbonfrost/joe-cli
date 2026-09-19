@@ -361,6 +361,85 @@ func levenshtein(a, b string) int {
 	return prev[len(br)]
 }
 
+// OptionErrorHandler provides a filter for errors that occur during command
+// execution. It is itself an Action which registers and composes handlers.
+// When a command runs, the Action pipeline
+// for each of its flags and args are run first. If any one of them cause an error,
+// this error bubbles out; however, some commands might want to filter these errors
+// so that they are not treated as failures for the command. One use case is
+// with the help command, which ignores errors caused by Required flags and args
+// to ensure that the help screen renders. Note that this handler only applies to
+// the action pipeline; it does not filter errors that occur during initialization
+// or within the before or after timings. The handler is invoked in the context of
+// the offending option that returned an error, but as a special case, it will be
+// invoked one final time in the context of the command which is running with the
+// error that will be returned, which could be nil if no option generated an error.
+type OptionErrorHandler func(c context.Context, err error) error
+
+// HandleOptionError assigns a handler which can intercept errors that occur
+// when triggering options within a command.
+func HandleOptionError(fn func(*Context, error) error) OptionErrorHandler {
+	if fn == nil {
+		return nil
+	}
+	return func(c context.Context, err error) error {
+		return fn(FromContext(c), err)
+	}
+}
+
+// Execute registers the handler to be consulted when an error occurs with an option
+// when a command runs. A nil handler resets the behavior to the default.
+func (h OptionErrorHandler) Execute(ctx context.Context) error {
+	c := FromContext(ctx)
+	cmd := c.Command()
+	if h == nil {
+		// Use a sentinel value, which is used to indicate the default behavior should be used
+		c.SetData(privatekey.OptionError, false)
+		return nil
+	}
+
+	fn := h
+	if existing, ok := cmd.Data[privatekey.OptionError]; ok {
+		if existingFn, ok := existing.(OptionErrorHandler); ok {
+			// Compose with the previously registered handler
+			fn = ComposeOptionErrorHandler(h, existingFn)
+		}
+	}
+	c.SetData(privatekey.OptionError, fn)
+	return nil
+}
+
+// IgnoreRequiredOptions provides an OptionErrorHandler which causes the command
+// to ignore required flags and args.
+func IgnoreRequiredOptions() OptionErrorHandler {
+	return HandleOptionError(func(c *Context, err error) error {
+		if pe, ok := err.(*ParseError); ok {
+			if pe.Code == ExpectedRequiredOption {
+				return nil
+			}
+		}
+		return err
+	})
+}
+
+// ComposeOptionErrorHandler combines handlers into a single handler.  Each handler is invoked
+// in turn until one returns an error.
+func ComposeOptionErrorHandler(handlers ...OptionErrorHandler) OptionErrorHandler {
+	return func(c context.Context, err error) error {
+		for i, h := range handlers {
+			if h == nil {
+				continue
+			}
+			hErr := h(c, err)
+			if hErr != nil || i == len(handlers)-1 {
+				return hErr
+			}
+			err = hErr
+		}
+		return err
+	}
+}
+
 func groupedByCategory(cmds []*Command) commandsByCategory {
 	res := commandsByCategory{}
 	for _, command := range cmds {
