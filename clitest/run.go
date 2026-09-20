@@ -41,7 +41,7 @@ func (c *Cmd) CombinedOutput() ([]byte, error) {
 	defer c.useStdout(&buffer)()
 	defer c.useStderr(&buffer)()
 
-	err := c.app.RunContext(c.ctx, c.args)
+	err := c.app.RunContext(c.ctx, c.args...)
 	return buffer.Bytes(), err
 }
 

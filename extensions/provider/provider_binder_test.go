@@ -54,7 +54,7 @@ var _ = Describe("Bind", func() {
 		}
 
 		args, _ := cli.Split("app --format csv,comma=b,useCRLF=false")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(calledWith).To(BeAssignableToTypeOf(new(csvProvider)))
 		Expect(calledWith).To(Equal(&csvProvider{"b", false}))
@@ -98,7 +98,7 @@ var _ = Describe("Bind", func() {
 		}
 
 		args, _ := cli.Split("app --format csv,comma=x,use_crlf=true")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(calledWith).To(BeAssignableToTypeOf(new(csvProvider)))
 		Expect(calledWith).To(Equal(&csvProvider{"x", true}))
@@ -129,7 +129,7 @@ var _ = Describe("Bind", func() {
 		}
 
 		args, _ := cli.Split("app --format csv,comma=b,useCRLF=false")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		flag, _ := app.Flag("format")
@@ -182,7 +182,7 @@ var _ = Describe("Bind", func() {
 		}
 
 		args, _ := cli.Split("app --other")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(calledWith).To(Equal(discreteValue))
 	})
@@ -219,7 +219,7 @@ var _ = Describe("ValueBinder", func() {
 		}
 
 		args, _ := cli.Split("app --format csv,comma=b,useCRLF=false")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(calledWith.name).To(Equal("csv"))
 		Expect(calledWith.args).To(gstruct.PointTo(Equal(map[string]string{"comma": "b", "useCRLF": "false"})))

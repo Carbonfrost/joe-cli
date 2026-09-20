@@ -173,7 +173,7 @@ var _ = Describe("ParseLocation", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"testapp"})
+			err := app.RunContext(context.Background(), []string{"testapp"}...)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -196,7 +196,7 @@ var _ = Describe("ParseLocation", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"testapp"})
+			err := app.RunContext(context.Background(), []string{"testapp"}...)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

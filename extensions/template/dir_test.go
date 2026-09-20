@@ -35,7 +35,7 @@ var _ = Describe("Dir", func() {
 		tpl := template.New(template.Dir("classified"))
 		tpl.MakeDirs = false
 
-		Expect(newApp(tpl, dest).RunContext(context.Background(), []string{"app"})).To(Succeed())
+		Expect(newApp(tpl, dest).RunContext(context.Background(), "app")).To(Succeed())
 
 		_, err := fs.ReadDir(dest, "classified")
 
@@ -52,7 +52,7 @@ var _ = Describe("Dir", func() {
 			Stdout: io.Discard,
 		}
 
-		Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+		Expect(app.RunContext(context.Background(), "app")).To(Succeed())
 
 		actual, err := fs.ReadDir(dest, "classified")
 		Expect(err).NotTo(HaveOccurred())
@@ -67,7 +67,7 @@ var _ = Describe("Dir", func() {
 			Stdout: io.Discard,
 		}
 
-		Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+		Expect(app.RunContext(context.Background(), "app")).To(Succeed())
 
 		_, err := fs.ReadDir(dest, "classified")
 		Expect(err).NotTo(HaveOccurred())

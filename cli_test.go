@@ -1,6 +1,7 @@
 // Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package cli_test
 
 import (
@@ -139,7 +140,7 @@ var _ = Describe("RunContext", func() {
 				Action: func() {}, // override default help screen
 			}
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(global).To(expectedGlobal)
@@ -214,7 +215,7 @@ var _ = Describe("RunContext", func() {
 				},
 			}
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(expected)
@@ -304,7 +305,7 @@ var _ = Describe("RunContext", func() {
 	DescribeTable("bind args and flags errors",
 		func(app *cli.App, arguments string, expected types.GomegaMatcher) {
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(expected))
@@ -369,7 +370,7 @@ var _ = Describe("ReadPasswordString", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(buf.String()).To(Equal("Enter password: "))
 	})
 
@@ -384,7 +385,7 @@ var _ = Describe("ReadPasswordString", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("stdin not tty"))
 	})
@@ -403,7 +404,7 @@ var _ = Describe("ReadString", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(pass).To(Equal("my pass"))
 	})
 
@@ -418,7 +419,7 @@ var _ = Describe("ReadString", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(buf.String()).To(Equal("Some prompt"))
 	})
 
@@ -433,7 +434,7 @@ var _ = Describe("ReadString", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("stdin not tty"))
 	})
@@ -449,7 +450,7 @@ var _ = Describe("ReadString", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("inner reader error"))
 	})

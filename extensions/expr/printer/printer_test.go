@@ -68,7 +68,7 @@ var _ = Describe("Printer", func() {
 		// path arg as in "app . -print"
 		run = func(app *cli.App, expression string) error {
 			arguments, _ := cli.Split("app . " + expression)
-			return app.RunContext(context.Background(), arguments)
+			return app.RunContext(context.Background(), arguments...)
 		}
 
 		contentsOf = func(name string) string {
@@ -244,7 +244,7 @@ var _ = Describe("Printer", func() {
 			}
 
 			arguments, _ := cli.Split("app sub . -print")
-			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), arguments...)).NotTo(HaveOccurred())
 			Expect(stdout.String()).To(Equal("value\n"))
 		})
 	})
@@ -363,7 +363,7 @@ var _ = Describe("Printer", func() {
 			app := newFlagApp("value")
 
 			arguments, _ := cli.Split("app " + args)
-			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), arguments...)).NotTo(HaveOccurred())
 			Expect(stdout.String()).To(Equal(expected))
 		},
 			Entry("unset", ". -print", "value\n"),
@@ -387,7 +387,7 @@ var _ = Describe("Printer", func() {
 			}
 
 			arguments, _ := cli.Split("app --compact . -print")
-			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), arguments...)).NotTo(HaveOccurred())
 			Expect(stdout.String()).To(Equal("value"))
 		})
 	})
@@ -515,7 +515,7 @@ var _ = Describe("Printer", func() {
 			app := newDelimiterApp(printer.New())
 			arguments, _ := cli.Split("app --delimiter=/ . -F year,month,day")
 
-			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), arguments...)).NotTo(HaveOccurred())
 			Expect(stdout.String()).To(Equal("2006/January/2"))
 		})
 
@@ -532,7 +532,7 @@ var _ = Describe("Printer", func() {
 			app := newDelimiterApp(printer.New(), "-")
 			arguments, _ := cli.Split("app --delimiter=/ . -F year,month")
 
-			Expect(app.RunContext(context.Background(), arguments)).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), arguments...)).NotTo(HaveOccurred())
 			Expect(stdout.String()).To(Equal("2006-January"))
 		})
 
@@ -540,7 +540,7 @@ var _ = Describe("Printer", func() {
 			app := newDelimiterApp(printer.New(printer.WithAction(nil)))
 			arguments, _ := cli.Split("app --delimiter=/ . ")
 
-			Expect(app.RunContext(context.Background(), arguments)).To(
+			Expect(app.RunContext(context.Background(), arguments...)).To(
 				MatchError(ContainSubstring("not present in context")))
 		})
 	})

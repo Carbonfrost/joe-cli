@@ -289,7 +289,7 @@ var _ = Describe("PatternValue", func() {
 		}
 
 		arguments, _ := cli.Split("app -f %(hello:fallthrough)")
-		err := app.RunContext(context.Background(), arguments)
+		err := app.RunContext(context.Background(), arguments...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(buffer.String()).To(Equal("fallthrough"))
 	})

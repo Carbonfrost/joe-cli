@@ -39,8 +39,8 @@ var _ = Describe("ContextServices", func() {
 			},
 		}
 
-		_ = app1.RunContext(context.Background(), []string{"app"})
-		_ = app2.RunContext(context.Background(), []string{"app"})
+		_ = app1.RunContext(context.Background(), "app")
+		_ = app2.RunContext(context.Background(), "app")
 
 		Expect(actual1).To(Equal([2]bool{true, false}))
 		Expect(actual2).To(Equal([2]bool{false, true}))
@@ -57,7 +57,7 @@ var _ = Describe("ContextServices", func() {
 					actual, _ = provider.Services(ctx).LookupRegistry(name)
 				},
 			}
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(actual).NotTo(BeNil())
 		},
 			Entry("string", "codecs"),

@@ -51,7 +51,7 @@ var _ = Describe("Flag", func() {
 
 		JustBeforeEach(func() {
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 		})
 
 		It("executes action on setting flag", func() {
@@ -233,7 +233,7 @@ var _ = Describe("Flag", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app", "--uses"})
+		err := app.RunContext(context.Background(), []string{"app", "--uses"}...)
 
 		// In particular, we expect --uses to be available and not cause usage
 		// error
@@ -261,7 +261,7 @@ var _ = Describe("Flag", func() {
 			Action: cli.DisplayHelpScreen(),
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 
 		// In particular, we expect --do-not-show to be hidden
 		Expect(err).To(Succeed())
@@ -295,7 +295,7 @@ var _ = Describe("Flag", func() {
 
 			os.Setenv("_GOCLI_F", "environment value")
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 		})
 
 		It("sets up value from environment", func() {
@@ -343,7 +343,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -sC")
-			app.RunContext(context.Background(), arguments)
+			app.RunContext(context.Background(), arguments...)
 			Expect(*t).To(Equal(temperature("Celsius")))
 		})
 
@@ -359,7 +359,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -sK")
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("not supported"))
 		})
@@ -383,7 +383,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -s")
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(expected))
 		},
@@ -454,7 +454,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split(args)
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(expected))
 		},
@@ -492,7 +492,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -s following")
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(float64(1.0)))
 			Expect(args).To(Equal("following"))
@@ -519,7 +519,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -s2.0")
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(float64(2.0)))
 		})
@@ -545,7 +545,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app --show=2.0")
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(float64(2.0)))
 		})
@@ -565,7 +565,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -sC")
-			app.RunContext(context.Background(), arguments)
+			app.RunContext(context.Background(), arguments...)
 			Expect(*t).To(Equal(temperature("Celsius")))
 		})
 
@@ -582,7 +582,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app -s")
-			_ = app.RunContext(context.Background(), arguments)
+			_ = app.RunContext(context.Background(), arguments...)
 			Expect(*t).To(Equal("tls1.2"))
 		})
 	})
@@ -606,7 +606,7 @@ var _ = Describe("Flag", func() {
 			}
 
 			arguments, _ := cli.Split("app sub --nope 19")
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("unknown option: --nope"))
 			Expect(p).To(Equal(1600)) // unchanged
@@ -878,7 +878,7 @@ var _ = Describe("Flag", func() {
 		}
 
 		args, _ := cli.Split("app -a s")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		cmd, _ := app.Command("")
 		Expect(cmd.Flags[0]).To(PointTo(expected))
@@ -932,7 +932,7 @@ var _ = Describe("Flag", func() {
 				Name: "app",
 			}
 			args, _ := cli.Split("app")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cli.IsVisible(found)).To(Equal(visibleExpected))
 		},

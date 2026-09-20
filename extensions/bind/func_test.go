@@ -42,7 +42,7 @@ var _ = Describe("Action", func() {
 			}
 
 			args, _ := cli.Split("app arg_value --flag flag_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(action.ExecuteCallCount()).To(Equal(1))
 			Expect(calledWith).To(Equal(expected))
@@ -72,7 +72,7 @@ var _ = Describe("Action", func() {
 		}
 
 		args, _ := cli.Split("app --flag 8000")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(action.ExecuteCallCount()).To(Equal(1))
 		Expect(calledWith.Int64()).To(Equal(int64(8000)))
@@ -96,7 +96,7 @@ var _ = Describe("Action", func() {
 		}
 
 		args, _ := cli.Split("app arg_value")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(action.ExecuteCallCount()).To(Equal(1))
 		Expect(calledWith).To(Equal("arg_value"))
@@ -119,7 +119,7 @@ var _ = Describe("Action0", func() {
 			Uses: bind.Action0(factory),
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(action.ExecuteCallCount()).To(Equal(1))
 		Expect(called).To(BeTrue())
@@ -151,7 +151,7 @@ var _ = Describe("Action2", func() {
 			}
 
 			args, _ := cli.Split("app arg1_value arg2_value --flag flag_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(action.ExecuteCallCount()).To(Equal(1))
 			Expect(calledWith).To(Equal(expected))
@@ -189,7 +189,7 @@ var _ = Describe("Action3", func() {
 			}
 
 			args, _ := cli.Split("app arg1_value arg2_value arg3_value --flag flag_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(action.ExecuteCallCount()).To(Equal(1))
 			Expect(calledWith).To(Equal(expected))
@@ -223,7 +223,7 @@ var _ = Describe("Call", func() {
 		}
 
 		args, _ := cli.Split("app --flag=has_value")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(called).To(BeTrue())
@@ -255,7 +255,7 @@ var _ = Describe("Call2", func() {
 			}
 
 			args, _ := cli.Split("app arg1_value arg2_value --flag flag_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(calledWith).To(Equal(expected))
 		},
@@ -290,7 +290,7 @@ var _ = Describe("Call3", func() {
 			}
 
 			args, _ := cli.Split("app arg1_value arg2_value arg3_value --flag flag_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(calledWith).To(Equal(expected))
 		},
@@ -317,7 +317,7 @@ var _ = Describe("SetPointer", func() {
 			}
 
 			args, _ := cli.Split("app -f flag_value arg_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(target).To(Equal(expected))
 		},
@@ -348,7 +348,7 @@ var _ = Describe("Setter", func() {
 			}
 
 			args, _ := cli.Split("app -f flag_value arg_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual1).To(Equal("target"))
 			Expect(actual2).To(Equal(expected))
@@ -405,7 +405,7 @@ var _ = Describe("Indirect", func() {
 			},
 		}
 		args, _ := cli.Split("app --no-recursive .")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(fs.Recursive).To(BeFalse())
 	})
 
@@ -434,7 +434,7 @@ var _ = Describe("Indirect", func() {
 			},
 		}
 		args, _ := cli.Split("app --recursive YES .")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(act.ExecuteCallCount()).To(Equal(1), "action should still be called")
 		Expect(calledWith).To(Equal("YES"))
 	})
@@ -473,7 +473,7 @@ var _ = Describe("Redirect", func() {
 		}
 
 		args, _ := cli.Split("app -u")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(app.Flags[0].Value).To(PointTo(Equal(uint64(420))))
 		Expect(app.Flags[1].Value).To(PointTo(Equal(true)))
 	})
@@ -493,7 +493,7 @@ var _ = Describe("Redirect", func() {
 		}
 
 		args, _ := cli.Split("app -u")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(app.Flags[0].Value).To(PointTo(Equal(must(url.Parse("https://v.example")))))
 		Expect(app.Flags[1].Value).To(PointTo(Equal(true)))
 	})
@@ -514,7 +514,7 @@ var _ = Describe("Redirect", func() {
 		}
 
 		args, _ := cli.Split("app -Smissing=2")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(MatchError(ContainSubstring(`flag or arg named in binding but not defined "missing"`)))
 	})
 })

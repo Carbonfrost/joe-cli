@@ -71,7 +71,7 @@ var _ = Describe("PrintEnv", func() {
 			Stdout: &captured,
 		}
 		args, _ := cli.Split(arguments)
-		app.RunContext(context.Background(), args)
+		app.RunContext(context.Background(), args...)
 		Expect(captured.String()).To(Equal(expected))
 	},
 		Entry("variable", config.PrintEnv(), "app HELLO", "R\n"),
@@ -131,7 +131,7 @@ var _ = Describe("Workspace", func() {
 			}
 
 			args, _ := cli.Split("foo --foo-dir=.alternate")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 
 			actual := ws.ConfigDir()

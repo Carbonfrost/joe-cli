@@ -54,7 +54,7 @@ var _ = Describe("App", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 		})
 
 		Context("when executing itself", func() {
@@ -112,7 +112,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(help).ToNot(BeNil())
 		})
 
@@ -124,7 +124,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(help.Data).To(HaveKeyWithValue(cli.SourceAnnotation()))
 		})
 
@@ -138,7 +138,7 @@ var _ = Describe("App", func() {
 				Stderr: &capture,
 			}
 
-			_ = app.RunContext(context.Background(), []string{"app", "--help"})
+			_ = app.RunContext(context.Background(), []string{"app", "--help"}...)
 			Expect(capture.String()).To(HavePrefix("usage: hunter "))
 		})
 
@@ -154,7 +154,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(help.HelpText).To(Equal("my custom flag"))
 		})
@@ -171,7 +171,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(help.HelpText).To(Equal("my custom command"))
 		})
@@ -188,7 +188,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(version).ToNot(BeNil())
 		})
 
@@ -200,7 +200,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(version.Data).To(HaveKeyWithValue(cli.SourceAnnotation()))
 		})
 
@@ -214,7 +214,7 @@ var _ = Describe("App", func() {
 				Stdout:  &capture, // Python 2 -> 3 changed from stderr to stdout
 			}
 
-			_ = app.RunContext(context.Background(), []string{"app", "--version"})
+			_ = app.RunContext(context.Background(), []string{"app", "--version"}...)
 			Expect(capture.String()).To(HavePrefix("hunter, version 1.619"))
 		})
 
@@ -230,7 +230,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(version.HelpText).To(Equal("my custom flag"))
 		})
@@ -247,7 +247,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(version.HelpText).To(Equal("my custom command"))
 		})
@@ -316,7 +316,7 @@ var _ = Describe("App", func() {
 				},
 			})
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(version).ToNot(BeNil())
 		})
@@ -332,7 +332,7 @@ var _ = Describe("App", func() {
 				},
 			})
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal("1"))
 		})
@@ -352,7 +352,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 
 			Expect(in).To(Equal(os.Stdin))
 			Expect(out).To(Equal(cli.NewWriter(os.Stdout)))
@@ -367,7 +367,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(f).To(Equal(cli.DefaultFS()))
 		})
 
@@ -388,7 +388,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app", "s"})
+			app.RunContext(context.Background(), []string{"app", "s"}...)
 
 			Expect(in).To(Equal(os.Stdin))
 			Expect(out).To(Equal(cli.NewWriter(os.Stdout)))
@@ -408,7 +408,7 @@ var _ = Describe("App", func() {
 				},
 			}
 
-			app.RunContext(context.Background(), []string{"app", "s"})
+			app.RunContext(context.Background(), []string{"app", "s"}...)
 			Expect(f).To(Equal(cli.DefaultFS()))
 		})
 	})
@@ -421,7 +421,7 @@ var _ = Describe("App", func() {
 					what = cli.CurrentApp()
 				},
 			}
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(what).To(BeIdenticalTo(app))
 		})
 
@@ -429,7 +429,7 @@ var _ = Describe("App", func() {
 			app := &cli.App{
 				Action: func() {},
 			}
-			app.RunContext(context.Background(), []string{"app"})
+			app.RunContext(context.Background(), "app")
 			Expect(cli.CurrentApp()).To(BeNil())
 		})
 	})
@@ -449,7 +449,7 @@ var _ = Describe("Run", func() {
 			},
 		}
 
-		app.Run([]string{"app"})
+		app.Run("app")
 		Expect(buf.String()).To(Equal("my error message\n"))
 	})
 
@@ -467,7 +467,7 @@ var _ = Describe("Run", func() {
 			},
 		}
 
-		app.Run([]string{"app"})
+		app.Run("app")
 		Expect(exitCode).To(Equal(3))
 	})
 })

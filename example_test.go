@@ -1,4 +1,4 @@
-// Copyright 2022 The Joe-cli Authors. All rights reserved.
+// Copyright 2022, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -23,7 +23,7 @@ func ExampleAccessory() {
 		Action: func(c *cli.Context) {
 			fmt.Println(c.Command().Synopsis())
 		},
-	}).Run([]string{"app"})
+	}).Run("app")
 	// Output:
 	// app {--help | --version} [--recursive] [<files>]
 }

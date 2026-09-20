@@ -41,7 +41,7 @@ var _ = Describe("FS", func() {
 				Stdout: io.Discard,
 			}
 
-			Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+			Expect(app.RunContext(context.Background(), "app")).To(Succeed())
 
 			actual, err := fs.ReadFile(dest, "hello.txt")
 			Expect(err).NotTo(HaveOccurred())
@@ -59,7 +59,7 @@ var _ = Describe("FS", func() {
 				Stdout: io.Discard,
 			}
 
-			Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+			Expect(app.RunContext(context.Background(), "app")).To(Succeed())
 
 			actual, err := fs.ReadFile(dest, "subdir/world.txt")
 			Expect(err).NotTo(HaveOccurred())
@@ -82,7 +82,7 @@ var _ = Describe("FS", func() {
 				Stdout: io.Discard,
 			}
 
-			Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+			Expect(app.RunContext(context.Background(), "app")).To(Succeed())
 
 			actual, err := fs.ReadFile(dest, "main.go")
 			Expect(err).NotTo(HaveOccurred())
@@ -105,7 +105,7 @@ var _ = Describe("FS", func() {
 				Stdout: io.Discard,
 			}
 
-			Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+			Expect(app.RunContext(context.Background(), "app")).To(Succeed())
 
 			actual, err := fs.ReadFile(dest, "hello.txt")
 			Expect(err).NotTo(HaveOccurred())
@@ -127,7 +127,7 @@ var _ = Describe("FS", func() {
 				Stdout: io.Discard,
 			}
 
-			Expect(app.RunContext(context.Background(), []string{"app"})).To(Succeed())
+			Expect(app.RunContext(context.Background(), "app")).To(Succeed())
 
 			actual, err := fs.ReadFile(dest, "hello.txt")
 			Expect(err).NotTo(HaveOccurred())

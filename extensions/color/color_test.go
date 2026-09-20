@@ -33,7 +33,7 @@ var _ = Describe("Features", func() {
 				actual = c.Command().Synopsis()
 			},
 		}
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 
 		actual = strings.ReplaceAll(actual, "{--help | --version}", "")
 		actual = strings.ReplaceAll(actual, "  ", " ")
@@ -65,7 +65,7 @@ var _ = Describe("Features", func() {
 			},
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		calls := make([]bool, w.SetColorCapableCallCount())
@@ -94,7 +94,7 @@ var _ = Describe("Features", func() {
 			},
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		calls := make([]bool, w.SetColorCapableCallCount())
@@ -174,7 +174,7 @@ var _ = Describe("Templates", func() {
 				),
 				Action: cli.ExecuteTemplate("custom", nil),
 			}
-			err := errors.Unwrap(app.RunContext(context.Background(), []string{"app"}))
+			err := errors.Unwrap(app.RunContext(context.Background(), "app"))
 			err = errors.Unwrap(err)
 			Expect(err).To(expected)
 		},
@@ -237,7 +237,7 @@ var _ = Describe("Templates", func() {
 				),
 				Action: cli.ExecuteTemplate("custom", nil),
 			}
-			err := errors.Unwrap(app.RunContext(context.Background(), []string{"app"}))
+			err := errors.Unwrap(app.RunContext(context.Background(), "app"))
 			err = errors.Unwrap(err)
 			Expect(err).To(expected)
 		},
@@ -301,7 +301,7 @@ var _ = Describe("ContextFilter", func() {
 					}
 				},
 			}
-			_ = app.RunContext(context.Background(), nil)
+			_ = app.RunContext(context.Background(), nil...)
 
 			Expect(actual).To(Equal(map[string]bool{
 				"color":          true,
@@ -323,7 +323,7 @@ var _ = Describe("Synopsis styling", func() {
 			Flags:  []*cli.Flag{f},
 			Action: func(*cli.Context) {},
 		}
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 
 		Expect(f.Data).To(HaveKeyWithValue(synopsis.ColorData, cli.Red))
 	})
@@ -335,7 +335,7 @@ var _ = Describe("Synopsis styling", func() {
 			Flags:  []*cli.Flag{f},
 			Action: func(*cli.Context) {},
 		}
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 
 		Expect(f.Data).To(HaveKeyWithValue(synopsis.StyleData, cli.Underline))
 	})

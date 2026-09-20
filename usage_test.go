@@ -68,7 +68,7 @@ var _ = Describe("ExecuteTemplate", func() {
 				return nil
 			}),
 		}
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(MatchError(ContainSubstring(`template does not exist: "custom"`)))
 	})
 
@@ -89,7 +89,7 @@ var _ = Describe("ExecuteTemplate", func() {
 			Stdout: &captured,
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(captured.String()).To(Equal("li"))
 	},
@@ -112,7 +112,7 @@ var _ = Describe("ExecuteTemplate", func() {
 			Action: cli.ExecuteTemplate("T", data),
 			Stdout: io.Discard,
 		}
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError(`execution error (template "T"): error returned`))
 	},
@@ -132,7 +132,7 @@ var _ = Describe("Template", func() {
 				tpl = c.Template("missing")
 			},
 		}
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(tpl).To(BeNil())
 	})
 })
@@ -291,7 +291,7 @@ var _ = Describe("DisplayHelpScreen", func() {
 			Action: cli.DisplayHelpScreen(),
 			Stderr: io.Discard,
 		}
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(Succeed())
 	})
 
@@ -830,7 +830,7 @@ var _ = Describe("HelpTopic", func() {
 				Commands: []*cli.Command{{Name: "sub"}},
 				Stderr:   io.Discard,
 			}
-			err := app.RunContext(context.Background(), []string{"app", "help", "unknown"})
+			err := app.RunContext(context.Background(), []string{"app", "help", "unknown"}...)
 			Expect(err).To(MatchError(ContainSubstring(`"unknown" is not a command`)))
 		})
 	})

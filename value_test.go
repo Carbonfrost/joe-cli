@@ -41,7 +41,7 @@ var _ = Describe("Value", func() {
 				}
 
 				args, _ := cli.Split(arguments)
-				err := app.RunContext(context.Background(), args)
+				err := app.RunContext(context.Background(), args...)
 				Expect(err).NotTo(HaveOccurred())
 				captured := cli.FromContext(act.ExecuteArgsForCall(0))
 				Expect(captured.Value("o")).To(expected)
@@ -400,7 +400,7 @@ var _ = Describe("Value", func() {
 				}
 
 				args, _ := cli.Split(arguments)
-				err := app.RunContext(context.Background(), args)
+				err := app.RunContext(context.Background(), args...)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(expected)
 			},
@@ -465,7 +465,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.List("s")).To(expected)
 		},
@@ -486,7 +486,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 			Expect(captured.Map("s")).To(expected)
 		},
@@ -522,7 +522,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split("app -d a")
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 
 			Expect(cv.calledDisableSplitting).To(BeTrue())
 		})
@@ -545,7 +545,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split("app -d a")
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 			Expect(act.ExecuteCallCount()).To(Equal(1))
 		})
 	})
@@ -673,7 +673,7 @@ var _ = Describe("NameValue", func() {
 		// Doing this indirectly is more interesting because it examines the timing of
 		// the Initializer.
 		args, _ := cli.Split("app -v hello=@world")
-		app.Run(args)
+		app.Run(args...)
 		Expect(app.Flags[0].Value.(*cli.NameValue).Value).To(Equal("file contents"))
 	})
 
@@ -706,7 +706,7 @@ var _ = Describe("NameValue", func() {
 		}
 
 		args, _ := cli.Split("app -v hello=@world -v hello2=@planet -v hello3=Ceres")
-		app.Run(args)
+		app.Run(args...)
 
 		Expect(values).To(HaveLen(3))
 		Expect(values[0].Name).To(Equal("hello"))

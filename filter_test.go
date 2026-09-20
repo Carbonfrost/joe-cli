@@ -22,7 +22,7 @@ import (
 var _ = Describe("Assert", func() {
 	DescribeTable("examples", func(app *cli.App, expected types.GomegaMatcher) {
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(expected)
@@ -206,7 +206,7 @@ var _ = Describe("IfMatch", func() {
 		arguments, app := createApp(m)
 
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(expected)
@@ -293,7 +293,7 @@ var _ = Describe("FilterModes", func() {
 					}
 				},
 			}
-			_ = app.RunContext(context.Background(), nil)
+			_ = app.RunContext(context.Background(), nil...)
 
 			Expect(actual).To(Equal(map[string]bool{
 				"zsh-completion": true,
@@ -331,7 +331,7 @@ var _ = Describe("HasData", func() {
 			},
 			Uses: cli.Data("key", "value"),
 		}
-		_ = app.RunContext(context.Background(), []string{"app", "sub"})
+		_ = app.RunContext(context.Background(), []string{"app", "sub"}...)
 		Expect(fake.ExecuteCallCount()).To(Equal(1))
 	})
 
@@ -409,7 +409,7 @@ var _ = Describe("PersistentIn", func() {
 
 		run = func(arguments string) error {
 			args, _ := cli.Split(arguments)
-			return newApp().RunContext(context.Background(), args)
+			return newApp().RunContext(context.Background(), args...)
 		}
 	)
 
@@ -485,7 +485,7 @@ var _ = Describe("PersistentIn", func() {
 			},
 		}
 		args, _ := cli.Split("app")
-		Expect(app.RunContext(context.Background(), args)).To(
+		Expect(app.RunContext(context.Background(), args...)).To(
 			MatchError(ContainSubstring("too late for requested action timing")))
 	})
 })

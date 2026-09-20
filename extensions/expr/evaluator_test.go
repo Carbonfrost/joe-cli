@@ -61,7 +61,7 @@ var _ = Describe("Do", func() {
 			},
 		}
 		args, _ := cli.Split("app _ -act1 1 -act2 2 -expr true")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(act1.ExecuteCallCount()).To(Equal(1))

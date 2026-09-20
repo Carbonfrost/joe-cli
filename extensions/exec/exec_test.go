@@ -25,7 +25,7 @@ var _ = Describe("HaveLookPath", func() {
 			Name:   "app",
 			Action: cli.IfMatch(exec.HaveLookPath("go"), fakeAction),
 		}
-		_ = app.RunContext(context.Background(), nil)
+		_ = app.RunContext(context.Background(), nil...)
 
 		Expect(fakeAction.ExecuteCallCount()).To(Equal(1))
 	})
@@ -64,7 +64,7 @@ var _ = Describe("ExternalCommand", func() {
 		app := newApp(exec.ExternalCommand(), &out)
 
 		args, _ := cli.Split("app greet")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(out.String()).To(Equal("hello from plugin\n"))
@@ -77,7 +77,7 @@ var _ = Describe("ExternalCommand", func() {
 		app := newApp(exec.ExternalCommand(), &out)
 
 		args, _ := cli.Split("app greet alpha beta --flag")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(out.String()).To(Equal("alpha\nbeta\n--flag\n"))
@@ -90,7 +90,7 @@ var _ = Describe("ExternalCommand", func() {
 		app := newApp(exec.ExternalCommand(), &out)
 
 		args, _ := cli.Split("app fail")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).To(HaveOccurred())
 		coder, ok := err.(cli.ExitCoder)
@@ -104,7 +104,7 @@ var _ = Describe("ExternalCommand", func() {
 		app := newApp(exec.ExternalCommand(), &out)
 
 		args, _ := cli.Split("app missing")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).To(MatchError(`"missing" is not a command`))
 	})
@@ -116,7 +116,7 @@ var _ = Describe("ExternalCommand", func() {
 		app := newApp(exec.ExternalCommand("tool"), &out)
 
 		args, _ := cli.Split("app do")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(out.String()).To(Equal("custom prefix\n"))

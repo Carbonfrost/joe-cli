@@ -195,7 +195,7 @@ var _ = Describe("ListCodecs", func() {
 		}
 
 		// The list-codec flag uses cli.Exits, so the app exits after printing.
-		_ = app.RunContext(context.Background(), []string{"app", "--list-codec"})
+		_ = app.RunContext(context.Background(), []string{"app", "--list-codec"}...)
 		lines := slices.Collect(strings.Lines(capture.String()))
 		Expect(lines).To(ConsistOf(
 			"json\tdisallow_unknown_fields=false, escape_html=false, indent_size=2, indent_style=space\n",
@@ -218,7 +218,7 @@ var _ = Describe("ListCodecs", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app", "--list-codec"})
+		err := app.RunContext(context.Background(), []string{"app", "--list-codec"}...)
 		Expect(err).To(MatchError("no codecs registered"))
 	})
 })
@@ -240,7 +240,7 @@ var _ = Describe("Dump", func() {
 		}
 
 		// The list-codec flag uses cli.Exits, so the app exits after printing.
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).NotTo((HaveOccurred()))
 		Expect(capture.String()).To(MatchJSON(`{"F": "O", "L": "D"}`))
 	})
@@ -267,7 +267,7 @@ var _ = Describe("Dump", func() {
 		}
 
 		args, _ := cli.Split("app --output=toml,indent_size=2")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n  t = 3\n\n"))
 	})
 
@@ -293,7 +293,7 @@ var _ = Describe("Dump", func() {
 		}
 
 		args, _ := cli.Split("app --output-arg indent_size=4 --output=toml")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n    t = 3\n\n"))
 	})
@@ -314,7 +314,7 @@ var _ = Describe("Dumper", func() {
 			},
 		}
 
-		Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 		Expect(capture.String()).To(MatchJSON(`{"F": "O"}`))
 	})
 
@@ -332,7 +332,7 @@ var _ = Describe("Dumper", func() {
 		}
 
 		args, _ := cli.Split("app --output=toml")
-		Expect(app.RunContext(context.Background(), args)).NotTo(HaveOccurred())
+		Expect(app.RunContext(context.Background(), args...)).NotTo(HaveOccurred())
 		Expect(capture.String()).To(Equal("name = 'J'\n\n"))
 	})
 
@@ -350,7 +350,7 @@ var _ = Describe("Dumper", func() {
 			},
 		}
 
-		Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 		Expect(yielded).To(Equal([]any{"hello"}))
 	})
 
@@ -367,7 +367,7 @@ var _ = Describe("Dumper", func() {
 			},
 		}
 
-		Expect(app.RunContext(context.Background(), []string{"app"})).To(MatchError(expected))
+		Expect(app.RunContext(context.Background(), "app")).To(MatchError(expected))
 	})
 
 	It("dumps and yields each value within an expression", func() {
@@ -402,7 +402,7 @@ var _ = Describe("Dumper", func() {
 		}
 
 		args, _ := cli.Split("app a b -print")
-		Expect(app.RunContext(context.Background(), args)).NotTo(HaveOccurred())
+		Expect(app.RunContext(context.Background(), args...)).NotTo(HaveOccurred())
 		Expect(capture.String()).To(Equal("\"a\"\n\n\"b\"\n\n"))
 	})
 

@@ -45,7 +45,7 @@ var _ = Describe("Struct", func() {
 		}
 
 		args, _ := cli.Split("app --config-file f.toml --http-port 8080 --verbose")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual.ConfigFile).To(Equal("f.toml"))
@@ -66,7 +66,7 @@ var _ = Describe("Struct", func() {
 		}
 
 		args, _ := cli.Split("app f.toml 8080")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual.ConfigFile).To(Equal("f.toml"))
@@ -84,7 +84,7 @@ var _ = Describe("Struct", func() {
 		}
 
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(app.Flags[0].Value).To(BeAssignableToTypeOf(new(string)))
@@ -103,7 +103,7 @@ var _ = Describe("Struct", func() {
 		}
 
 		args, _ := cli.Split("app --config-file f.toml")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual.ConfigFile).To(Equal("f.toml"))
@@ -123,7 +123,7 @@ var _ = Describe("Struct", func() {
 		}
 
 		args, _ := cli.Split("app --config-file f.toml --verbose")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual.ConfigFile).To(Equal("f.toml"))
@@ -144,7 +144,7 @@ var _ = Describe("Struct", func() {
 		}
 
 		args, _ := cli.Split("app --count 21")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual.Count).To(Equal(int64(21)))
@@ -163,7 +163,7 @@ var _ = Describe("Struct", func() {
 		}
 
 		args, _ := cli.Split("app --count nope")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring(`cannot bind "count" to field Count: expected int, got string`))

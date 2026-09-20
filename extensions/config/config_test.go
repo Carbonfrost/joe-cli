@@ -51,7 +51,7 @@ var _ = Describe("Config", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual).To(Equal("uv"))
 	})
@@ -71,7 +71,7 @@ var _ = Describe("Config", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).NotTo(HaveOccurred())
 	})
 

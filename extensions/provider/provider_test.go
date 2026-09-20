@@ -40,7 +40,7 @@ var _ = Describe("Registry", func() {
 				Action: action,
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
@@ -79,7 +79,7 @@ var _ = Describe("Registry", func() {
 				Action: action,
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
@@ -105,7 +105,7 @@ var _ = Describe("Registry", func() {
 				Action: action,
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
@@ -129,7 +129,7 @@ var _ = Describe("Registry", func() {
 				Action: action,
 			}
 
-			_ = app.RunContext(context.Background(), []string{"app"})
+			_ = app.RunContext(context.Background(), "app")
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
 			reg, _ := provider.Services(c).LookupRegistry("providers")
@@ -150,7 +150,7 @@ var _ = Describe("Registry", func() {
 				Action: action,
 			}
 
-			_ = app.RunContext(context.Background(), []string{"app"})
+			_ = app.RunContext(context.Background(), "app")
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
 
 			reg, _ := provider.Services(c).LookupRegistry("providers")
@@ -175,7 +175,7 @@ var _ = Describe("Registry", func() {
 				Action: action,
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			c := cli.FromContext(action.ExecuteArgsForCall(0))
@@ -320,7 +320,7 @@ var _ = Describe("SetArgument", func() {
 		}
 
 		arguments, _ := cli.Split("app --provider hello --provider-arg world=2")
-		err := app.RunContext(context.Background(), arguments)
+		err := app.RunContext(context.Background(), arguments...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value.Name).To(Equal("hello"))
 		Expect(value.Args).To(Equal(&map[string]string{
@@ -349,7 +349,7 @@ var _ = Describe("SetArgument", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Flags[0].Name).To(Equal("provider-arg"))
 		Expect(app.Flags[0].Value).To(Equal(new(string)))
 	})
@@ -401,7 +401,7 @@ var _ = Describe("ArgumentFlag", func() {
 		}
 
 		arguments, _ := cli.Split("app --provider hello --provider-arg world=2")
-		err := app.RunContext(context.Background(), arguments)
+		err := app.RunContext(context.Background(), arguments...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value.Name).To(Equal("hello"))
 		Expect(value.Args).To(Equal(&map[string]string{
@@ -450,7 +450,7 @@ var _ = Describe("ArgumentFlag", func() {
 		}
 
 		arguments, _ := cli.Split("app --provider-arg world=2 --provider hello") // provider specified after arg
-		err := app.RunContext(context.Background(), arguments)
+		err := app.RunContext(context.Background(), arguments...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value.Name).To(Equal("hello"))
 		Expect(value.Args).To(Equal(&map[string]string{
@@ -489,7 +489,7 @@ var _ = Describe("ListProviders", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app", "--list-providers"})
+		_ = app.RunContext(context.Background(), "app", "--list-providers")
 		Expect(capture.String()).To(Equal(
 			"csv\tcomma=a, useCRLF=true\n" +
 				"json\tindent=true\n",
@@ -534,7 +534,7 @@ var _ = Describe("ListProviders", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app", "--list-providers"})
+		_ = app.RunContext(context.Background(), "app", "--list-providers")
 		Expect(capture.String()).To(Equal("csv Use comma-separated values\njson Use JSON values\n"))
 	})
 
@@ -551,7 +551,7 @@ var _ = Describe("ListProviders", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Flags[0].Name).To(Equal("list-providers"))
 		Expect(app.Flags[0].Value).To(Equal(new(bool)))
 	})
@@ -587,7 +587,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split("app --encoding utf8")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(app.Flags[0].Value.(*provider.Value).Name).To(Equal("utf8"))
 		})
@@ -614,7 +614,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(expected))
 		},
@@ -649,7 +649,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split("app --encoding unknown")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -692,7 +692,7 @@ var _ = Describe("Value", func() {
 		}
 
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(po.Name).To(Equal(expectedName))
 		Expect(opts).To(expectedOpts)
@@ -751,7 +751,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(po.Name).To(Equal(expectedName))
 			Expect(*opts).To(expectedOpts)
@@ -819,7 +819,7 @@ var _ = Describe("Value", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(po.Name).To(Equal(expectedName))
 			Expect(opts).To(expectedOpts)

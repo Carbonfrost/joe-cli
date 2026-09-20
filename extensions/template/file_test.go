@@ -50,7 +50,7 @@ var _ = Describe("File", func() {
 			f.(io.Writer).Write([]byte(initial))
 			f.Close()
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			actual, _ := fs.ReadFile(testFileSystem, "file_generate_test.txt")
@@ -123,7 +123,7 @@ type C    struct {  }`,
 
 			_, _ = testFileSystem.Create("mode.txt")
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			f, _ := testFileSystem.Stat("mode.txt")
@@ -146,7 +146,7 @@ type C    struct {  }`,
 				Stdout: io.Discard,
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			actual, _ := fs.ReadFile(testFileSystem, "o.txt")
@@ -169,7 +169,7 @@ type C    struct {  }`,
 				Stdout: io.Discard,
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			path, _ := ff.MkdirAllArgsForCall(0)
@@ -197,7 +197,7 @@ type C    struct {  }`,
 			f.(io.Writer).Write([]byte("cat input"))
 			f.Close()
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 
 			actual, _ := fs.ReadFile(testFileSystem, "file_generate_test.txt")

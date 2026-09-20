@@ -95,7 +95,7 @@ var _ = Describe("Logger", func() {
 					actual = log.FromContext(ctx, "audit")
 				},
 			}
-			Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 			Expect(actual).NotTo(BeNil())
 			Expect(actual.Name()).To(Equal("audit"))
 		})
@@ -108,7 +108,7 @@ var _ = Describe("Logger", func() {
 					_, actual = log.Services(ctx).Lookup("")
 				},
 			}
-			Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 			Expect(actual).To(BeTrue())
 		})
 
@@ -121,7 +121,7 @@ var _ = Describe("Logger", func() {
 					log.InfoContext(ctx, "hello")
 				},
 			}
-			Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 			Expect(buf.String()).To(ContainSubstring("msg=hello"))
 		})
 
@@ -135,7 +135,7 @@ var _ = Describe("Logger", func() {
 					}
 				},
 			}
-			Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 			Expect(actual).To(ContainElements("log-level", "log-format", "log-add-source"))
 		})
 
@@ -149,7 +149,7 @@ var _ = Describe("Logger", func() {
 					}
 				},
 			}
-			Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 			Expect(actual).NotTo(ContainElement(HavePrefix("log-")))
 		})
 	})
@@ -167,7 +167,7 @@ var _ = Describe("Logger", func() {
 				},
 			}
 			args = "app " + args
-			Expect(app.RunContext(context.Background(), strings.Fields(args))).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), strings.Fields(args)...)).NotTo(HaveOccurred())
 			Expect(buf.String()).To(expected)
 		},
 			Entry("log-level", "--log-level=debug", ContainSubstring("level=DEBUG")),
@@ -188,7 +188,7 @@ var _ = Describe("Logger", func() {
 					log.FromContext(ctx, "audit").Info("hello")
 				},
 			}
-			err := app.RunContext(context.Background(), []string{"app", "--audit-format=json"})
+			err := app.RunContext(context.Background(), []string{"app", "--audit-format=json"}...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(buf.String()).To(ContainSubstring(`"msg":"hello"`))
 		})
@@ -198,7 +198,7 @@ var _ = Describe("Logger", func() {
 				Uses:   log.New(),
 				Action: func() {},
 			}
-			err := app.RunContext(context.Background(), []string{"app", "--log-format=xml"})
+			err := app.RunContext(context.Background(), []string{"app", "--log-format=xml"}...)
 			Expect(err).To(MatchError(ContainSubstring(`unexpected log format "xml"`)))
 		})
 	})
@@ -215,7 +215,7 @@ var _ = Describe("Logger", func() {
 					log.Info("hello")
 				},
 			}
-			Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 			Expect(buf.String()).To(ContainSubstring("msg=hello"))
 		})
 
@@ -227,7 +227,7 @@ var _ = Describe("Logger", func() {
 					log.InfoContext(ctx, "hello")
 				},
 			}
-			Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 			Expect(buf.String()).To(ContainSubstring("msg=hello"))
 		})
 
@@ -261,8 +261,8 @@ var _ = Describe("Logger", func() {
 				},
 			}
 
-			Expect(app1.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
-			Expect(app2.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+			Expect(app1.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
+			Expect(app2.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 
 			Expect(actual1).To(Equal([2]bool{true, false}))
 			Expect(actual2).To(Equal([2]bool{false, true}))

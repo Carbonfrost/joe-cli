@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -178,14 +178,14 @@ func SetCurrentApp(a *App) {
 
 // Run the application and exit using the exit handler.  This function exits using the
 // ExitHandler if an error occurs.  If you want to process the error yourself, use RunContext.
-func (a *App) Run(args []string) {
+func (a *App) Run(args ...string) {
 	c, err := a.runContextCore(context.Background(), args)
 	exit(c, err)
 }
 
 // RunContext runs the application with the specified context and returns any error
 // that occurred.
-func (a *App) RunContext(c context.Context, args []string) error {
+func (a *App) RunContext(c context.Context, args ...string) error {
 	_, err := a.runContextCore(c, args)
 	return err
 }

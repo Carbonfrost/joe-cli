@@ -109,7 +109,7 @@ var _ = Describe("Evaluator", func() {
 			},
 		}
 
-		app.RunContext(context.Background(), []string{})
+		app.RunContext(context.Background(), []string{}...)
 		Expect(varNames.string).To(Equal("value set"))
 		Expect(varNames.bool).To(Equal(true))
 		Expect(varNames.list).To(Equal([]string{"list"}))
@@ -183,7 +183,7 @@ var _ = Describe("Evaluator", func() {
 			},
 		}
 
-		app.RunContext(context.Background(), []string{})
+		app.RunContext(context.Background(), []string{}...)
 		Expect(varNames.float32).To(Equal(float32(32)))
 		Expect(varNames.float64).To(Equal(float64(64)))
 		Expect(varNames.duration).To(Equal(2 * time.Second))
@@ -220,7 +220,7 @@ var _ = Describe("Evaluator", func() {
 			},
 		}
 
-		app.RunContext(context.Background(), []string{})
+		app.RunContext(context.Background(), []string{}...)
 		Expect(varNames.iface).To(Equal(fakeValue))
 	})
 
@@ -244,7 +244,7 @@ var _ = Describe("Evaluator", func() {
 			},
 		}
 
-		app.RunContext(context.Background(), []string{})
+		app.RunContext(context.Background(), []string{}...)
 		Expect(*varNames.value).To(Equal(color.Never))
 	})
 
@@ -275,7 +275,7 @@ var _ = Describe("Evaluator", func() {
 			},
 		}
 		args, _ := cli.Split("app -- -more 1 -more 2 -more 3")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(seen).To(Equal([]*cli.NameValue{
@@ -328,7 +328,7 @@ var _ = Describe("Evaluator", func() {
 			}
 
 			args, _ := cli.Split("app --flag=f_value . -name a_value")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(eval.EvaluateCallCount()).To(Equal(1))
@@ -371,7 +371,7 @@ var _ = Describe("Evaluator", func() {
 		}
 
 		args, _ := cli.Split("app . -name a_value")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(eval.EvaluateCallCount()).To(Equal(1))

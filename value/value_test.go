@@ -35,7 +35,7 @@ var _ = Describe("Value", func() {
 				}
 
 				args, _ := cli.Split(arguments)
-				err := app.RunContext(context.Background(), args)
+				err := app.RunContext(context.Background(), args...)
 				Expect(err).NotTo(HaveOccurred())
 				captured := cli.FromContext(cli.FromContext(act.ExecuteArgsForCall(0)))
 				Expect(captured.Value("o")).To(expected)
@@ -175,7 +175,7 @@ var _ = Describe("JSON", func() {
 		}
 
 		args, _ := cli.Split("app -f h.json -f i.json")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(seen).To(ContainElements(

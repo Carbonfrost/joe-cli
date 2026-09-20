@@ -33,7 +33,7 @@ var _ = Describe("Command", func() {
 			},
 		}
 		args, _ := cli.Split("app sub t,a,b u")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(t).To(Equal("t,a,b"))
 		Expect(u).To(Equal("u"))
 	})
@@ -69,7 +69,7 @@ var _ = Describe("Command", func() {
 			},
 		}
 		args, _ := cli.Split("app https://example.com sub t")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(t).To(Equal("t"))
@@ -91,7 +91,7 @@ var _ = Describe("Command", func() {
 						{Name: "c"},
 					},
 				}
-				app.RunContext(context.Background(), []string{"app"})
+				app.RunContext(context.Background(), "app")
 				Expect(cmd).ToNot(BeNil())
 			})
 
@@ -106,7 +106,7 @@ var _ = Describe("Command", func() {
 						{Name: "c"},
 					},
 				}
-				app.RunContext(context.Background(), []string{"app"})
+				app.RunContext(context.Background(), "app")
 				Expect(cmd.Data).To(HaveKeyWithValue(cli.SourceAnnotation()))
 			})
 		},
@@ -148,7 +148,7 @@ var _ = Describe("Command", func() {
 			}
 
 			args, _ := cli.Split("app c args args")
-			app.RunContext(context.Background(), args)
+			app.RunContext(context.Background(), args...)
 		})
 
 		It("executes action on executing sub-command", func() {
@@ -190,7 +190,7 @@ var _ = Describe("Command", func() {
 		}
 
 		args, _ := cli.Split("app c args args")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		cmd, ok := app.Command("c")
 		Expect(ok).To(BeTrue())
@@ -240,7 +240,7 @@ var _ = Describe("Command", func() {
 				Name: "app",
 			}
 			args, _ := cli.Split("app")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cli.IsVisible(found)).To(Equal(visibleExpected))
 		},
@@ -283,7 +283,7 @@ var _ = Describe("Command", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app", "-a", "-b"})
+			err := app.RunContext(context.Background(), []string{"app", "-a", "-b"}...)
 			Expect(err).NotTo(HaveOccurred())
 			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 
@@ -315,7 +315,7 @@ var _ = Describe("Command", func() {
 			}
 
 			arguments, _ := cli.Split(args)
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).NotTo(HaveOccurred())
 			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 
@@ -378,7 +378,7 @@ var _ = Describe("Command", func() {
 			// This is treated as an error because even though -x is not defined, earlier flags
 			// -f and -g are
 			arguments, _ := cli.Split("app -fgx")
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("unknown option: -x"))
 		})
@@ -402,7 +402,7 @@ var _ = Describe("Command", func() {
 				Options: cli.DisallowFlagsAfterArgs,
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(MatchRegexp("can't use -.+ after arguments")))
 		},
@@ -432,7 +432,7 @@ var _ = Describe("Command", func() {
 			}
 
 			args, _ := cli.Split("app one")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("done error"))
 			Expect(counter.DoneCallCount()).To(Equal(1))
@@ -448,7 +448,7 @@ var _ = Describe("Command", func() {
 			}
 
 			args, _ := cli.Split("app " + arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			captured := cli.FromContext(act.ExecuteArgsForCall(0))
 
@@ -723,7 +723,7 @@ var _ = Describe("Command", func() {
 		It("implicitly names app", func() {
 			app := &cli.App{}
 
-			_ = app.RunContext(context.Background(), []string{"app"})
+			_ = app.RunContext(context.Background(), "app")
 			Expect(app.Name).NotTo(BeEmpty())
 		})
 
@@ -841,7 +841,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			err = app.RunContext(context.Background(), args)
+			err = app.RunContext(context.Background(), args...)
 		})
 
 		Context("when func specifies an existing command", func() {
@@ -889,7 +889,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app unknown")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(fn1Called).To(BeTrue())
 		Expect(fn2Called).To(BeTrue())
 	})
@@ -917,7 +917,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app sub unknown")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(HaveOccurred())
 		Expect(inheritedCalled).To(BeTrue())
 	})
@@ -943,7 +943,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app rex")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(HaveOccurred())
 		Expect(fnCalled).To(BeFalse())
 	})
@@ -974,7 +974,7 @@ var _ = Describe("HandleCommandNotFound", func() {
 		}
 
 		args, _ := cli.Split("app sub unknown")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(HaveOccurred())
 		Expect(inheritedCalled).To(BeFalse())
 		Expect(err).To(MatchError(`"unknown" is not a command`))
@@ -1003,7 +1003,7 @@ var _ = Describe("HandleOptionError", func() {
 			Stderr: io.Discard,
 		}
 		args, _ := cli.Split("app -e _ -f _")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		return actual, err
 	}
 
@@ -1048,7 +1048,7 @@ var _ = Describe("HandleOptionError", func() {
 		}
 
 		args, _ := cli.Split("app -e _ -f _")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 
 		// It gets called once for each flag and then for the command itself
 		Expect(called).To(ConsistOf("fn2", "fn1", "fn2", "fn1", "fn2", "fn1"))
@@ -1089,7 +1089,7 @@ var _ = Describe("ImplicitCommand", func() {
 		}
 
 		args, _ := cli.Split("app tail /var/output/logs -f")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 
@@ -1113,7 +1113,7 @@ var _ = Describe("ImplicitCommand", func() {
 		}
 
 		args, _ := cli.Split("app tail /var/output/logs -f")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(MatchError(`"tail" is not a command`))
 	})
 })
@@ -1138,7 +1138,7 @@ var _ = Describe("SuggestCommand", func() {
 	DescribeTable("default behavior examples", func(arguments string, expected types.GomegaMatcher) {
 		app, _ := newApp(cli.None)
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		pe := err.(*cli.ParseError)
 
@@ -1154,7 +1154,7 @@ var _ = Describe("SuggestCommand", func() {
 	It("can be disabled with DisableSuggestions", func() {
 		app, _ := newApp(cli.DisableSuggestions)
 		args, _ := cli.Split("app stat")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).To(HaveOccurred())
 		pe := err.(*cli.ParseError)
@@ -1178,7 +1178,7 @@ var _ = Describe("SuggestCommand", func() {
 		}
 
 		args, _ := cli.Split("app stat")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))

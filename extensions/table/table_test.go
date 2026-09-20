@@ -53,7 +53,7 @@ var _ = Describe("template functions", func() {
 			Stderr: io.Discard,
 			Stdout: io.Discard,
 		}
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(expected)
 	},
 		Entry("panics on Table with args", `{{ Table "a" "b" }}`, MatchError(ContainSubstring(`expects 0 or 1 arguments`))),

@@ -57,7 +57,7 @@ var _ = Describe("Binder", func() {
 				}
 
 				args, _ := cli.Split("app --flag 300 500")
-				err := app.RunContext(context.Background(), args)
+				err := app.RunContext(context.Background(), args...)
 				Expect(err).NotTo(HaveOccurred())
 			},
 				Entry("arg by index", bind.Call(factory, bind.Int()), "arg"),
@@ -88,7 +88,7 @@ var _ = Describe("Binder", func() {
 				}
 
 				args, _ := cli.Split("app")
-				err := app.RunContext(context.Background(), args)
+				err := app.RunContext(context.Background(), args...)
 				Expect(err).NotTo(HaveOccurred())
 			},
 				Entry("File name", bind.Call(factory, bind.File().Name()), BeAssignableToTypeOf(new(cli.File))),
@@ -120,7 +120,7 @@ var _ = Describe("ActionBinder", func() {
 		}
 
 		args, _ := cli.Split("app --flag 2")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fakeBinder.BindCallCount()).To(Equal(1))
 	})
@@ -138,7 +138,7 @@ var _ = Describe("ActionBinder", func() {
 		}
 
 		args, _ := cli.Split("app --flag 2")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fakeAction.ExecuteCallCount()).To(Equal(1))
 	})
@@ -155,7 +155,7 @@ var _ = Describe("ActionBinder", func() {
 		}
 
 		args, _ := cli.Split("app --flag 2")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fakeAction.ExecuteCallCount()).To(Equal(1))
 	})
@@ -181,7 +181,7 @@ var _ = Describe("Elem", func() {
 			},
 		}
 		args, _ := cli.Split("app -f key=value")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 
 		Expect(actual.Name).To(Equal("key"))
 		Expect(actual.Value).To(Equal("value"))
@@ -207,7 +207,7 @@ var _ = Describe("Pointer", func() {
 			},
 		}
 		args, _ := cli.Split("app -f 9161")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 
 		Expect(actual).To(Equal(9161))
 	})
@@ -251,7 +251,7 @@ var _ = Describe("FileBinder", func() {
 			},
 		}
 		args, _ := cli.Split("app -f V/filename.txt")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 
 		Expect(name).To(Equal("V/filename.txt"))
 		Expect(basename).To(Equal("filename.txt"))
@@ -275,7 +275,7 @@ var _ = Describe("FileBinder", func() {
 			}
 
 			args, _ := cli.Split("app V/filename.txt")
-			_ = app.RunContext(context.Background(), args)
+			_ = app.RunContext(context.Background(), args...)
 
 			Expect(name).To(Equal("V/filename.txt"))
 			Expect(app.Args[0].Value).To(BeAssignableToTypeOf(new(cli.File)))
@@ -320,7 +320,7 @@ var _ = Describe("FileBinder", func() {
 			}
 
 			args, _ := cli.Split("app -- -name V/filename.txt")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(name).To(Equal("V/filename.txt"))
 			Expect(app.Args[0].Value.(*expr.Expression).Exprs[0].Args[0].Value).To(BeAssignableToTypeOf(new(cli.File)))
@@ -351,7 +351,7 @@ var _ = Describe("BoolBinder", func() {
 		}
 
 		args, _ := cli.Split("app -f")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(negated).To(BeFalse())
 	})
 })
@@ -372,7 +372,7 @@ var _ = Describe("ContextValue", func() {
 		app := &cli.App{
 			Action: bind.Action(fn, bind.ContextValue[int](key)),
 		}
-		app.RunContext(ctx, []string{"app"})
+		app.RunContext(ctx, "app")
 		Expect(actionCalledWith).To(Equal(2))
 	})
 
@@ -417,7 +417,7 @@ var _ = Describe("FS", func() {
 			FS:     fake,
 			Action: bind.Action(fn, bind.FS()),
 		}
-		app.RunContext(context.Background(), []string{"app"})
+		app.RunContext(context.Background(), "app")
 		Expect(actionCalledWith).To(Equal(fake))
 	})
 
@@ -441,7 +441,7 @@ var _ = Describe("FromContext", func() {
 		app := &cli.App{
 			Action: bind.Action(action, bind.FromContext(fn)),
 		}
-		app.RunContext(context.Background(), []string{"app"})
+		app.RunContext(context.Background(), "app")
 
 		Expect(called).To(BeTrue())
 		Expect(actionCalledWith).To(Equal(2))
@@ -471,7 +471,7 @@ var _ = Describe("Exact", func() {
 				}
 
 				arguments, _ := cli.Split(args)
-				err := app.RunContext(context.Background(), arguments)
+				err := app.RunContext(context.Background(), arguments...)
 				Expect(err).NotTo(HaveOccurred())
 			},
 				Entry(
@@ -512,7 +512,7 @@ var _ = Describe("Exact", func() {
 			},
 		}
 		args, _ := cli.Split("app --memory 33")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(value).To(Equal(33))
 	})
 
@@ -532,7 +532,7 @@ var _ = Describe("Exact", func() {
 			},
 		}
 		args, _ := cli.Split("app --max-memory")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(value).To(Equal(1024))
 		Expect(app.Flags[0].Value).To(PointTo(BeTrue()))
 	})
@@ -581,7 +581,7 @@ var _ = Describe("Occurrences", func() {
 			},
 		}
 		args, _ := cli.Split("app -m _")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(`internal error, at "b -m" (action timing): flag or arg named in binding but not defined "z"`))
 	})
@@ -610,7 +610,7 @@ var _ = Describe("Occurrences", func() {
 			},
 		}
 		args, _ := cli.Split("app -zmno")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value1).To(Equal(33))
 		Expect(value2).To(Equal(39))
@@ -640,7 +640,7 @@ var _ = Describe("Occurrences", func() {
 				},
 			}
 			args, _ := cli.Split("app -mmm")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(3))
 		})
@@ -656,7 +656,7 @@ var _ = Describe("Occurrences", func() {
 				},
 			}
 			args, _ := cli.Split("app -mmm")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(int(6)))
 		})
@@ -672,7 +672,7 @@ var _ = Describe("Occurrences", func() {
 				},
 			}
 			args, _ := cli.Split("app -mmm")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(int32(0)))
 		})
@@ -689,7 +689,7 @@ var _ = Describe("Occurrences", func() {
 				},
 			}
 			args, _ := cli.Split("app -mmm")
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(rType(0)))
 		})
@@ -724,7 +724,7 @@ var _ = Describe("Seen", func() {
 			},
 		}
 		args, _ := cli.Split("app -mno")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value1).To(BeTrue())
 		Expect(value2).To(BeTrue())
@@ -760,7 +760,7 @@ var _ = Describe("Stdout", func() {
 		}
 
 		args, _ := cli.Split("app -f r")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(stdout.String()).To(Equal("hello out\n"))
 		Expect(stderr.String()).To(Equal("hello err\n"))
@@ -911,7 +911,7 @@ var _ = Describe("Value", func() {
 										--bigint=808080
 										--bigfloat=1.08
 										--bytes=deadbeef`)
-		err := app.RunContext(context.Background(), arguments)
+		err := app.RunContext(context.Background(), arguments...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fix.Int).To(Equal(300))
 		Expect(fix.Bool).To(Equal(true))
@@ -967,7 +967,7 @@ var _ = Describe("Value", func() {
 		}
 
 		arguments, _ := cli.Split("app --flag 300")
-		err := app.RunContext(context.Background(), arguments)
+		err := app.RunContext(context.Background(), arguments...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual).To(Equal(element(300)))
 	})

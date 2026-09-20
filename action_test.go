@@ -49,7 +49,7 @@ var _ = Describe("timings", func() {
 				Commands: commands,
 				Uses:     uses,
 			}
-			err := app.RunContext(context.Background(), arguments)
+			err := app.RunContext(context.Background(), arguments...)
 			Expect(err).NotTo(HaveOccurred())
 			if act.ExecuteCallCount() > 0 {
 				captured = cli.FromContext(act.ExecuteArgsForCall(0))
@@ -358,7 +358,7 @@ var _ = Describe("timings", func() {
 							},
 						},
 					}
-					_ = app.RunContext(context.Background(), []string{"app"})
+					_ = app.RunContext(context.Background(), "app")
 					Expect(app.Flags[0].Value).To(PointTo(Equal("implicit 1")))
 				})
 
@@ -374,7 +374,7 @@ var _ = Describe("timings", func() {
 							},
 						},
 					}
-					err := app.RunContext(context.Background(), []string{"app"})
+					err := app.RunContext(context.Background(), "app")
 					Expect(err).To(Equal(cli.ErrImplicitValueAlreadySet))
 				})
 			})
@@ -502,7 +502,7 @@ var _ = Describe("timings", func() {
 					},
 				},
 			}
-			app.RunContext(context.Background(), []string{"app", "sub"})
+			app.RunContext(context.Background(), []string{"app", "sub"}...)
 			Expect(act.ExecuteCallCount()).To(Equal(1))
 			captured = cli.FromContext(act.ExecuteArgsForCall(0))
 		})
@@ -591,7 +591,7 @@ var _ = Describe("timings", func() {
 		}
 
 		args, _ := cli.Split("app -f S")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(events).To(Equal([]string{"validator", "before", "implicitValue"}))
 	})
 
@@ -619,7 +619,7 @@ var _ = Describe("timings", func() {
 		}
 
 		args, _ := cli.Split("app -f S")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(events).To(Equal([]string{"validator", "before", "implicitValue"}))
 	})
 
@@ -638,7 +638,7 @@ var _ = Context("WorkingDirectory", func() {
 				Name:   "app",
 				Action: new(joeclifakes.FakeAction),
 				Flags: []*cli.Flag{
-					&cli.Flag{
+					{
 						Name:    "dir",
 						Value:   valueFn(),
 						Options: cli.WorkingDirectory,
@@ -647,7 +647,7 @@ var _ = Context("WorkingDirectory", func() {
 			}
 
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 
 			Expect(err).NotTo(HaveOccurred())
 		}
@@ -703,7 +703,7 @@ var _ = Describe("At", func() {
 		}
 
 		args, _ := cli.Split("app -f S")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 		Expect(events).To(Equal([]string{
 			"validator actually BEFORE",
 			"before actually AFTER",
@@ -736,7 +736,7 @@ var _ = Describe("OptionalAlias", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(command1.Aliases).To(ContainElement("s"))
 			Expect(command2.Aliases).To(BeEmpty())
@@ -763,7 +763,7 @@ var _ = Describe("OptionalAlias", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(command1.Aliases).To(ContainElement("X"))
 			Expect(command2.Aliases).To(BeEmpty())
@@ -789,7 +789,7 @@ var _ = Describe("OptionalAlias", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(command1.Aliases).NotTo(ContainElement("s"))
 			Expect(command2.Name).To(Equal("s"))
@@ -816,7 +816,7 @@ var _ = Describe("OptionalAlias", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(command1.Aliases).NotTo(ContainElement("x"))
 			Expect(command2.Aliases).To(ContainElement("x"))
@@ -845,7 +845,7 @@ var _ = Describe("OptionalAlias", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(flag1.Aliases).To(ContainElement("v"))
 			Expect(flag2.Aliases).To(BeEmpty())
@@ -871,7 +871,7 @@ var _ = Describe("OptionalAlias", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(flag1.Aliases).NotTo(ContainElement("v"))
 			Expect(flag2.Name).To(Equal("v"))
@@ -898,7 +898,7 @@ var _ = Describe("OptionalAlias", func() {
 				},
 			}
 
-			err := app.RunContext(context.Background(), []string{"app"})
+			err := app.RunContext(context.Background(), "app")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(flag1.Aliases).NotTo(ContainElement("x"))
 			Expect(flag2.Aliases).To(ContainElement("x"))
@@ -960,7 +960,7 @@ var _ = Describe("Uses", func() {
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
-			_ = app.RunContext(context.Background(), args)
+			_ = app.RunContext(context.Background(), args...)
 			Expect(actual.CallCount).To(Equal(1))
 			Expect(actual.IsInitializing).To(BeTrue())
 		},
@@ -1059,7 +1059,7 @@ var _ = Describe("Uses", func() {
 						Uses:   uses(act),
 						Stderr: io.Discard,
 					}
-					_ = app.RunContext(context.Background(), []string{"app"})
+					_ = app.RunContext(context.Background(), "app")
 					Expect(act.ExecuteCallCount()).To(Equal(1))
 				})
 
@@ -1078,7 +1078,7 @@ var _ = Describe("Uses", func() {
 						},
 						Stderr: io.Discard,
 					}
-					_ = app.RunContext(context.Background(), []string{"app"})
+					_ = app.RunContext(context.Background(), "app")
 					Expect(act.ExecuteCallCount()).To(Equal(1))
 				})
 
@@ -1122,7 +1122,7 @@ var _ = Describe("Uses", func() {
 					},
 					Stderr: io.Discard,
 				}
-				_ = app.RunContext(context.Background(), []string{"app"})
+				_ = app.RunContext(context.Background(), "app")
 				Expect(act.ExecuteCallCount()).To(Equal(1))
 			},
 
@@ -1150,7 +1150,7 @@ var _ = Describe("Uses", func() {
 						},
 						Stderr: io.Discard,
 					}
-					_ = app.RunContext(context.Background(), []string{"app"})
+					_ = app.RunContext(context.Background(), "app")
 					Expect(act.ExecuteCallCount()).To(Equal(1))
 				})
 
@@ -1167,7 +1167,7 @@ var _ = Describe("Uses", func() {
 						},
 						Stderr: io.Discard,
 					}
-					_ = app.RunContext(context.Background(), []string{"app"})
+					_ = app.RunContext(context.Background(), "app")
 					Expect(act.ExecuteCallCount()).To(Equal(1))
 				})
 
@@ -1204,7 +1204,7 @@ var _ = Describe("Uses", func() {
 						},
 						Stderr: io.Discard,
 					}
-					_ = app.RunContext(context.Background(), []string{"app"})
+					_ = app.RunContext(context.Background(), "app")
 					Expect(act.ExecuteCallCount()).To(Equal(1))
 				})
 
@@ -1221,7 +1221,7 @@ var _ = Describe("Uses", func() {
 						},
 						Stderr: io.Discard,
 					}
-					_ = app.RunContext(context.Background(), []string{"app"})
+					_ = app.RunContext(context.Background(), "app")
 					Expect(act.ExecuteCallCount()).To(Equal(1))
 				})
 
@@ -1255,7 +1255,7 @@ var _ = Describe("Uses", func() {
 					},
 					Stderr: io.Discard,
 				}
-				_ = app.RunContext(context.Background(), []string{"app"})
+				_ = app.RunContext(context.Background(), "app")
 				Expect(act.ExecuteCallCount()).To(Equal(1))
 
 			},
@@ -1289,7 +1289,7 @@ var _ = Describe("Uses", func() {
 					Uses:   cli.RemoveArg(name),
 					Stderr: io.Discard,
 				}
-				err := app.RunContext(context.Background(), []string{"app"})
+				err := app.RunContext(context.Background(), "app")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actual).To(Equal(expected))
 			},
@@ -1326,7 +1326,7 @@ var _ = Describe("Uses", func() {
 					Uses:   cli.RemoveFlag(name),
 					Stderr: io.Discard,
 				}
-				err := app.RunContext(context.Background(), []string{"app"})
+				err := app.RunContext(context.Background(), "app")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actual).To(Equal(expected))
 			},
@@ -1353,7 +1353,7 @@ var _ = Describe("Action", func() {
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
-			_ = app.RunContext(context.Background(), args)
+			_ = app.RunContext(context.Background(), args...)
 			Expect(actual.CallCount).To(Equal(1))
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsAction).To(BeTrue())
@@ -1414,7 +1414,7 @@ var _ = Describe("ProvideValueInitializer", func() {
 			},
 		}
 		args, _ := cli.Split("app 0")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 
 		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 		Expect(setup.Before.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
@@ -1450,7 +1450,7 @@ var _ = Describe("ProvideValueInitializer", func() {
 			},
 		}
 		args, _ := cli.Split("app 0")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 
 		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 		Expect(setup.Before.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
@@ -1487,7 +1487,7 @@ var _ = Describe("ProvideValueInitializer", func() {
 			},
 		}
 		args, _ := cli.Split("app 0")
-		_ = app.RunContext(context.Background(), args)
+		_ = app.RunContext(context.Background(), args...)
 
 		Expect(setup.Uses.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 		Expect(setup.Before.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
@@ -1509,7 +1509,7 @@ var _ = Describe("Required", func() {
 			},
 			Action: func() {},
 		}
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("-f is required and must be specified"))
 	})
@@ -1527,7 +1527,7 @@ var _ = Describe("Exits", func() {
 			},
 			Action: func() {},
 		}
-		_ = app.RunContext(context.Background(), []string{"app", "-f"})
+		_ = app.RunContext(context.Background(), []string{"app", "-f"}...)
 
 		flag := app.Flags[0]
 		Expect(flag.Value).To(Equal(new(true)))
@@ -1549,7 +1549,7 @@ var _ = Describe("Trigger", func() {
 			},
 			Action: func() {},
 		}
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(fakeAct.ExecuteCallCount()).To(Equal(1))
 	})
 })
@@ -1567,7 +1567,7 @@ var _ = Describe("ValidatorFunc", func() {
 		}
 		args, _ := cli.Split("app 0")
 
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("validator err"))
 	})
@@ -1587,7 +1587,7 @@ var _ = Describe("ValidatorFunc", func() {
 		}
 		args, _ := cli.Split("app 0")
 
-		Expect(app.RunContext(context.Background(), args)).To(Succeed())
+		Expect(app.RunContext(context.Background(), args...)).To(Succeed())
 		Expect(actual).To(Equal(cli.BeforeTiming))
 	})
 
@@ -1615,7 +1615,7 @@ var _ = Describe("ValidatorFunc", func() {
 		}
 		args, _ := cli.Split("app -f S")
 
-		Expect(app.RunContext(context.Background(), args)).To(Succeed())
+		Expect(app.RunContext(context.Background(), args...)).To(Succeed())
 		Expect(events).To(Equal([]string{"validator", "timing"}))
 	})
 
@@ -1637,7 +1637,7 @@ var _ = Describe("ValidatorFunc", func() {
 		}
 		args, _ := cli.Split("app -f S")
 
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		// Each validator runs and the errors are aggregated
 		Expect(events).To(Equal([]string{"first", "second"}))
@@ -1655,7 +1655,7 @@ var _ = Describe("ValidatorFunc", func() {
 		}
 		args, _ := cli.Split("app -f S")
 
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(BeAssignableToTypeOf(&cli.InternalError{}))
 		Expect(err).To(MatchError(ContainSubstring("too late")))
 	})
@@ -1678,7 +1678,7 @@ var _ = Describe("ValidatorFunc", func() {
 		}
 		args, _ := cli.Split("app -f S")
 
-		Expect(app.RunContext(context.Background(), args)).To(Succeed())
+		Expect(app.RunContext(context.Background(), args...)).To(Succeed())
 		Expect(called).To(BeFalse())
 	})
 
@@ -1699,7 +1699,7 @@ var _ = Describe("ValidatorFunc", func() {
 			}
 			args, _ := cli.Split("app -f 420")
 
-			Expect(app.RunContext(context.Background(), args)).To(Succeed())
+			Expect(app.RunContext(context.Background(), args...)).To(Succeed())
 			Expect(actual).To(Equal(420))
 		})
 
@@ -1715,7 +1715,7 @@ var _ = Describe("ValidatorFunc", func() {
 			}
 			args, _ := cli.Split("app -f 420")
 
-			Expect(app.RunContext(context.Background(), args)).To(MatchError("validate err"))
+			Expect(app.RunContext(context.Background(), args...)).To(MatchError("validate err"))
 		})
 
 		It("detects an incompatible value as an internal error", func() {
@@ -1730,7 +1730,7 @@ var _ = Describe("ValidatorFunc", func() {
 			}
 			args, _ := cli.Split("app -f S")
 
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).To(BeAssignableToTypeOf(&cli.InternalError{}))
 			Expect(err).To(MatchError(ContainSubstring("value is not int")))
 		})
@@ -1754,7 +1754,7 @@ var _ = Describe("ValidatorFunc", func() {
 			}
 			args, _ := cli.Split("app -f a -f b")
 
-			Expect(app.RunContext(context.Background(), args)).To(Succeed())
+			Expect(app.RunContext(context.Background(), args...)).To(Succeed())
 			Expect(actual).To(Equal([]string{"a", "b"}))
 		})
 
@@ -1771,7 +1771,7 @@ var _ = Describe("ValidatorFunc", func() {
 			}
 			args, _ := cli.Split("app -f S")
 
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).To(BeAssignableToTypeOf(&cli.ParseError{}))
 			Expect(err.(*cli.ParseError).Name).To(Equal("-f"))
 		})
@@ -1824,7 +1824,7 @@ var _ = Describe("Before", func() {
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
-			_ = app.RunContext(context.Background(), args)
+			_ = app.RunContext(context.Background(), args...)
 			Expect(actual.CallCount).To(Equal(1))
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsBefore).To(BeTrue())
@@ -1925,7 +1925,7 @@ var _ = Describe("Do", func() {
 		}
 
 		args, _ := cli.Split("app r")
-		err = app.RunContext(context.Background(), args)
+		err = app.RunContext(context.Background(), args...)
 	})
 
 	// When Do is called on an action that has timing specified, it should
@@ -1979,7 +1979,7 @@ var _ = Describe("After", func() {
 			})
 			app := actualApp(handler)
 			args, _ := cli.Split(arguments)
-			_ = app.RunContext(context.Background(), args)
+			_ = app.RunContext(context.Background(), args...)
 			Expect(actual.CallCount).To(Equal(1))
 			Expect(actual.IsInitializing).To(BeFalse())
 			Expect(actual.IsAfter).To(BeTrue())
@@ -2244,7 +2244,7 @@ var _ = Describe("events", func() {
 				},
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(expected)
 		},
@@ -2386,7 +2386,7 @@ var _ = Describe("printing", func() {
 				Action: printf,
 				Stderr: &buffer,
 			}
-			_ = app.RunContext(context.Background(), []string{"app"})
+			_ = app.RunContext(context.Background(), "app")
 			Expect(buffer.String()).To(Equal("special case stderr\n"))
 		})
 
@@ -2404,7 +2404,7 @@ var _ = Describe("Error", func() {
 		app := &cli.App{
 			Action: act,
 		}
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 		Expect(err).To(expected)
 	},
 		Entry("Errorf", cli.Error("e"), MatchError("e")),
@@ -2452,7 +2452,7 @@ var _ = Describe("HandleSignal", Ordered, func() {
 			},
 		}
 
-		err = app.RunContext(context.Background(), []string{"app"})
+		err = app.RunContext(context.Background(), "app")
 
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("expected output error"))
@@ -2475,7 +2475,7 @@ var _ = Describe("Timeout", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("expected output error"))
@@ -2494,7 +2494,7 @@ var _ = Describe("Recover", func() {
 			})),
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError(`internal error, at "any" (after timing): panic in action`))
@@ -2516,7 +2516,7 @@ var _ = Describe("Recover", func() {
 			),
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError(`internal error, at "any" (after timing): panic in action`))
@@ -2537,7 +2537,7 @@ var _ = Describe("SuppressError", func() {
 			})),
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(called).To(BeTrue())
@@ -2560,7 +2560,7 @@ var _ = Describe("SuppressError", func() {
 			),
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(called).To(BeTrue())
@@ -2590,7 +2590,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Flags[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 		Expect(app.Args[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
@@ -2626,7 +2626,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Commands[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
 		Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
@@ -2673,7 +2673,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Flags[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 		Expect(app.Args[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
@@ -2699,7 +2699,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Flags[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
 		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
@@ -2715,7 +2715,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Args[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
 		Entry("NArg", cli.Prototype{NArg: -2}, Fields{"NArg": Equal(-2)}),
@@ -2733,7 +2733,7 @@ var _ = Describe("Prototype", func() {
 			Stderr: io.Discard,
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(app.Commands[0]).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
 		Entry("Aliases", cli.Prototype{Aliases: []string{"age"}}, Fields{"Aliases": Equal([]string{"r", "age"})}),
@@ -2753,7 +2753,7 @@ var _ = Describe("Prototype", func() {
 		}
 
 		args, _ := cli.Split("app -b d")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act1.ExecuteCallCount()).To(Equal(0))
 	})
@@ -2777,7 +2777,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 		args, _ := cli.Split("app -b")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		value := act.ExecuteArgsForCall(0).Value("")
 		Expect(value).To(BeTrue())
@@ -2794,7 +2794,7 @@ var _ = Describe("Prototype", func() {
 			Action: act,
 		}
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		value := act.ExecuteArgsForCall(0).Value(privateKey("o"))
 		Expect(value).To(Equal("s"))
@@ -2820,7 +2820,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app", "-f", "s"})
+		err := app.RunContext(context.Background(), []string{"app", "-f", "s"}...)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -2835,7 +2835,7 @@ var _ = Describe("Prototype", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(value).To(PointTo(MatchFields(IgnoreExtras, expected)))
 	},
 		Entry("Name", cli.Prototype{Name: "n"}, Fields{"Name": Equal("n")}),
@@ -2878,7 +2878,7 @@ var _ = Describe("Prototype", func() {
 				},
 			}
 
-			_ = app.RunContext(context.Background(), []string{"app"})
+			_ = app.RunContext(context.Background(), "app")
 			Expect(value).To(PointTo(MatchFields(IgnoreExtras, expected)))
 		})
 	},
@@ -2935,7 +2935,7 @@ var _ = Describe("Setup", func() {
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app"})
+		err := app.RunContext(context.Background(), "app")
 
 		Expect(err).To(HaveOccurred())
 		Expect(errors.Is(err, cli.ErrTimingTooLate)).To(BeTrue())
@@ -2956,7 +2956,7 @@ var _ = Describe("Setup", func() {
 			Action: act,
 		}
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		value := act.ExecuteArgsForCall(0).Value(privateKey("o"))
 		Expect(value).To(Equal("s"))
@@ -2974,7 +2974,7 @@ var _ = Describe("Setup", func() {
 			Action: act,
 		}
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		value := act.ExecuteArgsForCall(0).Value(privateKey("o"))
 		Expect(value).To(Equal("s"))
@@ -2997,7 +2997,7 @@ var _ = Describe("FlagSetup", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(called).To(BeTrue())
 	})
 
@@ -3015,7 +3015,7 @@ var _ = Describe("FlagSetup", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(called).To(BeFalse())
 	})
 })
@@ -3036,7 +3036,7 @@ var _ = Describe("ArgSetup", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(called).To(BeTrue())
 	})
 
@@ -3054,7 +3054,7 @@ var _ = Describe("ArgSetup", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(called).To(BeFalse())
 	})
 })
@@ -3076,7 +3076,7 @@ var _ = Describe("CommandSetup", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(called).To(BeTrue())
 	})
 
@@ -3096,7 +3096,7 @@ var _ = Describe("CommandSetup", func() {
 			},
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		Expect(called).To(BeTrue())
 		Expect(which).To(Equal("root"))
 	})
@@ -3141,7 +3141,7 @@ var _ = Describe("PreventSetup", func() {
 		app := create(thunk)
 
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 	},
@@ -3222,14 +3222,14 @@ var _ = Describe("HookAfter", func() {
 				},
 			},
 		}
-		err := app.RunContext(context.Background(), []string{"app", "-f", "_"})
+		err := app.RunContext(context.Background(), []string{"app", "-f", "_"}...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
 	})
 
 	DescribeTable("examples",
 		func(a *cli.App) {
-			err := a.RunContext(context.Background(), []string{"app", "-f", "_"})
+			err := a.RunContext(context.Background(), []string{"app", "-f", "_"}...)
 			cmd, _ := a.Command("")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cmd.Data).To(HaveKeyWithValue("f", "set"))
@@ -3280,7 +3280,7 @@ var _ = Describe("HookBefore", func() {
 				},
 			},
 		}
-		err := app.RunContext(context.Background(), []string{"app", "-f", "_"})
+		err := app.RunContext(context.Background(), []string{"app", "-f", "_"}...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(app.Flags[0].Data).To(HaveKeyWithValue("ok", "2"))
 	})
@@ -3301,7 +3301,7 @@ var _ = Describe("HookBefore", func() {
 				},
 			},
 		}
-		err := app.RunContext(context.Background(), []string{"app", "-f", "_"})
+		err := app.RunContext(context.Background(), []string{"app", "-f", "_"}...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(app.Flags[0].Value.(*haveArgs).Data).To(HaveKeyWithValue(any("ok"), "4"))
 	})
@@ -3325,7 +3325,7 @@ var _ = Describe("HookBefore", func() {
 				},
 			}
 
-			_ = app.RunContext(context.Background(), []string{"app", "-f", "_"})
+			_ = app.RunContext(context.Background(), []string{"app", "-f", "_"}...)
 			Expect(app.Flags[0].Value.(*haveArgs).LocalArgs()[0].Data).To(HaveKeyWithValue("ok", "4"))
 		},
 			Entry("direct name", "<z>"),
@@ -3337,7 +3337,7 @@ var _ = Describe("HookBefore", func() {
 
 	DescribeTable("errors",
 		func(a *cli.App) {
-			err := a.RunContext(context.Background(), []string{"app", "-f", "_"})
+			err := a.RunContext(context.Background(), []string{"app", "-f", "_"}...)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(cli.ErrTimingTooLate))
 		},
@@ -3589,7 +3589,7 @@ var _ = Describe("Accessory", func() {
 			},
 			Action: act,
 		}
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		dep, _ := flag.LookupData("DependentFlag")
@@ -3613,7 +3613,7 @@ var _ = Describe("Accessory", func() {
 			Action: act,
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("recursive"))
@@ -3632,7 +3632,7 @@ var _ = Describe("Accessory", func() {
 			Action: act,
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("name"))
@@ -3651,7 +3651,7 @@ var _ = Describe("Accessory", func() {
 			Action: act,
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Name).To(Equal("files-recursive"))
@@ -3670,7 +3670,7 @@ var _ = Describe("Accessory", func() {
 			Action: act,
 		}
 
-		_ = app.RunContext(context.Background(), []string{"app"})
+		_ = app.RunContext(context.Background(), "app")
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
 		Expect(flag.Description).To(Equal("my custom description"))
@@ -3690,7 +3690,7 @@ var _ = Describe("Accessory", func() {
 			Action: act,
 		}
 		Expect(func() {
-			_ = app.RunContext(context.Background(), []string{"app"})
+			_ = app.RunContext(context.Background(), "app")
 		}).NotTo(Panic())
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
@@ -3728,7 +3728,7 @@ var _ = Describe("Accessory0", func() {
 			Action: act,
 		}
 		Expect(func() {
-			_ = app.RunContext(context.Background(), []string{"app"})
+			_ = app.RunContext(context.Background(), "app")
 		}).NotTo(Panic())
 		flags := cli.FromContext(act.ExecuteArgsForCall(0)).Command().Flags
 		flag := flags[len(flags)-1]
@@ -3772,7 +3772,7 @@ var _ = Describe("EachOccurrence", func() {
 			},
 		}
 		args, _ := cli.Split("app -f h -f i")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(rawOccurrences).To(Equal([][]string{{"h"}, {"i"}}))
@@ -3798,7 +3798,7 @@ var _ = Describe("EachOccurrence", func() {
 			},
 		}
 		args, _ := cli.Split("app -f 1019 -f 1044")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(values).To(Equal([]uint64{1019, 1044}))
@@ -3824,7 +3824,7 @@ var _ = Describe("EachOccurrence", func() {
 			},
 		}
 		args, _ := cli.Split("app -f 0 -f 1 -f 1044")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(MatchError("error: 1"))
 		Expect(values).To(Equal([]uint64{0, 1}))
 	})
@@ -3846,7 +3846,7 @@ var _ = Describe("EachOccurrence", func() {
 			},
 		}
 		args, _ := cli.Split("app -f 2 -f 1 -f 1044")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*ptr).To(Equal(uint64(1044)))
@@ -3871,7 +3871,7 @@ var _ = Describe("EachOccurrence", func() {
 			},
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(callIndex).To(Equal(len(expected)))
 	},
@@ -3947,7 +3947,7 @@ var _ = Describe("Implies", func() {
 			Action: act,
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 
 		c := cli.FromContext(act.ExecuteArgsForCall(0))
@@ -3988,7 +3988,7 @@ var _ = Describe("Implies", func() {
 			},
 		}
 		args, _ := cli.Split("app --encryption-key=AAA")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
@@ -4016,7 +4016,7 @@ var _ = Describe("Enum", func() {
 			Action: func() {},
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(expected)
 	},
@@ -4088,7 +4088,7 @@ var _ = Describe("Requires", func() {
 			},
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(expected)
 	},
 		Entry("nominal", "app -a", MatchError("-a must be specified with -b, -c, and -d")),
@@ -4119,7 +4119,7 @@ var _ = Describe("Mutex", func() {
 				},
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).To(expected)
 
 		})
@@ -4146,7 +4146,7 @@ var _ = Describe("Mutex", func() {
 				},
 			}
 			args, _ := cli.Split(arguments)
-			err := app.RunContext(context.Background(), args)
+			err := app.RunContext(context.Background(), args...)
 			Expect(err).To(expected)
 		})
 
@@ -4169,7 +4169,7 @@ var _ = Describe("Mutex", func() {
 			},
 		}
 		args, _ := cli.Split("app -a")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
@@ -4190,7 +4190,7 @@ var _ = Describe("validation composition", func() {
 		args, _ := cli.Split("app -ac")
 
 		// Both rules are violated, and each is reported
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(MatchError("-a must be specified with -b\neither -a or -c can be used, but not both"))
 	})
 
@@ -4208,7 +4208,7 @@ var _ = Describe("validation composition", func() {
 		}
 		args, _ := cli.Split("app -a yes")
 
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).To(MatchError("unrecognized value \"yes\" for -a, expected `ok' or `no'\nvalidate err"))
 	})
 })
@@ -4259,7 +4259,7 @@ var _ = Describe("DependsOn", func() {
 			flagSpec{Name: "a", Uses: cli.DependsOn("b")},
 			flagSpec{Name: "b"},
 			flagSpec{Name: "c", Uses: cli.DependsOn("a")},
-		).RunContext(context.Background(), []string{"app"})
+		).RunContext(context.Background(), "app")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(orderedBy(before)).To(Equal([]string{"b", "a", "c"}))
@@ -4270,7 +4270,7 @@ var _ = Describe("DependsOn", func() {
 			flagSpec{Name: "a", Uses: cli.DependsOn("b")},
 			flagSpec{Name: "b"},
 			flagSpec{Name: "c", Uses: cli.DependsOn("a")},
-		).RunContext(context.Background(), []string{"app", "-a", "-b", "-c"})
+		).RunContext(context.Background(), []string{"app", "-a", "-b", "-c"}...)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(orderedBy(action)).To(Equal([]string{"b", "a", "c"}))
@@ -4287,7 +4287,7 @@ var _ = Describe("DependsOn", func() {
 			return cli.Do(c, hooked.makeAction(c.Name()))
 		}))
 
-		Expect(res.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(res.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 		Expect(hooked.called[0:2]).To(Equal([]string{"-b", "-a"}))
 	})
 
@@ -4296,7 +4296,7 @@ var _ = Describe("DependsOn", func() {
 			flagSpec{Name: "a", Options: cli.OrderFirst, Uses: cli.DependsOn("b")},
 			flagSpec{Name: "b"},
 			flagSpec{Name: "c"},
-		).RunContext(context.Background(), []string{"app"})
+		).RunContext(context.Background(), "app")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(orderedBy(before)).To(Equal([]string{"b", "a", "c"}))
@@ -4307,7 +4307,7 @@ var _ = Describe("DependsOn", func() {
 			flagSpec{Name: "a"},
 			flagSpec{Name: "b", Options: cli.OrderLast},
 			flagSpec{Name: "c", Uses: cli.DependsOn("b")},
-		).RunContext(context.Background(), []string{"app"})
+		).RunContext(context.Background(), "app")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(orderedBy(before)).To(Equal([]string{"a", "b", "c"}))
@@ -4318,7 +4318,7 @@ var _ = Describe("DependsOn", func() {
 			flagSpec{Name: "a", Uses: cli.Pipeline(cli.DependsOn("b"), cli.DependsOn("c"))},
 			flagSpec{Name: "b", Uses: cli.DependsOn("c")},
 			flagSpec{Name: "c"},
-		).RunContext(context.Background(), []string{"app"})
+		).RunContext(context.Background(), "app")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(orderedBy(before)).To(Equal([]string{"c", "b", "a"}))
@@ -4327,7 +4327,7 @@ var _ = Describe("DependsOn", func() {
 	It("allows the name of an alias", func() {
 		a := &cli.Flag{Name: "a", Value: cli.Bool(), Uses: cli.DependsOn("bee"), Before: before.makeAction("a")}
 		b := &cli.Flag{Name: "b", Aliases: []string{"bee"}, Value: cli.Bool(), Before: before.makeAction("b")}
-		err := (&cli.App{Name: "app", Flags: []*cli.Flag{a, b}}).RunContext(context.Background(), []string{"app"})
+		err := (&cli.App{Name: "app", Flags: []*cli.Flag{a, b}}).RunContext(context.Background(), "app")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(orderedBy(before)).To(Equal([]string{"b", "a"}))
@@ -4338,7 +4338,7 @@ var _ = Describe("DependsOn", func() {
 			flagSpec{Name: "a", Uses: cli.DependsOn("b")},
 			flagSpec{Name: "b"},
 		)
-		Expect(res.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(res.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 		Expect(res.Flags[0].Name).To(Equal("a"))
 		Expect(res.Flags[1].Name).To(Equal("b"))
 	})
@@ -4356,12 +4356,12 @@ var _ = Describe("DependsOn", func() {
 				},
 			},
 		}
-		Expect(res.RunContext(context.Background(), []string{"app", "sub"})).NotTo(HaveOccurred())
+		Expect(res.RunContext(context.Background(), []string{"app", "sub"}...)).NotTo(HaveOccurred())
 		Expect(orderedBy(before)).To(Equal([]string{"g", "a"}))
 	})
 
 	DescribeTable("errors", func(a *cli.App, expected types.GomegaMatcher) {
-		Expect(a.RunContext(context.Background(), []string{"app"})).To(expected)
+		Expect(a.RunContext(context.Background(), "app")).To(expected)
 	},
 		Entry("name of an arg",
 			&cli.App{
@@ -4415,7 +4415,7 @@ var _ = Describe("OrderFirst and OrderLast", func() {
 		}
 
 		app := &cli.App{Name: "app", Flags: flags}
-		Expect(app.RunContext(context.Background(), []string{"app"})).NotTo(HaveOccurred())
+		Expect(app.RunContext(context.Background(), "app")).NotTo(HaveOccurred())
 		Expect(tracker.called).To(Equal(expected))
 	},
 		Entry("none", [3]cli.Option{}, []string{"a", "b", "c"}),
@@ -4460,7 +4460,7 @@ var _ = Describe("Numeric", func() {
 		}
 
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(p).To(Equal(expected))
 	},
@@ -4491,7 +4491,7 @@ var _ = Describe("Transform", func() {
 			Action: func() {},
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(str).To(expected)
 	},
@@ -4542,7 +4542,7 @@ var _ = Describe("ValueTransform", func() {
 			Action: func() {},
 		}
 		args, _ := cli.Split(arguments)
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value).To(expected)
 	},
@@ -4596,7 +4596,7 @@ var _ = Describe("FromEnv", Ordered, func() {
 			Action: func() {},
 		}
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value).To(Equal(expected))
 	},
@@ -4622,7 +4622,7 @@ var _ = Describe("FromEnv", Ordered, func() {
 			Action: func() {},
 		}
 		args, _ := cli.Split("app")
-		err := app.RunContext(context.Background(), args)
+		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value).To(BeFalse())
 	})
@@ -4651,7 +4651,7 @@ var _ = Describe("FromFilePath", func() {
 		}
 
 		args, _ := cli.Split("app")
-		app.RunContext(context.Background(), args)
+		app.RunContext(context.Background(), args...)
 
 		Expect(actual).To(Equal("b contents"))
 		Expect(act.ExecuteCallCount()).To(Equal(1))
