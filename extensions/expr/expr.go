@@ -227,6 +227,13 @@ const (
 	ParseAllowInlineValues cli.Option = cli.ReservedOption1
 )
 
+var reservedOptions = cli.FeatureMap[cli.Option]{
+	ParseAllowInlineValues: cli.ActionFunc(func(c *cli.Context) error {
+		c.Arg().Value.(*Expression).parseInlineValues = true
+		return nil
+	}),
+}
+
 type exprsByCategory []*exprCategory
 
 type exprCategory struct {
@@ -304,14 +311,7 @@ func (e *Expression) Initializer() cli.Action {
 		Name:      "expression",
 		UsageText: "<expression>",
 		NArg:      cli.TakeRemaining,
-	}, func(c *cli.Context) {
-		// Remove the inline parsing options from *Arg if it is present
-		arg := c.Arg()
-		opts := arg.Options
-		e.parseInlineValues = (opts & ParseAllowInlineValues) == ParseAllowInlineValues
-		arg.Options &^= ParseAllowInlineValues
-
-	}, func(c *cli.Context) error {
+	}, cli.UseReservedOptions(reservedOptions), func(c *cli.Context) error {
 		return c.SetDescription(&expressionDescription{
 			exp:   e,
 			templ: c.Template("Expressions"),

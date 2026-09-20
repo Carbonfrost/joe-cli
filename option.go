@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -399,6 +400,31 @@ var (
 		DisableSynopsisCategories: "DISABLE_SYNOPSIS_CATEGORIES",
 	}
 )
+
+// UseReservedOptions specifies how to map reserved options.
+// This action is typically provided by extensions to unmap reserved options to their
+// actual internal actions. This function panics if any option in the map is not a reserved
+// option. For the target where it is applied, this action also automatically removes the
+// corresponding reserved option flags so that they are not present within core initialization,
+// which is a requirement of using reserved options. See the documentation in [Option].
+func UseReservedOptions(reserved FeatureMap[Option]) Action {
+	var sum Option
+	for key := range maps.Keys(reserved) {
+		if !key.IsReserved() {
+			panic(fmt.Errorf("not a reserved option %v", key))
+		}
+		sum |= key
+	}
+	return ActionFunc(func(c *Context) error {
+		target := c.target()
+		opts := target.options()
+		pipe := reserved.Pipeline(*opts)
+
+		// Clear the reserved options then run pipeline
+		*opts &^= sum
+		return c.Do(pipe)
+	})
+}
 
 // String provides a string representation of the Option
 func (o Option) String() string {

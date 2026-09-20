@@ -177,3 +177,71 @@ var _ = Describe("FeatureMap", func() {
 	})
 
 })
+
+var _ = Describe("UseReservedOptions", func() {
+
+	It("calls corresponding actions", func() {
+		var fnCalled bool
+		fn := cli.ActionFunc(func(c *cli.Context) error {
+			fnCalled = true
+			return nil
+		})
+
+		action := cli.UseReservedOptions(cli.FeatureMap[cli.Option]{
+			cli.ReservedOption1: fn,
+		})
+		f := &cli.Flag{
+			Options: cli.ReservedOption1,
+		}
+
+		cli.Initialized(f).Do(action)
+		Expect(fnCalled).To(BeTrue())
+		Expect(f.Options).To(Equal(cli.None))
+	})
+
+	It("calls corresponding composite actions", func() {
+		var fnCalled bool
+		fn2 := cli.ActionFunc(func(c *cli.Context) error {
+			fnCalled = true
+			return nil
+		})
+
+		action := cli.UseReservedOptions(cli.FeatureMap[cli.Option]{
+			cli.ReservedOption2 | cli.ReservedOption3: fn2,
+		})
+		f := &cli.Flag{
+			Options: cli.ReservedOption2 | cli.ReservedOption3,
+		}
+
+		cli.Initialized(f).Do(action)
+		Expect(fnCalled).To(BeTrue())
+		Expect(f.Options).To(Equal(cli.None))
+
+	})
+
+	It("clears reserved flags", func() {
+		action := cli.UseReservedOptions(cli.FeatureMap[cli.Option]{
+			cli.ReservedOption1: nil,
+		})
+		f := &cli.Flag{
+			Options: cli.ReservedOption1,
+		}
+		cli.Initialized(f).Do(action)
+
+		Expect(f.Options).To(Equal(cli.None))
+
+	})
+
+	It("clears composite reserved flags", func() {
+		action := cli.UseReservedOptions(cli.FeatureMap[cli.Option]{
+			cli.ReservedOption2 | cli.ReservedOption3: nil,
+		})
+		f := &cli.Flag{
+			Options: cli.ReservedOption2 | cli.ReservedOption3,
+		}
+		cli.Initialized(f).Do(action)
+
+		Expect(f.Options).To(Equal(cli.None))
+
+	})
+})
