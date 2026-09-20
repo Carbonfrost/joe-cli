@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.22.0 (September 19, 2026)
+
+### New Features
+
+* `ExternalCommand` (13fd1dbf)
+* `ValueHelpText` (4a01c67e)
+* `Expression` compiler (ba454bb3)
+* `UseReservedOptions` (cde6dc24)
+* `HandleOptionError` (74498696)
+* Prompt extension: initial interface (8bf14d74)
+* Expr expression: `NewEvaluator` (1645aec8)
+* Bind extension: `Getenv` (bd977606)
+
+### Bug fixes and improvements
+
+* Breaking change: Make `Run` and `RunContext` variadic to match os/exec (4368ae37)
+* `ValidatorFunc` composition; rework (1636e1ae)
+* Marshal extension: rename `Option` to `ConverterOption`; use `Option` as alias to codec (79a3b8a0)
+* Reserved options: add more, docs and tests (61eaac74)
+* `Option.IsReserved` helper (a7eb8d1c)
+* Add `Transform` accessor to Context (f9e73b69)
+* Chores:
+    * Update dependent versions (a9a79d5e)
+    * Modernize: error type assertions (899bc6d5)
+    * Help screen integration tests: synopsis category (7132e842)
+
+
 ## v0.21.1 (September 4, 2026)
 
 ### New Features
