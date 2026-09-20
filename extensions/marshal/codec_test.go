@@ -268,7 +268,7 @@ var _ = Describe("Dump", func() {
 
 		args, _ := cli.Split("app --output=toml,indent_size=2")
 		_ = app.RunContext(context.Background(), args...)
-		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n  t = 3\n\n"))
+		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n  t = 3\n"))
 	})
 
 	It("configures via context provider arg", func() {
@@ -295,7 +295,7 @@ var _ = Describe("Dump", func() {
 		args, _ := cli.Split("app --output-arg indent_size=4 --output=toml")
 		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n    t = 3\n\n"))
+		Expect(capture.String()).To(Equal("name = 'J'\nid = 234\n\n[[table]]\n    t = 3\n"))
 	})
 
 })
@@ -333,7 +333,7 @@ var _ = Describe("Dumper", func() {
 
 		args, _ := cli.Split("app --output=toml")
 		Expect(app.RunContext(context.Background(), args...)).NotTo(HaveOccurred())
-		Expect(capture.String()).To(Equal("name = 'J'\n\n"))
+		Expect(capture.String()).To(Equal("name = 'J'\n"))
 	})
 
 	It("always yields the value", func() {
@@ -403,7 +403,7 @@ var _ = Describe("Dumper", func() {
 
 		args, _ := cli.Split("app a b -print")
 		Expect(app.RunContext(context.Background(), args...)).NotTo(HaveOccurred())
-		Expect(capture.String()).To(Equal("\"a\"\n\n\"b\"\n\n"))
+		Expect(capture.String()).To(Equal("\"a\"\n\"b\"\n"))
 	})
 
 })

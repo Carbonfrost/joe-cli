@@ -297,7 +297,6 @@ func DumpContext(ctx context.Context, v ...any) error {
 		if err != nil {
 			return err
 		}
-		writer.Write([]byte("\n"))
 	}
 	return nil
 }
