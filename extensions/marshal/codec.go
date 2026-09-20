@@ -243,6 +243,7 @@ func (codecLookup) LookupProvider(name string) (provider.Detail, bool) {
 func ListCodecs() cli.Action {
 	return cli.Pipeline(
 		cli.At(cli.ActionTiming, requireRegistry()),
+		cli.Prototype{Name: "list-codecs"},
 		provider.ListProviders(CodecRegistry.Name),
 	)
 }

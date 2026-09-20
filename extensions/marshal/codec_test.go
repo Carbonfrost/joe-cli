@@ -186,8 +186,6 @@ var _ = Describe("ListCodecs", func() {
 			Stdout: &capture,
 			Flags: []*cli.Flag{
 				{
-					Name:  "list-codec",
-					Value: new(bool),
 					Uses:  marshal.ListCodecs(),
 				},
 			},
@@ -195,7 +193,7 @@ var _ = Describe("ListCodecs", func() {
 		}
 
 		// The list-codec flag uses cli.Exits, so the app exits after printing.
-		_ = app.RunContext(context.Background(), []string{"app", "--list-codec"}...)
+		_ = app.RunContext(context.Background(), "app", "--list-codecs")
 		lines := slices.Collect(strings.Lines(capture.String()))
 		Expect(lines).To(ConsistOf(
 			"json\tdisallow_unknown_fields=false, escape_html=false, indent_size=2, indent_style=space\n",
@@ -211,14 +209,12 @@ var _ = Describe("ListCodecs", func() {
 			Stdout: &capture,
 			Flags: []*cli.Flag{
 				{
-					Name:  "list-codec",
-					Value: new(bool),
 					Uses:  marshal.ListCodecs(),
 				},
 			},
 		}
 
-		err := app.RunContext(context.Background(), []string{"app", "--list-codec"}...)
+		err := app.RunContext(context.Background(), "app", "--list-codecs")
 		Expect(err).To(MatchError("no codecs registered"))
 	})
 })
