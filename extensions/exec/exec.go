@@ -131,10 +131,9 @@ func runExternal(c *cli.Context, path string, args []string) error {
 	cmd.Stderr = c.Stderr
 
 	if err := cmd.Run(); err != nil {
-		var exitErr *eexec.ExitError
 
 		// Wrap the exit error so that a redundant message is not printed.
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*eexec.ExitError](err); ok {
 			return exitStatus(exitErr.ExitCode())
 		}
 		return err
