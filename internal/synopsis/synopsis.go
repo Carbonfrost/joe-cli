@@ -112,6 +112,8 @@ const (
 	CategoryData = "_synopsisCategory"
 )
 
+const nonBreakingSpace = "\u00a0"
+
 func Choices(opts []string) string {
 	if len(opts) <= 1 {
 		return strings.Join(opts, "")
@@ -349,9 +351,11 @@ func (c *Command) WriteTo(sb styleWriter) {
 	}
 
 	for _, category := range categories {
-		sb.WriteString(" { ")
+		sb.WriteString(" {")
+		sb.WriteString(nonBreakingSpace)
 		sb.Styled(Underline, category+"-flags")
-		sb.WriteString(" }")
+		sb.WriteString(nonBreakingSpace)
+		sb.WriteString("}")
 	}
 
 	writeArgList(sb, c.RTL, c.RequiredArgs, c.OptionalArgs)

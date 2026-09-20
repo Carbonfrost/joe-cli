@@ -1,6 +1,6 @@
 usage: app {--help | --version} [-n] [--normal=STRING] [--config=FILE] [--verbose] [--count=COUNT]
            [--output=<destination>] [--level[=NUMBER]] [--tag=TAG] [--method=(get|post|patch)]
-           { http-flags } { tls-flags }
+           { http-flags } { tls-flags }
 
       --normal=STRING            
       --config=FILE              Loads configuration from FILEs

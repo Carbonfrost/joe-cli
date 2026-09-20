@@ -98,7 +98,7 @@ var _ = Describe("String", func() {
 					withCategory(synopsis.NewFlag("user-agent", nil, "", "", "", synopsis.OtherOptional), "http-client"),
 					synopsis.NewFlag("normal", nil, "", "", "", synopsis.Other),
 				}, nil, false),
-			Equal("**c** **--normal**=_VALUE_ { _http-client-flags_ }")),
+			Equal("**c** **--normal**=_VALUE_ {&nbsp;_http-client-flags_&nbsp;}")),
 
 		Entry("flags in a synopsis category when categories are not condensed",
 			func() synopsis.Stringer {
@@ -187,6 +187,12 @@ func withCategory(f *synopsis.Flag, category string) *synopsis.Flag {
 func withOptionalValue(f *synopsis.Flag, text string) *synopsis.Flag {
 	f.WithOptionalValue(text)
 	return f
+}
+
+func (w *Writer) WriteString(s string) (int, error) {
+	const nonBreakingSpace = "\u00a0"
+	s = strings.ReplaceAll(s, nonBreakingSpace, "&nbsp;")
+	return w.Builder.WriteString(s)
 }
 
 func (w *Writer) SetForeground(c ansiterm.Color) {
