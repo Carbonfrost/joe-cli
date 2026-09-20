@@ -20,8 +20,8 @@ type value interface {
 	valueSigil()
 }
 
-// Option specifies an option for creating marshal values
-type Option interface {
+// ConverterOption specifies an option for creating marshal values
+type ConverterOption interface {
 	apply(*converter)
 }
 
@@ -39,7 +39,7 @@ type optionFunc func(*converter)
 //   - *cli.Flag
 //
 // Any other type of value specified will panic
-func From(v any, opts ...Option) any {
+func From(v any, opts ...ConverterOption) any {
 	c := new(converter)
 	for _, o := range opts {
 		o.apply(c)
@@ -213,7 +213,7 @@ func (c *converter) newExprMarshal(v *expr.Expr) Expr {
 // WithPrivateData provides an option that causes private data, which is
 // any data added to a Data map whose key starts with understcore, is included
 // in the marshal representation of a target.  By default, private data is excluded
-func WithPrivateData() Option {
+func WithPrivateData() ConverterOption {
 	return optionFunc(func(c *converter) {
 		c.privateData = true
 	})

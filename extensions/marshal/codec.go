@@ -33,6 +33,9 @@ const (
 	maxCodec
 )
 
+// Option provides an option for the codec
+type Option = codec.Option
+
 var (
 	codecs = map[Codec]func() codec.Interface{
 		JSON: codec.NewJSONCodec,
