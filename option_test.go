@@ -57,6 +57,10 @@ var _ = Describe("Option", func() {
 			Entry("ReservedOption2", cli.ReservedOption2, "RESERVED_OPTION_2"),
 			Entry("ReservedOption3", cli.ReservedOption3, "RESERVED_OPTION_3"),
 			Entry("ReservedOption4", cli.ReservedOption4, "RESERVED_OPTION_4"),
+			Entry("ReservedOption5", cli.ReservedOption5, "RESERVED_OPTION_5"),
+			Entry("ReservedOption6", cli.ReservedOption6, "RESERVED_OPTION_6"),
+			Entry("ReservedOption7", cli.ReservedOption7, "RESERVED_OPTION_7"),
+			Entry("ReservedOption8", cli.ReservedOption8, "RESERVED_OPTION_8"),
 			Entry("compound", cli.No|cli.Hidden, "HIDDEN, NO"),
 		)
 
@@ -74,7 +78,7 @@ var _ = Describe("Option", func() {
 
 	var _ = Describe("reserved options", func() {
 
-		DescribeTableSubtree("errors", func(o cli.Option) {
+		DescribeTableSubtree("examples", func(o cli.Option) {
 
 			It("applies to command", func() {
 				app := &cli.App{
@@ -114,7 +118,18 @@ var _ = Describe("Option", func() {
 			Entry("ReservedOption2", cli.ReservedOption2),
 			Entry("ReservedOption3", cli.ReservedOption3),
 			Entry("ReservedOption4", cli.ReservedOption4),
+			Entry("ReservedOption5", cli.ReservedOption5),
+			Entry("ReservedOption6", cli.ReservedOption6),
+			Entry("ReservedOption7", cli.ReservedOption7),
+			Entry("ReservedOption8", cli.ReservedOption8),
 		)
+
+		Describe("IsReserved", func() {
+			It("applies to composite values", func() {
+				o := cli.ReservedOption1 | cli.ReservedOption2
+				Expect(o.IsReserved()).To(BeTrue())
+			})
+		})
 	})
 })
 

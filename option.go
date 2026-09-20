@@ -247,43 +247,36 @@ const (
 	// OrderLast, OrderFirst wins.
 	OrderLast
 
-	// ReservedOption1 provides an option which is reserved. This value
-	// can be used within extensions to denote additional options that are
-	// applied within the scope of the extension. The extension or client must remove the
-	// reserved option within its handler if it has significance. In the main package, this
-	// option cannot be present on any target.
-	ReservedOption1
-
-	// ReservedOption2 provides an option which is reserved. This value
-	// can be used within extensions to denote additional options that are
-	// applied within the scope of the extension. The extension or client must remove the
-	// reserved option within its handler if it has significance. In the main package, this
-	// option cannot be present on any target.
-	ReservedOption2
-
-	// ReservedOption3 provides an option which is reserved. This value
-	// can be used within extensions to denote additional options that are
-	// applied within the scope of the extension. The extension or client must remove the
-	// reserved option within its handler if it has significance. In the main package, this
-	// option cannot be present on any target.
-	ReservedOption3
-
-	// ReservedOption4 provides an option which is reserved. This value
-	// can be used within extensions to denote additional options that are
-	// applied within the scope of the extension. The extension or client must remove the
-	// reserved option within its handler if it has significance. In the main package, this
-	// option cannot be present on any target.
-	ReservedOption4
-
-	maxOption
-
-	reservedOptionMask = ReservedOption1 | ReservedOption2 | ReservedOption3 | ReservedOption4
+	maxNonReservedOption = OrderLast
 
 	// None represents no options
 	None Option = 0
 
 	// Sorted causes flags and sub-commands to be sorted on the help screen generated for the command or app.
 	Sorted = SortedExprs | SortedFlags | SortedCommands
+)
+
+// Reserved options. These values
+// can be used within extensions to denote additional options that are
+// applied within the scope of the extension. The extension or client must remove each
+// reserved option within its handler if it has significance. In the main package, this
+// option cannot be present on any target.
+const (
+	_ = Option(maxNonReservedOption << iota)
+
+	ReservedOption1
+	ReservedOption2
+	ReservedOption3
+	ReservedOption4
+	ReservedOption5
+	ReservedOption6
+	ReservedOption7
+	ReservedOption8
+
+	maxOption
+
+	reservedOptionMask = ReservedOption1 | ReservedOption2 | ReservedOption3 | ReservedOption4 |
+		ReservedOption5 | ReservedOption6 | ReservedOption7 | ReservedOption8
 )
 
 const (
@@ -356,6 +349,10 @@ var (
 		ReservedOption2:         ActionFunc(nil),
 		ReservedOption3:         ActionFunc(nil),
 		ReservedOption4:         ActionFunc(nil),
+		ReservedOption5:         ActionFunc(nil),
+		ReservedOption6:         ActionFunc(nil),
+		ReservedOption7:         ActionFunc(nil),
+		ReservedOption8:         ActionFunc(nil),
 
 		DisableSynopsisCategories: setInternalFlag(internalFlagDisableSynopsisCategories),
 	}
@@ -394,6 +391,10 @@ var (
 		ReservedOption2:         "RESERVED_OPTION_2",
 		ReservedOption3:         "RESERVED_OPTION_3",
 		ReservedOption4:         "RESERVED_OPTION_4",
+		ReservedOption5:         "RESERVED_OPTION_5",
+		ReservedOption6:         "RESERVED_OPTION_6",
+		ReservedOption7:         "RESERVED_OPTION_7",
+		ReservedOption8:         "RESERVED_OPTION_8",
 
 		DisableSynopsisCategories: "DISABLE_SYNOPSIS_CATEGORIES",
 	}
