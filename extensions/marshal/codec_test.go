@@ -245,6 +245,26 @@ var _ = Describe("Dump", func() {
 		Expect(capture.String()).To(MatchJSON(`{"F": "O", "L": "D"}`))
 	})
 
+	It("prints the value using JSON using defaults from registry", func() {
+		var capture bytes.Buffer
+		app := &cli.App{
+			Name:   "app",
+			Stdout: &capture,
+			Uses:   marshal.NewCodecProvider(),
+			Action: marshal.Dump(
+				struct {
+					F string
+					L string
+				}{F: "O", L: "D"},
+			),
+		}
+
+		// The list-codec flag uses cli.Exits, so the app exits after printing.
+		err := app.RunContext(context.Background(), "app")
+		Expect(err).NotTo((HaveOccurred()))
+		Expect(capture.String()).To(Equal("{\n  \"F\": \"O\",\n  \"L\": \"D\"\n}\n"))
+	})
+
 	It("configures via context provider", func() {
 		var capture bytes.Buffer
 		app := &cli.App{

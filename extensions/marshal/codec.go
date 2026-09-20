@@ -118,7 +118,12 @@ func (c *CodecProvider) impl(dir codecDir) codec.Interface {
 		result = c.OutputCodec()
 	}
 	if result == nil {
-		return codec.NewJSONCodec()
+		// Get the JSON codec from the default registry
+		out, err := CodecRegistry.New(JSON.Name(), nil)
+		if err != nil {
+			return codec.NewJSONCodec()
+		}
+		return out.(codec.Interface)
 	}
 	return result
 }
@@ -452,9 +457,14 @@ func (c Codec) New(opts ...codec.Option) (codec.Interface, error) {
 	return codec.WithOptions(codecs[c](), opts...)
 }
 
+// Name provides the name of the codec
+func (c Codec) Name() string {
+	return codecNames[c]
+}
+
 // String provides the name of the codec
 func (c Codec) String() string {
-	return codecNames[c]
+	return c.Name()
 }
 
 func (c Codec) supportsEscapeHTML() bool {
