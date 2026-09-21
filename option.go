@@ -751,6 +751,7 @@ func noOption(c *Context) error {
 		Category:  f.Category,
 		Value:     Bool(),
 		Options:   Hidden,
+		Uses:      SynopsisCategory(syn.Category),
 		Before: func(c *Context) error {
 			if c.Seen("") {
 				return Do(c.ContextOf(f), Trigger)

@@ -21,6 +21,7 @@ import (
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	joeclifakes "github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
+	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -393,13 +394,15 @@ var _ = Describe("timings", func() {
 				flagAfter = new(joeclifakes.FakeAction)
 				flags = []*cli.Flag{
 					{
-						Name:    "flag",
-						Aliases: []string{"f"},
-						Options: cli.No,
-						Value:   &initial,
-						Action:  flagAct,
-						Before:  flagBefore,
-						After:   flagAfter,
+						Name:     "flag",
+						Aliases:  []string{"f"},
+						Options:  cli.No,
+						Value:    &initial,
+						Action:   flagAct,
+						Before:   flagBefore,
+						After:    flagAfter,
+						Category: "matching-category",
+						Uses:     cli.SynopsisCategory("synopsis-category"),
 					},
 				}
 				arguments = []string{"app", "--no-flag"}
@@ -413,6 +416,10 @@ var _ = Describe("timings", func() {
 			It("creates secondary flag", func() {
 				s, _ := captured.LookupFlag("no-flag")
 				Expect(s.Name).To(Equal("no-flag"))
+				Expect(s.Category).To(Equal("matching-category"))
+
+				data, _ := s.LookupData(synopsis.CategoryData)
+				Expect(data).To(Equal("synopsis-category"))
 			})
 
 			It("sets custom synopsis on original flag", func() {

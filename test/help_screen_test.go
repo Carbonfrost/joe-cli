@@ -110,6 +110,7 @@ var _ = Describe("help screen", HelpScreen, func() {
 					Name:     "read-timeout",
 					HelpText: "Maximum {DURATION} to read the response",
 					Uses:     cli.SynopsisCategory("http"),
+					Options:  cli.No,
 				},
 				{
 					Name:     "cert",

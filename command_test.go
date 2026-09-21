@@ -573,10 +573,17 @@ var _ = Describe("Command", func() {
 	})
 
 	Describe("Synopsis", func() {
+
+		var normalizeWS = func(s string) string {
+			const nonBreakingSpace = "\u00a0"
+			return strings.ReplaceAll(s, nonBreakingSpace, "&nbsp;")
+		}
 		DescribeTable("examples",
 			func(cmd *cli.Command, expected string) {
 				cli.Initialized(cmd)
-				Expect(cmd.Synopsis()).To(Equal(expected))
+
+				// Normalize strings so that we can visualize non-breaking spaces
+				Expect(cmd.Synopsis()).To(WithTransform(normalizeWS, Equal(normalizeWS(expected))))
 			},
 			Entry(
 				"combine and sort boolean short flags",
@@ -661,7 +668,7 @@ var _ = Describe("Command", func() {
 					},
 					Name: "cmd",
 				},
-				"cmd [-t] { http-client-flags }",
+				"cmd [-t] {&nbsp;http-client-flags&nbsp;}",
 			),
 			Entry(
 				"synopsis categories are sorted and listed last",
@@ -673,7 +680,7 @@ var _ = Describe("Command", func() {
 					},
 					Name: "cmd",
 				},
-				"cmd [--tan=STRING] { diagnostics-flags } { http-client-flags }",
+				"cmd [--tan=STRING] {&nbsp;diagnostics-flags&nbsp;} {&nbsp;http-client-flags&nbsp;}",
 			),
 			Entry(
 				"hidden flags don't contribute a synopsis category",
