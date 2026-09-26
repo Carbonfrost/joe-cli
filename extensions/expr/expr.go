@@ -128,7 +128,9 @@ type Expr struct {
 
 	// Evaluate provides the evaluation behavior for the expression.  The value should
 	// implement Evaluator or support runtime conversion to that interface via
-	// the rules provided by the cli.EvaluatorOf function.
+	// the rules provided by the cli.EvaluatorOf function. If the evaluator is also a
+	// [cli.Action] or implements the method Initializer() cli.Action as a convention, then
+	// the action will be invoked during the initialization of the Expression.
 	Evaluate any
 
 	// Before executes before the expression is evaluated.  Refer to cli.Action about the correct
@@ -331,10 +333,7 @@ func (e *Expression) Initializer() cli.Action {
 			// As a special case, the evaluator can implement Action
 			// and be treated as part of the initialization pipeline.
 			// (One case of this is in bind.Evaluator)
-			var evalAsAction cli.Action
-			if e, ok := sub.Evaluate.(cli.Action); ok {
-				evalAsAction = e
-			}
+			evalAsAction := initializerFromExpr(sub)
 
 			_ = c.ProvideValueInitializer(sub, sub.Name, cli.Setup{
 				Uses:   cli.Pipeline(sub.Uses, evalAsAction, sub.Options),
@@ -381,6 +380,16 @@ func (e *Expression) Initializer() cli.Action {
 
 		return
 	})))
+}
+
+func initializerFromExpr(sub *Expr) cli.Action {
+	if e, ok := sub.Evaluate.(cli.Action); ok {
+		return e
+	}
+	if e, ok := sub.Evaluate.(interface{ Initializer() Action }); ok {
+		return e.Initializer()
+	}
+	return nil
 }
 
 func (e *expressionDescription) SortUsage() {

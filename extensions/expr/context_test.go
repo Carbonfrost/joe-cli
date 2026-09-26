@@ -14,6 +14,34 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("FromContext", func() {
+
+	DescribeTableSubtree("examples", func(where, name string) {
+
+		It("obtains the expression", func() {
+			var actual *expr.Expression
+			act := func(c context.Context) {
+				actual = expr.FromContext(c, name)
+			}
+			expr := &expr.Expression{}
+			app := &cli.App{
+				Name: "app",
+				Args: []*cli.Arg{
+					{Name: "e", Value: expr},
+				},
+				Uses: cli.HookBefore(where, cli.ActionOf(act)),
+			}
+
+			_ = app.RunContext(context.Background(), "app", "a")
+			Expect(actual).To(BeIdenticalTo(expr))
+		})
+	},
+		Entry("command nominal reference", "app", "e"),
+		Entry("command implied reference", "app", ""),
+		Entry("arg itself", "app <e>", ""),
+	)
+})
+
 var _ = Describe("SetEvaluator", func() {
 
 	It("sets the evaluator", func() {

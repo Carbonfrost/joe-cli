@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,14 +10,41 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 )
 
-// FromContext obtains the expression from the context
-func FromContext(c context.Context, name string) *Expression {
-	return c.Value(name).(*Expression)
+// Action represents the building block of the various actions that
+// the expr extension supports
+type Action = cli.Action
+
+// FromContext obtains the expression from the context.
+// When nameopt is not specified or is the empty string, then the expression
+// from the current arg or apparent from one of the args in the current command
+// is returned.
+func FromContext(c context.Context, nameopt ...string) *Expression {
+	if len(nameopt) == 0 || nameopt[0] == "" {
+		ctx := cli.FromContext(c)
+		if ctx.IsCommand() {
+			for _, arg := range ctx.LocalArgs() {
+				e := exprFromArg(arg)
+				if e != nil {
+					return e
+				}
+			}
+		}
+		return exprFromArg(ctx.Arg())
+	}
+	return c.Value(nameopt[0]).(*Expression)
+}
+
+func exprFromArg(a *cli.Arg) *Expression {
+	if a == nil {
+		return nil
+	}
+	result, _ := a.Value.(*Expression)
+	return result
 }
 
 // SetEvaluator provides an action used in the Uses pipeline of the Expr
 // which updates its evaluator
-func SetEvaluator(e Evaluator) cli.Action {
+func SetEvaluator(e Evaluator) Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
 		c.Target().(*Expr).Evaluate = e
 		return nil
@@ -25,7 +52,7 @@ func SetEvaluator(e Evaluator) cli.Action {
 }
 
 // AddExpr will add an expression operator to the containing Expression
-func AddExpr(e *Expr) cli.Action {
+func AddExpr(e *Expr) Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
 		return updateExprs(c, func(ee []*Expr) []*Expr {
 			return append(ee, e)
@@ -34,7 +61,7 @@ func AddExpr(e *Expr) cli.Action {
 }
 
 // AddExprs will add multiple expression operators to the containing Expression
-func AddExprs(exprs ...*Expr) cli.Action {
+func AddExprs(exprs ...*Expr) Action {
 	return cli.ActionFunc(func(c *cli.Context) error {
 		return updateExprs(c, func(ee []*Expr) []*Expr {
 			return append(ee, exprs...)

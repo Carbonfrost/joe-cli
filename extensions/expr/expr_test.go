@@ -494,6 +494,37 @@ var _ = Describe("Expr", func() {
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 
+	It("retrieves evaluator Initializer via convention", func() {
+		evaluatorWithAction := new(evaluatorInitz)
+		act := new(joeclifakes.FakeAction)
+		evaluatorWithAction.initializer = act
+
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Name: "f",
+					NArg: 0,
+				},
+				{
+					Name: "expression",
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{
+								Name:     "expr",
+								Args:     cli.Args("f", new(bool)),
+								Evaluate: evaluatorWithAction,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		_, _ = app.Initialize(context.Background())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+	})
+
 	Describe("Evaluate", func() {
 		var (
 			act *exprfakes.FakeEvaluator
@@ -1803,3 +1834,12 @@ var _ = Describe("EvaluatorOf", func() {
 		)
 	})
 })
+
+type evaluatorInitz struct {
+	expr.Evaluator
+	initializer cli.Action
+}
+
+func (e evaluatorInitz) Initializer() cli.Action {
+	return e.initializer
+}
