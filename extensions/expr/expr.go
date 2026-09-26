@@ -188,7 +188,6 @@ type Expression struct {
 // a binding occurs when an expression is evaluated multiple times.
 type BindingEvaluator interface {
 	Evaluator
-	cli.Lookup
 
 	// Expr retrieves the expression operator if it is available
 	Expr() *Expr
@@ -241,6 +240,28 @@ const (
 	// ordinary expression names shouldn't use uppercase names and the equal sign
 	// is a common delimiter in arguments.
 	ParseAllowInlineValues cli.Option = cli.ReservedOption1
+)
+
+// Operator provides an operator in the small predicate expression language.
+// Though this implements BindingEvaluator, it is only meant as a placeholder for which a Compiler
+// must interpret. Indeed, the default Compile function panics when they are
+// present.
+type Operator rune
+
+// Evaluate always returns nil. Operators are BindingEvaluators but are typically replaced
+// by the Compiler
+func (Operator) Evaluate(context.Context, any, func(any) error) error { return nil }
+
+// Expr always returns nil.
+func (Operator) Expr() *Expr { return nil }
+
+// Operators that can be parsed into expressions. Unlike other exprs, these
+// are typically symbols. Indeed, the underlying type of this is rune which
+// represents their common representation.
+const (
+	LParen Operator = '('
+	RParen Operator = ')'
+	Not    Operator = '!'
 )
 
 var reservedOptions = cli.FeatureMap[cli.Option]{
@@ -655,6 +676,7 @@ func (i Invariant) Initializer() cli.Action {
 // the next one in the sequence, and the last one yields to the yielder which is
 // passed to the resulting evaluator's Evaluate method.
 func Compile(items []BindingEvaluator) Evaluator {
+	mustHaveNoOperators(items)
 	items = slices.Clone(items)
 
 	return evaluatorFunc(func(ctx context.Context, v any, yield func(any) error) error {
@@ -675,6 +697,14 @@ func Compile(items []BindingEvaluator) Evaluator {
 
 		return yielderThunk(0)(v)
 	})
+}
+
+func mustHaveNoOperators(items []BindingEvaluator) {
+	for _, item := range items {
+		if _, ok := item.(Operator); ok {
+			panic("default Compile function does not support operators")
+		}
+	}
 }
 
 // ComposeEvaluator produces an evaluator which considers each evaluator in

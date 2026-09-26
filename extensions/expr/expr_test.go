@@ -1392,6 +1392,12 @@ var _ = Describe("Compile", func() {
 		Expect(pipe.Evaluate(context.Background(), "in", nil)).To(MatchError("an error"))
 		Expect(captured.String()).To(BeEmpty())
 	})
+
+	It("panics when an operator is present", func() {
+		Expect(func() {
+			expr.Compile([]expr.BindingEvaluator{expr.Not})
+		}).To(Panic())
+	})
 })
 
 var _ = Describe("Expression", func() {
