@@ -1591,6 +1591,45 @@ var _ = Describe("EvaluateParallel", func() {
 	})
 })
 
+var _ = Describe("Invariant", func() {
+
+	DescribeTableSubtree("examples", func(i expr.Invariant, callCount int, label string) {
+
+		It("returns the corresponding value", func() {
+			ev := expr.EvaluatorOf(i)
+			yield := new(exprfakes.FakeYielder)
+
+			err := ev.Evaluate(&cli.Context{}, nil, yield.Spy)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(yield.CallCount()).To(Equal(callCount))
+			Expect(ev).To(BeAssignableToTypeOf(expr.Invariant(true)))
+		})
+
+		It("generates expected expr from Prototype", func() {
+			e := &expr.Expr{Evaluate: i}
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "e",
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{e},
+						},
+					},
+				},
+			}
+
+			app.Initialize(context.Background())
+
+			Expect(e.HelpText).To(Equal("Always " + label))
+			Expect(e.Name).To(Equal(label))
+		})
+
+	},
+		Entry("true", expr.AlwaysTrue, 1, "true"),
+		Entry("false", expr.AlwaysFalse, 0, "false"),
+	)
+})
+
 var _ = Describe("Predicate", func() {
 
 	It("yields if true", func() {

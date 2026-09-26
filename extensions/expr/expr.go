@@ -636,6 +636,19 @@ func (i Invariant) Evaluate(_ context.Context, v any, y func(any) error) error {
 	return nil
 }
 
+func (i Invariant) Initializer() cli.Action {
+	if i {
+		return &cli.Prototype{
+			Name:     "true",
+			HelpText: "Always true",
+		}
+	}
+	return &cli.Prototype{
+		Name:     "false",
+		HelpText: "Always false",
+	}
+}
+
 // Compile provides the default compiler for an expression, which converts the
 // sequence of binding evaluators into the evaluator that implements the
 // evaluation pipeline.  Each binding evaluator yields the values it produces to
