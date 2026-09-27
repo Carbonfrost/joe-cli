@@ -65,6 +65,7 @@ import (
 	"unicode"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/internal/reservedoptions"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	"golang.org/x/sync/errgroup"
@@ -239,7 +240,7 @@ const (
 	// be parsed. These rules are designed to avoid ambiguity because in general,
 	// ordinary expression names shouldn't use uppercase names and the equal sign
 	// is a common delimiter in arguments.
-	ParseAllowInlineValues cli.Option = cli.ReservedOption1
+	ParseAllowInlineValues cli.Option = reservedoptions.ExprParseAllowInlineValues
 )
 
 // Operator provides an operator in the small predicate expression language.
