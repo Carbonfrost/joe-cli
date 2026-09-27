@@ -938,6 +938,6 @@ func renderScreen(app *cli.App, args string) string {
 	defer disableConsoleColor()()
 
 	arguments, _ := cli.Split(args)
-	buffer, _ := clitest.Command(app, arguments...).CombinedOutput()
+	buffer, _ := clitest.Command(app, arguments[0], arguments[1:]...).CombinedOutput()
 	return string(buffer)
 }
