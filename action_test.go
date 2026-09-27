@@ -2863,10 +2863,40 @@ var _ = Describe("Prototype", func() {
 
 		It("does not copy empty values to target", func() {
 
-			// Value target technically can't query for the state of underlying values, so
-			// it should never try to copy empty string over to it
-
 			var proto cli.Prototype
+			value := &protoValue{
+				Name:        "n",
+				Description: "d",
+				Category:    "f",
+				HelpText:    "new help text",
+				ManualText:  "explain",
+				UsageText:   "nom",
+				DefaultText: "d",
+			}
+			app := &cli.App{
+				Name: "any",
+				Args: []*cli.Arg{
+					{
+						Uses: cli.ProvideValueInitializer(value, "v", proto),
+					},
+				},
+			}
+
+			_ = app.RunContext(context.Background(), "app")
+			Expect(value).To(PointTo(MatchFields(IgnoreExtras, expected)))
+		})
+
+		It("does not overwrite existing values to target via field convention", func() {
+
+			proto := cli.Prototype{
+				Name:        "clobberin' time",
+				Description: "clobberin' time",
+				Category:    "clobberin' time",
+				HelpText:    "clobberin' time",
+				ManualText:  "clobberin' time",
+				UsageText:   "clobberin' time",
+				DefaultText: "clobberin' time",
+			}
 			value := &protoValue{
 				Name:        "n",
 				Description: "d",

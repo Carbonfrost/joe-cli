@@ -58,6 +58,32 @@ var _ = Describe("Expr", func() {
 
 	Describe("prototype support", func() {
 
+		It("copies the Name", func() {
+			app := &cli.App{
+				Args: []*cli.Arg{
+					{
+						Name: "start",
+						NArg: -2,
+					},
+					{
+						Name: "e",
+						Value: &expr.Expression{
+							Exprs: []*expr.Expr{
+								{
+									Uses: cli.Prototype{Name: "n"},
+								},
+							},
+						},
+					},
+				},
+			}
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			expr := app.Args[1].Value.(*expr.Expression).Exprs[0]
+			Expect(expr).To(PointTo(MatchFields(IgnoreExtras, Fields{"Name": Equal("n")})))
+		})
+
 		DescribeTable("examples", func(proto cli.Prototype, expected Fields) {
 			app := &cli.App{
 				Args: []*cli.Arg{
@@ -83,11 +109,9 @@ var _ = Describe("Expr", func() {
 			_, err := app.Initialize(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 
-			_ = app.RunContext(context.Background(), "app")
 			expr := app.Args[1].Value.(*expr.Expression).Exprs[0]
 			Expect(expr).To(PointTo(MatchFields(IgnoreExtras, expected)))
 		},
-			Entry("Name", cli.Prototype{Name: "n"}, Fields{"Name": Equal("n")}),
 			Entry("Description", cli.Prototype{Description: "d"}, Fields{"Description": Equal("d")}),
 			Entry("Category", cli.Prototype{Category: "f"}, Fields{"Category": Equal("f")}),
 			Entry("HelpText", cli.Prototype{HelpText: "new help text"}, Fields{"HelpText": Equal("new help text")}),

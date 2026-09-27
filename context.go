@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -2218,6 +2219,34 @@ func (v *valueTarget) contextName() string {
 	return "<-" + v.name + ">"
 }
 
+func (v *valueTarget) builtin[T any](fn func(in T) string) string {
+	if convention, ok := v.v.(T); ok {
+		return fn(convention)
+	}
+
+	// Try reflection over the corresponding field
+	value := reflect.ValueOf(v.v)
+	if value.Kind() == reflect.Pointer {
+		value = value.Elem()
+	}
+
+	if value.Kind() == reflect.Struct {
+		name := reflect.TypeFor[T]().Method(0).Name
+		result := value.FieldByName(name).Interface()
+		if str, ok := result.(string); ok {
+			return str
+		}
+		return ""
+	}
+	return ""
+}
+
+func (v *valueTarget) isNameSet() bool {
+	return v.builtin(func(in interface{ Name() string }) string {
+		return in.Name()
+	}) != ""
+}
+
 func (v *valueTarget) setDescription(arg any) {
 	switch val := v.v.(type) {
 	case interface{ SetDescription(string) }:
@@ -2278,27 +2307,39 @@ func (v *valueTarget) setCompletion(c Completion) {
 }
 
 func (v *valueTarget) description() any {
-	return nil
+	return v.builtin(func(in interface{ Description() string }) string {
+		return in.Description()
+	})
 }
 
 func (v *valueTarget) helpText() string {
-	return ""
+	return v.builtin(func(in interface{ HelpText() string }) string {
+		return in.HelpText()
+	})
 }
 
 func (v *valueTarget) usageText() string {
-	return ""
+	return v.builtin(func(in interface{ UsageText() string }) string {
+		return in.UsageText()
+	})
 }
 
 func (v *valueTarget) manualText() string {
-	return ""
+	return v.builtin(func(in interface{ ManualText() string }) string {
+		return in.ManualText()
+	})
 }
 
 func (v *valueTarget) category() string {
-	return ""
+	return v.builtin(func(in interface{ Category() string }) string {
+		return in.Category()
+	})
 }
 
 func (v *valueTarget) defaultText() string {
-	return ""
+	return v.builtin(func(in interface{ DefaultText() string }) string {
+		return in.DefaultText()
+	})
 }
 
 func (v *valueTarget) data() map[string]any {

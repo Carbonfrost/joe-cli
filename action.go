@@ -100,10 +100,15 @@ type Setup struct {
 	After  any
 }
 
-// Prototype implements an action which sets up a flag, arg, or command.  The
+// Prototype implements an action which sets up a flag, arg, command, or value target.  The
 // prototype copies its values to the corresponding target if they have not
 // already been set.  Irrelevant fields are not set and do not cause errors; for example,
 // setting FilePath, Value, and EnvVars, for a Command prototype has no effect.
+// When prototypes are applied to generic value targets, the value must implement
+// conventional methods to control some of the setters (see ProvideValueInitializer).
+// To query the existing state of the values on the value target, the value may
+// implement fields or methods with the corresponding names (e.g. the method
+// Name() string can get the name)
 //
 // Some values are merged rather than overwritten:
 // Data, Options, EnvVars, and Aliases.
@@ -2134,25 +2139,25 @@ func (p *Prototype) copyToValue(c *Context) error {
 
 	// Can't actually query valueTarget's underlying values (they are always
 	// empty), so only apply non-empty values FROM the prototype
-	if p.Name != "" {
+	if p.Name != "" && !o.isNameSet() {
 		o.setName(p.Name)
 	}
-	if p.Category != "" {
+	if p.Category != "" && o.category() == "" {
 		o.setCategory(p.Category)
 	}
-	if p.HelpText != "" {
+	if p.HelpText != "" && o.helpText() == "" {
 		o.setHelpText(p.HelpText)
 	}
-	if p.ManualText != "" {
+	if p.ManualText != "" && o.manualText() == "" {
 		o.setManualText(p.ManualText)
 	}
-	if p.UsageText != "" {
+	if p.UsageText != "" && o.usageText() == "" {
 		o.setUsageText(p.UsageText)
 	}
-	if p.Description != nil {
+	if p.Description != nil && o.description() == "" {
 		o.setDescription(p.Description)
 	}
-	if p.DefaultText != "" {
+	if p.DefaultText != "" && o.defaultText() == "" {
 		o.setDefaultText(p.DefaultText)
 	}
 	for k, v := range p.Data {
