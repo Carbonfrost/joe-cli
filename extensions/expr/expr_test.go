@@ -1591,6 +1591,30 @@ var _ = Describe("Predicate", func() {
 	})
 })
 
+var _ = Describe("PredicateContext", func() {
+
+	It("yields if true", func() {
+		ev := expr.PredicateContext(func(ctx context.Context, v any) bool {
+			return true
+		})
+		yield := new(exprfakes.FakeYielder)
+		err := ev.Evaluate(&cli.Context{}, "input", yield.Spy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(yield.CallCount()).To(Equal(1))
+		Expect(yield.ArgsForCall(0)).To(Equal("input"))
+	})
+
+	It("does not yield if false", func() {
+		ev := expr.PredicateContext(func(ctx context.Context, v any) bool {
+			return false
+		})
+		yield := new(exprfakes.FakeYielder)
+		err := ev.Evaluate(&cli.Context{}, nil, yield.Spy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(yield.CallCount()).To(Equal(0))
+	})
+})
+
 var _ = Describe("ComposeEvaluator", func() {
 
 	It("handles all evaluators", func() {

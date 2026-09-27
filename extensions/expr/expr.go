@@ -208,6 +208,20 @@ type Predicate func(v any) bool
 // the input value
 type Invariant bool
 
+// PredicateContext provides a simple predicate which filters values.  The function
+// takes the context and prior operand and returns true or false depending
+// upon whether the operand should be yielded to the next step in the
+// expression pipeline.
+type PredicateContext func(ctx context.Context, v any) bool
+
+// Evaluate implements the Evaluator interface for PredicateContext
+func (p PredicateContext) Evaluate(ctx context.Context, v any, yield func(any) error) error {
+	if ok := p(ctx, v); ok {
+		return yield(v)
+	}
+	return nil
+}
+
 type composite []Evaluator
 
 // Always or never yield the input value
