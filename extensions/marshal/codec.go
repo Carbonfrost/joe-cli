@@ -36,6 +36,14 @@ const (
 // Option provides an option for the codec
 type Option = codec.Option
 
+// Writer is a writer that encodes a value into an output writer.
+// A codec, [codec.Interface], is a marshal writer, and [Codec.New] can
+// create instances
+type Writer interface {
+	// MarshalWrite serializes a Go value into an io.Writer.
+	MarshalWrite(w io.Writer, in any) error
+}
+
 var (
 	codecs = map[Codec]func() codec.Interface{
 		JSON: codec.NewJSONCodec,
@@ -277,18 +285,14 @@ func DumpContext(ctx context.Context, v ...any) error {
 		return nil
 	}
 
-	type marshalWriter interface {
-		MarshalWrite(w io.Writer, in any) error
-	}
-
 	var writer io.Writer = os.Stdout
-	var c marshalWriter
+	var c Writer
 
 	if c, ok := cli.TryFromContext(ctx); ok {
 		writer = c.Stdout
 	}
 
-	if s, ok := v[0].(marshalWriter); ok {
+	if s, ok := v[0].(Writer); ok {
 		c = s
 		v = v[1:]
 	}
@@ -313,15 +317,27 @@ func DumpContext(ctx context.Context, v ...any) error {
 // value is always yielded to the rest of the expression pipeline, so a Dumper
 // can be introduced anywhere within an expression to observe the values which
 // flow through it.  The zero value is ready to use.
-type Dumper struct{}
+type Dumper struct {
+
+	// Codec specifies an optional codec to use to do the writing. It can
+	// be Codec or any marshal writer
+	Codec Writer
+}
 
 // Evaluate implements the Evaluator interface from the expr extension by
 // dumping v and then yielding it.
-func (Dumper) Evaluate(ctx context.Context, v any, yield func(any) error) error {
-	if err := DumpContext(ctx, v); err != nil {
+func (d Dumper) Evaluate(ctx context.Context, v any, yield func(any) error) error {
+	if err := DumpContext(ctx, d.values(v)...); err != nil {
 		return err
 	}
 	return yield(v)
+}
+
+func (d Dumper) values(v any) []any {
+	if d.Codec != nil {
+		return []any{d.Codec, v}
+	}
+	return []any{v}
 }
 
 func codecProviderFlagsAndArgs() cli.Action {
@@ -493,4 +509,5 @@ func WithIndent(indent string) codec.Option {
 
 var (
 	_ codec.Interface = (*CodecProvider)(nil)
+	_ Writer          = codec.Interface(nil)
 )

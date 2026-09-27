@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	cli "github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/clitest"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal/codec"
@@ -186,7 +187,7 @@ var _ = Describe("ListCodecs", func() {
 			Stdout: &capture,
 			Flags: []*cli.Flag{
 				{
-					Uses:  marshal.ListCodecs(),
+					Uses: marshal.ListCodecs(),
 				},
 			},
 			Uses: marshal.CodecRegistry,
@@ -209,7 +210,7 @@ var _ = Describe("ListCodecs", func() {
 			Stdout: &capture,
 			Flags: []*cli.Flag{
 				{
-					Uses:  marshal.ListCodecs(),
+					Uses: marshal.ListCodecs(),
 				},
 			},
 		}
@@ -350,6 +351,22 @@ var _ = Describe("Dumper", func() {
 		args, _ := cli.Split("app --output=toml")
 		Expect(app.RunContext(context.Background(), args...)).NotTo(HaveOccurred())
 		Expect(capture.String()).To(Equal("name = 'J'\n"))
+	})
+
+	It("prints the value using the codec self-configured", func() {
+		app := &cli.App{
+			Name: "app",
+			Action: func(c *cli.Context) error {
+				toml, _ := marshal.TOML.New()
+				return marshal.Dumper{Codec: toml}.Evaluate(c, map[string]string{"name": "N"}, func(any) error {
+					return nil
+				})
+			},
+		}
+
+		output, err := clitest.Command(app, "app").CombinedOutput()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(output)).To(Equal("name = 'N'\n"))
 	})
 
 	It("always yields the value", func() {
