@@ -56,9 +56,7 @@ var _ = Describe("Do", func() {
 					},
 				},
 			},
-			Action: func(c context.Context) error {
-				return expr.FromContext(c, "e").Evaluate(c, "item")
-			},
+			Action: expr.Evaluate("item"),
 		}
 		args, _ := cli.Split("app _ -act1 1 -act2 2 -expr true")
 		err := app.RunContext(context.Background(), args...)

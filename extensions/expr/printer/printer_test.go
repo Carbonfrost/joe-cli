@@ -58,9 +58,7 @@ var _ = Describe("Printer", func() {
 						Value: new(expr.Expression),
 					},
 				},
-				Action: func(c *cli.Context) error {
-					return expr.FromContext(c, "expression").Evaluate(c, values...)
-				},
+				Action: expr.Evaluate(values...),
 			}
 		}
 
@@ -208,9 +206,7 @@ var _ = Describe("Printer", func() {
 						Uses:  printer.AddExprs(),
 					},
 				},
-				Action: func(c *cli.Context) error {
-					return expr.FromContext(c, "expression").Evaluate(c, "value")
-				},
+				Action: expr.Evaluate("value"),
 			}
 
 			Expect(run(app, "-print")).NotTo(HaveOccurred())
@@ -236,9 +232,7 @@ var _ = Describe("Printer", func() {
 								Value: new(expr.Expression),
 							},
 						},
-						Action: func(c *cli.Context) error {
-							return expr.FromContext(c, "expression").Evaluate(c, "value")
-						},
+						Action: expr.Evaluate("value"),
 					},
 				},
 			}

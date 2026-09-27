@@ -575,9 +575,7 @@ var _ = Describe("Expr", func() {
 						},
 					},
 				},
-				Action: func(c *cli.Context) {
-					expr.FromContext(c, "e").Evaluate(c, "items")
-				},
+				Action: expr.Evaluate("items"),
 			}
 		})
 
@@ -665,9 +663,7 @@ var _ = Describe("Expr", func() {
 						},
 					},
 				},
-				Action: func(c *cli.Context) {
-					expr.FromContext(c, "expression").Evaluate(c, nil)
-				},
+				Action: expr.Evaluate(nil),
 			}
 		})
 
@@ -725,9 +721,7 @@ var _ = Describe("Expr", func() {
 						},
 					},
 				},
-				Action: func(c *cli.Context) {
-					expr.FromContext(c, "expression").Evaluate(c, nil)
-				},
+				Action: expr.Evaluate(nil),
 			}
 		})
 
@@ -1544,6 +1538,32 @@ var _ = Describe("Expression", func() {
 			Expect(e.Evaluate(context.Background(), "in")).NotTo(HaveOccurred())
 			Expect(captured.String()).To(Equal("a(in) implicit(in) "))
 		})
+	})
+})
+
+var _ = Describe("EvaluateParallel", func() {
+
+	It("generates expected flags from Prototype", func() {
+		app := &cli.App{
+			Args: []*cli.Arg{
+				{
+					Name: "e",
+					Value: &expr.Expression{
+						Exprs: []*expr.Expr{
+							{Name: "true", Evaluate: true},
+						},
+					},
+				},
+			},
+			Uses: expr.EvaluateParallel(),
+		}
+
+		app.Initialize(context.Background())
+		cmd, _ := app.Command("")
+		f := cmd.Flags[0]
+		Expect(f.HelpText).To(Equal("Maximum {NUMBER} of jobs to run in parallel"))
+		Expect(f.Name).To(Equal("jobs"))
+		Expect(f.Aliases).To(Equal([]string{"j"}))
 	})
 })
 

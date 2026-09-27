@@ -314,9 +314,7 @@ var _ = Describe("FileBinder", func() {
 						},
 					},
 				},
-				Action: func(c *cli.Context) {
-					expr.FromContext(c, "expression").Evaluate(c, 0)
-				},
+				Action: expr.Evaluate(0),
 			}
 
 			args, _ := cli.Split("app -- -name V/filename.txt")

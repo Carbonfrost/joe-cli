@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/Carbonfrost/joe-cli"
+	"github.com/Carbonfrost/joe-cli/extensions/bind"
 )
 
 // Action represents the building block of the various actions that
@@ -67,6 +68,40 @@ func AddExprs(exprs ...*Expr) Action {
 			return append(ee, exprs...)
 		})
 	})
+}
+
+// Evaluate provides an action which evaluates the expression with the given input
+// items. The expression is retrieved from the arg in scope.
+func Evaluate(items ...any) Action {
+	return bind.Call2(
+		exprEvaluate, bind.Context(), bind.Exact(items),
+	)
+}
+
+// EvaluateParallel provides an action which evaluates the expression with the given input
+// items. The expression is retrieved from the arg in scope and runs
+// in parallel. By convention, if this is present within the Uses pipeline, it
+// registers a flag to configure the number of jobs.
+func EvaluateParallel(items ...any) Action {
+	var useJobs = bind.NewActionBinder(
+		cli.AddFlag(&cli.Flag{
+			Name:     "jobs",
+			HelpText: "Maximum {NUMBER} of jobs to run in parallel",
+			Uses:     cli.OptionalAlias("j"),
+		}),
+		bind.Int("jobs"),
+	)
+	return bind.Call3(
+		exprEvaluateParallel, bind.Context(), useJobs, bind.Exact(items),
+	)
+}
+
+func exprEvaluate(ctx *cli.Context, items []any) error {
+	return FromContext(ctx).Evaluate(ctx, items...)
+}
+
+func exprEvaluateParallel(ctx *cli.Context, jobs int, items []any) error {
+	return FromContext(ctx).EvaluateParallel(ctx, jobs, items...)
 }
 
 func updateExprs(c *cli.Context, fn func([]*Expr) []*Expr) error {
