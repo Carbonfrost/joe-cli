@@ -44,6 +44,12 @@ type Writer interface {
 	MarshalWrite(w io.Writer, in any) error
 }
 
+// marshalApplyOption provides support to apply the behaviors from codecs
+// when they are treated as providers from the marshal package
+type marshalApplyOption interface {
+	MarshalApplyDefaults(lookup provider.Lookup, name string) Option
+}
+
 var (
 	codecs = map[Codec]func() codec.Interface{
 		JSON: codec.NewJSONCodec,
@@ -471,6 +477,11 @@ func (c Codec) New(opts ...codec.Option) (codec.Interface, error) {
 	if !c.Available() {
 		return nil, fmt.Errorf("codec not available: %s", c)
 	}
+	for i := range opts {
+		if integration, ok := opts[i].(marshalApplyOption); ok {
+			opts[i] = integration.MarshalApplyDefaults(CodecRegistry.Providers, c.Name())
+		}
+	}
 	return codec.WithOptions(codecs[c](), opts...)
 }
 
@@ -505,6 +516,13 @@ func EscapeHTML() codec.Option {
 // indentation in the encoded output.
 func WithIndent(indent string) codec.Option {
 	return codec.WithIndent(indent)
+}
+
+// WithProviderDefaults sets the provider default options. In general, using Codec.New
+// directly creates a codec with the default options; however, by specifying
+// this option, it initializes it with the same defaults advertised in the CodecRegistry
+func WithProviderDefaults() codec.Option {
+	return codec.WithProviderDefaults()
 }
 
 var (

@@ -115,6 +115,41 @@ var _ = Describe("Codec", func() {
 
 		})
 
+		Describe("WithProviderDefaults", func() {
+
+			DescribeTable("examples",
+				func(co marshal.Codec, opts []marshal.Option) {
+					c, err := co.New(marshal.WithProviderDefaults())
+					Expect(err).NotTo(HaveOccurred())
+
+					conventional, err := co.New(opts...)
+					Expect(c).To(Equal(conventional))
+				},
+				Entry(
+					"JSON",
+					marshal.JSON,
+					[]marshal.Option{
+						codec.WithIndentStyleSize(codec.IndentSpace, 2),
+					},
+				),
+				Entry(
+					"YAML",
+					marshal.YAML,
+					[]marshal.Option{
+						codec.WithIndentStyleSize(codec.IndentSpace, 2),
+					},
+				),
+				Entry(
+					"TOML",
+					marshal.TOML,
+					[]marshal.Option{
+						codec.WithIndentStyleSize(codec.IndentSpace, 2),
+					},
+				),
+			)
+
+		})
+
 	})
 
 })

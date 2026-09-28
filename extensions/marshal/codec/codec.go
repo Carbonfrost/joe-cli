@@ -12,6 +12,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/Carbonfrost/joe-cli/extensions/provider"
+	"github.com/Carbonfrost/joe-cli/extensions/structure"
 )
 
 // Interface defines the interface for reading and writing from data
@@ -61,6 +64,12 @@ type Option interface {
 	apply(Interface) error
 }
 
+// marshalApplyOption mirrors an interface in the marshal package
+type marshalApplyOption interface {
+	Option
+	MarshalApplyDefaults(lookup provider.Lookup, name string) Option
+}
+
 // WithOptions applies options to the given codec
 func WithOptions(i Interface, opts ...Option) (Interface, error) {
 	for _, o := range opts {
@@ -107,6 +116,28 @@ func WithIndentStyleSize(style IndentStyle, size int) Option {
 	return WithIndent(strings.Repeat(style.unit(), size))
 }
 
+// WithProviderDefaults sets up the codec using the provider defaults.
+func WithProviderDefaults() Option {
+	return providerDefaults{}
+}
+
+type providerDefaults struct{}
+
+func (providerDefaults) apply(Interface) error {
+	return nil
+}
+
+func (p providerDefaults) MarshalApplyDefaults(lookup provider.Lookup, name string) Option {
+	if pro, ok := lookup.LookupProvider(name); ok {
+		var opts Options
+		structure.Decode(pro.Defaults, &opts)
+		return opts
+	}
+
+	// Returning itself will be a no-op
+	return p
+}
+
 func booleanOption[C any](name string, fn func(C)) Option {
 	return optionFunc(func(i Interface) error {
 		c, ok := i.(C)
@@ -134,3 +165,5 @@ type optionFunc func(i Interface) error
 func (o optionFunc) apply(i Interface) error {
 	return o(i)
 }
+
+var _ marshalApplyOption = providerDefaults{}
