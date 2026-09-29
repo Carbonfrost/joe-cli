@@ -74,6 +74,9 @@ func (w *stringHelper) Bold(v ...any) (int, error) {
 }
 
 func NewWriter(w io.Writer) StyleWriter {
+	if s, ok := w.(StyleWriter); ok {
+		return s
+	}
 	return &stringHelper{
 		Writer:  ansiterm.NewWriter(w),
 		enabled: ColorEnabled(w),

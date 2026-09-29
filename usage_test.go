@@ -203,6 +203,15 @@ var _ = Describe("AutodetectColor", func() {
 	})
 })
 
+var _ = Describe("NewWriter", func() {
+
+	It("does not wrap existing writer", func() {
+		var writer io.Writer
+		w := cli.NewWriter(writer)
+		Expect(cli.NewWriter(w)).To(BeIdenticalTo(w))
+	})
+})
+
 var _ = Describe("NewBuffer", func() {
 	It("sets whether color will be enabled", func() {
 		var actual string
