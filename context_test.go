@@ -1725,6 +1725,27 @@ var _ = Describe("Context", func() {
 				{Value: 1, HelpText: "The first level"},
 			}))
 		})
+
+		It("extracts help text by convention", func() {
+			var actual []*cli.ValueHelp
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: cli.Pipeline(
+							cli.ValueHelpText(&hasValueHelpText{value: 1, helpText: "L"}, ""),
+							func(c *cli.Context) {
+								actual = c.ValueHelpText()
+							},
+						),
+					},
+				},
+			}
+			_, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(HaveLen(1))
+			Expect(actual[0].HelpText).To(Equal("L"))
+		})
 	})
 
 	var _ = Describe("DependentFlag", func() {
@@ -1891,3 +1912,11 @@ func newStubContext() *cli.Context {
 	cli.WithStubState(c)
 	return c
 }
+
+type hasValueHelpText struct {
+	value    int
+	helpText string
+}
+
+func (h *hasValueHelpText) String() string   { return fmt.Sprint(h.value) }
+func (h *hasValueHelpText) HelpText() string { return h.helpText }

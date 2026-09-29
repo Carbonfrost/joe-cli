@@ -1126,6 +1126,12 @@ func (c *Context) SetManualText(v string) error {
 // possible for the current target to the table of values.  Despite the return value,
 // this method never returns an error.
 func (c *Context) SetValueHelpText(value any, helpText string) error {
+	if c, ok := value.(interface{ HelpText() string }); helpText == "" && ok {
+		helpText = c.HelpText()
+	}
+	if helpText == "" {
+		return nil
+	}
 	c.target().SetData(valueHelpTextKey, append(c.ValueHelpText(), &ValueHelp{
 		Value:    value,
 		HelpText: helpText,
