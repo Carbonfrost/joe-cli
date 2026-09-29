@@ -10,7 +10,7 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
-	"github.com/Carbonfrost/joe-cli/extensions/structure"
+	"github.com/Carbonfrost/joe-cli/value/structure"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

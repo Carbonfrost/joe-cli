@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
-	"github.com/Carbonfrost/joe-cli/extensions/structure"
+	"github.com/Carbonfrost/joe-cli/value/structure"
 )
 
 // Interface defines the interface for reading and writing from data

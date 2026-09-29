@@ -14,8 +14,8 @@ import (
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal/codec"
 	"github.com/Carbonfrost/joe-cli/extensions/provider"
-	"github.com/Carbonfrost/joe-cli/extensions/structure"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
+	"github.com/Carbonfrost/joe-cli/value/structure"
 )
 
 // Codec identifies the support codecs. The JSON codec is supported by default.

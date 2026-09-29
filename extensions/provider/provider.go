@@ -33,8 +33,8 @@ import (
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
-	"github.com/Carbonfrost/joe-cli/extensions/structure"
 	"github.com/Carbonfrost/joe-cli/internal/support"
+	"github.com/Carbonfrost/joe-cli/value/structure"
 )
 
 // Value implements a value which can be used as a flag that names a provider.
