@@ -4108,6 +4108,28 @@ var _ = Describe("Enum", func() {
 		Entry("3 items", cli.Enum("ok", "maybe", "no"), Equal("-s (ok|maybe|no)")),
 		Entry("overflow", cli.Enum("ok", "maybe", "no", "duh"), Equal("-s (ok|maybe|no|...)")),
 	)
+
+	It("generates help text from convention", func() {
+		var actual []*cli.ValueHelp
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name: "s",
+					Uses: cli.Pipeline(
+						cli.Enum(&hasValueHelpText{value: 1, helpText: "L"}),
+						func(c *cli.Context) {
+							actual = c.ValueHelpText()
+						},
+					),
+				},
+			},
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(HaveLen(1))
+		Expect(actual[0].HelpText).To(Equal("L"))
+	})
 })
 
 var _ = Describe("Requires", func() {

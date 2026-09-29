@@ -1013,9 +1013,15 @@ func accessory(ctx context.Context, proto Action, name string, actionopt ...Acti
 // When used, it also sets the flag synopsis to a reasonable default derived from the values
 // unless the flag provides its own specific synopsis.  This enables completion on the enumerated
 // values.
-func Enum(options ...string) Action {
+func Enum(opts ...any) Action {
 	oset := map[string]bool{}
-	for _, o := range options {
+	options := make([]string, len(opts))
+	var actions []Action
+
+	for i, opt := range opts {
+		o := fmt.Sprint(opt)
+		options[i] = o
+		actions = append(actions, ValueHelpText(opt, ""))
 		oset[o] = true
 	}
 	var usageText string
@@ -1030,6 +1036,7 @@ func Enum(options ...string) Action {
 			UsageText:  usageText,
 			Completion: ValueCompletion(options...),
 		},
+		Pipeline(actions),
 		ValidatorFunc(func(ctx context.Context) error {
 			c := FromContext(ctx)
 			name := c.Name()
