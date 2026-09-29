@@ -82,9 +82,16 @@ type templateBinding struct {
 type wrapper struct {
 	io.Writer
 
-	pending bytes.Buffer
-	Limit   int
-	Indent  string
+	Limit  int
+	Indent string
+
+	pending   bytes.Buffer // space or indent to write before the next word
+	word      bytes.Buffer // current word, including ANSI escape sequences
+	wordLen   int          // printable width of the current word
+	lineLen   int          // printable width written to the current line
+	ansi      bool
+	skipSpace bool // leading space on the line is not the user's own
+	breaking  bool // current word is being forcibly broken
 }
 
 type synopsisWrapper[T synopsis.Stringer] struct {
@@ -123,6 +130,8 @@ const (
 	BrightCyan    = ansiterm.BrightCyan
 	White         = ansiterm.White
 )
+
+const nonBreakingSpace rune = '\u00a0'
 
 // NewWriter creates a new writer with support for color if TTY is detected
 func NewWriter(w io.Writer) Writer {
@@ -387,6 +396,8 @@ func (c *Context) RegisterTemplateFunc(name string, fn any) error {
 
 // Wrap wraps the given text using a maximum line width and indentation.
 // Wrapping text using this method is aware of ANSI escape sequences.
+// Words longer than the width start on a new line and are forcibly broken
+// at the width, though never within an ANSI escape sequence.
 func Wrap(w io.Writer, text string, indent string, width int) {
 	f := &wrapper{
 		Writer: w,
@@ -402,88 +413,127 @@ func (w *wrapper) Write(b []byte) (int, error) {
 		return w.Writer.Write(b)
 	}
 
-	s := w.pending.String() + string(b)
-	w.pending.Reset()
-
-	var (
-		ansi      bool
-		userSpace = true
-		buf       bytes.Buffer
-
-		// lengths are based on printable rune widths
-		lineLen int
-
-		tryWrite = func(from *bytes.Buffer, length int) (res bool) {
-			res = lineLen+length < w.Limit
-			if res {
-				lineLen += length
-				from.WriteTo(w.Writer)
-				from.Reset()
-			}
-			return
-		}
-	)
-
-	for _, c := range s {
+	for _, c := range string(b) {
 		switch {
 		case c == '\x1B':
 			// start ANSI escape sequence
-			_, _ = buf.WriteRune(c)
-			ansi = true
+			_, _ = w.word.WriteRune(c)
+			w.ansi = true
 
-		case ansi:
-			_, _ = buf.WriteRune(c)
+		case w.ansi:
+			_, _ = w.word.WriteRune(c)
 			if isCSITerminator(c) {
-				ansi = false
+				w.ansi = false
 			}
-
-		case unicode.IsSpace(c) && c != '\n':
-			// This is the case were the user has placed space right after
-			// a new line, which indicates that they have purposely done their
-			// own indentation
-			if lineLen == 0 && userSpace {
-				w.pending.WriteRune(c)
-				break
-			}
-
-			bufLen := printableWidth(buf.String())
-
-			// Otherwise for non-user space, skip leading space on a new line
-			if bufLen+lineLen == 0 {
-				break
-			}
-
-			if tryWrite(&buf, bufLen) {
-				w.pending.WriteRune(c)
-				break
-			}
-
-			fallthrough
 
 		case c == '\n':
-			lineLen = 0
-			buf.WriteTo(w.Writer)
-			buf.Reset()
-			w.Writer.Write([]byte("\n"))
+			w.flushWord()
+			w.newline(true)
 
-			w.pending.Reset()
-			w.pending.WriteString(w.Indent)
-			userSpace = c == '\n' // will be false on fallthrough from previous case
+		case unicode.IsSpace(c) && c != nonBreakingSpace:
+			if w.wordLen == 0 {
+				// This is the case were the user has placed space right after
+				// a new line, which indicates that they have purposely done their
+				// own indentation.  Otherwise, skip leading space on a new line
+				if w.lineLen == 0 {
+					if !w.skipSpace {
+						_, _ = w.pending.WriteRune(c)
+					}
+					break
+				}
+				if w.lineLen < w.Limit {
+					_, _ = w.pending.WriteRune(c)
+					break
+				}
+			} else if w.lineLen+printableWidth(w.pending.String())+w.wordLen < w.Limit {
+				w.flushWord()
+				_, _ = w.pending.WriteRune(c)
+				break
+			}
+
+			w.flushWord()
+			w.newline(false)
 
 		default:
-			tryWrite(&w.pending, w.pending.Len())
-			buf.WriteRune(c)
-			userSpace = false
+			if w.wordLen >= w.Limit || w.breaking && w.wordLen >= w.room() {
+				w.forciblyBreakWord()
+			}
+			_, _ = w.word.WriteRune(c)
+			w.wordLen++
+			w.skipSpace = true
 		}
 	}
 
-	buf.WriteTo(&w.pending)
 	return len(b), nil
 }
 
 func (w *wrapper) Close() error {
 	w.Write([]byte("\n"))
 	return nil
+}
+
+func (w *wrapper) flushWord() {
+	if w.wordLen > 0 {
+		w.lineLen += printableWidth(w.pending.String()) + w.wordLen
+		_, _ = w.pending.WriteTo(w.Writer)
+	}
+	_, _ = w.word.WriteTo(w.Writer)
+	w.wordLen = 0
+	w.breaking = false
+}
+
+func (w *wrapper) forciblyBreakWord() {
+	if w.lineLen > 0 {
+		w.newline(false)
+	}
+	w.breaking = true
+
+	for room := w.room(); w.wordLen >= room; room = w.room() {
+		head, tail := splitPrintable(w.word.String(), room)
+		_, _ = w.pending.WriteTo(w.Writer)
+		_, _ = io.WriteString(w.Writer, head)
+
+		w.word.Reset()
+		_, _ = w.word.WriteString(tail)
+		w.wordLen -= room
+		w.newline(false)
+	}
+}
+
+func (w *wrapper) room() int {
+	return max(w.Limit-printableWidth(w.pending.String()), 1)
+}
+
+func (w *wrapper) newline(explicit bool) {
+	_, _ = w.Writer.Write([]byte("\n"))
+	w.lineLen = 0
+	w.pending.Reset()
+	_, _ = w.pending.WriteString(w.Indent)
+
+	// Only space the user placed after an explicit new line is retained
+	w.skipSpace = !explicit
+}
+
+func splitPrintable(s string, n int) (string, string) {
+	var ansi bool
+
+	for i, c := range s {
+		switch {
+		case c == '\x1B':
+			ansi = true
+		case ansi:
+			if isCSITerminator(c) {
+				ansi = false
+			}
+		default:
+			if n == 0 {
+				return s[:i], s[i:]
+			}
+			n--
+		}
+	}
+
+	return s, ""
 }
 
 func printableWidth(s string) int {

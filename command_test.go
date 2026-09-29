@@ -574,10 +574,6 @@ var _ = Describe("Command", func() {
 
 	Describe("Synopsis", func() {
 
-		var normalizeWS = func(s string) string {
-			const nonBreakingSpace = "\u00a0"
-			return strings.ReplaceAll(s, nonBreakingSpace, "&nbsp;")
-		}
 		DescribeTable("examples",
 			func(cmd *cli.Command, expected string) {
 				cli.Initialized(cmd)
@@ -1191,3 +1187,13 @@ var _ = Describe("SuggestCommand", func() {
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
 })
+
+func normalizeWS(s string) string {
+	const nonBreakingSpace = "\u00a0"
+	return strings.ReplaceAll(s, nonBreakingSpace, "&nbsp;")
+}
+
+func denormalizeWS(s string) string {
+	const nonBreakingSpace = "\u00a0"
+	return strings.ReplaceAll(s, "&nbsp;", nonBreakingSpace)
+}

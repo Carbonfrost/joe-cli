@@ -22,10 +22,11 @@ import (
 )
 
 var _ = Describe("Wrap", func() {
+
 	DescribeTable("examples", func(width int, indent string, text string, expected string) {
 		var buf bytes.Buffer
-		cli.Wrap(&buf, text, indent, width)
-		Expect(buf.String()).To(Equal(expected))
+		cli.Wrap(&buf, denormalizeWS(text), indent, width)
+		Expect(normalizeWS(buf.String())).To(Equal(expected))
 	},
 		Entry("empty has trailing newline", 8, "", "", "\n"),
 		Entry("no wraps", 80, "", "this text will not wrap", "this text will not wrap\n"),
@@ -36,11 +37,23 @@ var _ = Describe("Wrap", func() {
 		Entry("retain user's leading spaces", 10, "", "    some text", "    some text\n"),
 		Entry("retain user's leading spaces on wrapping", 10, "", "some  text\n   I indented", "some  text\n   I indented\n"),
 		Entry("ANSI control codes don't get wrapped",
-			3,
+			7,
 			"",
 			"\x1B[38;2;249;38;114m(\x1B[0m\x1B[38;2;248;248;242mwell wishing well\x1B[38;2;249;38;114m)\x1B[0m",
-			"\x1B[38;2;249;38;114m(\x1B[0m\x1B[38;2;248;248;242mwell\nwishing\nwell\x1B[38;2;249;38;114m)\x1B[0m\n",
+			"\x1B[38;2;249;38;114m(\x1B[0m\x1B[38;2;248;248;242mwell wishing\nwell\x1B[38;2;249;38;114m)\x1B[0m\n",
 		),
+		Entry("long word breaks at limit", 4, "", "abcdefghij", "abcd\nefgh\nij\n"),
+		Entry("long word starts on new line", 8, "", "some abcdefghijk end", "some\nabcdefgh\nijk end\n"),
+		Entry("long word breaks with indent", 8, "  ", "some abcdefghijklm", "some\n  abcdef\n  ghijkl\n  m\n"),
+		Entry("long word breaks with user's leading spaces", 8, "", "  abcdefghij", "  abcdef\nghij\n"),
+		Entry("long word at exact limit is not broken", 4, "", "abcd ef", "abcd\nef\n"),
+		Entry("long word doesn't break ANSI control codes",
+			3,
+			"",
+			"\x1B[1mab\x1B[0mcd\x1B[38;2;249;38;114mef",
+			"\x1B[1mab\x1B[0mc\nd\x1B[38;2;249;38;114mef\n",
+		),
+		Entry("non-breaking space does not wrap", 8, "", "word some&nbsp;text", "word\nsome&nbsp;tex\nt\n"),
 	)
 })
 
