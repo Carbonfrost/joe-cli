@@ -1746,6 +1746,78 @@ var _ = Describe("Context", func() {
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].HelpText).To(Equal("L"))
 		})
+
+		It("merges help text into an existing value", func() {
+			var actual []*cli.ValueHelp
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: cli.Pipeline(
+							cli.ValueManualText("build", "Builds the given target, then exits"),
+							cli.ValueHelpText("build", "Build the given target"),
+							func(c *cli.Context) {
+								actual = c.ValueHelpText()
+							},
+						),
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(Equal([]*cli.ValueHelp{
+				{Value: "build", HelpText: "Build the given target", ManualText: "Builds the given target, then exits"},
+			}))
+		})
+	})
+
+	var _ = Describe("ValueManualText", func() {
+		It("merges manual text with the value that was described", func() {
+			var actual []*cli.ValueHelp
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name: "g",
+						Uses: cli.Pipeline(
+							cli.ValueHelpText("build", "Build the given target"),
+							cli.ValueHelpText("api", "Invoke the API"),
+							cli.ValueManualText("api", "Invokes the API using the configured endpoint"),
+							func(c *cli.Context) {
+								actual = c.ValueHelpText()
+							},
+						),
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(Equal([]*cli.ValueHelp{
+				{Value: "build", HelpText: "Build the given target"},
+				{Value: "api", HelpText: "Invoke the API", ManualText: "Invokes the API using the configured endpoint"},
+			}))
+		})
+
+		It("appends a value which was not described", func() {
+			var actual []*cli.ValueHelp
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:  "g",
+						Value: cli.Int(),
+						Uses: cli.Pipeline(
+							cli.ValueHelpText(1, "The first level"),
+							cli.ValueManualText(2, "The second level, which is more verbose"),
+							func(c *cli.Context) {
+								actual = c.ValueHelpText()
+							},
+						),
+					},
+				},
+			}
+			_, _ = app.Initialize(context.Background())
+			Expect(actual).To(Equal([]*cli.ValueHelp{
+				{Value: 1, HelpText: "The first level"},
+				{Value: 2, ManualText: "The second level, which is more verbose"},
+			}))
+		})
 	})
 
 	var _ = Describe("DependentFlag", func() {

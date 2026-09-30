@@ -1318,6 +1318,13 @@ func ValueHelpText(value any, helpText string) Action {
 	return actionThunk2((*Context).SetValueHelpText, value, helpText)
 }
 
+// ValueManualText sets the manual text for one of the values which is possible for a flag.
+// If the value was already described (such as by ValueHelpText), its manual text is merged
+// into the existing entry of the table; otherwise, a new entry is appended.
+func ValueManualText(value any, manualText string) Action {
+	return actionThunk2((*Context).SetValueManualText, value, manualText)
+}
+
 // DefaultText sets the default text of a command, flag, or expression.  This handler is generally
 // set up inside a Uses pipeline.
 func DefaultText(name string) Action {

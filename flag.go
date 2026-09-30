@@ -1,4 +1,4 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -160,8 +160,8 @@ type Flag struct {
 }
 
 // ValueHelp describes one of the values which is possible for a flag.  The values
-// of a flag are aggregated into a table using the ValueHelpText action, and the table
-// is rendered on the default help screen indented beneath the flag.
+// of a flag are aggregated into a table using the ValueHelpText and ValueManualText
+// actions, and the table is rendered on the default help screen indented beneath the flag.
 type ValueHelp struct {
 	// Value provides one of the values which the flag can be set to.  Any type can be
 	// used; the value is formatted using fmt.Sprint when it is displayed.
@@ -170,6 +170,10 @@ type ValueHelp struct {
 	// HelpText contains text which briefly describes the value.  For style, generally
 	// the help text should be limited to about 40 characters and use sentence case.
 	HelpText string
+
+	// ManualText provides the text shown in the manual for the value.  The default
+	// templates don't use this value
+	ManualText string
 }
 
 type flagsByCategory []*flagCategory

@@ -1132,11 +1132,30 @@ func (c *Context) SetValueHelpText(value any, helpText string) error {
 	if helpText == "" {
 		return nil
 	}
-	c.target().SetData(valueHelpTextKey, append(c.ValueHelpText(), &ValueHelp{
-		Value:    value,
-		HelpText: helpText,
-	}))
+	c.valueHelp(value).HelpText = helpText
 	return nil
+}
+
+// SetValueManualText sets the manual text for one of the values that is possible for
+// the current target.  If the value was already described, the manual text is merged
+// into its existing entry; otherwise, it is appended to the table of values.
+// Despite the return value, this method never returns an error.
+func (c *Context) SetValueManualText(value any, manualText string) error {
+	c.valueHelp(value).ManualText = manualText
+	return nil
+}
+
+func (c *Context) valueHelp(value any) *ValueHelp {
+	table := c.ValueHelpText()
+	for _, v := range table {
+		if reflect.DeepEqual(v.Value, value) {
+			return v
+		}
+	}
+
+	v := &ValueHelp{Value: value}
+	c.target().SetData(valueHelpTextKey, append(table, v))
+	return v
 }
 
 // SetValue checks the timing and sets the value of the current
