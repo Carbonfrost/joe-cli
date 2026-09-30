@@ -2082,6 +2082,9 @@ func (p *Prototype) copyToCommand(o *Command) {
 	copyCommonToTarget(o, p)
 
 	o.Options |= p.Options
+	if o.Data == nil {
+		o.Data = map[string]any{}
+	}
 	maps.Copy(o.Data, p.Data)
 	if o.Completion == nil {
 		o.Completion = p.Completion
@@ -2115,6 +2118,9 @@ func (p *Prototype) copyToArg(c *Context) {
 
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
 	o.Options |= p.Options
+	if o.Data == nil {
+		o.Data = map[string]any{}
+	}
 	maps.Copy(o.Data, p.Data)
 }
 
@@ -2142,6 +2148,9 @@ func (p *Prototype) copyToFlag(c *Context) {
 	o.Aliases = append(o.Aliases, p.Aliases...)
 	o.EnvVars = append(o.EnvVars, p.EnvVars...)
 	o.Options |= p.Options
+	if o.Data == nil {
+		o.Data = map[string]any{}
+	}
 	maps.Copy(o.Data, p.Data)
 }
 

@@ -2651,6 +2651,42 @@ var _ = Describe("Prototype", func() {
 		}, Fields{"Completion": Not(BeNil())}),
 	)
 
+	Describe("Data", func() {
+
+		var (
+			checked bool
+
+			checkData cli.ActionFunc = func(c *cli.Context) error {
+				actual, _ := c.LookupData("X")
+				Expect(actual).To(Equal(0))
+				checked = true
+				return nil
+			}
+
+			proto = cli.Prototype{Data: map[string]any{"X": 0}, Uses: checkData}
+		)
+		Describe("doesn't panic on setting Data", func() {
+
+			DescribeTable("examples", func(v any) {
+				app := &cli.App{
+					Name: "any",
+					Uses: cli.Pipeline(v),
+				}
+
+				checked = false
+				_, _ = app.Initialize(context.Background())
+				Expect(checked).To(BeTrue())
+			},
+
+				// These have Data set to nil, which other tests don't account for
+				Entry("flag", cli.Add(&cli.Flag{Name: "f"}, proto)),
+				Entry("command", cli.Add(&cli.Command{Name: "c"}, proto)),
+				Entry("arg", cli.Add(&cli.Arg{Name: "a"}, proto)),
+			)
+		})
+
+	})
+
 	DescribeTable("preserve existing values", func(proto cli.Prototype, expected Fields) {
 		app := &cli.App{
 			Name: "any",
