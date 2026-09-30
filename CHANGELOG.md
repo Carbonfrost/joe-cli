@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.23.0 (September 29, 2026)
+
+### New Features
+
+* `ValueManualText` (d6727df2)
+* Breaking change: Allow `Enum` to be untyped and help text convention (ecae356a)
+* Marshal extension: `WithProviderDefaults` codec option (86ba7ddb)
+* Expr extension:
+    * Operators (5b8bc5b1)
+    * Add `Invariant` initializer (83f72630)
+    * `PredicateContext` (207984f1)
+    * `Evaluate`; `EvaluateParallel` actions (a28f9c97)
+    * Support `Initializer` pattern; `FromContext` implicit rules (c414d2a6)
+* Prototype integrates with support to query value targets (d4ca6a1e)
+
+### Bug fixes and improvements
+
+* Improve handling of wrapping (a7b7bc25)
+* Fix `NameValue.AllowFileReferenceFlag`: name; unexported bind method (45a77db7)
+* Provide help text for values by convention (e1741d82)
+* Remove `structure` extension into `value/structure` package (126919e1)
+* Relocate reserved options in internal package (e83ca94b)
+* Marshal extension: allow configuring codec in Dumper (13b95d80)
+* Clitest: add `Run` method (75e3bb29)
+* Bug fix: don't double wrap `NewWriter` (fb47da41)
+* Bug fix: copy synopsis category to No flag (be72c382)
+* Bug fix: use non-breaking spaces in consolidated flags to prevent wrapping (0af5f834)
+* Codec extension:
+    * Bug fix: rename `--list-codec` to `--list-codecs` (plural) (c11569c0)
+    * Bug fix: ensure default JSON codec configuration via registry is used by provider (5499ee7e)
+    * Bug fix: remove extraneous NL between dump output (5347f748)
+
+
 ## v0.22.0 (September 19, 2026)
 
 ### New Features
