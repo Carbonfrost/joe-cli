@@ -664,7 +664,8 @@ var _ = Describe("NameValue", func() {
 					// Slightly more interesting to do this in the Uses pipeline to ensure
 					// the timing of the Initializer
 					Uses: func(c *cli.Context) error {
-						return c.NameValue("").SetAllowFileReference(true)
+						c.Flag().Value.(*cli.NameValue).AllowFileReference = true
+						return nil
 					},
 				},
 			},

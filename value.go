@@ -715,23 +715,22 @@ func (v *NameValue) NewCounter() ArgCounter {
 	return &valuePairCounter{}
 }
 
-// SetAllowFileReference sets whether file references are allowed.  This function is for
-// bindings
-func (v *NameValue) SetAllowFileReference(val bool) error {
+func (v *NameValue) setAllowFileReference(val bool) error {
 	v.AllowFileReference = val
 	return nil
 }
 
-// AllowFileReferencesFlag obtains a flag configuration for setting the
-// AllowFileReferences value
-func (v *NameValue) AllowFileReferencesFlag() Prototype {
+// AllowFileReferenceFlag obtains a flag configuration for setting the
+// AllowFileReference value
+func (v *NameValue) AllowFileReferenceFlag() Prototype {
 	return Prototype{
 		Name:     "allow-files",
 		HelpText: "Allow a file to be specified with name=@file",
-		Uses:     bind(v.SetAllowFileReference),
+		Uses:     bind(v.setAllowFileReference),
 	}
 }
 
+// Initializer gets the initializer for use with the NameValue
 func (v *NameValue) Initializer() Action {
 	if v.AllowFileReference {
 		return actionFunc(func(c context.Context) error {
