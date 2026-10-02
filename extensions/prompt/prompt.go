@@ -12,6 +12,10 @@ import (
 	"context"
 )
 
+//go:generate go tool counterfeiter -generate
+
+//counterfeiter:generate -o internal/promptfakes . Prompter
+
 // Prompter displays a prompt for user input.
 type Prompter interface {
 	// Input displays a prompt to the user for text
