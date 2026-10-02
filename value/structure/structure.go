@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"reflect"
 
-	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/mitchellh/mapstructure"
 )
@@ -38,7 +37,7 @@ type Value struct {
 type DecoderOption func(*mapstructure.DecoderConfig)
 
 var (
-	valueType = reflect.TypeFor[cli.Value]()
+	valueType = reflect.TypeFor[flag.Value]()
 	urlType   = reflect.TypeFor[*url.URL]()
 )
 
@@ -155,7 +154,7 @@ func valueHook(from, to reflect.Value) (any, error) {
 	}
 
 	result := to.Interface()
-	err := result.(cli.Value).Set(from.String())
+	err := result.(flag.Value).Set(from.String())
 	return result, err
 }
 
