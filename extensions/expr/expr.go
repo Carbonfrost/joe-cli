@@ -51,6 +51,26 @@
 // compiler returns an error, the pipeline is an evaluator which fails with
 // that error.
 //
+// # Parallelism
+//
+// An evaluator makes work asynchronous by submitting it as a task using Go,
+// yielding its result from within the task.  With the default compiler, the
+// task runs inline, so the evaluator behaves as though it were synchronous.
+// The Parallel compiler provides a scheduler which runs at most a maximum
+// number of tasks concurrently, and it serializes evaluators which aren't
+// safe to evaluate concurrently.  A simple, blocking evaluator can be made
+// asynchronous by wrapping it with Async:
+//
+//	&expr.Expression{
+//	    Compiler: expr.Parallel(8, nil),
+//	    Exprs: []*expr.Expr{
+//	        {
+//	            Name:     "fetch",
+//	            Evaluate: expr.Async(expr.NewEvaluator0(fetchURL)),
+//	        },
+//	    },
+//	}
+//
 // # Operators
 //
 // When the reserved option ParseOperators is set on the arg which contains the
@@ -67,7 +87,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -78,12 +97,21 @@ import (
 	"github.com/Carbonfrost/joe-cli/internal/reservedoptions"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
-	"golang.org/x/sync/errgroup"
 )
 
 //counterfeiter:generate -o ../../internal/exprfakes . Evaluator
 
 // Evaluator provides the evaluation function for an expression operator.
+//
+// An evaluator can submit work as a task using Go, in which case yield can be
+// called after Evaluate returns and from another goroutine.  An evaluator which
+// depends upon whether another evaluator yields a value should evaluate it
+// using the context provided by Sync.
+//
+// An evaluator can optionally implement the following method:
+//
+//   - Concurrent() bool: when true, the evaluator is safe to evaluate
+//     concurrently, so the Parallel compiler need not serialize it
 type Evaluator interface {
 	// Evaluate performs the evaluation.  The v argument is the value of the prior
 	// expression operator.  The yield argument is used to pass one or more additional
@@ -718,6 +746,11 @@ func (i Invariant) Initializer() cli.Action {
 	}
 }
 
+// Concurrent indicates that Invariant is safe to evaluate concurrently
+func (Invariant) Concurrent() bool {
+	return true
+}
+
 // Compile provides the default compiler for an expression, which converts the
 // sequence of binding evaluators into the evaluator that implements the
 // evaluation pipeline.  Each binding evaluator yields the values it produces to
@@ -764,7 +797,8 @@ func mustHaveNoOperators(items []BindingEvaluator) error {
 // returns an error, the evaluation stops and returns the error. This evaluator
 // can be thought of as a logical conjunction in the case where evaluators
 // work like Boolean predicates. Indeed, [Predicate] is often the type of the evaluators
-// passed this function.
+// passed this function.  The evaluators are evaluated using the context provided by
+// Sync so that tasks they submit using Go run inline.
 func ComposeEvaluator(e ...Evaluator) Evaluator {
 	return composite(e)
 }
@@ -932,7 +966,7 @@ func (e EvaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error)
 	if e == nil {
 		return nil
 	}
-	return e(cli.FromContext(c), v, yield)
+	return e(cliContextOf(c), v, yield)
 }
 
 func (e evaluatorFunc) Evaluate(c context.Context, v any, yield func(any) error) error {
@@ -946,6 +980,7 @@ func (c composite) Evaluate(ctx context.Context, v any, yield func(any) error) e
 	if yield == nil {
 		yield = emptyYielder
 	}
+	ctx = Sync(ctx)
 	var yielded bool
 	yieldWrapper := func(any) error {
 		err := yield(v)
@@ -1039,7 +1074,7 @@ func (b *boundExpr) Reset() {
 }
 
 func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) error {
-	ctx := cli.FromContext(c).ValueContextOf(b.Expr().Name, b)
+	ctx := cliContextOf(c).ValueContextOf(b.Expr().Name, b)
 	tryResetIfSupported(b)
 
 	err := b.BindingResult().ApplyTo(b.exprSet)
@@ -1078,25 +1113,25 @@ func (e *Expression) Evaluate(ctx context.Context, items ...any) error {
 
 // EvaluateParallel evaluates the expression pipeline in parallel for multiple items.
 // The jobs parameter controls the maximum number of concurrent evaluations. When jobs
-// is zero or negative, the method uses runtime.NumCPU() as the default. Context
-// propagation allows goroutines to be canceled or to time out. All errors are joined
-// and returned together.
+// is zero or negative, the method uses runtime.NumCPU() as the default. The tasks
+// that evaluators submit using Go share the same limit (see NewJobs). Context
+// propagation allows goroutines to be canceled or to time out. The first error
+// cancels the remaining evaluations and is returned.
+//
+// Unless the pipeline is compiled by Parallel, which serializes evaluators that
+// aren't safe to evaluate concurrently, the evaluators must be safe to evaluate
+// concurrently.
 func (e *Expression) EvaluateParallel(ctx context.Context, jobs int, items ...any) error {
-	if jobs <= 0 {
-		jobs = runtime.NumCPU()
-	}
-
 	pipe := e.compile()
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(jobs)
+	j, ctx := NewJobsScheduler(ctx, jobs)
 
 	for _, item := range items {
-		g.Go(func() error {
-			return evaluateItems(ctx, pipe, []any{item})
+		j.goWait(ctx, func(ctx context.Context) error {
+			return pipe.Evaluate(ctx, item, emptyYielder)
 		})
 	}
 
-	return g.Wait()
+	return j.Wait()
 }
 
 // Clone provides a copy of the expression.  The expression operators, the

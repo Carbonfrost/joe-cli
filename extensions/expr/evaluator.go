@@ -197,7 +197,7 @@ func (s *reflectSignature) args(c context.Context, v any, y func(any) error) ([]
 	case cliContext:
 		var actual *cli.Context
 		if c != nil {
-			actual = cli.FromContext(c)
+			actual = cliContextOf(c)
 		}
 		args = append(args, valueOrZero(actual, cliContextType))
 	}

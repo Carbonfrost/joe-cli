@@ -1,3 +1,7 @@
+// Copyright 2026 The Joe-cli Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package expr
 
 import (
@@ -32,40 +36,40 @@ func NewActionEvaluator(action cli.Action, eval Evaluator) ActionEvaluator {
 // BindEvaluator produces an evaluator from the bound values.
 func BindEvaluator[T any, E Evaluator](factory func(T) E, t bind.Binder[T]) Evaluator {
 	return newEvaluator(initializers(t),
-		func(c context.Context, v any, yield func(any) error) error {
+		func(c context.Context) (Evaluator, error) {
 			a0, err := bind1(c, t)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return factory(a0).Evaluate(c, v, yield)
+			return factory(a0), nil
 		})
 }
 
 // BindEvaluator2 produces an evaluator from the bound values.
 func BindEvaluator2[T, U any, E Evaluator](eval func(T, U) E, t bind.Binder[T], u bind.Binder[U]) Evaluator {
 	return newEvaluator(initializers(t, u),
-		func(c context.Context, v any, yield func(any) error) error {
+		func(c context.Context) (Evaluator, error) {
 			a0, a1, err := bind2(c, t, u)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return eval(a0, a1).Evaluate(c, v, yield)
+			return eval(a0, a1), nil
 		})
 }
 
 // BindEvaluator3 produces an evaluator from the bound values.
 func BindEvaluator3[T, U, V any, E Evaluator](eval func(T, U, V) E, t bind.Binder[T], u bind.Binder[U], v bind.Binder[V]) Evaluator {
 	return newEvaluator(initializers(t, u, v),
-		func(c context.Context, vany any, yield func(any) error) error {
+		func(c context.Context) (Evaluator, error) {
 			a0, a1, a2, err := bind3(c, t, u, v)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return eval(a0, a1, a2).Evaluate(c, vany, yield)
+			return eval(a0, a1, a2), nil
 		})
 }
 
-func newEvaluator(initz cli.Action, evaluator evaluatorFunc) *evaluatorInit {
+func newEvaluator(initz cli.Action, evaluator evaluatorBinder) *evaluatorInit {
 	return &evaluatorInit{
 		Action:    cli.Pipeline(initz, SetEvaluator(evaluator)),
 		Evaluator: evaluator,
