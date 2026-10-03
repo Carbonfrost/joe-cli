@@ -13,4 +13,5 @@ import (
 
 const (
 	ExprParseAllowInlineValues = cli.ReservedOption1
+	ExprParseOperators         = cli.ReservedOption2
 )

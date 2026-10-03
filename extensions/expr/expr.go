@@ -41,13 +41,23 @@
 // to Compile:
 //
 //	&expr.Expression{
-//	    Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+//	    Compiler: func(items []expr.BindingEvaluator) (expr.Evaluator, error) {
 //	        return expr.Compile(append(items, implicitPrint))
 //	    },
 //	}
 //
 // Expression.Compile applies the compiler eagerly, producing a copy of the
-// expression which evaluates using the pipeline that was compiled.
+// expression which evaluates using the pipeline that was compiled.  When the
+// compiler returns an error, the pipeline is an evaluator which fails with
+// that error.
+//
+// # Operators
+//
+// When the reserved option ParseOperators is set on the arg which contains the
+// expression, the Unix find-style operators ( ) ! -and -a -or -o are parsed
+// and placed in the sequence of binding evaluators as Operator placeholders.
+// The default compiler does not support operators, so a compiler which
+// interprets them, such as operator.Compile, must also be set.
 package expr
 
 import (
@@ -168,6 +178,7 @@ type Expression struct {
 	pipeline Evaluator
 
 	parseInlineValues bool
+	parseOperators    bool
 	nameLookupCache   map[string]*Expr
 	numeric           string
 
@@ -197,7 +208,9 @@ type BindingEvaluator interface {
 // Compiler converts the sequence of binding evaluators within an expression into
 // the evaluator which implements the evaluation pipeline.  A compiler is set on
 // Expression.Compiler, and when unset, the default compiler, Compile, is used.
-type Compiler func([]BindingEvaluator) Evaluator
+// An error is returned when the sequence can't be compiled, such as when it
+// contains operators which are not well-formed.
+type Compiler func([]BindingEvaluator) (Evaluator, error)
 
 // Predicate provides a simple predicate which filters values.  The function
 // takes the prior operand and returns true or false depending upon whether the
@@ -241,6 +254,13 @@ const (
 	// ordinary expression names shouldn't use uppercase names and the equal sign
 	// is a common delimiter in arguments.
 	ParseAllowInlineValues cli.Option = reservedoptions.ExprParseAllowInlineValues
+
+	// ParseOperators is placed in the Uses pipeline of the Arg that contains the
+	// expression and when present allows expressions to contain the operators
+	// ( ) ! -and -a -or -o, which are placed in the sequence of binding
+	// evaluators as Operator.  A compiler which interprets operators, such as
+	// operator.Compile, must be set on the expression.
+	ParseOperators cli.Option = reservedoptions.ExprParseOperators
 )
 
 // Operator provides an operator in the small predicate expression language.
@@ -256,6 +276,17 @@ func (Operator) Evaluate(context.Context, any, func(any) error) error { return n
 // Expr always returns nil.
 func (Operator) Expr() *Expr { return nil }
 
+// String provides the representation of the operator as it is parsed
+func (o Operator) String() string {
+	switch o {
+	case And:
+		return "-and"
+	case Or:
+		return "-or"
+	}
+	return string(o)
+}
+
 // Operators that can be parsed into expressions. Unlike other exprs, these
 // are typically symbols. Indeed, the underlying type of this is rune which
 // represents their common representation.
@@ -263,11 +294,27 @@ const (
 	LParen Operator = '('
 	RParen Operator = ')'
 	Not    Operator = '!'
+	And    Operator = '&'
+	Or     Operator = '|'
 )
+
+var operatorsByName = map[string]Operator{
+	"(":    LParen,
+	")":    RParen,
+	"!":    Not,
+	"-and": And, // TODO This should be defined within the Expr so it has help text
+	"-a":   And,
+	"-or":  Or,
+	"-o":   Or,
+}
 
 var reservedOptions = cli.FeatureMap[cli.Option]{
 	ParseAllowInlineValues: cli.ActionFunc(func(c *cli.Context) error {
 		c.Arg().Value.(*Expression).parseInlineValues = true
+		return nil
+	}),
+	ParseOperators: cli.ActionFunc(func(c *cli.Context) error {
+		c.Arg().Value.(*Expression).parseOperators = true
 		return nil
 	}),
 }
@@ -675,9 +722,12 @@ func (i Invariant) Initializer() cli.Action {
 // sequence of binding evaluators into the evaluator that implements the
 // evaluation pipeline.  Each binding evaluator yields the values it produces to
 // the next one in the sequence, and the last one yields to the yielder which is
-// passed to the resulting evaluator's Evaluate method.
-func Compile(items []BindingEvaluator) Evaluator {
-	mustHaveNoOperators(items)
+// passed to the resulting evaluator's Evaluate method.  Operators are not
+// supported, and an error is returned when any are present.
+func Compile(items []BindingEvaluator) (Evaluator, error) {
+	if err := mustHaveNoOperators(items); err != nil {
+		return nil, err
+	}
 	items = slices.Clone(items)
 
 	return evaluatorFunc(func(ctx context.Context, v any, yield func(any) error) error {
@@ -697,15 +747,16 @@ func Compile(items []BindingEvaluator) Evaluator {
 		yielders = append(yielders, yield)
 
 		return yielderThunk(0)(v)
-	})
+	}), nil
 }
 
-func mustHaveNoOperators(items []BindingEvaluator) {
+func mustHaveNoOperators(items []BindingEvaluator) error {
 	for _, item := range items {
-		if _, ok := item.(Operator); ok {
-			panic("default Compile function does not support operators")
+		if op, ok := item.(Operator); ok {
+			return fmt.Errorf("default compiler does not support operators: %v", op)
 		}
 	}
+	return nil
 }
 
 // ComposeEvaluator produces an evaluator which considers each evaluator in
@@ -1058,6 +1109,7 @@ func (e *Expression) Clone() *Expression {
 		args:              slices.Clone(e.args),
 		pipeline:          e.pipeline,
 		parseInlineValues: e.parseInlineValues,
+		parseOperators:    e.parseOperators,
 		numeric:           e.numeric,
 		Exprs:             slices.Clone(e.Exprs),
 		Compiler:          e.Compiler,
@@ -1068,10 +1120,12 @@ func (e *Expression) Clone() *Expression {
 // resulting expression evaluates using the pipeline which was compiled from the
 // binding evaluators as they exist now rather than compiling the pipeline when
 // it is evaluated.  Consequently, binding evaluators which are added to the copy
-// using Append or Prepend take no part in its evaluation.
+// using Append or Prepend take no part in its evaluation.  When the compiler
+// returns an error, the pipeline is the Error evaluator, which fails the
+// evaluation immediately.
 func (e *Expression) Compile() *Expression {
 	res := e.Clone()
-	res.pipeline = e.compiler()(slices.Clone(e.items))
+	res.pipeline = e.compileItems()
 	return res
 }
 
@@ -1079,7 +1133,15 @@ func (e *Expression) compile() Evaluator {
 	if e.pipeline != nil {
 		return e.pipeline
 	}
-	return e.compiler()(slices.Clone(e.items))
+	return e.compileItems()
+}
+
+func (e *Expression) compileItems() Evaluator {
+	pipe, err := e.compiler()(slices.Clone(e.items))
+	if err != nil {
+		return Error(err)
+	}
+	return pipe
 }
 
 func (e *Expression) compiler() Compiler {
@@ -1173,6 +1235,14 @@ func (e *Expression) findExpr(exprName string) (result *Expr, isShortInlineAlias
 	return expr, false, ok
 }
 
+func (e *Expression) findOperator(arg string) (Operator, bool) {
+	if !e.parseOperators {
+		return 0, false
+	}
+	op, ok := operatorsByName[arg]
+	return op, ok
+}
+
 func parseExpressions(e *Expression) ([]BindingEvaluator, *cli.BindingResult, error) {
 	args := e.args
 
@@ -1181,6 +1251,11 @@ func parseExpressions(e *Expression) ([]BindingEvaluator, *cli.BindingResult, er
 	for len(args) > 0 {
 		arg := args[0]
 		args = args[1:]
+
+		if op, ok := e.findOperator(arg); ok {
+			results = append(results, op)
+			continue
+		}
 
 		expr, isShortInline, ok := e.findExpr(arg[1:])
 
@@ -1213,7 +1288,9 @@ func parseExpressions(e *Expression) ([]BindingEvaluator, *cli.BindingResult, er
 
 			switch pe.Code {
 			case cli.UnexpectedArgument:
-				return nil, nil, argsMustPrecedeExprs(args[0])
+				if _, ok := e.findOperator(args[0]); !ok {
+					return nil, nil, argsMustPrecedeExprs(args[0])
+				}
 			case cli.ExpectedArgument:
 				return nil, nil, pe
 			}

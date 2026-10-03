@@ -1363,7 +1363,7 @@ var _ = Describe("Compile", func() {
 	})
 
 	It("chains each binding evaluator in the sequence", func() {
-		pipe := expr.Compile([]expr.BindingEvaluator{step("a"), step("b")})
+		pipe, _ := expr.Compile([]expr.BindingEvaluator{step("a"), step("b")})
 
 		Expect(pipe.Evaluate(context.Background(), "in", nil)).NotTo(HaveOccurred())
 		Expect(captured.String()).To(Equal("a(in) b(in) "))
@@ -1371,7 +1371,7 @@ var _ = Describe("Compile", func() {
 
 	It("yields from the last binding evaluator to the yielder", func() {
 		yield := new(exprfakes.FakeYielder)
-		pipe := expr.Compile([]expr.BindingEvaluator{step("a")})
+		pipe, _ := expr.Compile([]expr.BindingEvaluator{step("a")})
 
 		Expect(pipe.Evaluate(context.Background(), "in", yield.Spy)).NotTo(HaveOccurred())
 		Expect(yield.CallCount()).To(Equal(1))
@@ -1380,7 +1380,7 @@ var _ = Describe("Compile", func() {
 
 	It("yields the input value when the sequence is empty", func() {
 		yield := new(exprfakes.FakeYielder)
-		pipe := expr.Compile(nil)
+		pipe, _ := expr.Compile(nil)
 
 		Expect(pipe.Evaluate(context.Background(), "in", yield.Spy)).NotTo(HaveOccurred())
 		Expect(yield.ArgsForCall(0)).To(Equal("in"))
@@ -1388,7 +1388,7 @@ var _ = Describe("Compile", func() {
 
 	It("copies the sequence that was compiled", func() {
 		items := []expr.BindingEvaluator{step("a")}
-		pipe := expr.Compile(items)
+		pipe, _ := expr.Compile(items)
 		items[0] = step("b")
 
 		Expect(pipe.Evaluate(context.Background(), "in", nil)).NotTo(HaveOccurred())
@@ -1396,7 +1396,7 @@ var _ = Describe("Compile", func() {
 	})
 
 	It("returns the error from a binding evaluator", func() {
-		pipe := expr.Compile([]expr.BindingEvaluator{
+		pipe, _ := expr.Compile([]expr.BindingEvaluator{
 			expr.NewBindingEvaluator(expr.Error(errors.New("an error"))),
 			step("a"),
 		})
@@ -1405,10 +1405,9 @@ var _ = Describe("Compile", func() {
 		Expect(captured.String()).To(BeEmpty())
 	})
 
-	It("panics when an operator is present", func() {
-		Expect(func() {
-			expr.Compile([]expr.BindingEvaluator{expr.Not})
-		}).To(Panic())
+	It("returns an error when an operator is present", func() {
+		_, err := expr.Compile([]expr.BindingEvaluator{expr.Not})
+		Expect(err).To(MatchError("default compiler does not support operators: !"))
 	})
 })
 
@@ -1440,7 +1439,7 @@ var _ = Describe("Expression", func() {
 
 		It("uses the compiler that was set", func() {
 			e := &expr.Expression{
-				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+				Compiler: func(items []expr.BindingEvaluator) (expr.Evaluator, error) {
 					return expr.Compile(append(items, step("implicit")))
 				},
 			}
@@ -1462,7 +1461,7 @@ var _ = Describe("Expression", func() {
 					{
 						Name: "e",
 						Value: &expr.Expression{
-							Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+							Compiler: func(items []expr.BindingEvaluator) (expr.Evaluator, error) {
 								for _, i := range items {
 									actual = append(actual, i.Expr().Name)
 								}
@@ -1488,7 +1487,7 @@ var _ = Describe("Expression", func() {
 		It("is applied on each evaluation when the expression is not compiled", func() {
 			var calls int
 			e := &expr.Expression{
-				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+				Compiler: func(items []expr.BindingEvaluator) (expr.Evaluator, error) {
 					calls++
 					return expr.Compile(items)
 				},
@@ -1539,7 +1538,7 @@ var _ = Describe("Expression", func() {
 
 		It("applies the compiler step to the copy", func() {
 			e := &expr.Expression{
-				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+				Compiler: func(items []expr.BindingEvaluator) (expr.Evaluator, error) {
 					return expr.Compile(append(items, step("implicit")))
 				},
 			}
@@ -1551,10 +1550,24 @@ var _ = Describe("Expression", func() {
 			Expect(captured.String()).To(Equal("a(in) implicit(in) "))
 		})
 
+		It("converts a compiler error into an evaluator which fails", func() {
+			e := &expr.Expression{
+				Compiler: func([]expr.BindingEvaluator) (expr.Evaluator, error) {
+					return nil, errors.New("compiler error")
+				},
+			}
+			e.Append(step("a"))
+
+			actual := e.Compile()
+			Expect(actual.Evaluate(context.Background(), "in")).To(MatchError("compiler error"))
+			Expect(e.Evaluate(context.Background(), "in")).To(MatchError("compiler error"))
+			Expect(captured.String()).To(BeEmpty())
+		})
+
 		It("applies the compiler step exactly once", func() {
 			var calls int
 			e := &expr.Expression{
-				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+				Compiler: func(items []expr.BindingEvaluator) (expr.Evaluator, error) {
 					calls++
 					return expr.Compile(items)
 				},
@@ -1569,7 +1582,7 @@ var _ = Describe("Expression", func() {
 
 		It("does not affect the original expression", func() {
 			e := &expr.Expression{
-				Compiler: func(items []expr.BindingEvaluator) expr.Evaluator {
+				Compiler: func(items []expr.BindingEvaluator) (expr.Evaluator, error) {
 					return expr.Compile(append(items, step("implicit")))
 				},
 			}
