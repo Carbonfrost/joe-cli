@@ -21,6 +21,25 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
+var _ = Describe("Parse", func() {
+
+	type item struct {
+		A int      `mapstructure:"a"`
+		B *url.URL `mapstructure:"b"`
+	}
+
+	var exampleURL, _ = url.Parse("https://example.com")
+
+	DescribeTable("examples", func(input string, start, expected any) {
+		err := structure.Parse(input, start)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(start).To(Equal(expected))
+	},
+		Entry("nominal", "a=33,b=https://example.com", &item{}, &item{A: 33, B: exampleURL}),
+		Entry("text unmarshal is preferred", "rip=x", &textMarshaler{}, &textMarshaler{"rip=x"}),
+	)
+})
+
 var _ = Describe("Value", func() {
 
 	It("unwraps value in lookup", func() {

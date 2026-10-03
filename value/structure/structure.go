@@ -8,6 +8,7 @@
 package structure
 
 import (
+	"encoding"
 	"flag"
 	"net/url"
 	"reflect"
@@ -76,6 +77,15 @@ func Decode(input, output any, opts ...DecoderOption) error {
 	return decoder.Decode(input)
 }
 
+// Parse converts obtains the struct from text
+func Parse(input string, output any, opts ...DecoderOption) error {
+	if m, ok := output.(encoding.TextUnmarshaler); ok {
+		return m.UnmarshalText([]byte(input))
+	}
+	args := parseArgs(input, false)
+	return Decode(args, output, opts...)
+}
+
 // WithOptions applies additional options.
 func (v *Value) WithOptions(options ...DecoderOption) *Value {
 	v.Options = append(v.Options, options...)
@@ -95,17 +105,17 @@ func (v *Value) DisableSplitting() {
 
 // Set the text of the value.  Can be called successively to append.
 func (v *Value) Set(arg string) error {
-	var args map[string]string
-
-	if v.disableSplitting {
-		key, value, _ := support.ParseKeyValue(arg)
-		args = map[string]string{key: value}
-
-	} else {
-		args = support.FlattenValues(support.ParseMap(arg))
-	}
-
+	args := parseArgs(arg, v.disableSplitting)
 	return Decode(args, v.V, v.Options...)
+}
+
+func parseArgs(arg string, disableSplitting bool) map[string]string {
+	if disableSplitting {
+		key, value, _ := support.ParseKeyValue(arg)
+		return map[string]string{key: value}
+
+	}
+	return support.FlattenValues(support.ParseMap(arg))
 }
 
 func (v *Value) String() string {
