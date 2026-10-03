@@ -403,6 +403,11 @@ func (c *Context) IsAfter() bool { return c.Timing() == AfterTiming }
 // IsAction returns true if the context represents actions running for the actual execution of the command
 func (c *Context) IsAction() bool { return c.Timing() == ActionTiming }
 
+// IsImplicitTiming returns true if the context represents actions running in
+// ImplicitValueTiming.  Because the actual timing is BeforeTiming in this case,
+// IsBefore also returns true.
+func (c *Context) IsImplicitTiming() bool { return c.implicitTimingActive() }
+
 // IsInteractive returns true if TTY is connected to stdin
 func (c *Context) IsInteractive() bool {
 	_, ok := terminalReaderFD(c.Stdin)

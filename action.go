@@ -281,7 +281,9 @@ const (
 	// ImplicitValueTiming represents timing that happens when an implied value is being
 	// computed for an arg or flag.  This timing can be set with the At function
 	// which affects the sort order of actions so that implied value timing occurs just before
-	// the action.  When the action runs, the actual timing will be BeforeTiming.
+	// the action.  When the action runs, the actual timing will be BeforeTiming;
+	// use Context.IsImplicitTiming to detect that the action is running in
+	// implicit value timing.
 	ImplicitValueTiming
 
 	// justBeforeTiming is internally used for actions that must happen just before the

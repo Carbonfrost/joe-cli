@@ -743,6 +743,31 @@ var _ = Describe("Context", func() {
 		)
 	})
 
+	Describe("IsImplicitTiming", func() {
+
+		DescribeTable("examples",
+			func(timing func(cli.Action) cli.Action, expected types.GomegaMatcher) {
+				var actual bool
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{
+							Name: "f",
+							Uses: timing(cli.ActionFunc(func(c *cli.Context) error {
+								actual = c.IsImplicitTiming()
+								return nil
+							})),
+						},
+					},
+				}
+
+				Expect(app.RunContext(context.Background(), "app")).To(Succeed())
+				Expect(actual).To(expected)
+			},
+			Entry("implicit value timing", func(a cli.Action) cli.Action { return cli.At(cli.ImplicitValueTiming, a) }, BeTrue()),
+			Entry("before timing", cli.Before, BeFalse()),
+		)
+	})
+
 	Describe("Use", func() {
 
 		It("invokes the action during the initializer", func() {
