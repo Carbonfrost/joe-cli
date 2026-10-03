@@ -195,6 +195,11 @@ var (
 	// ErrTimingTooLate occurs when attempting to run an action in a pipeline
 	// when the pipeline is later than requested by the action.
 	ErrTimingTooLate = errors.New("too late for requested action timing")
+
+	// ErrContextCycle occurs when setting the context to one derived from the
+	// *Context itself rather than from its Context() method, which would cause
+	// lookups to recurse indefinitely.
+	ErrContextCycle = errors.New("context cycle: derive from Context() instead of *Context itself")
 )
 
 // FromContext obtains the Context, which faciliates interactions with the application
@@ -292,10 +297,14 @@ func (c *Context) Context() context.Context {
 	return c.state.getRef()
 }
 
-// SetContext sets the context
+// SetContext sets the context.  The context must be derived from c.Context() rather
+// than c itself; otherwise, ErrContextCycle is returned.
 //
 // Deprecated: Use WithContext middleware instead to avoid mutation
 func (c *Context) SetContext(ctx context.Context) error {
+	if p, ok := fromContext(ctx); ok && p == c {
+		return ErrContextCycle
+	}
 	c.state.updateRef(ctx)
 	return nil
 }

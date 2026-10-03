@@ -2489,6 +2489,40 @@ var _ = Describe("Timeout", func() {
 	})
 })
 
+var _ = Describe("SetContext", func() {
+
+	It("rejects a context derived from *Context itself", func() {
+		app := &cli.App{
+			Name: "any",
+			Uses: cli.Before(cli.ActionFunc(func(c *cli.Context) error {
+				ctx, cancel := context.WithCancel(c)
+				defer cancel()
+				return c.SetContext(ctx)
+			})),
+		}
+
+		err := app.RunContext(context.Background(), "app")
+		Expect(err).To(MatchError(cli.ErrContextCycle))
+	})
+
+	It("allows a context derived from Context()", func() {
+		var actual any
+		app := &cli.App{
+			Name: "any",
+			Uses: cli.Before(cli.ActionFunc(func(c *cli.Context) error {
+				return c.SetContext(context.WithValue(c.Context(), privateKey("k"), "v"))
+			})),
+			Action: func(c *cli.Context) {
+				actual = c.Value(privateKey("k"))
+			},
+		}
+
+		err := app.RunContext(context.Background(), "app")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(Equal("v"))
+	})
+})
+
 var _ = Describe("Recover", func() {
 
 	It("will print out the debug stack", func() {
