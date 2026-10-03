@@ -10,11 +10,20 @@ package prompt
 
 import (
 	"context"
+	"fmt"
+
+	cli "github.com/Carbonfrost/joe-cli"
+)
+
+type key string
+
+const (
+	contextPrompterKey key = "contextPrompter"
 )
 
 //go:generate go tool counterfeiter -generate
 
-//counterfeiter:generate -o internal/promptfakes . Prompter
+//counterfeiter:generate -o ../../internal/promptfakes . Prompter
 
 // Prompter displays a prompt for user input.
 type Prompter interface {
@@ -36,4 +45,27 @@ type Prompter interface {
 
 	// Edit displays the system text editor to capture input.
 	Edit(ctx context.Context, prompt, defaultValue string, blankAllowed bool) (string, error)
+}
+
+// ContextValue provides an action that sets the given value into the context.
+// The only supported type is Prompter.
+func ContextValue(v Prompter) cli.Action {
+	return cli.WithContextValue(contextPrompterKey, v)
+}
+
+// FromContext retrieves the prompter from the context.  This panics if the
+// prompter has not been registered, which is done by using [ContextValue].
+func FromContext(ctx context.Context) Prompter {
+	res, err := tryFromContext(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func tryFromContext(ctx context.Context) (Prompter, error) {
+	if res, ok := ctx.Value(contextPrompterKey).(Prompter); ok {
+		return res, nil
+	}
+	return nil, fmt.Errorf("expected %s value not present in context", contextPrompterKey)
 }
