@@ -6,6 +6,7 @@ package prompt_test
 
 import (
 	"context"
+	"encoding/json"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/prompt"
@@ -34,5 +35,60 @@ var _ = Describe("FromContext", func() {
 		Expect(func() {
 			prompt.FromContext(context.Background())
 		}).To(PanicWith(MatchError(ContainSubstring("not present in context"))))
+	})
+})
+
+var _ = Describe("ContextFilter", func() {
+
+	Describe("MarshalJSON", func() {
+
+		DescribeTable("examples", func(val prompt.ContextFilter, expected string) {
+			actual, _ := json.Marshal(val)
+			Expect(string(actual)).To(Equal("\"" + expected + "\""))
+
+			var o prompt.ContextFilter
+			_ = json.Unmarshal(actual, &o)
+			Expect(o).To(Equal(val))
+			Expect(o.String()).To(Equal(expected))
+		},
+			Entry("Defines", prompt.Defines, "prompt.DEFINES"),
+			Entry("Confirmed", prompt.Confirmed, "prompt.CONFIRMED"),
+		)
+	})
+
+	Describe("Describe", func() {
+
+		DescribeTable("examples", func(val prompt.ContextFilter, expected string) {
+			actual := val.Describe()
+			Expect(actual).To(Equal(expected))
+		},
+			Entry("Defines", prompt.Defines, "defined in joe-cli/prompt pkg"),
+			Entry("Confirmed", prompt.Confirmed, "confirmed"),
+		)
+	})
+
+	Describe("Defines", func() {
+		It("defines on confirm flag", func() {
+			actual := map[string]bool{}
+			app := &cli.App{
+				Name: "app",
+				Flags: []*cli.Flag{
+					{Uses: prompt.SetConfirmed()},
+				},
+				Action: func(c *cli.Context) {
+					for _, flag := range c.Flags() {
+						actual[flag.Name] = c.ContextOf(flag).Matches(prompt.Defines)
+					}
+				},
+			}
+			_ = app.RunContext(context.Background(), nil...)
+
+			Expect(actual).To(Equal(map[string]bool{
+				"confirm":        true,
+				"zsh-completion": false,
+				"help":           false,
+				"version":        false,
+			}))
+		})
 	})
 })
