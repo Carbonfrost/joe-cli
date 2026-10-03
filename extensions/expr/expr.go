@@ -815,11 +815,7 @@ func (e *Expr) privateData() support.PD {
 
 // LookupData obtains the data if it exists
 func (e *Expr) LookupData(name any) (any, bool) {
-	if s, ok := name.(string); ok {
-		v, ok := e.Data[s]
-		return v, ok
-	}
-	return nil, false
+	return e.privateData().Lookup(name)
 }
 
 // SetName sets the name of the expression

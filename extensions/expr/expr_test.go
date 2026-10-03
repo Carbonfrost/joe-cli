@@ -26,6 +26,18 @@ type contextTestKey struct{}
 
 var _ = Describe("Expr", func() {
 
+	DescribeTable("LookupData", func(key any) {
+		e := &expr.Expr{Name: "e"}
+		e.SetData(key, "value")
+
+		actual, ok := e.LookupData(key)
+		Expect(ok).To(BeTrue())
+		Expect(actual).To(Equal("value"))
+	},
+		Entry("public key", "key"),
+		Entry("private key", contextTestKey{}),
+	)
+
 	It("context contains the expression", func() {
 		act := new(joeclifakes.FakeAction)
 		app := &cli.App{
