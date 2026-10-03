@@ -921,16 +921,47 @@ func WithContextOf(name any, a Action) Action {
 	})
 }
 
-// Timeout provides an action which adds a timeout to the context.
-func Timeout(timeout time.Duration) Action {
-	return Before(ActionFunc(func(c1 *Context) error {
-		// Refer to comments in HandleSignal
-		ctx, cancel := context.WithTimeout(c1.Context(), timeout)
-		return Do(c1, Pipeline(
-			SetContext(ctx),
-			cancelAfter(cancel),
-		))
-	}))
+// Timeout provides an action which adds a timeout to the context.  The
+// duration can be specified explicitly; however, when omitted and used
+// within the Uses pipeline of a flag or arg, it sets up reasonable
+// defaults and reads the duration from the flag or arg. If Timeout is run where
+// no duration was ever specified (either explicitly or read from the flag
+// or arg), this is an internal error.
+func Timeout(timeoutopt ...time.Duration) Action {
+	if len(timeoutopt) > 1 {
+		panic("expected 0 or 1 args for timeoutopt")
+	}
+
+	return Pipeline(
+		&Prototype{
+			Name:     "timeout",
+			HelpText: "Set a timeout after which the operation is canceled",
+			Value:    new(time.Duration),
+		},
+		Before(ActionFunc(func(c1 *Context) error {
+			timeout, err := timeoutDuration(c1, timeoutopt)
+			if err != nil {
+				return err
+			}
+
+			// Refer to comments in HandleSignal
+			ctx, cancel := context.WithTimeout(c1.Context(), timeout)
+			return Do(c1, Pipeline(
+				SetContext(ctx),
+				cancelAfter(cancel),
+			))
+		})),
+	)
+}
+
+func timeoutDuration(c *Context, timeoutopt []time.Duration) (time.Duration, error) {
+	if len(timeoutopt) == 1 {
+		return timeoutopt[0], nil
+	}
+	if d := c.Duration(""); d != 0 {
+		return d, nil
+	}
+	return 0, c.internalError(fmt.Errorf("timeout: no duration was specified"))
 }
 
 func cancelAfter(fn context.CancelFunc) Action {

@@ -2487,6 +2487,64 @@ var _ = Describe("Timeout", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(MatchError("expected output error"))
 	})
+
+	It("provides a flag prototype with a conventional Duration default", func() {
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Name: "timeout",
+					Uses: cli.Timeout(),
+				},
+			},
+			Action: func(c context.Context) error {
+				return nil
+			},
+		}
+
+		err := app.RunContext(context.Background(), "app", "--timeout", "5s")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(app.Flags[0].Value).To(BeAssignableToTypeOf(new(time.Duration)))
+	})
+
+	It("derives the duration from the flag where it was used when omitted", func() {
+		app := &cli.App{
+			Name: "any",
+			Flags: []*cli.Flag{
+				{
+					Name: "timeout",
+					Uses: cli.Timeout(),
+				},
+			},
+			Action: func(c context.Context) error {
+				select {
+				case <-time.After(1 * time.Second):
+					return fmt.Errorf("expected proper timeout to be handled within action")
+				case <-c.Done():
+					return fmt.Errorf("expected output error")
+				}
+			},
+		}
+
+		err := app.RunContext(context.Background(), "app", "--timeout", "200ms")
+
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("expected output error"))
+	})
+
+	It("is an internal error to use without ever specifying a duration", func() {
+		app := &cli.App{
+			Name: "any",
+			Uses: cli.Timeout(),
+			Action: func(c context.Context) error {
+				return nil
+			},
+		}
+
+		err := app.RunContext(context.Background(), "app")
+
+		Expect(err).To(BeAssignableToTypeOf(&cli.InternalError{}))
+	})
 })
 
 var _ = Describe("SetContext", func() {
