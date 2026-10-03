@@ -2608,6 +2608,38 @@ var _ = Describe("SuppressError", func() {
 	})
 })
 
+var _ = Describe("Data", func() {
+
+	type (
+		privateKey       struct{}
+		targetLookupData interface {
+			LookupData(any) (any, bool)
+		}
+	)
+
+	DescribeTable("private key", func(add func(cli.Action) cli.Action) {
+		var actual any
+		app := &cli.App{
+			Name: "any",
+			Uses: add(cli.Pipeline(
+				cli.Data(privateKey{}, "value"),
+				cli.ActionFunc(func(c *cli.Context) error {
+					actual, _ = c.Target().(targetLookupData).LookupData(privateKey{})
+					return nil
+				}),
+			)),
+		}
+
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(Equal("value"))
+	},
+		Entry("flag", func(a cli.Action) cli.Action { return cli.AddFlag(&cli.Flag{Name: "f", Uses: a}) }),
+		Entry("command", func(a cli.Action) cli.Action { return cli.AddCommand(&cli.Command{Name: "c", Uses: a}) }),
+		Entry("arg", func(a cli.Action) cli.Action { return cli.AddArg(&cli.Arg{Name: "a", Uses: a}) }),
+	)
+})
+
 var _ = Describe("Prototype", func() {
 
 	DescribeTable("examples", func(proto cli.Prototype, expected Fields) {

@@ -1225,8 +1225,8 @@ func (c *Context) Use(action Action) error {
 	return c.At(InitialTiming, action)
 }
 
-// Target retrieves the target of the context, which is *App, *Command, *Flag, *Arg,
-// or *Expr
+// Target retrieves the target of the context, which is *App, *Command, *Flag, or *Arg.
+// When provided via ProvideValueInitializer, then the underlying target is returned (such as [extensions/expr.Expr])
 func (c *Context) Target() any {
 	if val, ok := c.target().(*valueTarget); ok {
 		return val.v

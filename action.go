@@ -2346,7 +2346,7 @@ func (s *targetSupport) internalFlags() internalFlags {
 }
 
 func (t *targetSupport) privateData(public *map[string]any) support.PD {
-	return support.PrivateData(public, t.private)
+	return support.PrivateData(public, &t.private)
 }
 
 func (m middlewareFunc) Execute(c context.Context) error {

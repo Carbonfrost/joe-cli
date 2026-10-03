@@ -32,11 +32,14 @@ func PromoteOptionalAliases(data targetDataAccessor, aliases *[]string, names ma
 	}
 }
 
-func PrivateData(public *map[string]any, private map[any]any) PD {
+func PrivateData(public *map[string]any, private *map[any]any) PD {
 	if *public == nil {
 		*public = map[string]any{}
 	}
-	return PD{public: *public, private: private}
+	if *private == nil {
+		*private = map[any]any{}
+	}
+	return PD{public: *public, private: *private}
 }
 
 type PD struct {

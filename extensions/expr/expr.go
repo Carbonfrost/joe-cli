@@ -810,7 +810,7 @@ func (e *Expr) SetData(name, v any) {
 }
 
 func (e *Expr) privateData() support.PD {
-	return support.PrivateData(&e.Data, e.private)
+	return support.PrivateData(&e.Data, &e.private)
 }
 
 // LookupData obtains the data if it exists
