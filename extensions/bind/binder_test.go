@@ -376,6 +376,38 @@ var _ = Describe("ContextValue", func() {
 
 })
 
+var _ = Describe("Context", func() {
+
+	It("returns an error on non-cli Context", func() {
+		_, err := bind.Context().Bind(context.Background())
+		Expect(err).To(MatchError("context does not provide *cli.Context"))
+	})
+
+	It("returns underlying context", func() {
+		origin := context.Background()
+		app := &cli.App{}
+		ctx, _ := app.Initialize(origin)
+
+		actual, _ := bind.Context().Context().Bind(ctx)
+		Expect(actual).To(BeIdenticalTo(origin))
+	})
+
+	It("applies match on ContextFilter", func() {
+		var actual bool
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name:  "f",
+					Value: new(bool),
+					Uses:  bind.Call(callFactory(&actual), bind.Context().Matches(cli.Seen)),
+				},
+			},
+		}
+		_ = app.RunContext(context.Background(), "app", "-f")
+		Expect(actual).To(BeTrue())
+	})
+})
+
 var _ = Describe("Getenv", func() {
 
 	BeforeEach(func() {

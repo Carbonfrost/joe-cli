@@ -362,8 +362,36 @@ func ContextValue[T any](key any) Binder[T] {
 }
 
 // Context binds the context as a parameter.
-func Context() Binder[*cli.Context] {
-	return FromContext(cli.FromContext)
+func Context() *ContextBinder {
+	return &ContextBinder{}
+}
+
+// ContextBinder is a [Binder] for [cli.Context] values. In addition to the
+// standard Binder interface, it exposes derived bindings.
+type ContextBinder struct {
+}
+
+// Bind obtains the Boolean value from the context
+func (b *ContextBinder) Bind(c context.Context) (*cli.Context, error) {
+	result, ok := cli.TryFromContext(c)
+	if !ok {
+		return nil, fmt.Errorf("context does not provide *cli.Context")
+	}
+	return result, nil
+}
+
+// Matches obtains a binder over whether the context matches the filter
+func (b *ContextBinder) Matches(f cli.ContextFilter) *BoolBinder {
+	return then(b, func(v *cli.Context) bool {
+		return f.Matches(v)
+	}).(*BoolBinder)
+}
+
+// Context obtains the underlying context
+func (b *ContextBinder) Context() Binder[context.Context] {
+	return then(b, func(v *cli.Context) context.Context {
+		return v.Context()
+	})
 }
 
 // Getenv provides a binder which looks up a variable from the environment. If the
