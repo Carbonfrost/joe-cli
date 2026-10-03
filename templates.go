@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -112,7 +113,7 @@ var (
 {{- define "ValueHelpTextListing" -}}
 {{ "\n" }}
 {{- range . -}}
-{{ "   " }}{{ "\t" }}{{ .Value }}{{ "\t" }}{{ .HelpText }}{{ "\n" }}
+{{ "       " }}{{ "\t" }}{{ .Value | Bold }}{{ "\t" }}{{ .HelpText }}{{ "\n" }}
 {{- end -}}
 {{- end -}}
 
@@ -245,6 +246,9 @@ Expressions:
 			}
 			first := synopsis.StyleFromData(cmd.Data).ApplyTo(s[0])
 			return append([]string{first}, s[1:]...)
+		},
+		"Bold": func(a ...any) (string, error) {
+			return fmt.Sprint(a...), nil
 		},
 
 		"Trim": strings.TrimSpace,

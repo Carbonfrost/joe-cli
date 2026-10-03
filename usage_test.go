@@ -573,9 +573,9 @@ var _ = Describe("DisplayHelpScreen", func() {
 			Expect(renderScreen(app, "app --help")).To(ContainSubstring(
 				"  -g <action>  Select a feature\n" +
 					"\n" +
-					"     build     (default) Build the given target or artifact\n" +
-					"     api       Invoke API for the given target\n" +
-					"     artifact  Retrieve the given artifact\n" +
+					"         build     (default) Build the given target or artifact\n" +
+					"         api       Invoke API for the given target\n" +
+					"         artifact  Retrieve the given artifact\n" +
 					"\n"))
 		})
 
