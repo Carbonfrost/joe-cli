@@ -33,5 +33,5 @@ func main() {
 			return exec.Open(file.Name, app)
 		},
 	}
-	app.Run(os.Args)
+	app.Run(os.Args...)
 }

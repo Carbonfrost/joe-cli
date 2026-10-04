@@ -33,29 +33,30 @@ func main() {
 						{Name: "writable"},
 						{Name: "executable", Evaluate: expr.Predicate(isExecutable)},
 					},
+					Compiler: func(be []expr.BindingEvaluator) (expr.Evaluator, error) {
+						var items []expr.BindingEvaluator
+						items = append(items, expr.NewBindingEvaluator(expr.EvaluatorFunc(walker)))
+						items = append(items, be...)
+						items = append(items, expr.NewBindingEvaluator(expr.Predicate(printer)))
+						return expr.Compile(items)
+					},
 				},
 			},
 		},
-		Action: func(c *cli.Context) {
-			exp := expr.FromContext(c, "expression")
-			exp.Prepend(expr.NewBindingEvaluator(expr.EvaluatorFunc(walker)))
-			exp.Append(expr.NewBindingEvaluator(expr.Predicate(printer)))
-
-			// Pass true to the expression pipeline in order to ensure that the
-			// first expression binding has an input
-			exp.Evaluate(c, true)
-		},
+		// Pass true to the expression pipeline in order to ensure that the
+		// first expression binding has an input
+		Action: expr.Evaluate(true),
 	}
-	app.Run(os.Args)
+	app.Run(os.Args...)
 }
 
-func isExecutable(v interface{}) bool {
+func isExecutable(v any) bool {
 	// Whether the file is executable, but don't count directories
 	in, _ := v.(*info).Info()
 	return !in.IsDir() && in.Mode()&0100 != 0
 }
 
-func walker(c *cli.Context, _ interface{}, yield func(interface{}) error) error {
+func walker(c *cli.Context, _ any, yield func(any) error) error {
 	c.File("path").Walk(func(path string, d fs.DirEntry, _ error) error {
 		yield(&info{
 			DirEntry: d,
@@ -66,7 +67,7 @@ func walker(c *cli.Context, _ interface{}, yield func(interface{}) error) error 
 	return nil
 }
 
-func printer(v interface{}) bool {
+func printer(v any) bool {
 	info := v.(*info)
 	fmt.Println(info.Path)
 	return true
