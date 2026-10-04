@@ -9,44 +9,73 @@
                     "flags": [
                         {
                             "name": "color",
-                            "helpText": "Activate the color extension"
+                            "helpText": "Activate the color extension",
+                            "value": {
+                                "type": "bool",
+                                "string": "false"
+                            }
                         },
                         {
                             "name": "http",
-                            "helpText": "Add a dependency on joe-cli-http"
+                            "helpText": "Add a dependency on joe-cli-http",
+                            "value": {
+                                "type": "bool",
+                                "string": "false"
+                            }
                         },
                         {
                             "name": "table",
-                            "helpText": "Activate the table extension"
+                            "helpText": "Activate the table extension",
+                            "value": {
+                                "type": "bool",
+                                "string": "false"
+                            }
                         },
                         {
                             "name": "app-version",
                             "aliases": [
                                 "V"
                             ],
-                            "helpText": "Set the version string"
+                            "helpText": "Set the version string",
+                            "value": {
+                                "type": "string"
+                            }
                         },
                         {
                             "name": "comment",
                             "aliases": [
                                 "c"
                             ],
-                            "helpText": "Set the comment string"
+                            "helpText": "Set the comment string",
+                            "value": {
+                                "type": "string"
+                            }
                         },
                         {
                             "name": "help-text",
-                            "helpText": "Set the help text string"
+                            "helpText": "Set the help text string",
+                            "value": {
+                                "type": "string"
+                            }
                         },
                         {
                             "name": "name",
                             "aliases": [
                                 "n"
                             ],
-                            "helpText": "Name of the new app"
+                            "helpText": "Name of the new app",
+                            "value": {
+                                "type": "string",
+                                "string": "joe-cli"
+                            }
                         },
                         {
                             "name": "license",
-                            "helpText": "Activate the license flag"
+                            "helpText": "Activate the license flag",
+                            "value": {
+                                "type": "bool",
+                                "string": "false"
+                            }
                         }
                     ],
                     "helpText": "Create a new app"
@@ -59,6 +88,10 @@
                     "options": "DISABLE_SPLITTING",
                     "data": {
                         "Source": "github.com/Carbonfrost/joe-cli"
+                    },
+                    "value": {
+                        "type": "list",
+                        "string": "[]"
                     }
                 }
             ],
@@ -75,7 +108,11 @@
             ],
             "args": [
                 {
-                    "name": "command"
+                    "name": "command",
+                    "value": {
+                        "type": "list",
+                        "string": "[]"
+                    }
                 }
             ],
             "helpText": "Display help for a command",
@@ -96,11 +133,19 @@
     "flags": [
         {
             "name": "force",
-            "helpText": "Overwrite files and accept all prompts"
+            "helpText": "Overwrite files and accept all prompts",
+            "value": {
+                "type": "bool",
+                "string": "false"
+            }
         },
         {
             "name": "dry-run",
-            "helpText": "Display what commands will be run without actually executing them"
+            "helpText": "Display what commands will be run without actually executing them",
+            "value": {
+                "type": "bool",
+                "string": "false"
+            }
         },
         {
             "name": "help",
@@ -111,6 +156,10 @@
             "options": "EXITS",
             "data": {
                 "Source": "github.com/Carbonfrost/joe-cli"
+            },
+            "value": {
+                "type": "bool",
+                "string": "false"
             }
         },
         {
@@ -119,6 +168,10 @@
             "options": "EXITS",
             "data": {
                 "Source": "github.com/Carbonfrost/joe-cli"
+            },
+            "value": {
+                "type": "bool",
+                "string": "false"
             }
         },
         {
@@ -126,6 +179,10 @@
             "options": "HIDDEN, EXITS",
             "data": {
                 "Source": "github.com/Carbonfrost/joe-cli"
+            },
+            "value": {
+                "type": "bool",
+                "string": "false"
             }
         }
     ],
@@ -136,10 +193,14 @@
             "options": "DISABLE_SPLITTING",
             "data": {
                 "Source": "github.com/Carbonfrost/joe-cli"
+            },
+            "value": {
+                "type": "list",
+                "string": "[]"
             }
         }
     ],
     "helpText": "Easily generate a new Joe-cli app or utility",
     "version": "(devel)",
-    "buildDate": "2026-04-17T22:43:01.623598508-07:00"
+    "buildDate": "2026-10-04T01:30:38.745643039-07:00"
 }
