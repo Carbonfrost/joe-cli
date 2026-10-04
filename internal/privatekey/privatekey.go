@@ -3,14 +3,14 @@ package privatekey
 type T string
 
 const (
-	ShellCompletes    = "__ShellCompletes"
-	CommandNotFound   = "__CommandNotFound"
-	Synopsis          = "_Synopsis"
-	CompletionRequest = "_CompletionRequest"
-	PanicData         = "__PanicData"
-	OptionalAliases   = "__OptionalAliases"
-	DependsOn         = "__DependsOn"
-	Validator         = "__Validator"
-	ValueHelpText     = "_ValueHelpText"
-	OptionError       = "_OptionError"
+	CommandNotFound   T = "__CommandNotFound"
+	CompletionRequest T = "_CompletionRequest"
+	DependsOn         T = "__DependsOn"
+	OptionalAliases   T = "__OptionalAliases"
+	OptionError       T = "_OptionError"
+	PanicData         T = "__PanicData"
+	ShellCompletes    T = "__ShellCompletes"
+	Synopsis          T = "_Synopsis"
+	Validator         T = "__Validator"
+	ValueHelpText     T = "_ValueHelpText"
 )

@@ -893,7 +893,7 @@ func (c *Context) BindingNames() []string {
 
 // LookupData gets the data matching the key, including recursive traversal
 // up the lineage contexts
-func (c *Context) LookupData(name string) (any, bool) {
+func (c *Context) LookupData(name any) (any, bool) {
 	if c == nil || c.target() == nil {
 		return nil, false
 	}

@@ -194,7 +194,7 @@ func (h CommandNotFoundHandler) Execute(ctx context.Context) error {
 	}
 
 	fn := h
-	if existing, ok := cmd.Data[privatekey.CommandNotFound]; ok {
+	if existing, ok := cmd.LookupData(privatekey.CommandNotFound); ok {
 		if existingFn, ok := existing.(CommandNotFoundHandler); ok {
 			// Compose with the previously registered handler
 			fn = ComposeCommandNotFoundHandler(h, existingFn)
@@ -399,7 +399,7 @@ func (h OptionErrorHandler) Execute(ctx context.Context) error {
 	}
 
 	fn := h
-	if existing, ok := cmd.Data[privatekey.OptionError]; ok {
+	if existing, ok := cmd.LookupData(privatekey.OptionError); ok {
 		if existingFn, ok := existing.(OptionErrorHandler); ok {
 			// Compose with the previously registered handler
 			fn = ComposeOptionErrorHandler(h, existingFn)
@@ -991,8 +991,11 @@ func orderFlags(c *Context) error {
 }
 
 func dependsOnNames(f *Flag) []string {
-	names, _ := f.Data[dependsOnDataKey].([]string)
-	return names
+	names, ok := f.LookupData(dependsOnDataKey)
+	if ok {
+		return names.([]string)
+	}
+	return nil
 }
 
 // topoSortFlags implements Kahn's algorithm, which selects among the flags that are

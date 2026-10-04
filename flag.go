@@ -241,7 +241,7 @@ func (f *Flag) cacheSynopsis(syn *synopsis.Flag) *synopsis.Flag {
 
 func (f *Flag) synopsis() *synopsis.Flag {
 	if f.Data != nil {
-		if a, ok := f.Data[synopsisKey]; ok {
+		if a, ok := f.LookupData(synopsisKey); ok {
 			return a.(*synopsis.Flag)
 		}
 	}

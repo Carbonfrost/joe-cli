@@ -19,6 +19,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/joe-clifakes"
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -617,6 +618,7 @@ var _ = Describe("Flag", func() {
 
 		DescribeTable("examples",
 			func(f *cli.Flag, expected string) {
+				cli.Initialized(f)
 				Expect(f.Synopsis()).To(Equal(expected))
 			},
 			Entry(
@@ -739,14 +741,12 @@ var _ = Describe("Flag", func() {
 				"Synopsis data",
 				&cli.Flag{
 					Name: "reason",
-					Data: map[string]any{
-						"_Synopsis": &synopsis.Flag{
-							Long:    "[no-]reason",
-							Primary: "[no-]reason",
-							Names:   []string{"--[no-]reason"},
-							Value:   &synopsis.Value{},
-						},
-					},
+					Uses: cli.Data(privatekey.Synopsis, &synopsis.Flag{
+						Long:    "[no-]reason",
+						Primary: "[no-]reason",
+						Names:   []string{"--[no-]reason"},
+						Value:   &synopsis.Value{},
+					}),
 					Value: cli.Bool(),
 				},
 				"--[no-]reason",
