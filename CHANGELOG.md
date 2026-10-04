@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.24.0 (October 4, 2026)
+
+### New Features
+
+* `Millisecond` value (92c6a361)
+* `structure.Parse` (4ce44a0a)
+* Expr extension:
+    * `Parallel` compiler (a075b946)
+    * Parse operators (a044a3f4)
+* Prompt extension:
+    * `SetConfirmed` (b815638c)
+    * Introduce binders (f06f2680)
+    * Allow setting in context (a5230c9e)
+* `IsImplicitTiming` method (4510f6f8)
+
+### Bug fixes and improvements
+
+* Bug fix: ensure expr `LookupData` works with prior nil private data map (d0c5e783)
+* Bug fix: ensure private data map works with prior nil (68377391)
+* Bug fix: prevent cycles on `SetContext` (135159f2)
+* Bug fix: avoid panic on `Prototype` setting to nil map (09fde3d6)
+* Remove dependency on core package from structure (1df65b27)
+* Bind extension: revamp `Context` binder (7a42e75d)
+* Prompt extension: fakes (3f9628a8)
+* Introduce conventional defaults to `Timeout` (32d0b836)
+* Improve formatting of value help text (730e8484)
+* Remove data to private keys (b82a54cb)
+* Update command metadata docs (0da590b3)
+
+
 ## v0.23.0 (September 29, 2026)
 
 ### New Features
