@@ -7,6 +7,7 @@ package value_test
 import (
 	"time"
 
+	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/value"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -38,5 +39,16 @@ var _ = Describe("Time", func() {
 			Expect(start).To(Equal(time.Date(2010, 3, 11, 0, 0, 0, 0, time.Local)))
 			Expect(end).To(Equal(time.Date(2010, 3, 11, 23, 59, 59, 999999999, time.Local)))
 		})
+	})
+})
+
+var _ = Describe("Millisecond", func() {
+
+	It("parses and converts to string", func() {
+		t := new(value.Millisecond)
+		err := cli.Set(t, "50")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(t.Value()).To(Equal(50 * time.Millisecond))
+		Expect(t.String()).To(Equal("50"))
 	})
 })

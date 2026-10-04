@@ -6,6 +6,7 @@ package value
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -102,4 +103,26 @@ func (t *Time) Range() (start, end time.Time) {
 		return t.value, t.value.AddDate(0, 0, 1).Add(-time.Nanosecond)
 	}
 	return t.value, t.value
+}
+
+// Millisecond provides a representation of milliseconds. Unlike
+// using [time.Duration], Millisecond converts without specifying
+// units
+type Millisecond int
+
+func (m Millisecond) Value() time.Duration {
+	return time.Duration(m) * time.Millisecond
+}
+
+func (m Millisecond) String() string {
+	return strconv.Itoa(int(m))
+}
+
+func (m *Millisecond) UnmarshalText(data []byte) error {
+	value, err := strconv.Atoi(string(data))
+	if err != nil {
+		return err
+	}
+	*m = Millisecond(value)
+	return nil
 }
