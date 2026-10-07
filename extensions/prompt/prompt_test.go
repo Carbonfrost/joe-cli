@@ -92,3 +92,68 @@ var _ = Describe("ContextFilter", func() {
 		})
 	})
 })
+
+var _ = Describe("WithAutoConfirmation", func() {
+
+	It("automatically confirms when the Confirmed filter matches", func() {
+		inner := new(promptfakes.FakePrompter)
+		inner.ConfirmReturns(false, nil)
+
+		var actual bool
+		var err error
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Uses: prompt.SetConfirmed()},
+			},
+			Uses: prompt.ContextValue(prompt.WithAutoConfirmation(inner)),
+			Action: func(c context.Context) {
+				actual, err = prompt.FromContext(c).Confirm(c, "proceed?", false)
+			},
+		}
+		_ = app.RunContext(context.Background(), "app", "--yes")
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(BeTrue())
+		Expect(inner.ConfirmCallCount()).To(Equal(0))
+	})
+
+	It("delegates Confirm when the Confirmed filter does not match", func() {
+		inner := new(promptfakes.FakePrompter)
+		inner.ConfirmReturns(true, nil)
+
+		var actual bool
+		var err error
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Uses: prompt.SetConfirmed()},
+			},
+			Uses: prompt.ContextValue(prompt.WithAutoConfirmation(inner)),
+			Action: func(c context.Context) {
+				actual, err = prompt.FromContext(c).Confirm(c, "proceed?", false)
+			},
+		}
+		_ = app.RunContext(context.Background(), "app")
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(BeTrue())
+		Expect(inner.ConfirmCallCount()).To(Equal(1))
+
+		_, p, d := inner.ConfirmArgsForCall(0)
+		Expect(p).To(Equal("proceed?"))
+		Expect(d).To(BeFalse())
+	})
+
+	It("delegates other methods unconditionally", func() {
+		inner := new(promptfakes.FakePrompter)
+		inner.InputReturns("value", nil)
+
+		w := prompt.WithAutoConfirmation(inner)
+		actual, err := w.Input(context.Background(), "name?", "default")
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(Equal("value"))
+		Expect(inner.InputCallCount()).To(Equal(1))
+	})
+})

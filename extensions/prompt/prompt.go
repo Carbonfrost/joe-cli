@@ -143,6 +143,28 @@ func tryFromContext(ctx context.Context) (Prompter, error) {
 	return nil, fmt.Errorf("expected %s value not present in context", contextPrompterKey)
 }
 
+type autoConfirmationWrapper struct {
+	Prompter
+}
+
+// WithAutoConfirmation generates a Prompter that delegates to another
+// Prompter with one exception: when the Confirmed context filter matches,
+// Confirm automatically returns true instead of delegating.
+func WithAutoConfirmation(p Prompter) Prompter {
+	return autoConfirmationWrapper{p}
+}
+
+func (w autoConfirmationWrapper) Confirm(ctx context.Context, prompt string, defaultValue bool) (bool, error) {
+	if Confirmed.Matches(ctx) {
+		return true, nil
+	}
+	return w.Prompter.Confirm(ctx, prompt, defaultValue)
+}
+
+var (
+	_ Prompter = autoConfirmationWrapper{}
+)
+
 var (
 	_ encoding.TextMarshaler   = (*ContextFilter)(nil)
 	_ encoding.TextUnmarshaler = (*ContextFilter)(nil)
