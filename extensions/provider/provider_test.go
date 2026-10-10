@@ -667,6 +667,37 @@ var _ = Describe("Value", func() {
 		)
 	})
 
+	It("sets up value text on help screen", func() {
+		var actual []*cli.ValueHelp
+		app := &cli.App{
+			Name: "app",
+			Uses: &provider.Registry{
+				Name:         "encoding",
+				AllowUnknown: true, // causes an additional one to appear
+				Providers: provider.Details{
+					"utf8":  {HelpText: "utf-8 encoding"},
+					"utf16": {HelpText: "utf-16 encoding"},
+				},
+			},
+			Flags: []*cli.Flag{
+				{
+					Name:  "encoding",
+					Value: new(provider.Value),
+				},
+			},
+			Action: func(c *cli.Context) {
+				actual = c.ContextOf("encoding").ValueHelpText()
+			},
+		}
+
+		err := app.RunContext(context.Background(), "app")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actual).To(HaveLen(3))
+		Expect(actual[0].HelpText).To(Equal("utf-8 encoding"))
+		Expect(actual[1].HelpText).To(Equal("utf-16 encoding"))
+		Expect(actual[2]).To(Equal(&cli.ValueHelp{Value: "<other>", HelpText: "..."}))
+	})
+
 	DescribeTable("examples", func(arguments string, expectedName string, expectedOpts types.GomegaMatcher) {
 		opts := &providerOptions{}
 		po := &provider.Value{

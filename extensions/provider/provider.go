@@ -354,6 +354,7 @@ func (v *Value) String() string {
 func (v *Value) Initializer() cli.Action {
 	return cli.Setup{
 		Action: validateProviderExists,
+		Before: setValueHelpText,
 	}
 }
 
@@ -378,6 +379,32 @@ func validateProviderExists(c *cli.Context) error {
 		}
 	}
 
+	return nil
+}
+
+func setValueHelpText(c *cli.Context) error {
+	r, ok := Services(c).LookupRegistry(registryName(c))
+	if !ok {
+		return nil
+	}
+	if r == nil || r.Providers == nil {
+		return nil
+	}
+
+	for _, auth := range r.ProviderNames() {
+		detail, _ := r.LookupProvider(auth)
+		if detail.HelpText != "" {
+			c.SetValueHelpText(auth, detail.HelpText)
+		}
+		if detail.ManualText != "" {
+			c.SetValueManualText(auth, detail.ManualText)
+		}
+	}
+
+	// Add a stub if the registry supports unknown values
+	if r.AllowUnknown {
+		c.SetValueHelpText("<other>", "...")
+	}
 	return nil
 }
 

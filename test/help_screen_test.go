@@ -12,6 +12,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/clitest"
+	"github.com/Carbonfrost/joe-cli/extensions/provider"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -116,6 +117,24 @@ var _ = Describe("help screen", HelpScreen, func() {
 					Name:     "cert",
 					HelpText: "Specify a client certificate {FILE}",
 					Uses:     cli.SynopsisCategory("tls"),
+				},
+			},
+		}),
+
+		Entry("provider help text", "provider_help_text", &cli.App{
+			Name: "app",
+			Uses: &provider.Registry{
+				Name:         "encoding",
+				AllowUnknown: true,
+				Providers: provider.Details{
+					"utf8":  {HelpText: "utf-8 encoding"},
+					"utf16": {HelpText: "utf-16 encoding"},
+				},
+			},
+			Flags: []*cli.Flag{
+				{
+					Name:  "encoding",
+					Value: new(provider.Value),
 				},
 			},
 		}),

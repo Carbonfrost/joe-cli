@@ -45,8 +45,8 @@ func Services(c context.Context) *ContextServices {
 // LookupRegistry gets the registry by name, if any. The name argument
 // is the name of the registry, but as a special case, if the name
 // starts with dashes as if the name of a flag, those are trimmed.
-// The argument can also be a Flag. The name of the flag is used,
-// or registry specified by the flag's Value.
+// The argument can also be a Flag, Arg, or *cli.Context. The name of the
+// target is used, or registry specified by the target's Value.
 func (c *ContextServices) LookupRegistry(name any) (*Registry, bool) {
 	v := registryName(name)
 	r, ok := c.registries[v]
@@ -64,6 +64,10 @@ func (c *ContextServices) New(registry any, provider string, args any) (any, err
 
 func registryName(name any) string {
 	switch v := name.(type) {
+	case *cli.Context:
+		if v.IsFlag() || v.IsArg() {
+			return registryName(v.Target())
+		}
 	case string:
 		return strings.TrimPrefix(v, "-")
 
@@ -77,7 +81,6 @@ func registryName(name any) string {
 			return cmp.Or(value.Registry, v.Name)
 		}
 		return v.Name
-	default:
-		panic(fmt.Sprintf("unexpected type: %T", name))
 	}
+	panic(fmt.Sprintf("unexpected type: %T", name))
 }
