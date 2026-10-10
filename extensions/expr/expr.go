@@ -455,7 +455,7 @@ func (e *Expression) Initializer() cli.Action {
 
 		// Removing finalization into a value initializer ensures that finalization runs
 		// after all other expressions have a chance to run
-		_ = c.ProvideValueInitializer(nil, "<finalize>", cli.Setup{
+		_ = c.ProvideValueInitializer(nil, "__finalize__", cli.Setup{
 			Uses: func() error {
 				return finalizeExprs(e)
 			},

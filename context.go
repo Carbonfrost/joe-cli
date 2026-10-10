@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/Carbonfrost/joe-cli/internal/privatekey"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
 // Context provides the context in which the app, command, or flag is executing or initializing.
@@ -2608,6 +2609,44 @@ func findValueTargetByName(items []*valueTarget, name string) (*valueTarget, boo
 		}
 	}
 	return nil, false
+}
+
+func finalizeValueTargets(c *Context) error {
+	h, ok := c.hookable()
+	if !ok {
+		return nil
+	}
+
+	var errs []error
+	names := map[string]bool{}
+	extra := func(string) string {
+		return " (value target)"
+	}
+	for _, c := range h.valueTargets() {
+		if c.name == "" {
+			continue
+		}
+		errs = append(errs, support.ValidateNames(names, c.name, nil, extra)...)
+	}
+
+	if len(errs) > 0 {
+		return c.internalError(fmt.Errorf("errors initializing %s: %w", targetTypeName(c.Target()), errors.Join(errs...)))
+	}
+	return nil
+}
+
+func targetTypeName(v any) string {
+	switch v.(type) {
+	case *Arg:
+		return "arg"
+	case *Flag:
+		return "flag"
+	case *Command:
+		return "command"
+	case *App:
+		return "app"
+	}
+	panic(fmt.Sprintf("unexpected type %T", v))
 }
 
 var (

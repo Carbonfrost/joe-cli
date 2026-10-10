@@ -118,7 +118,7 @@ var _ = Describe("Context", func() {
 					{
 						Name:  "a",
 						Value: cli.List(),
-						Uses:  cli.ProvideValueInitializer("", "<name>", cli.At(cli.ActionTiming, act)),
+						Uses:  cli.ProvideValueInitializer("", "__name__", cli.At(cli.ActionTiming, act)),
 						NArg:  -1,
 					},
 				},

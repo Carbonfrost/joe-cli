@@ -1501,6 +1501,25 @@ var _ = Describe("ProvideValueInitializer", func() {
 		Expect(setup.After.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 		Expect(setup.Action.(*joeclifakes.FakeAction).ExecuteCallCount()).To(Equal(1))
 	})
+
+	It("an error to re-use value target names", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						cli.ProvideValueInitializer(nil, "x", nil),
+						cli.ProvideValueInitializer(nil, "x", nil),
+					),
+				},
+			},
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).To(MatchError(ContainSubstring(`errors initializing flag:`)))
+		Expect(err).To(MatchError(ContainSubstring(`internal error, at "app -f" (initial timing):`)))
+		Expect(err).To(MatchError(ContainSubstring(`duplicate name used: "x" (value target)`)))
+	})
 })
 
 var _ = Describe("Required", func() {
