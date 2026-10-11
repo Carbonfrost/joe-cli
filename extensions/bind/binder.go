@@ -580,8 +580,8 @@ func Float64(nameopt ...any) Binder[float64] {
 // argument by index.
 // When present in the Uses pipeline, this also sets up the corresponding flag or
 // arg with a reasonable default of the same type.
-func Duration(nameopt ...any) Binder[time.Duration] {
-	return byName((*cli.Context).Duration, nameopt)
+func Duration(nameopt ...any) *DurationBinder {
+	return wrapWithComposite(byName((*cli.Context).Duration, nameopt)).(*DurationBinder)
 }
 
 // File obtains a binder that obtains a value from the context. If the name is
@@ -753,6 +753,37 @@ func (b *BoolBinder) Negated() Binder[bool] {
 	})
 }
 
+// DurationBinder provides a binder for [time.Duration]
+type DurationBinder struct {
+	binderSupportInterface[time.Duration]
+}
+
+// Bind obtains the duration value from the context
+func (d *DurationBinder) Bind(c context.Context) (time.Duration, error) {
+	return d.binderSupportInterface.Bind(c)
+}
+
+// Hours obtains the hours from the Duration
+func (d *DurationBinder) Hours() Binder[float64] {
+	return then(d, func(v time.Duration) float64 {
+		return v.Hours()
+	})
+}
+
+// Milliseconds obtains the milliseconds from the Duration
+func (d *DurationBinder) Milliseconds() Binder[int64] {
+	return then(d, func(v time.Duration) int64 {
+		return v.Milliseconds()
+	})
+}
+
+// Seconds obtains the seconds from the Duration
+func (d *DurationBinder) Seconds() Binder[float64] {
+	return then(d, func(v time.Duration) float64 {
+		return v.Seconds()
+	})
+}
+
 // FileBinder provides a binder for [cli.File]
 type FileBinder struct {
 	binderSupportInterface[*cli.File]
@@ -880,6 +911,8 @@ func wrapWithComposite[V any](in binderSupportInterface[V]) any {
 	switch any(zero).(type) {
 	case bool:
 		return &BoolBinder{in.(binderSupportInterface[bool])}
+	case time.Duration:
+		return &DurationBinder{in.(binderSupportInterface[time.Duration])}
 	case *cli.File:
 		return &FileBinder{in.(binderSupportInterface[*cli.File])}
 	case *cli.NameValue:

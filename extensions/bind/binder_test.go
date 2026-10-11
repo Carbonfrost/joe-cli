@@ -572,6 +572,7 @@ var _ = Describe("Exact", func() {
 			Expect(binder).To(expected)
 		},
 			Entry("File", bind.Exact(new(cli.File)), BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("Duration", bind.Exact(time.Second), BeAssignableToTypeOf(new(bind.DurationBinder))),
 			Entry("Boolean", bind.Exact(true), BeAssignableToTypeOf(new(bind.BoolBinder))),
 			Entry("NameValue", bind.Exact(new(cli.NameValue)), BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
@@ -653,6 +654,7 @@ var _ = Describe("Occurrences", func() {
 		},
 			Entry("File", bind.Occurrences("", new(cli.File)), BeAssignableToTypeOf(new(bind.FileBinder))),
 			Entry("Boolean", bind.Occurrences("", true), BeAssignableToTypeOf(new(bind.BoolBinder))),
+			Entry("Duration", bind.Occurrences("", time.Second), BeAssignableToTypeOf(new(bind.DurationBinder))),
 			Entry("NameValue", bind.Occurrences("", new(cli.NameValue)), BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
 	})
@@ -809,6 +811,7 @@ var _ = Describe("Seq", func() {
 			Expect(actual).To(expected)
 		},
 			Entry("File", bind.Seq(src, func(any) (*cli.File, error) { return nil, nil }), BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("Duration", bind.Seq(src, func(any) (time.Duration, error) { return 0, nil }), BeAssignableToTypeOf(new(bind.DurationBinder))),
 			Entry("Boolean", bind.Seq(src, func(any) (bool, error) { return false, nil }), BeAssignableToTypeOf(new(bind.BoolBinder))),
 			Entry("NameValue", bind.Seq(src, func(any) (*cli.NameValue, error) { return nil, nil }), BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
@@ -979,6 +982,7 @@ var _ = Describe("Value", func() {
 			Expect(fn).To(WithTransform(calledWithReflection, expected))
 		},
 			Entry("File", bind.Value[*cli.File], BeAssignableToTypeOf(new(bind.FileBinder))),
+			Entry("Duration", bind.Value[time.Duration], BeAssignableToTypeOf(new(bind.DurationBinder))),
 			Entry("Boolean", bind.Value[bool], BeAssignableToTypeOf(new(bind.BoolBinder))),
 			Entry("NameValue", bind.Value[*cli.NameValue], BeAssignableToTypeOf(new(bind.NameValueBinder))),
 		)
