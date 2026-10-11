@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/bind"
@@ -404,28 +405,55 @@ func SetInputArgument() cli.Action {
 }
 
 func setCodec(name codecDir, v ...codec.Interface) cli.Action {
-	actualBind := provider.Bind[codec.Interface]()
-	if len(v) > 0 {
-		actualBind = bind.Exact(v...)
+	if len(v) > 1 {
+		panic("expected zero or one arg")
 	}
 
-	return cli.Pipeline(
-		cli.Prototype{
+	var proto cli.Prototype
+	var binder bind.Binder[codec.Interface]
+
+	if len(v) > 0 {
+		proto = cli.Prototype{
+			Name:     name.String(),
+			HelpText: fmt.Sprintf("Set the %s format to %s", name, nameOf(v[0])),
+			Value:    new(bool),
+		}
+		binder = bind.Exact(v...)
+	} else {
+		proto = cli.Prototype{
 			Name:      name.String(),
-			HelpText:  "Set the output {FORMAT}",
+			HelpText:  fmt.Sprintf("Set the %s {FORMAT}", name),
 			UsageText: synopsis.Choices(CodecRegistry.ProviderNames()),
 			Value: &provider.Value{
 				Registry: codecRegistryName,
 				Args:     structure.Of(&codec.Options{}),
 			},
-		},
+		}
+		binder = provider.Bind[codec.Interface]()
+	}
+
+	return cli.Pipeline(
+		proto,
 		bind.Call3(
 			(*CodecProvider).setCodecHelper,
 			bind.FromContext(CodecProviderFromContext),
 			bind.Exact(name),
-			actualBind,
+			binder,
 		),
 	)
+}
+
+func nameOf(c codec.Interface) string {
+	for k, v := range codecs {
+		if sameType(c, v()) {
+			return k.Name()
+		}
+	}
+	return ""
+}
+
+func sameType(x, y any) bool {
+	return reflect.TypeOf(x) == reflect.TypeOf(y)
 }
 
 func setCodecArgument(name codecDir) cli.Action {

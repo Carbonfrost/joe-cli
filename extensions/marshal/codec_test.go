@@ -196,21 +196,46 @@ var _ = Describe("CodecRegistry", func() {
 	})
 })
 
-var _ = Describe("SetOutput", func() {
+var _ = Describe("SetOutput/SetInput", func() {
 
-	It("provides the synopsis of the flag", func() {
+	DescribeTable("Synopsis examples", func(uses cli.Action, synopsis, helpText string) {
 		app := &cli.App{
 			Name: "app",
 			Flags: []*cli.Flag{
-				{Uses: marshal.SetOutput()},
+				{Uses: uses},
 			},
 		}
 		_, err := app.Initialize(context.Background())
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(app.Flags[0].Synopsis()).To(Equal("--output={json|toml|yaml}"))
-		Expect(app.Flags[0].HelpText).To(Equal("Set the output {FORMAT}"))
-	})
+		Expect(app.Flags[0].Synopsis()).To(Equal(synopsis))
+		Expect(app.Flags[0].HelpText).To(Equal(helpText))
+	},
+		Entry(
+			"output nominal",
+			marshal.SetOutput(),
+			"--output={json|toml|yaml}",
+			"Set the output {FORMAT}",
+		),
+		Entry(
+			"output discrete value",
+			marshal.SetOutput(codec.NewJSONCodec()),
+			"--output",
+			"Set the output format to json",
+		),
+		Entry(
+			"input nominal",
+			marshal.SetInput(),
+			"--input={json|toml|yaml}",
+			"Set the input {FORMAT}",
+		),
+		Entry(
+			"input discrete value",
+			marshal.SetInput(codec.NewJSONCodec()),
+			"--input",
+			"Set the input format to json",
+		),
+	)
 })
 
 var _ = Describe("ListCodecs", func() {
