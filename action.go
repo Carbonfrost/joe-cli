@@ -382,6 +382,7 @@ var (
 			ActionFunc(finalizeSubcommands),
 			ActionFunc(finalizeValueTargets),
 			ActionFunc(enforceReservedOptions),
+			ActionFunc(setInternalFlag(internalFlagInitialized)),
 			At(ActionTiming, actionFunc(triggerRobustParsingAndCompletion)),
 		),
 		Action: actions(
@@ -457,6 +458,7 @@ var (
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(finalizeArgsAndFlags),
 			ActionFunc(copyFlagsFromValueTarget),
+			ActionFunc(setInternalFlag(internalFlagInitialized)),
 		),
 		Before: beforePipeline{
 			actualBeforeIndexValidatorTiming: actions(

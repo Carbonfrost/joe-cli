@@ -31,6 +31,10 @@ func IsDestinationImplicitlyCreated(t any) bool {
 	return t.(target).internalFlags().destinationImplicitlyCreated()
 }
 
+func ValueTarget(c *Context) *valueTarget {
+	return c.target().(*valueTarget)
+}
+
 func SetInitialTiming(c *Context) {
 	c.state = &fakeContextState{
 		tim: InitialTiming,

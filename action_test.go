@@ -1520,6 +1520,27 @@ var _ = Describe("ProvideValueInitializer", func() {
 		Expect(err).To(MatchError(ContainSubstring(`internal error, at "app -f" (initial timing):`)))
 		Expect(err).To(MatchError(ContainSubstring(`duplicate name used: "x" (value target)`)))
 	})
+
+	It("is initialized afterwards", func() {
+		var target any
+		capture := func(c *cli.Context) {
+			target = cli.ValueTarget(c)
+		}
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.Pipeline(
+						cli.ProvideValueInitializer(nil, "x", cli.ActionOf(capture)),
+					),
+				},
+			},
+		}
+		_, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cli.IsInitialized(target)).To(BeTrue())
+	})
 })
 
 var _ = Describe("Required", func() {

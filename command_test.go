@@ -117,6 +117,16 @@ var _ = Describe("Command", func() {
 
 	})
 
+	Describe("IsInitialized", func() {
+
+		It("is set after initializing a command", func() {
+			cmd := &cli.Command{}
+			_ = cli.Initialized(cmd)
+			Expect(cli.IsInitialized(cmd)).To(BeTrue())
+		})
+
+	})
+
 	Describe("actions", func() {
 
 		var (
