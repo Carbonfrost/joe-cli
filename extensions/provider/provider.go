@@ -449,7 +449,7 @@ func (r *Registry) Pipeline() cli.Action {
 }
 
 func (m Map) ProviderNames() []string {
-	return slices.Collect(maps.Keys(m))
+	return slices.Sorted(maps.Keys(m))
 }
 
 func (m Map) LookupProvider(name string) (d Detail, ok bool) {
@@ -458,7 +458,7 @@ func (m Map) LookupProvider(name string) (d Detail, ok bool) {
 }
 
 func (d Details) ProviderNames() []string {
-	return slices.Collect(maps.Keys(d))
+	return slices.Sorted(maps.Keys(d))
 }
 
 func (d Details) LookupProvider(name string) (Detail, bool) {

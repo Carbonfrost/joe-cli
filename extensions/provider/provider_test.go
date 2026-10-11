@@ -693,8 +693,8 @@ var _ = Describe("Value", func() {
 		err := app.RunContext(context.Background(), "app")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual).To(HaveLen(3))
-		Expect(actual[0].HelpText).To(Equal("utf-8 encoding"))
-		Expect(actual[1].HelpText).To(Equal("utf-16 encoding"))
+		Expect(actual[0].HelpText).To(Equal("utf-16 encoding"))
+		Expect(actual[1].HelpText).To(Equal("utf-8 encoding"))
 		Expect(actual[2]).To(Equal(&cli.ValueHelp{Value: "<other>", HelpText: "..."}))
 	})
 

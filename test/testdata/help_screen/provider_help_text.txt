@@ -2,8 +2,8 @@ usage: app {--help | --version} [--encoding=VALUE]
 
       --encoding=VALUE  
 
-         utf8     utf-8 encoding
          utf16    utf-16 encoding
+         utf8     utf-8 encoding
          <other>  ...
 
   -h, --help     Display this help screen then exit
