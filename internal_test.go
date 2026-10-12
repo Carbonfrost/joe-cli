@@ -31,6 +31,10 @@ func IsDestinationImplicitlyCreated(t any) bool {
 	return t.(target).internalFlags().destinationImplicitlyCreated()
 }
 
+func IsSeenImplied(t any) bool {
+	return t.(target).internalFlags().seenImplied()
+}
+
 func ValueTarget(c *Context) *valueTarget {
 	return c.target().(*valueTarget)
 }

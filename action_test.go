@@ -4229,6 +4229,32 @@ var _ = Describe("Implies", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(act.ExecuteCallCount()).To(Equal(1))
 	})
+
+	It("sets ImplicitlySet", func() {
+		var implicitlySet bool
+		act := new(joeclifakes.FakeAction)
+		act.ExecuteStub = func(ctx context.Context) error {
+			implicitlySet = cli.FromContext(ctx).ImplicitlySet()
+			return nil
+		}
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "encryption-key",
+					Uses: cli.Implies("mode", "encrypt"),
+				},
+				{
+					Name:    "mode",
+					Options: cli.ImpliedAction,
+					Action:  act,
+				},
+			},
+		}
+		args, _ := cli.Split("app --encryption-key=AAA")
+		_ = app.RunContext(context.Background(), args...)
+		Expect(cli.IsSeenImplied(app.Flags[1])).To(BeTrue())
+		Expect(implicitlySet).To(BeTrue())
+	})
 })
 
 var _ = Describe("Enum", func() {
