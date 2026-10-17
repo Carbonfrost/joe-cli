@@ -74,7 +74,7 @@
 // # Operators
 //
 // When the reserved option ParseOperators is set on the arg which contains the
-// expression, the Unix find-style operators ( ) ! -and -a -or -o are parsed
+// expression, the Unix find-style operators ( ) ! -and -a -or -o , are parsed
 // and placed in the sequence of binding evaluators as Operator placeholders.
 // The default compiler does not support operators, so a compiler which
 // interprets them, such as operator.Compile, must also be set.
@@ -285,7 +285,7 @@ const (
 
 	// ParseOperators is placed in the Uses pipeline of the Arg that contains the
 	// expression and when present allows expressions to contain the operators
-	// ( ) ! -and -a -or -o, which are placed in the sequence of binding
+	// ( ) ! -and -a -or -o ",", which are placed in the sequence of binding
 	// evaluators as Operator.  A compiler which interprets operators, such as
 	// operator.Compile, must be set on the expression.
 	ParseOperators cli.Option = reservedoptions.ExprParseOperators
@@ -324,6 +324,7 @@ const (
 	Not    Operator = '!'
 	And    Operator = '&'
 	Or     Operator = '|'
+	Comma  Operator = ','
 )
 
 var operatorsByName = map[string]Operator{
@@ -334,6 +335,7 @@ var operatorsByName = map[string]Operator{
 	"-a":   And,
 	"-or":  Or,
 	"-o":   Or,
+	",":    Comma,
 }
 
 var reservedOptions = cli.FeatureMap[cli.Option]{

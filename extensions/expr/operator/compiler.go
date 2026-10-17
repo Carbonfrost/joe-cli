@@ -31,16 +31,26 @@ var (
 
 var _ expr.Compiler = Compile
 
+// The grammar:
+//
+// 		comma := or ( , or )*
+// 		or := and ( -or and )*
+// 		and := unary ( [-and] unary )*
+// 		unary := ! unary | ( comma ) | sub-expression
+
 // Compile provides a compiler for an expression which interprets the operators
-// ( ) ! -and -or, which are parsed when the expression has the option
-// expr.ParseOperators.  Operators are converted to Not, And, and Or.
+// ( ) ! -and -or ",", which are parsed when the expression has the option
+// expr.ParseOperators.  Operators are converted to Not, And, Or, and Comma.
 // Sub-expressions which use Predicate, PredicateContext, or Invariant as the
 // evaluator are used directly.  Any other evaluator is lifted into a
 // sub-expression which is true when the evaluator yields and false otherwise;
 // in either case, the input value (rather than the value that was yielded)
 // continues through the pipeline.  When no binary operator occurs between
 // sub-expressions, -and is implied.  The usual precedence applies: ! binds
-// tightest, then -and, then -or.
+// tightest, then -and, then -or, then the comma.  The comma splits the
+// expression into sub-pipelines which each run with the input value, such as
+// -print , -dir -print.  The values yielded by the last sub-pipeline continue
+// through the pipeline.
 //
 // An error is returned when the operators are not well-formed, such as a
 // binary operator without a left or right operand, an unmatched parenthesis, or
@@ -52,7 +62,7 @@ func Compile(items []BindingEvaluator) (Evaluator, error) {
 	}
 
 	c := &compiler{items: items}
-	res, err := c.parseOr()
+	res, err := c.parseComma()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +91,22 @@ func (c *compiler) peekOperator(op expr.Operator) bool {
 	return ok && tok == op
 }
 
-// parseOr handles or := and ( -or and )*
+func (c *compiler) parseComma() (Evaluator, error) {
+	left, err := c.parseOr()
+	if err != nil {
+		return nil, err
+	}
+	for c.peekOperator(expr.Comma) {
+		c.pos++
+		right, err := c.parseOr()
+		if err != nil {
+			return nil, err
+		}
+		left = Comma(left, right)
+	}
+	return left, nil
+}
+
 func (c *compiler) parseOr() (Evaluator, error) {
 	left, err := c.parseAnd()
 	if err != nil {
@@ -98,7 +123,6 @@ func (c *compiler) parseOr() (Evaluator, error) {
 	return left, nil
 }
 
-// parseAnd handles and := unary ( [-and] unary )*
 func (c *compiler) parseAnd() (Evaluator, error) {
 	left, err := c.parseUnary()
 	if err != nil {
@@ -106,7 +130,7 @@ func (c *compiler) parseAnd() (Evaluator, error) {
 	}
 	for {
 		tok, ok := c.peek()
-		if !ok || tok == expr.Or || tok == expr.RParen {
+		if !ok || tok == expr.Or || tok == expr.Comma || tok == expr.RParen {
 			return left, nil
 		}
 		if tok == expr.And {
@@ -120,7 +144,6 @@ func (c *compiler) parseAnd() (Evaluator, error) {
 	}
 }
 
-// parseUnary handles unary := ! unary | ( or ) | sub-expression
 func (c *compiler) parseUnary() (Evaluator, error) {
 	tok, ok := c.peek()
 	if !ok {
@@ -141,7 +164,7 @@ func (c *compiler) parseUnary() (Evaluator, error) {
 		if c.peekOperator(expr.RParen) {
 			return nil, errEmptyParens
 		}
-		inner, err := c.parseOr()
+		inner, err := c.parseComma()
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +174,7 @@ func (c *compiler) parseUnary() (Evaluator, error) {
 		c.pos++
 		return inner, nil
 
-	case expr.And, expr.Or, expr.RParen:
+	case expr.And, expr.Or, expr.Comma, expr.RParen:
 		return nil, c.missingOperand()
 	}
 

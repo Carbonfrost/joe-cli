@@ -29,6 +29,11 @@ type andEvaluator struct {
 	right Evaluator
 }
 
+type commaEvaluator struct {
+	left  Evaluator
+	right Evaluator
+}
+
 // Not creates an evaluator that inverts the evaluation result of the given evaluator.
 // The evaluator implements the unary NOT operator. It inverts the evaluation
 // result: if the wrapped evaluator yields a value, the evaluator does not yield;
@@ -58,6 +63,18 @@ func Or(left, right Evaluator) Evaluator {
 // juxtaposition, but this evaluator can be used for explicit AND operations.
 func And(left, right Evaluator) Evaluator {
 	return &andEvaluator{
+		left:  left,
+		right: right,
+	}
+}
+
+// Comma creates an evaluator which implements the comma operator.  The left
+// and right evaluators are each evaluated with the input value, in order, which
+// splits the pipeline into independent sub-pipelines.  Whatever the left
+// evaluator yields is discarded; it is evaluated for its effects.  The values
+// that the right evaluator yields are the ones which the evaluator yields.
+func Comma(left, right Evaluator) Evaluator {
+	return &commaEvaluator{
 		left:  left,
 		right: right,
 	}
@@ -136,4 +153,12 @@ func (a *andEvaluator) Initializer() cli.Action {
 		HelpText: "The logical AND operator",
 		Uses:     cli.OptionalAlias("a"),
 	}
+}
+
+func (c *commaEvaluator) Evaluate(ctx context.Context, v any, yield func(any) error) error {
+	err := c.left.Evaluate(ctx, v, func(any) error { return nil })
+	if err != nil {
+		return err
+	}
+	return c.right.Evaluate(ctx, v, yield)
 }

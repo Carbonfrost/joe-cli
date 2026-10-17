@@ -6,6 +6,7 @@ package operator_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -112,6 +113,15 @@ var _ = Describe("Compile", func() {
 		Entry("double not", "! ! -true", true, BeEmpty()),
 		Entry("nested groups", "( ( -false ) -o ( -print ) )", true, Equal("print(in)")),
 		Entry("lifted evaluator yields input once", "-twice -print", true, Equal("twice print(in)")),
+		Entry("comma runs each sub-pipeline", "-print , -print", true, Equal("print(in) print(in)")),
+		Entry("comma runs right when left is false", "-false , -print", true, Equal("print(in)")),
+		Entry("comma yields the right result", "-true , -false", false, BeEmpty()),
+		Entry("comma yields the right result when true", "-false , -true", true, BeEmpty()),
+		Entry("comma has lowest precedence", "-print -false , -print", true, Equal("print(in) print(in)")),
+		Entry("comma has lower precedence than or", "-true -or -print , -print", true, Equal("print(in)")),
+		Entry("comma in group", "( -print , -true ) -and -print", true, Equal("print(in) print(in)")),
+		Entry("comma is left to right", "-print , -twice , -print", true, Equal("print(in) twice print(in)")),
+		Entry("comma with not", "! -true , ! -false", true, BeEmpty()),
 	)
 
 	DescribeTable("errors", func(arguments string, expected string) {
@@ -125,6 +135,10 @@ var _ = Describe("Compile", func() {
 		Entry("unclosed paren", "( -true", "invalid expression: expected ')'"),
 		Entry("unmatched close paren", "-true )", "invalid expression: unexpected )"),
 		Entry("empty parens", "( )", "invalid expression: empty parentheses are not allowed"),
+		Entry("leading comma", ", -true", "invalid expression: expected an expression before ,"),
+		Entry("trailing comma", "-true ,", "invalid expression: expected an expression after ,"),
+		Entry("consecutive commas", "-true , , -true", "invalid expression: expected an expression between , and ,"),
+		Entry("comma and or", "-true , -or -true", "invalid expression: expected an expression between , and -or"),
 		Entry("binary operator after open paren", "( -a -true )", "invalid expression: expected an expression between ( and -and"),
 	)
 
@@ -165,6 +179,50 @@ var _ = Describe("Compile", func() {
 			return nil
 		})
 		Expect(actual).To(Equal([]any{"in"}))
+	})
+})
+
+var _ = Describe("Comma", func() {
+
+	It("evaluates both sides with the input value", func() {
+		var seen []any
+		record := func(v any) { seen = append(seen, v) }
+		e := operator.Comma(
+			expr.EvaluatorOf(record),
+			expr.EvaluatorOf(record),
+		)
+
+		var actual []any
+		err := e.Evaluate(context.Background(), "in", func(v any) error {
+			actual = append(actual, v)
+			return nil
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(seen).To(Equal([]any{"in", "in"}))
+		Expect(actual).To(Equal([]any{"in"}))
+	})
+
+	It("discards values yielded by the left side", func() {
+		var actual []any
+		e := operator.Comma(expr.AlwaysTrue, expr.AlwaysFalse)
+
+		_ = e.Evaluate(context.Background(), "in", func(v any) error {
+			actual = append(actual, v)
+			return nil
+		})
+		Expect(actual).To(BeEmpty())
+	})
+
+	It("stops when the left side fails", func() {
+		var called bool
+		e := operator.Comma(
+			expr.Error(errors.New("boom")),
+			expr.EvaluatorOf(func(any) { called = true }),
+		)
+
+		err := e.Evaluate(context.Background(), "in", func(any) error { return nil })
+		Expect(err).To(MatchError("boom"))
+		Expect(called).To(BeFalse())
 	})
 })
 
