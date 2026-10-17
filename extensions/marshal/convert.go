@@ -12,6 +12,7 @@ import (
 
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 	"github.com/Carbonfrost/joe-cli/internal/support"
 )
 
@@ -124,53 +125,58 @@ func (c *converter) argsMarshal(v []*cli.Arg) []Arg {
 
 func (c *converter) newCommandMarshal(v *cli.Command) Command {
 	return Command{
-		Name:        v.Name,
-		Subcommands: c.commandsMarshal(v.Subcommands),
-		Flags:       c.flagsMarshal(v.Flags),
-		Args:        c.argsMarshal(v.Args),
-		Aliases:     v.Aliases,
-		Category:    v.Category,
-		Comment:     v.Comment,
-		Data:        c.cleanDataMap(v.Data),
-		Options:     v.Options,
-		HelpText:    v.HelpText,
-		ManualText:  v.ManualText,
-		UsageText:   v.UsageText,
+		Name:            v.Name,
+		Subcommands:     c.commandsMarshal(v.Subcommands),
+		Flags:           c.flagsMarshal(v.Flags),
+		Args:            c.argsMarshal(v.Args),
+		Aliases:         v.Aliases,
+		Category:        v.Category,
+		Comment:         v.Comment,
+		OptionalAliases: lookupStrings(v, privatekey.OptionalAliases),
+		Data:            c.cleanDataMap(v.Data),
+		Options:         v.Options,
+		HelpText:        v.HelpText,
+		ManualText:      v.ManualText,
+		UsageText:       v.UsageText,
 	}
 }
 
 func (c *converter) newFlagMarshal(v *cli.Flag) Flag {
 	return Flag{
-		Name:        v.Name,
-		Aliases:     v.Aliases,
-		HelpText:    v.HelpText,
-		ManualText:  v.ManualText,
-		UsageText:   v.UsageText,
-		EnvVars:     v.EnvVars,
-		FilePath:    v.FilePath,
-		DefaultText: v.DefaultText,
-		Options:     v.Options,
-		Category:    v.Category,
-		Data:        c.cleanDataMap(v.Data),
-		Value:       c.newValueMarshal(v.Value),
+		Name:            v.Name,
+		Aliases:         v.Aliases,
+		OptionalAliases: lookupStrings(v, privatekey.OptionalAliases),
+		DependsOn:       lookupStrings(v, privatekey.DependsOn),
+		ValueHelpText:   valueHelpText(v),
+		HelpText:        v.HelpText,
+		ManualText:      v.ManualText,
+		UsageText:       v.UsageText,
+		EnvVars:         v.EnvVars,
+		FilePath:        v.FilePath,
+		DefaultText:     v.DefaultText,
+		Options:         v.Options,
+		Category:        v.Category,
+		Data:            c.cleanDataMap(v.Data),
+		Value:           c.newValueMarshal(v.Value),
 	}
 }
 
 func (c *converter) newArgMarshal(v *cli.Arg) Arg {
 	exp, _ := v.Value.(*expr.Expression)
 	return Arg{
-		Name:        v.Name,
-		HelpText:    v.HelpText,
-		ManualText:  v.ManualText,
-		UsageText:   v.UsageText,
-		EnvVars:     v.EnvVars,
-		FilePath:    v.FilePath,
-		DefaultText: v.DefaultText,
-		Options:     v.Options,
-		Category:    v.Category,
-		Data:        c.cleanDataMap(v.Data),
-		Value:       c.newValueMarshal(v.Value),
-		Expression:  c.newExpressionMarshal(exp),
+		Name:          v.Name,
+		ValueHelpText: valueHelpText(v),
+		HelpText:      v.HelpText,
+		ManualText:    v.ManualText,
+		UsageText:     v.UsageText,
+		EnvVars:       v.EnvVars,
+		FilePath:      v.FilePath,
+		DefaultText:   v.DefaultText,
+		Options:       v.Options,
+		Category:      v.Category,
+		Data:          c.cleanDataMap(v.Data),
+		Value:         c.newValueMarshal(v.Value),
+		Expression:    c.newExpressionMarshal(exp),
 	}
 }
 
@@ -198,15 +204,16 @@ func (c *converter) newExpressionMarshal(v *expr.Expression) *Expression {
 
 func (c *converter) newExprMarshal(v *expr.Expr) Expr {
 	return Expr{
-		Name:       v.Name,
-		Aliases:    v.Aliases,
-		HelpText:   v.HelpText,
-		ManualText: v.ManualText,
-		UsageText:  v.UsageText,
-		Options:    v.Options,
-		Category:   v.Category,
-		Args:       c.argsMarshal(v.Args),
-		Data:       c.cleanDataMap(v.Data),
+		Name:            v.Name,
+		Aliases:         v.Aliases,
+		OptionalAliases: lookupStrings(v, privatekey.OptionalAliases),
+		HelpText:        v.HelpText,
+		ManualText:      v.ManualText,
+		UsageText:       v.UsageText,
+		Options:         v.Options,
+		Category:        v.Category,
+		Args:            c.argsMarshal(v.Args),
+		Data:            c.cleanDataMap(v.Data),
 	}
 }
 
@@ -267,6 +274,36 @@ func cleanDataMapValue(k string, v any, skipPrivate bool) (any, bool) {
 		// TODO This should look at structs, pointer to structs
 	}
 	return v, true
+}
+
+type dataLookup interface {
+	LookupData(any) (any, bool)
+}
+
+func lookupStrings(v dataLookup, key privatekey.T) []string {
+	res, _ := v.LookupData(key)
+	strs, _ := res.([]string)
+	if len(strs) == 0 {
+		return nil
+	}
+	return append([]string(nil), strs...)
+}
+
+func valueHelpText(v dataLookup) []ValueHelp {
+	res, _ := v.LookupData(privatekey.ValueHelpText)
+	table, _ := res.([]*cli.ValueHelp)
+	if len(table) == 0 {
+		return nil
+	}
+	result := make([]ValueHelp, len(table))
+	for i, vh := range table {
+		result[i] = ValueHelp{
+			Value:      fmt.Sprint(vh.Value),
+			HelpText:   vh.HelpText,
+			ManualText: vh.ManualText,
+		}
+	}
+	return result
 }
 
 func sprintValue(v any) string {

@@ -41,50 +41,63 @@ type App struct {
 
 // Command provides a representation of cli.Command for use as data
 type Command struct {
-	Name        string         `json:"name"`
-	Aliases     []string       `json:"aliases,omitempty"`
-	Subcommands []Command      `json:"subcommands,omitempty"`
-	Flags       []Flag         `json:"flags,omitempty"`
-	Args        []Arg          `json:"args,omitempty"`
-	HelpText    string         `json:"helpText,omitempty"`
-	ManualText  string         `json:"manualText,omitempty"`
-	UsageText   string         `json:"usageText,omitempty"`
-	Comment     string         `json:"comment,omitempty"`
-	Category    string         `json:"category,omitempty"`
-	Options     Options        `json:"options,omitempty"`
-	Data        map[string]any `json:"data,omitempty"`
+	Name            string         `json:"name"`
+	Aliases         []string       `json:"aliases,omitempty"`
+	OptionalAliases []string       `json:"optionalAliases,omitempty"`
+	Subcommands     []Command      `json:"subcommands,omitempty"`
+	Flags           []Flag         `json:"flags,omitempty"`
+	Args            []Arg          `json:"args,omitempty"`
+	HelpText        string         `json:"helpText,omitempty"`
+	ManualText      string         `json:"manualText,omitempty"`
+	UsageText       string         `json:"usageText,omitempty"`
+	Comment         string         `json:"comment,omitempty"`
+	Category        string         `json:"category,omitempty"`
+	Options         Options        `json:"options,omitempty"`
+	Data            map[string]any `json:"data,omitempty"`
 }
 
 // Flag provides a representation of cli.Flag for use as data
 type Flag struct {
-	Name        string         `json:"name"`
-	Aliases     []string       `json:"aliases,omitempty"`
-	EnvVars     []string       `json:"envVars,omitempty"`
-	FilePath    string         `json:"filePath,omitempty"`
-	HelpText    string         `json:"helpText,omitempty"`
-	ManualText  string         `json:"manualText,omitempty"`
-	Category    string         `json:"category,omitempty"`
-	UsageText   string         `json:"usageText,omitempty"`
-	DefaultText string         `json:"defaultText,omitempty"`
-	Options     Options        `json:"options,omitempty"`
-	Data        map[string]any `json:"data,omitempty"`
-	Value       Value          `json:"value"`
+	Name            string         `json:"name"`
+	Aliases         []string       `json:"aliases,omitempty"`
+	OptionalAliases []string       `json:"optionalAliases,omitempty"`
+	DependsOn       []string       `json:"dependsOn,omitempty"`
+	EnvVars         []string       `json:"envVars,omitempty"`
+	FilePath        string         `json:"filePath,omitempty"`
+	HelpText        string         `json:"helpText,omitempty"`
+	ValueHelpText   []ValueHelp    `json:"valueHelpText,omitempty"`
+	ManualText      string         `json:"manualText,omitempty"`
+	Category        string         `json:"category,omitempty"`
+	UsageText       string         `json:"usageText,omitempty"`
+	DefaultText     string         `json:"defaultText,omitempty"`
+	Options         Options        `json:"options,omitempty"`
+	Data            map[string]any `json:"data,omitempty"`
+	Value           Value          `json:"value"`
 }
 
 // Arg provides a representation of cli.Arg for use as data
 type Arg struct {
-	Name        string         `json:"name"`
-	EnvVars     []string       `json:"envVars,omitempty"`
-	FilePath    string         `json:"filePath,omitempty"`
-	HelpText    string         `json:"helpText,omitempty"`
-	ManualText  string         `json:"manualText,omitempty"`
-	Category    string         `json:"category,omitempty"`
-	UsageText   string         `json:"usageText,omitempty"`
-	DefaultText string         `json:"defaultText,omitempty"`
-	Options     Options        `json:"options,omitempty"`
-	Data        map[string]any `json:"data,omitempty"`
-	Value       Value          `json:"value"`
-	Expression  *Expression    `json:"expression,omitempty"`
+	Name          string         `json:"name"`
+	EnvVars       []string       `json:"envVars,omitempty"`
+	FilePath      string         `json:"filePath,omitempty"`
+	HelpText      string         `json:"helpText,omitempty"`
+	ValueHelpText []ValueHelp    `json:"valueHelpText,omitempty"`
+	ManualText    string         `json:"manualText,omitempty"`
+	Category      string         `json:"category,omitempty"`
+	UsageText     string         `json:"usageText,omitempty"`
+	DefaultText   string         `json:"defaultText,omitempty"`
+	Options       Options        `json:"options,omitempty"`
+	Data          map[string]any `json:"data,omitempty"`
+	Value         Value          `json:"value"`
+	Expression    *Expression    `json:"expression,omitempty"`
+}
+
+// ValueHelp provides a representation of cli.ValueHelp for use as data
+type ValueHelp struct {
+	// Value is the textual form of the value, as formatted by fmt.Sprint
+	Value      string `json:"value"`
+	HelpText   string `json:"helpText,omitempty"`
+	ManualText string `json:"manualText,omitempty"`
 }
 
 // Arg provides a representation of a value for use as data
@@ -101,15 +114,16 @@ type Expression struct {
 
 // Expr provides a representation of expression operands
 type Expr struct {
-	Name       string         `json:"name"`
-	Aliases    []string       `json:"aliases,omitempty"`
-	Args       []Arg          `json:"args,omitempty"`
-	HelpText   string         `json:"helpText,omitempty"`
-	ManualText string         `json:"manualText,omitempty"`
-	Category   string         `json:"category,omitempty"`
-	UsageText  string         `json:"usageText,omitempty"`
-	Options    Options        `json:"options,omitempty"`
-	Data       map[string]any `json:"data,omitempty"`
+	Name            string         `json:"name"`
+	Aliases         []string       `json:"aliases,omitempty"`
+	OptionalAliases []string       `json:"optionalAliases,omitempty"`
+	Args            []Arg          `json:"args,omitempty"`
+	HelpText        string         `json:"helpText,omitempty"`
+	ManualText      string         `json:"manualText,omitempty"`
+	Category        string         `json:"category,omitempty"`
+	UsageText       string         `json:"usageText,omitempty"`
+	Options         Options        `json:"options,omitempty"`
+	Data            map[string]any `json:"data,omitempty"`
 }
 
 // Options provides a representation of cli.Option for use as data

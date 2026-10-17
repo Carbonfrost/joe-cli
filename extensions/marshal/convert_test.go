@@ -13,6 +13,7 @@ import (
 	"github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/extensions/expr"
 	"github.com/Carbonfrost/joe-cli/extensions/marshal"
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -143,14 +144,15 @@ var _ = Describe("From", func() {
 			"Args": MatchAllElementsWithIndex(IndexIdentity, Elements{
 				"0": BeAssignableToTypeOf(marshal.Arg{}),
 			}),
-			"Aliases":    Equal([]string{"c"}),
-			"Category":   Equal("Category"),
-			"Comment":    Equal("Comment"),
-			"Data":       Equal(map[string]any{"key": "value"}),
-			"Options":    Equal(cli.Hidden),
-			"HelpText":   Equal("HelpText"),
-			"ManualText": Equal("ManualText"),
-			"UsageText":  Equal("UsageText"),
+			"Aliases":         Equal([]string{"c"}),
+			"OptionalAliases": BeNil(),
+			"Category":        Equal("Category"),
+			"Comment":         Equal("Comment"),
+			"Data":            Equal(map[string]any{"key": "value"}),
+			"Options":         Equal(cli.Hidden),
+			"HelpText":        Equal("HelpText"),
+			"ManualText":      Equal("ManualText"),
+			"UsageText":       Equal("UsageText"),
 		}), `{
                "name": "Name",
                "subcommands": [
@@ -198,17 +200,20 @@ var _ = Describe("From", func() {
 			Data:        map[string]any{"k": "v"},
 			Value:       new(int),
 		}, MatchFields(IgnoreUnexportedExtras, Fields{
-			"Name":        Equal("Flag"),
-			"Aliases":     Equal([]string{"f"}),
-			"EnvVars":     Equal([]string{"ENV_VAR"}),
-			"FilePath":    Equal("/usr"),
-			"HelpText":    Equal("HelpText"),
-			"ManualText":  Equal("ManualText"),
-			"Category":    Equal("Category"),
-			"UsageText":   Equal("UsageText"),
-			"DefaultText": Equal("DefaultText"),
-			"Options":     Equal(cli.Hidden),
-			"Data":        Equal(map[string]any{"k": "v"}),
+			"Name":            Equal("Flag"),
+			"Aliases":         Equal([]string{"f"}),
+			"OptionalAliases": BeNil(),
+			"DependsOn":       BeNil(),
+			"ValueHelpText":   BeNil(),
+			"EnvVars":         Equal([]string{"ENV_VAR"}),
+			"FilePath":        Equal("/usr"),
+			"HelpText":        Equal("HelpText"),
+			"ManualText":      Equal("ManualText"),
+			"Category":        Equal("Category"),
+			"UsageText":       Equal("UsageText"),
+			"DefaultText":     Equal("DefaultText"),
+			"Options":         Equal(cli.Hidden),
+			"Data":            Equal(map[string]any{"k": "v"}),
 			"Value": MatchFields(IgnoreUnexportedExtras, Fields{
 				"String": Equal("0"),
 				"Type":   Equal(new(marshal.Int)),
@@ -251,17 +256,18 @@ var _ = Describe("From", func() {
 			Data:        map[string]any{"f": "b"},
 			Value:       &expr.Expression{},
 		}, MatchFields(IgnoreUnexportedExtras, Fields{
-			"Name":        Equal("Arg"),
-			"EnvVars":     Equal([]string{"ENV_VAR"}),
-			"FilePath":    Equal("/usr"),
-			"HelpText":    Equal("HelpText"),
-			"ManualText":  Equal("ManualText"),
-			"Category":    Equal("Category"),
-			"UsageText":   Equal("UsageText"),
-			"DefaultText": Equal("DefaultText"),
-			"Options":     Equal(cli.Hidden),
-			"Data":        Equal(map[string]any{"f": "b"}),
-			"Expression":  BeAssignableToTypeOf(new(marshal.Expression)),
+			"Name":          Equal("Arg"),
+			"ValueHelpText": BeNil(),
+			"EnvVars":       Equal([]string{"ENV_VAR"}),
+			"FilePath":      Equal("/usr"),
+			"HelpText":      Equal("HelpText"),
+			"ManualText":    Equal("ManualText"),
+			"Category":      Equal("Category"),
+			"UsageText":     Equal("UsageText"),
+			"DefaultText":   Equal("DefaultText"),
+			"Options":       Equal(cli.Hidden),
+			"Data":          Equal(map[string]any{"f": "b"}),
+			"Expression":    BeAssignableToTypeOf(new(marshal.Expression)),
 			"Value": MatchFields(IgnoreUnexportedExtras, Fields{
 				"String": Equal(""),
 				"Type":   BeNil(),
@@ -297,15 +303,16 @@ var _ = Describe("From", func() {
 			Args:       cli.Args("m", nil),
 			Data:       map[string]any{"f": "b"},
 		}, MatchFields(IgnoreUnexportedExtras, Fields{
-			"Name":       Equal("Expr"),
-			"HelpText":   Equal("HelpText"),
-			"ManualText": Equal("ManualText"),
-			"Category":   Equal("Category"),
-			"UsageText":  Equal("UsageText"),
-			"Aliases":    Equal([]string{"a", "b"}),
-			"Args":       HaveLen(1),
-			"Options":    Equal(cli.Hidden),
-			"Data":       Equal(map[string]any{"f": "b"}),
+			"Name":            Equal("Expr"),
+			"HelpText":        Equal("HelpText"),
+			"ManualText":      Equal("ManualText"),
+			"Category":        Equal("Category"),
+			"UsageText":       Equal("UsageText"),
+			"Aliases":         Equal([]string{"a", "b"}),
+			"OptionalAliases": BeNil(),
+			"Args":            HaveLen(1),
+			"Options":         Equal(cli.Hidden),
+			"Data":            Equal(map[string]any{"f": "b"}),
 		}),
 			`{
                "name": "Expr",
@@ -336,6 +343,65 @@ var _ = Describe("From", func() {
          }]
        }`),
 	)
+
+	Describe("exposed private data", func() {
+
+		It("exposes OptionalAliases and ValueHelpText on Command and Expr", func() {
+			cmd := &cli.Command{Name: "c"}
+			cmd.SetData(privatekey.OptionalAliases, []string{"x", "y"})
+			Expect(marshal.From(cmd).(marshal.Command).OptionalAliases).To(Equal([]string{"x", "y"}))
+
+			e := &expr.Expr{Name: "e"}
+			e.SetData(privatekey.OptionalAliases, []string{"z"})
+			Expect(marshal.From(e).(marshal.Expr).OptionalAliases).To(Equal([]string{"z"}))
+		})
+
+		It("exposes DependsOn, OptionalAliases, and ValueHelpText on Flag", func() {
+			f := &cli.Flag{Name: "f", Value: new(string)}
+			f.SetData(privatekey.DependsOn, []string{"a", "b"})
+			f.SetData(privatekey.OptionalAliases, []string{"o"})
+			f.SetData(privatekey.ValueHelpText, []*cli.ValueHelp{
+				{Value: 1, HelpText: "one", ManualText: "the first"},
+				{Value: "two"},
+			})
+
+			m := marshal.From(f).(marshal.Flag)
+			Expect(m.DependsOn).To(Equal([]string{"a", "b"}))
+			Expect(m.OptionalAliases).To(Equal([]string{"o"}))
+			Expect(m.ValueHelpText).To(Equal([]marshal.ValueHelp{
+				{Value: "1", HelpText: "one", ManualText: "the first"},
+				{Value: "two"},
+			}))
+
+			data, err := json.Marshal(m)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(MatchJSON(`{
+				"name": "f",
+				"optionalAliases": ["o"],
+				"dependsOn": ["a", "b"],
+				"valueHelpText": [
+					{"value": "1", "helpText": "one", "manualText": "the first"},
+					{"value": "two"}
+				],
+				"value": {"type": "string"}
+			}`))
+		})
+
+		It("exposes ValueHelpText on Arg", func() {
+			a := &cli.Arg{Name: "a"}
+			a.SetData(privatekey.ValueHelpText, []*cli.ValueHelp{{Value: "v", HelpText: "h"}})
+			Expect(marshal.From(a).(marshal.Arg).ValueHelpText).To(Equal([]marshal.ValueHelp{
+				{Value: "v", HelpText: "h"},
+			}))
+		})
+
+		It("is empty when absent", func() {
+			m := marshal.From(&cli.Flag{Name: "f"}).(marshal.Flag)
+			Expect(m.DependsOn).To(BeNil())
+			Expect(m.OptionalAliases).To(BeNil())
+			Expect(m.ValueHelpText).To(BeNil())
+		})
+	})
 
 	Describe("clean marshal data dictionary", func() {
 
