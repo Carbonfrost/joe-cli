@@ -589,6 +589,56 @@ var _ = Describe("Flag", func() {
 	})
 
 	Context("when a NonPersistent flag", func() {
+		It("does not act again in the sub-command", func() {
+			var acted int
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{
+						Name:    "once",
+						Value:   cli.Bool(),
+						Options: cli.NonPersistent,
+						Action:  func() { acted++ },
+					},
+				},
+				Commands: []*cli.Command{
+					{
+						Name:   "sub",
+						Action: func(c *cli.Context) error { return nil },
+					},
+				},
+			}
+
+			arguments, _ := cli.Split("app --once sub")
+			Expect(app.RunContext(context.Background(), arguments...)).To(Succeed())
+			Expect(acted).To(Equal(1))
+		})
+
+		It("is not among the persistent flags of the sub-command", func() {
+			var persistent []string
+			app := &cli.App{
+				Flags: []*cli.Flag{
+					{Name: "local", Value: cli.Bool(), Options: cli.NonPersistent},
+					{Name: "global", Value: cli.Bool()},
+				},
+				Commands: []*cli.Command{
+					{
+						Name: "sub",
+						Action: func(c *cli.Context) error {
+							for _, f := range c.PersistentFlags() {
+								persistent = append(persistent, f.Name)
+							}
+							return nil
+						},
+					},
+				},
+			}
+
+			arguments, _ := cli.Split("app sub")
+			Expect(app.RunContext(context.Background(), arguments...)).To(Succeed())
+			Expect(persistent).To(ContainElement("global"))
+			Expect(persistent).NotTo(ContainElement("local"))
+		})
+
 		It("is a usage error to use", func() {
 			p := 1600
 			app := &cli.App{

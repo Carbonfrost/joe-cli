@@ -513,7 +513,7 @@ func (c *Context) persistentFlagsInOrder() []*Flag {
 	if !c.IsCommand() || c.Parent() == nil {
 		return nil
 	}
-	return c.Parent().flagsInOrder()
+	return withoutNonPersistent(c.Parent().flagsInOrder())
 }
 
 // localFlagsInOrder is the counterpart of LocalFlags which uses the order in which
@@ -573,7 +573,13 @@ func (c *Context) PersistentFlags() []*Flag {
 	if c.Parent() == nil {
 		return nil
 	}
-	return c.Parent().Flags()
+	return withoutNonPersistent(c.Parent().Flags())
+}
+
+func withoutNonPersistent(flags []*Flag) []*Flag {
+	return slices.DeleteFunc(slices.Clone(flags), func(f *Flag) bool {
+		return f.internalFlags().nonPersistent()
+	})
 }
 
 // ValueContextOf creates a context for the use with values that
