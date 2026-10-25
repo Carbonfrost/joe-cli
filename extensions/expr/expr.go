@@ -442,6 +442,13 @@ func (e *Expression) Initializer() cli.Action {
 		return nil
 
 	}, func(c *cli.Context) error {
+		// Finalization is deferred to the arg using WithArg, which ensures it
+		// runs after all expressions have a chance to initialize.  It only needs to
+		// be registered once, which any of the expressions can do.
+		finalize := cli.WithArg(cli.ActionOf(func() error {
+			return finalizeExprs(e)
+		}))
+
 		for _, sub := range e.Exprs {
 			// As a special case, the evaluator can implement Action
 			// and be treated as part of the initialization pipeline.
@@ -449,19 +456,12 @@ func (e *Expression) Initializer() cli.Action {
 			evalAsAction := initializerFromExpr(sub)
 
 			_ = c.ProvideValueInitializer(sub, sub.Name, cli.Setup{
-				Uses:   cli.Pipeline(sub.Uses, evalAsAction, sub.Options),
+				Uses:   cli.Pipeline(sub.Uses, evalAsAction, sub.Options, finalize),
 				Before: sub.Before,
 				After:  sub.After,
 			})
+			finalize = nil
 		}
-
-		// Removing finalization into a value initializer ensures that finalization runs
-		// after all other expressions have a chance to run
-		_ = c.ProvideValueInitializer(nil, "__finalize__", cli.Setup{
-			Uses: func() error {
-				return finalizeExprs(e)
-			},
-		})
 
 		return nil
 

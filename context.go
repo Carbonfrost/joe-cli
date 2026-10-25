@@ -1646,6 +1646,67 @@ func (c *Context) ProvideValueInitializer(v any, name string, actionopt ...Actio
 	return nil
 }
 
+// WithCommand defers the action so that it runs in the context of the nearest
+// containing command.  See [Context.WithParent] for the behavior shared by
+// the With family of methods.
+func (c *Context) WithCommand(a Action) error {
+	return c.deferToAncestor(a, "command", isTargetType[*Command])
+}
+
+// WithArg defers the action so that it runs in the context of the nearest
+// containing arg, such as the arg which provided a value initializer.  See
+// [Context.WithParent] for the behavior shared by the With family of methods.
+func (c *Context) WithArg(a Action) error {
+	return c.deferToAncestor(a, "arg", isTargetType[*Arg])
+}
+
+// WithFlag defers the action so that it runs in the context of the nearest
+// containing flag, such as the flag which provided a value initializer.  See
+// [Context.WithParent] for the behavior shared by the With family of methods.
+func (c *Context) WithFlag(a Action) error {
+	return c.deferToAncestor(a, "flag", isTargetType[*Flag])
+}
+
+// WithParent defers the action so that it runs in the context of the immediate
+// parent, whatever its type.
+//
+// The With family of methods (WithCommand, WithArg, WithFlag, and WithParent)
+// schedules an additional action which runs after all other initialization of the
+// container's flags, args, sub-commands, and value targets has completed, but
+// before the container itself is finalized.  A typical use is for a descendent to make final
+// changes to the container with knowledge of the peers that also initialized.
+// These methods never apply to the current target, even when it is
+// the same type as requested; for example, calling WithCommand from a sub-command
+// affects the containing command, not the sub-command.  It is an internal error
+// to call them when no such container is available or outside initialization
+// If several actions are deferred to the same container, they run in the order
+// they were registered.
+func (c *Context) WithParent(a Action) error {
+	return c.deferToAncestor(a, "parent", func(target) bool { return true })
+}
+
+func (c *Context) deferToAncestor(a Action, kind string, match func(target) bool) error {
+	if err := c.requireInit(); err != nil {
+		return err
+	}
+	if a == nil {
+		return nil
+	}
+
+	for p := c.Parent(); p != nil; p = p.Parent() {
+		if match(p.target()) {
+			p.target().deferAction(a)
+			return nil
+		}
+	}
+	return c.internalError(fmt.Errorf("%w: %s", errNoContainer, kind))
+}
+
+func isTargetType[T target](t target) bool {
+	_, ok := t.(T)
+	return ok
+}
+
 // Customize matches a flag, arg, or command and runs additional pipeline steps.  Customize
 // is usually used to apply further customization after an extension has done setup of
 // the defaults.  As a special case, if pattern is the empty string, this is the same as
@@ -2575,6 +2636,13 @@ func setupOptionFromEnv(c context.Context) error {
 		FromEnv(opt.envVars()...),
 		FromFilePath(nil, opt.filePath()),
 	))
+}
+
+func triggerDeferredActions(c *Context) error {
+	if pending := c.target().takeDeferred(); len(pending) > 0 {
+		return Do(c, actions(pending...))
+	}
+	return nil
 }
 
 func triggerValidator(c *Context) error {

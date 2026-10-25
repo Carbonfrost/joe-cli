@@ -182,6 +182,8 @@ type target interface {
 	options() *Option
 	pipeline(Timing) any
 	appendAction(Timing, Action)
+	deferAction(Action)
+	takeDeferred() []Action
 	setDescription(any)
 	setHelpText(string)
 	setUsageText(string)
@@ -208,9 +210,10 @@ type hooksSupport struct {
 }
 
 type targetSupport struct {
-	p       actionPipelines
-	flags   internalFlags
-	private map[any]any
+	p        actionPipelines
+	flags    internalFlags
+	private  map[any]any
+	deferred []Action // Registered by descendents; see Context.WithParent
 }
 
 type actionPipelines struct {
@@ -377,6 +380,7 @@ var (
 			ActionFunc(initializeFlagsArgs),
 			ActionFunc(initializeSubcommands),
 			ActionFunc(initializeValueTargets),
+			ActionFunc(triggerDeferredActions),
 			ActionFunc(finalizeArgsAndFlags),
 			ActionFunc(orderFlags),
 			ActionFunc(finalizeSubcommands),
@@ -424,6 +428,7 @@ var (
 			actionFunc(setupValueInitializer),
 			actionFunc(setupOptionFromEnv),
 			ActionFunc(initializeValueTargets),
+			ActionFunc(triggerDeferredActions),
 			ActionFunc(finalizeValueTargets),
 			ActionFunc(checkForSupportedFlagType),
 			ActionFunc(enforceReservedOptions),
@@ -456,6 +461,7 @@ var (
 			executePipelines(InitialTiming),
 			ActionFunc(applyImplicitVisibility),
 			ActionFunc(initializeFlagsArgs),
+			ActionFunc(triggerDeferredActions),
 			ActionFunc(finalizeArgsAndFlags),
 			ActionFunc(copyFlagsFromValueTarget),
 			ActionFunc(setInternalFlag(internalFlagInitialized)),
@@ -483,6 +489,7 @@ var (
 	errAssertFailed  = errors.New("context does not meet requirements for action")
 	errFlagOnly      = errors.New("action can only be used with a flag")
 	errFlagOrArgOnly = errors.New("action can only be used with a flag or arg")
+	errNoContainer   = errors.New("no container available to defer the action")
 
 	timingLabels = map[Timing][2]string{
 		ActionTiming:        {"action timing", "ACTION"},
@@ -1467,6 +1474,30 @@ func ProvideValueInitializer(v any, name string, actionopt ...Action) Action {
 	return actionThunkVar3((*Context).ProvideValueInitializer, v, name, actionopt...)
 }
 
+// WithCommand defers the action so that it runs in the context of the nearest
+// containing command.  See [Context.WithCommand].
+func WithCommand(a Action) Action {
+	return actionThunk1((*Context).WithCommand, a)
+}
+
+// WithArg defers the action so that it runs in the context of the nearest
+// containing arg.  See [Context.WithArg].
+func WithArg(a Action) Action {
+	return actionThunk1((*Context).WithArg, a)
+}
+
+// WithFlag defers the action so that it runs in the context of the nearest
+// containing flag.  See [Context.WithFlag].
+func WithFlag(a Action) Action {
+	return actionThunk1((*Context).WithFlag, a)
+}
+
+// WithParent defers the action so that it runs in the context of the immediate
+// parent, whatever its type.  See [Context.WithParent].
+func WithParent(a Action) Action {
+	return actionThunk1((*Context).WithParent, a)
+}
+
 // Add adds a flag, arg, sub-command, or value target. If the argument
 // is nil, it is ignored. If the argument is App, this method panics.
 // For other types, an unnamed value target is added. See
@@ -2366,6 +2397,16 @@ func (s *targetSupport) uses() *actionPipelines {
 
 func (s *targetSupport) appendAction(t Timing, ah Action) {
 	s.p.add(t, ah)
+}
+
+func (s *targetSupport) deferAction(a Action) {
+	s.deferred = append(s.deferred, a)
+}
+
+func (s *targetSupport) takeDeferred() []Action {
+	res := s.deferred
+	s.deferred = nil
+	return res
 }
 
 func (s *targetSupport) setInternalFlags(f internalFlags, v bool) {

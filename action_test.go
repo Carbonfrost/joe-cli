@@ -1404,6 +1404,189 @@ var _ = Describe("Action", func() {
 	)
 })
 
+var _ = Describe("With actions", func() {
+
+	var (
+		order    []string
+		timings  map[string]cli.Timing
+		record   func(string) cli.Action
+		runOK    func(*cli.App, string)
+		contexts map[string]*cli.Context
+	)
+
+	BeforeEach(func() {
+		order = nil
+		timings = map[string]cli.Timing{}
+		contexts = map[string]*cli.Context{}
+		record = func(name string) cli.Action {
+			return cli.ActionFunc(func(c *cli.Context) error {
+				order = append(order, name)
+				timings[name] = c.Timing()
+				contexts[name] = c
+				return nil
+			})
+		}
+		runOK = func(app *cli.App, line string) {
+			args, _ := cli.Split(line)
+			Expect(app.RunContext(context.Background(), args...)).To(Succeed())
+		}
+	})
+
+	It("WithCommand runs after initialization of flags, args, and sub-commands", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "a", Uses: cli.Pipeline(cli.WithCommand(record("deferred")), record("a"))},
+				{Name: "b", Uses: record("b")},
+			},
+			Args: []*cli.Arg{
+				{Name: "c", Uses: record("c")},
+			},
+			Commands: []*cli.Command{
+				{Name: "sub", Uses: record("sub")},
+			},
+			Stderr: io.Discard,
+		}
+		runOK(app, "app")
+
+		Expect(order).To(Equal([]string{"a", "b", "c", "sub", "deferred"}))
+		Expect(contexts["deferred"].IsCommand()).To(BeTrue())
+		Expect(timings["deferred"]).To(Equal(cli.InitialTiming))
+	})
+
+	It("WithCommand runs before the command is finalized", func() {
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{Uses: cli.WithCommand(cli.ActionFunc(func(c *cli.Context) error {
+					// Unnamed args are given names during finalization
+					order = append(order, "name="+c.Command().Args[0].Name)
+					return nil
+				}))},
+			},
+		}
+		runOK(app, "app x")
+
+		Expect(order).To(Equal([]string{"name="}))
+	})
+
+	It("WithCommand from sub-command acts on the containing command", func() {
+		app := &cli.App{
+			Name: "app",
+			Uses: record("root"),
+			Commands: []*cli.Command{
+				{Name: "sub", Uses: cli.WithCommand(record("deferred"))},
+			},
+		}
+		runOK(app, "app sub")
+
+		Expect(contexts["deferred"].Command()).To(BeIdenticalTo(contexts["root"].Command()))
+		Expect(contexts["deferred"].Command().Name).NotTo(Equal("sub"))
+	})
+
+	It("WithArg runs in the context of the containing arg after value targets", func() {
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Name: "r",
+					Uses: cli.Pipeline(
+						cli.ProvideValueInitializer(nil, "first", cli.Setup{
+							Uses: cli.Pipeline(cli.WithArg(record("deferred")), record("first")),
+						}),
+						cli.ProvideValueInitializer(nil, "second", record("second")),
+					),
+				},
+			},
+		}
+		runOK(app, "app 0")
+
+		Expect(order).To(Equal([]string{"first", "second", "deferred"}))
+		Expect(contexts["deferred"].IsArg()).To(BeTrue())
+		Expect(contexts["deferred"].Name()).To(Equal("<r>"))
+	})
+
+	It("WithFlag runs in the context of the containing flag", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: cli.ProvideValueInitializer(nil, "v", cli.WithFlag(record("deferred"))),
+				},
+			},
+		}
+		runOK(app, "app")
+
+		Expect(contexts["deferred"].IsFlag()).To(BeTrue())
+		Expect(contexts["deferred"].Name()).To(Equal("-f"))
+	})
+
+	It("WithParent runs in the context of the immediate parent", func() {
+		app := &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{
+					Name: "r",
+					Uses: cli.ProvideValueInitializer(nil, "v", cli.WithParent(record("deferred"))),
+				},
+			},
+		}
+		runOK(app, "app 0")
+
+		Expect(contexts["deferred"].IsArg()).To(BeTrue())
+	})
+
+	It("runs multiple deferred actions in registration order", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "a", Uses: cli.WithCommand(record("1"))},
+				{Name: "b", Uses: cli.WithCommand(record("2"))},
+			},
+		}
+		runOK(app, "app")
+
+		Expect(order).To(Equal([]string{"1", "2"}))
+	})
+
+	DescribeTable("errors",
+		func(app *cli.App, line string) {
+			args, _ := cli.Split(line)
+			err := app.RunContext(context.Background(), args...)
+			Expect(err).To(HaveOccurred())
+		},
+		Entry("no containing command", &cli.App{
+			Name: "app",
+			Uses: cli.WithCommand(cli.ActionFunc(func(*cli.Context) error { return nil })),
+		}, "app"),
+		Entry("no containing arg", &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "f", Uses: cli.WithArg(cli.ActionFunc(func(*cli.Context) error { return nil }))},
+			},
+		}, "app"),
+		Entry("no containing flag", &cli.App{
+			Name: "app",
+			Args: []*cli.Arg{
+				{Name: "a", Uses: cli.WithFlag(cli.ActionFunc(func(*cli.Context) error { return nil }))},
+			},
+		}, "app"),
+	)
+
+	It("reports ErrTimingTooLate outside Uses", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{
+				{Name: "f", Value: new(bool), Before: cli.WithCommand(cli.ActionFunc(func(*cli.Context) error { return nil }))},
+			},
+		}
+		args, _ := cli.Split("app --f")
+		err := app.RunContext(context.Background(), args...)
+		Expect(err).To(MatchError(cli.ErrTimingTooLate))
+	})
+})
+
 var _ = Describe("ProvideValueInitializer", func() {
 	It("invokes a context scope on the value", func() {
 		setup := cli.Setup{
