@@ -92,6 +92,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	cli "github.com/Carbonfrost/joe-cli"
 	"github.com/Carbonfrost/joe-cli/internal/reservedoptions"
@@ -207,11 +208,19 @@ type Expression struct {
 
 	parseInlineValues bool
 	parseOperators    bool
-	nameLookupCache   map[string]*Expr
-	numeric           string
 
 	// Exprs identifies the expression operators that are allowed
 	Exprs []*Expr
+
+	// Binding provides the rules used to parse the arguments into binding
+	// evaluators: how arguments resolve to expression operators and operators, and how
+	// the arguments of each expression operator are bound.  When nil, the default
+	// binding over Exprs is used, as created by NewBinding, which honors
+	// ParseOperators and Expr.SetNumeric.  When set, the binding is responsible for
+	// resolving arguments, and Exprs and ParseOperators don't affect parsing, though
+	// Exprs is still used to generate help.  ParseAllowInlineValues applies
+	// to any binding because the inline syntax is handled by the parser.
+	Binding Binding
 
 	// Compiler provides the function which converts the binding evaluators that
 	// were parsed into the evaluator which is used as the evaluation pipeline.
@@ -231,6 +240,48 @@ type BindingEvaluator interface {
 
 	// Expr retrieves the expression operator if it is available
 	Expr() *Expr
+}
+
+// Binding provides the representation of how the arguments of an expression are bound to
+// expression operators.  It defines the names and aliases of expression operators and
+// operators, and which expression operator handles the numeric syntax.  It is analogous to
+// [cli.Binding], which does the same for the flags and args of a command.
+//
+// Operators such as ( and -and are resolved the same as expression operators, but the
+// BindingEvaluator they provide doesn't implement BindingState because they don't support
+// bindings over args.
+type Binding interface {
+	// ResolveAlias resolves an argument as it was written, including the leading dash
+	// of an expression operator, to the canonical name that LookupExpr accepts.
+	// Arguments which are operators, such as "(" or "-a", resolve to the canonical name of
+	// the operator.
+	ResolveAlias(arg string) (string, bool)
+
+	// LookupExpr gets the BindingEvaluator by canonical name.  If the result implements
+	// BindingState, then it represents one occurrence of an expression operator, so each
+	// call must return a new one.
+	LookupExpr(name string) (BindingEvaluator, bool)
+
+	// Numeric gets the canonical name of the expression operator that handles numeric
+	// syntax such as -1 and -2, or the empty string if there isn't one.
+	Numeric() string
+}
+
+// BindingState defines the state of the binding operation for one occurrence of an
+// expression operator within an expression.  A BindingEvaluator returned by
+// Binding.LookupExpr can implement this to have the args that follow it parsed.  It is
+// analogous to [cli.BindingState], which is the state of the binding of an arg or flag.
+type BindingState interface {
+	BindingEvaluator
+
+	// Binding gets the binding used to parse the args that follow the name of the
+	// expression operator, which ends at the first argument that the expression operator
+	// doesn't take. If nil, there is nothing to parse nor apply.
+	Binding() cli.Binding
+
+	// Apply applies the result of parsing the args.  The state retains the result and
+	// applies it again each time it is evaluated.
+	Apply(*cli.BindingResult) error
 }
 
 // Compiler converts the sequence of binding evaluators within an expression into
@@ -378,6 +429,16 @@ type boundExpr struct {
 	expr *Expr
 }
 
+type bindingImpl struct {
+	exprs          []*Expr
+	parseOperators bool
+}
+
+type parsedExpr struct {
+	state  BindingState
+	result *cli.BindingResult
+}
+
 type exprBinding struct {
 	Evaluator
 	cli.Lookup
@@ -392,7 +453,6 @@ type exprSet struct {
 
 const (
 	exprFlagHidden = exprFlags(1 << iota)
-	exprFlagRightToLeft
 	exprFlagNumeric
 )
 
@@ -405,6 +465,21 @@ func newBoundExpr(e *Expr) *boundExpr {
 	return &boundExpr{
 		expr:    e,
 		exprSet: set,
+	}
+}
+
+// NewBinding creates a binding over the given expression operators.  This expert API is to
+// provide a representation of the naming rules for expression operators.  The
+// options can include ParseOperators, which has the same meaning as when set on the arg
+// that contains the expression.  (ParseAllowInlineValues is handled by the parser
+// and has no effect on the binding.)  The expression operator that is marked with
+// Expr.SetNumeric handles the numeric syntax.  The names, aliases, and numeric flag
+// are read from the expression operators whenever they are resolved, so changes made to
+// them during initialization, such as promoting optional aliases, are seen by the binding.
+func NewBinding(exprs []*Expr, options cli.Option) Binding {
+	return &bindingImpl{
+		exprs:          exprs,
+		parseOperators: options&ParseOperators == ParseOperators,
 	}
 }
 
@@ -466,8 +541,11 @@ func (e *Expression) Initializer() cli.Action {
 		return nil
 
 	}, cli.At(cli.ActionTiming, cli.ActionFunc(func(_ *cli.Context) (err error) {
-		var all *cli.BindingResult
-		e.items, all, err = parseExpressions(e)
+		var (
+			all    *cli.BindingResult
+			parsed []parsedExpr
+		)
+		e.items, parsed, all, err = parseExpressions(e)
 		if err != nil {
 			return
 		}
@@ -479,15 +557,15 @@ func (e *Expression) Initializer() cli.Action {
 		}
 
 		for _, eb := range e.items {
-			// For the expression bindings participating in the
-			// pipeline, apply the binding result data. These
 			tryResetIfSupported(eb)
+		}
 
-			if known, ok := eb.(*boundExpr); ok {
-				err = known.BindingResult().ApplyTo(known.exprSet)
-				if err != nil {
-					return
-				}
+		// For the expression bindings participating in the
+		// pipeline, apply the binding result data.
+		for _, p := range parsed {
+			err = p.state.Apply(p.result)
+			if err != nil {
+				return
 			}
 		}
 
@@ -1007,20 +1085,8 @@ func (f exprFlags) hidden() bool {
 	return f&exprFlagHidden == exprFlagHidden
 }
 
-func (f exprFlags) rightToLeft() bool {
-	return f&exprFlagRightToLeft == exprFlagRightToLeft
-}
-
 func (f exprFlags) numeric() bool {
 	return f&exprFlagNumeric == exprFlagNumeric
-}
-
-func (f exprFlags) toRaw() cli.RawParseFlag {
-	var flags cli.RawParseFlag
-	if f.rightToLeft() {
-		flags |= cli.RawRTL
-	}
-	return flags
 }
 
 // VisibleExprs filters all operators in the expression operators category by whether
@@ -1067,8 +1133,14 @@ func (b *boundExpr) LocalArgs() []*cli.Arg {
 	return b.expr.Args
 }
 
-func (b *boundExpr) BindingResult() *cli.BindingResult {
-	return b.exprSet.BindingResult
+func (b *boundExpr) Binding() cli.Binding {
+	return b.exprSet.Binding
+}
+
+func (b *boundExpr) Apply(result *cli.BindingResult) error {
+	// Update the bound expression with the data which was copied
+	b.exprSet.BindingResult = result
+	return result.ApplyTo(b.exprSet)
 }
 
 func (b *boundExpr) Reset() {
@@ -1079,7 +1151,7 @@ func (b *boundExpr) Evaluate(c context.Context, v any, yield func(any) error) er
 	ctx := cliContextOf(c).ValueContextOf(b.Expr().Name, b)
 	tryResetIfSupported(b)
 
-	err := b.BindingResult().ApplyTo(b.exprSet)
+	err := b.Apply(b.exprSet.BindingResult)
 	if err != nil {
 		return err
 	}
@@ -1147,9 +1219,9 @@ func (e *Expression) Clone() *Expression {
 		pipeline:          e.pipeline,
 		parseInlineValues: e.parseInlineValues,
 		parseOperators:    e.parseOperators,
-		numeric:           e.numeric,
 		Exprs:             slices.Clone(e.Exprs),
 		Compiler:          e.Compiler,
+		Binding:           e.Binding,
 	}
 }
 
@@ -1243,107 +1315,173 @@ func (e *Expression) VisibleExprs() []*Expr {
 	return res
 }
 
-func (e *Expression) names() map[string]*Expr {
-	if e.nameLookupCache == nil {
-		e.nameLookupCache = map[string]*Expr{}
-		for _, x := range e.Exprs {
-			e.nameLookupCache[x.Name] = x
-			for _, alias := range x.Aliases {
-				e.nameLookupCache[alias] = x
-			}
-			if x.internalFlags().numeric() {
-				e.numeric = x.Name
+func (e *Expression) binding() Binding {
+	if e.Binding != nil {
+		return e.Binding
+	}
+	var options cli.Option
+	if e.parseOperators {
+		options |= ParseOperators
+	}
+	return NewBinding(e.Exprs, options)
+}
+
+func (b *bindingImpl) ResolveAlias(arg string) (string, bool) {
+	if b.parseOperators {
+		if op, ok := operatorsByName[arg]; ok {
+			return op.String(), true
+		}
+	}
+
+	name, ok := strings.CutPrefix(arg, "-")
+	if !ok {
+		return "", false
+	}
+	if _, ok := b.findName(name); ok {
+		return name, true
+	}
+	for _, x := range b.exprs {
+		if slices.Contains(x.Aliases, name) {
+			return x.Name, true
+		}
+	}
+	return "", false
+}
+
+func (b *bindingImpl) LookupExpr(name string) (BindingEvaluator, bool) {
+	if b.parseOperators {
+		if op, ok := operatorsByName[name]; ok {
+			return op, true
+		}
+	}
+
+	expr, ok := b.findName(name)
+	if !ok {
+		return nil, false
+	}
+
+	// Copy to a "bound expression" to create instancing for the
+	// use of the expression operator.
+	return newBoundExpr(expr), true
+}
+
+func (b *bindingImpl) Numeric() string {
+	for _, x := range b.exprs {
+		if x.internalFlags().numeric() {
+			return x.Name
+		}
+	}
+	return ""
+}
+
+func (b *bindingImpl) findName(name string) (*Expr, bool) {
+	for _, x := range b.exprs {
+		if x.Name == name {
+			return x, true
+		}
+	}
+	return nil, false
+}
+
+// resolveExpr resolves the argument to the item for an expression operator or operator
+// along with the args that remain.
+func (e *Expression) resolveExpr(b Binding, arg string, args []string) (item BindingEvaluator, remaining []string, ok bool) {
+	lookup := func(token string) (BindingEvaluator, bool) {
+		if name, ok := b.ResolveAlias(token); ok {
+			return b.LookupExpr(name)
+		}
+		return nil, false
+	}
+
+	if item, ok = lookup(arg); ok {
+		return item, args, true
+	}
+
+	body, hasDash := strings.CutPrefix(arg, "-")
+	if !hasDash || body == "" {
+		return nil, args, false
+	}
+
+	// Inline values: when the name isn't recognized, the short alias may be
+	// the first character with the remaining part as the value of the args.  This
+	// only applies to items which have args, never to operators.
+	first, size := utf8.DecodeRuneInString(body)
+	if e.parseInlineValues && (unicode.IsUpper(first) || strings.Contains(body, "=")) {
+		if item, ok = lookup(arg[:1+size]); ok {
+			if _, ok = item.(BindingState); ok {
+				// Push back the remaining part so it can be parsed as args
+				return item, append([]string{arg[1+size:]}, args...), true
 			}
 		}
 	}
-	return e.nameLookupCache
-}
 
-func (e *Expression) findExpr(exprName string) (result *Expr, isShortInlineAlias, ok bool) {
-	exprs := e.names()
-	expr, ok := exprs[exprName]
-	if !ok && e.parseInlineValues {
-		if unicode.IsUpper(([]rune(exprName))[0]) || strings.Contains(exprName, "=") {
-			exprName = string([]rune(exprName)[0])
-			expr, ok = exprs[exprName]
-			return expr, true, true
+	if numeric := b.Numeric(); numeric != "" {
+		if _, err := strconv.Atoi(body); err == nil {
+			if item, ok = b.LookupExpr(numeric); ok {
+				return item, append([]string{body}, args...), true
+			}
 		}
 	}
-	return expr, false, ok
+	return nil, args, false
 }
 
-func (e *Expression) findOperator(arg string) (Operator, bool) {
-	if !e.parseOperators {
-		return 0, false
-	}
-	op, ok := operatorsByName[arg]
-	return op, ok
-}
-
-func parseExpressions(e *Expression) ([]BindingEvaluator, *cli.BindingResult, error) {
+func parseExpressions(e *Expression) ([]BindingEvaluator, []parsedExpr, *cli.BindingResult, error) {
 	args := e.args
+	b := e.binding()
 
 	results := make([]BindingEvaluator, 0)
+	parsed := make([]parsedExpr, 0)
 	all := make([]*cli.BindingResult, 0)
 	for len(args) > 0 {
 		arg := args[0]
 		args = args[1:]
 
-		if op, ok := e.findOperator(arg); ok {
-			results = append(results, op)
+		item, remaining, ok := e.resolveExpr(b, arg, args)
+		if !ok {
+			return nil, nil, nil, unknownExpr(arg)
+		}
+		args = remaining
+		results = append(results, item)
+
+		// Operators and other items which don't support bindings have nothing to parse
+		state, ok := item.(BindingState)
+		if !ok {
+			continue
+		}
+		cb := state.Binding()
+		if cb == nil {
 			continue
 		}
 
-		expr, isShortInline, ok := e.findExpr(arg[1:])
-
-		if isShortInline {
-			// Push back the remaining part so it can be parsed as args
-			args = append([]string{arg[2:]}, args...)
-		}
-		if !ok && e.numeric != "" {
-			if _, err := strconv.Atoi(arg[1:]); err == nil {
-				args = append([]string{arg[1:]}, args...)
-				expr = e.names()[e.numeric]
-				ok = true
-			}
-		}
-
-		if !ok {
-			return nil, nil, unknownExpr(arg)
-		}
-
-		// Copy to a "bound expression" to create instancing for the
-		// use of the expression operator.
-		boundExpr := newBoundExpr(expr)
-		results = append(results, boundExpr)
-		bin, err := cli.RawParse(args, boundExpr.exprSet, boundExpr.expr.internalFlags().toRaw())
+		bin, err := cli.RawParse(args, cb, 0)
 
 		var pe *cli.ParseError
 		if err != nil {
-			pe = err.(*cli.ParseError)
+			if !errors.As(err, &pe) {
+				return nil, nil, nil, err
+			}
 			args = pe.Remaining
 
 			switch pe.Code {
 			case cli.UnexpectedArgument:
-				if _, ok := e.findOperator(args[0]); !ok {
-					return nil, nil, argsMustPrecedeExprs(args[0])
+				if _, ok := b.ResolveAlias(args[0]); !ok {
+					return nil, nil, nil, argsMustPrecedeExprs(args[0])
 				}
 			case cli.ExpectedArgument:
-				return nil, nil, pe
+				return nil, nil, nil, pe
 			}
 		}
 
-		// Update the bound expression with the data which was copied,
-		// and collect it within a global view across the whole pipeline
-		boundExpr.exprSet.BindingResult = bin
+		// Collect the data within a global view across the whole pipeline
 		all = append(all, bin)
+		parsed = append(parsed, parsedExpr{state, bin})
 
 		// If the parse completed successfully, there is nothing else to do
 		if pe == nil {
 			break
 		}
 	}
-	return results, cli.MergeBindingResults(all...), nil
+	return results, parsed, cli.MergeBindingResults(all...), nil
 }
 
 func (b *exprBinding) Expr() *Expr {
@@ -1478,4 +1616,6 @@ var (
 	_ cli.BindingLookup = (*boundExpr)(nil)
 	_ cli.BindingLookup = (*Expr)(nil)
 	_ cli.Binding       = (*boundExpr)(nil)
+	_ Binding           = (*bindingImpl)(nil)
+	_ BindingState      = (*boundExpr)(nil)
 )
