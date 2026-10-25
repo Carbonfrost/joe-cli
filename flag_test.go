@@ -7,8 +7,6 @@ package cli_test
 import (
 	"bytes"
 	"context"
-	"errors"
-	"flag"
 	"math/big"
 	"net"
 	"net/url"
@@ -997,41 +995,552 @@ var _ = Describe("Flag", func() {
 
 })
 
-type temperature string
+var _ = Describe("PseudoCommand", func() {
 
-func (t *temperature) Set(s string) error {
-	switch s {
-	case "F":
-		*t = "Fahrenheit"
-	case "C":
-		*t = "Celsius"
-	default:
-		return errors.New("not supported")
-	}
-	return nil
-}
+	Context("when a singleton", func() {
 
-func (t *temperature) String() string {
-	return string(*t)
-}
+		var (
+			app *cli.App
 
-func (*temperature) Synopsis() string {
-	return "{Fahrenheit|Celsius}"
-}
+			// Records what happened, as "name arg..." for the operation which ran
+			ran       []string
+			appAction bool
+		)
 
-type boolFlag string
+		run := func(args string) error {
+			arguments, _ := cli.Split(args)
+			return app.RunContext(context.Background(), arguments...)
+		}
 
-func (*boolFlag) Set(s string) error {
-	return nil
-}
+		BeforeEach(func() {
+			ran = nil
+			appAction = false
+			app = &cli.App{
+				Name: "dns-sd",
+				Flags: []*cli.Flag{
+					{Name: "verbose", Aliases: []string{"v"}, Value: cli.Bool()},
+					{
+						Name:    "enumerate",
+						Aliases: []string{"E"},
+						Uses: cli.PseudoCommand(&cli.Command{
+							HelpText: "Enumerate registration domains",
+							Action: func(c *cli.Context) error {
+								ran = append(ran, "enumerate", c.Name())
+								if c.Bool("verbose") {
+									ran = append(ran, "verbose")
+								}
+								return nil
+							},
+						}),
+					},
+					{
+						Name:    "browse",
+						Aliases: []string{"B"},
+						Uses: cli.PseudoCommand(&cli.Command{
+							HelpText: "Browse for services",
+							Flags: []*cli.Flag{
+								{Name: "timeout", Aliases: []string{"t"}, Value: cli.Int()},
+							},
+							Args: []*cli.Arg{
+								{Name: "type", NArg: 1},
+								{Name: "domain", NArg: 0},
+							},
+							Action: func(c *cli.Context) error {
+								ran = append(ran, "browse", c.String("type"), c.String("domain"))
+								if c.Int("timeout") > 0 {
+									ran = append(ran, "timeout")
+								}
+								if c.Bool("verbose") {
+									ran = append(ran, "verbose")
+								}
+								return nil
+							},
+						}),
+					},
+				},
+				Action: func() { appAction = true },
+			}
+		})
 
-func (*boolFlag) IsBoolFlag() bool {
-	return true
-}
+		Describe("execution", func() {
 
-func (*boolFlag) String() string {
-	return ""
-}
+			DescribeTable("examples",
+				func(args string, expected ...string) {
+					Expect(run(args)).To(Succeed())
+					Expect(ran).To(Equal(expected))
+					Expect(appAction).To(BeFalse(), "the action of the command is skipped")
+				},
+				Entry("short name", "dns-sd -E", "enumerate", "enumerate"),
+				Entry("long name", "dns-sd --enumerate", "enumerate", "enumerate"),
+				Entry("with args", "dns-sd -B _http._tcp local", "browse", "_http._tcp", "local"),
+				Entry("with optional arg omitted", "dns-sd -B _http._tcp", "browse", "_http._tcp", ""),
+				Entry("with flags of the pseudo command", "dns-sd -B -t 3 _http._tcp", "browse", "_http._tcp", "", "timeout"),
+				Entry("with flags of the pseudo command amid args", "dns-sd -B --timeout=3 _http._tcp local", "browse", "_http._tcp", "local", "timeout"),
+				Entry("persistent flag before", "dns-sd -v -E", "enumerate", "enumerate", "verbose"),
+				Entry("persistent flag after", "dns-sd -E -v", "enumerate", "enumerate", "verbose"),
+				Entry("persistent flag before args", "dns-sd -v -B _http._tcp", "browse", "_http._tcp", "", "verbose"),
+				Entry("persistent flag amid args", "dns-sd -B -v _http._tcp", "browse", "_http._tcp", "", "verbose"),
+			)
 
-var _ flag.Value = (*temperature)(nil)
-var _ flag.Value = (*boolFlag)(nil)
+			It("runs the action of the command when no operation is named", func() {
+				Expect(run("dns-sd -v")).To(Succeed())
+				Expect(ran).To(BeEmpty())
+				Expect(appAction).To(BeTrue())
+			})
+
+			It("is an error to omit required args of the pseudo command", func() {
+				err := run("dns-sd -B")
+				Expect(err).To(HaveOccurred())
+				Expect(ran).To(BeEmpty())
+			})
+
+			It("takes the rest of the line, so another operation can't be named", func() {
+				err := run("dns-sd -E -B x")
+				Expect(err).To(HaveOccurred())
+				Expect(ran).To(BeEmpty())
+			})
+
+			It("does not split on commas", func() {
+				Expect(run("dns-sd -B a,b")).To(Succeed())
+				Expect(ran).To(Equal([]string{"browse", "a,b", ""}))
+			})
+		})
+
+		Describe("defaults from the pseudo command", func() {
+
+			It("uses the name and aliases of the command", func() {
+				var ran bool
+				app := &cli.App{
+					Name: "app",
+					Flags: []*cli.Flag{
+						{Uses: cli.PseudoCommand(&cli.Command{
+							Name:     "lookup",
+							Aliases:  []string{"L"},
+							HelpText: "Look up a service",
+							Action:   func() { ran = true },
+						})},
+					},
+				}
+
+				Expect(app.RunContext(context.Background(), "app", "-L")).To(Succeed())
+				Expect(ran).To(BeTrue())
+
+				ctx, _ := app.Initialize(context.Background())
+				f, ok := cli.FromContext(ctx).Command().Flag("lookup")
+				Expect(ok).To(BeTrue())
+				Expect(f.HelpText).To(Equal("Look up a service"))
+				Expect(f.Category).To(Equal("Operations"))
+			})
+
+			It("uses the name of the flag when the command has none", func() {
+				var ran bool
+				app := &cli.App{
+					Name: "app",
+					Flags: []*cli.Flag{
+						{Name: "lookup", Uses: cli.PseudoCommand(&cli.Command{
+							Action: func() { ran = true },
+						})},
+					},
+				}
+
+				Expect(app.RunContext(context.Background(), "app", "--lookup")).To(Succeed())
+				Expect(ran).To(BeTrue())
+			})
+
+			It("panics without a command", func() {
+				Expect(func() { cli.PseudoCommand(nil) }).To(Panic())
+			})
+		})
+
+		Describe("help screen", func() {
+
+			It("lists each operation as an alternative synopsis", func() {
+				Expect(renderScreen(app, "dns-sd --help")).To(HavePrefix(
+					"usage: dns-sd [--verbose] --enumerate\n" +
+						"       dns-sd [--verbose] --browse [--timeout=NUMBER] <type> [<domain>]\n" +
+						"       dns-sd {--help | --version}\n"))
+			})
+
+			It("lists the operations by category", func() {
+				Expect(renderScreen(app, "dns-sd --help")).To(ContainSubstring(
+					"Operations:\n" +
+						"\n" +
+						"  -E, --enumerate  Enumerate registration domains\n" +
+						"  -B, --browse     Browse for services\n"))
+			})
+
+			Describe("of the pseudo command", func() {
+
+				BeforeEach(func() {
+					// Required args prevent the help flag from being used after them
+					app.Flags[2].Uses = cli.PseudoCommand(&cli.Command{
+						Name:  "browse",
+						Flags: []*cli.Flag{{Name: "timeout", Aliases: []string{"t"}, Value: cli.Int()}},
+						Args:  []*cli.Arg{{Name: "type"}},
+					})
+				})
+
+				It("uses the flag to invoke the pseudo command", func() {
+					Expect(renderScreen(app, "dns-sd -B --help")).To(HavePrefix(
+						"usage: dns-sd --browse [--timeout=NUMBER] [<type>]\n"))
+				})
+
+				It("does not list operations as global options", func() {
+					screen := renderScreen(app, "dns-sd -B --help")
+					Expect(screen).To(ContainSubstring("--verbose"))
+					Expect(screen).NotTo(ContainSubstring("--enumerate"))
+				})
+			})
+
+			It("lists the generic synopsis when the command has args", func() {
+				app.Args = []*cli.Arg{{Name: "file"}}
+
+				Expect(renderScreen(app, "dns-sd --help")).To(HavePrefix(
+					"usage: dns-sd [--verbose] --enumerate\n" +
+						"       dns-sd [--verbose] --browse [--timeout=NUMBER] <type> [<domain>]\n" +
+						"       dns-sd [--verbose] [<file>]\n" +
+						"       dns-sd {--help | --version}\n"))
+			})
+
+			It("lists operations together with sub-commands when expanded", func() {
+				app.Options = cli.ExpandSubcommandSynopses
+				app.Commands = []*cli.Command{
+					{Name: "list", Args: []*cli.Arg{{Name: "type", NArg: 1}}},
+				}
+
+				Expect(renderScreen(app, "dns-sd --help")).To(HavePrefix(
+					"usage: dns-sd [--verbose] --enumerate\n" +
+						"       dns-sd [--verbose] --browse [--timeout=NUMBER] <type> [<domain>]\n" +
+						"       dns-sd [--verbose] list <type>\n" +
+						"       dns-sd {--help | --version}\n"))
+			})
+		})
+
+		Describe("Synopsis", func() {
+
+			It("condenses the operations in a single synopsis", func() {
+				ctx, _ := app.Initialize(context.Background())
+				cmd := cli.FromContext(ctx).Command()
+
+				Expect(cmd.Synopsis()).To(Equal("dns-sd {--help | --version} [--verbose] {--enumerate | --browse}"))
+			})
+		})
+
+		Describe("completion", func() {
+
+			DescribeTable("examples", func(arguments string, incomplete string, expected ...cli.CompletionItem) {
+				ctx, err := app.Initialize(context.Background())
+				Expect(err).NotTo(HaveOccurred())
+
+				args, _ := cli.Split(arguments)
+				items := cli.FromContext(ctx).Complete(args, incomplete)
+				Expect(items).To(ContainElements(expected))
+			},
+				// The operation is not completed with = because it takes the rest of the line
+				Entry("operations", "dns-sd", "--b",
+					cli.CompletionItem{Value: "--browse", HelpText: "Browse for services"}),
+				Entry("flags of the pseudo command", "dns-sd -B", "--ti",
+					cli.CompletionItem{Value: "--timeout=", PreventSpaceAfter: true}),
+				Entry("flags of the pseudo command after args", "dns-sd -B _http._tcp", "--ti",
+					cli.CompletionItem{Value: "--timeout=", PreventSpaceAfter: true}),
+			)
+
+			It("delegates args to the pseudo command", func() {
+				app.Flags[2].Uses = cli.PseudoCommand(&cli.Command{
+					Name: "browse",
+					Args: []*cli.Arg{
+						{Name: "type", NArg: 1, Completion: cli.ValueCompletion("_http._tcp", "_ssh._tcp")},
+					},
+				})
+				ctx, err := app.Initialize(context.Background())
+				Expect(err).NotTo(HaveOccurred())
+
+				args, _ := cli.Split("dns-sd -B")
+				items := cli.FromContext(ctx).Complete(args, "_h")
+				Expect(items).To(ContainElement(cli.CompletionItem{Value: "_http._tcp"}))
+				Expect(items).NotTo(ContainElement(cli.CompletionItem{Value: "_ssh._tcp"}))
+			})
+		})
+
+	})
+
+	Context("when more than one", func() {
+
+		var (
+			app *cli.App
+
+			// Records what happened, as "name arg..." for the operation which ran
+			ran       []string
+			appAction bool
+		)
+
+		run := func(args string) error {
+			arguments, _ := cli.Split(args)
+			return app.RunContext(context.Background(), arguments...)
+		}
+
+		BeforeEach(func() {
+			ran = nil
+			appAction = false
+			app = &cli.App{
+				Name: "dns-sd",
+				Flags: []*cli.Flag{
+					{Name: "verbose", Aliases: []string{"v"}, Value: cli.Bool()},
+					{
+						Uses: cli.PseudoCommand(
+							&cli.Command{
+								Name:     "enumerate",
+								Aliases:  []string{"E"},
+								HelpText: "Enumerate registration domains",
+								Action: func(c *cli.Context) error {
+									ran = append(ran, "enumerate")
+									if c.Bool("verbose") {
+										ran = append(ran, "verbose")
+									}
+									return nil
+								},
+							},
+							&cli.Command{
+								Name:     "browse",
+								HelpText: "Browse for services",
+								Flags: []*cli.Flag{
+									{Name: "timeout", Aliases: []string{"t"}, Value: cli.Int()},
+								},
+								Args: []*cli.Arg{
+									{Name: "type"},
+									{Name: "domain"},
+								},
+								Action: func(c *cli.Context) error {
+									ran = append(ran, "browse", c.String("type"), c.String("domain"))
+									if c.Int("timeout") > 0 {
+										ran = append(ran, "timeout")
+									}
+									if c.Bool("verbose") {
+										ran = append(ran, "verbose")
+									}
+									return nil
+								},
+							},
+						),
+					},
+				},
+				Action: func() { appAction = true },
+			}
+		})
+
+		Describe("execution", func() {
+
+			DescribeTable("examples",
+				func(args string, expected ...string) {
+					Expect(run(args)).To(Succeed())
+					Expect(ran).To(Equal(expected))
+					Expect(appAction).To(BeFalse(), "the action of the command is skipped")
+				},
+				Entry("short name", "dns-sd -g enumerate", "enumerate"),
+				Entry("long name", "dns-sd --global enumerate", "enumerate"),
+				Entry("alias of the command", "dns-sd -g E", "enumerate"),
+				Entry("with args", "dns-sd -g browse _http._tcp local", "browse", "_http._tcp", "local"),
+				Entry("with flags of the command", "dns-sd -g browse --timeout=3 _http._tcp", "browse", "_http._tcp", "", "timeout"),
+				Entry("persistent flag before", "dns-sd -v -g enumerate", "enumerate", "verbose"),
+				Entry("persistent flag after the name", "dns-sd -g enumerate -v", "enumerate", "verbose"),
+				Entry("persistent flag amid args", "dns-sd -g browse -v _http._tcp", "browse", "_http._tcp", "", "verbose"),
+			)
+
+			It("runs the action of the command when no operation is selected", func() {
+				Expect(run("dns-sd -v")).To(Succeed())
+				Expect(ran).To(BeEmpty())
+				Expect(appAction).To(BeTrue())
+			})
+
+			It("is an error to name a command that doesn't exist", func() {
+				err := run("dns-sd -g nope")
+				Expect(err).To(MatchError(`"nope" is not a command`))
+				Expect(ran).To(BeEmpty())
+			})
+
+			It("is an error to omit the name", func() {
+				err := run("dns-sd -g")
+				Expect(err).To(MatchError("expected argument"))
+				Expect(ran).To(BeEmpty())
+			})
+
+			It("can attach the name to the flag only when no args follow", func() {
+				Expect(run("dns-sd --global=enumerate")).To(Succeed())
+				Expect(ran).To(Equal([]string{"enumerate"}))
+
+				Expect(run("dns-sd --global=browse _http._tcp")).NotTo(Succeed())
+			})
+		})
+
+		Describe("construction", func() {
+
+			It("uses the name and alias of the conventional flag", func() {
+				ctx, _ := app.Initialize(context.Background())
+				f, ok := cli.FromContext(ctx).Command().Flag("global")
+				Expect(ok).To(BeTrue())
+				Expect(f.Aliases).To(ConsistOf("g"))
+				Expect(f.Category).To(Equal("Operations"))
+			})
+
+			It("uses the name of the flag when the flag has one", func() {
+				app.Flags[1].Name = "operation"
+				app.Flags[1].Aliases = []string{"o"}
+
+				Expect(run("dns-sd -o enumerate")).To(Succeed())
+				Expect(ran).To(Equal([]string{"enumerate"}))
+			})
+
+			It("panics without commands", func() {
+				Expect(func() { cli.PseudoCommand() }).To(Panic())
+			})
+
+			It("panics with a nil command", func() {
+				Expect(func() { cli.PseudoCommand(nil) }).To(Panic())
+			})
+
+			It("can provide late initialization of command names", func() {
+				var lookedUp bool
+				app.Flags = []*cli.Flag{{
+					Uses: cli.PseudoCommand(
+						&cli.Command{
+							Uses:   cli.Name("lookup"),
+							Action: func() { lookedUp = true },
+						},
+						&cli.Command{
+							Name: "M",
+						}),
+				}}
+
+				Expect(run("dns-sd -g lookup")).To(Succeed())
+				Expect(lookedUp).To(BeTrue())
+			})
+
+			It("can be used along with flags for individual commands", func() {
+				var lookedUp bool
+				app.Flags = append(app.Flags, &cli.Flag{
+					Name:    "lookup",
+					Aliases: []string{"L"},
+					Uses: cli.PseudoCommand(&cli.Command{
+						HelpText: "Look up a service",
+						Action:   func() { lookedUp = true },
+					}),
+				})
+
+				Expect(run("dns-sd -L")).To(Succeed())
+				Expect(lookedUp).To(BeTrue())
+
+				Expect(run("dns-sd -g enumerate")).To(Succeed())
+				Expect(ran).To(Equal([]string{"enumerate"}))
+			})
+		})
+
+		Describe("help screen", func() {
+
+			It("lists each command as an alternative synopsis", func() {
+				Expect(renderScreen(app, "dns-sd --help")).To(HavePrefix(
+					"usage: dns-sd [--verbose] --global enumerate\n" +
+						"       dns-sd [--verbose] --global browse [--timeout=NUMBER] [<type>][<domain>]\n" +
+						"       dns-sd {--help | --version}\n"))
+			})
+
+			It("describes the commands as values of the flag", func() {
+				Expect(renderScreen(app, "dns-sd --help")).To(ContainSubstring(
+					"Operations:\n" +
+						"\n" +
+						"  -g, --global {browse|enumerate}  Run an operation\n" +
+						"\n" +
+						"         enumerate  Enumerate registration domains\n" +
+						"         browse     Browse for services\n"))
+			})
+
+			It("uses the flag and name to invoke the command", func() {
+				Expect(renderScreen(app, "dns-sd -g browse --help")).To(HavePrefix(
+					"usage: dns-sd --global browse [--timeout=NUMBER] [<type>][<domain>]\n"))
+			})
+
+			It("does not list the flag as a global option of the command", func() {
+				Expect(renderScreen(app, "dns-sd -g browse --help")).NotTo(ContainSubstring("--global {"))
+			})
+		})
+
+		Describe("Synopsis", func() {
+
+			It("condenses the selector in a single synopsis", func() {
+				ctx, _ := app.Initialize(context.Background())
+				cmd := cli.FromContext(ctx).Command()
+
+				Expect(cmd.Synopsis()).To(Equal("dns-sd {--help | --version} [--verbose] {--global {browse|enumerate}}"))
+			})
+		})
+
+		Describe("completion", func() {
+
+			DescribeTable("examples", func(arguments string, incomplete string, expected ...cli.CompletionItem) {
+				ctx, err := app.Initialize(context.Background())
+				Expect(err).NotTo(HaveOccurred())
+
+				args, _ := cli.Split(arguments)
+				items := cli.FromContext(ctx).Complete(args, incomplete)
+				Expect(items).To(ConsistOf(expected))
+			},
+				Entry("names", "dns-sd -g", "",
+					cli.CompletionItem{Value: "enumerate", HelpText: "Enumerate registration domains"},
+					cli.CompletionItem{Value: "E", HelpText: "Enumerate registration domains"},
+					cli.CompletionItem{Value: "browse", HelpText: "Browse for services"}),
+				Entry("names by prefix", "dns-sd --global", "br",
+					cli.CompletionItem{Value: "browse", HelpText: "Browse for services"}),
+				Entry("names with no match", "dns-sd -g", "x"),
+				Entry("flags of the command", "dns-sd -g browse", "--ti",
+					cli.CompletionItem{Value: "--timeout=", PreventSpaceAfter: true}),
+				Entry("unknown command", "dns-sd -g nope", "-"),
+			)
+		})
+	})
+
+	Context("validation", func() {
+		It("allows flag and arg within in it to see command", func() {
+			var (
+				flagSeesCommand bool
+				argSeesCommand  bool
+			)
+			hasCommandAccess := func(b *bool) cli.ActionFunc {
+				return func(c *cli.Context) error {
+					*b = c.Command() != nil && c.Command().Name == "browse"
+					return nil
+				}
+			}
+
+			flagAction := hasCommandAccess(&flagSeesCommand)
+			argAction := hasCommandAccess(&argSeesCommand)
+			app := &cli.App{
+				Name: "dns-sd",
+				Flags: []*cli.Flag{
+					{
+						Name:    "browse",
+						Aliases: []string{"B"},
+						Uses: cli.PseudoCommand(&cli.Command{
+							HelpText: "Browse for services",
+							Flags: []*cli.Flag{
+								{Name: "timeout", Aliases: []string{"t"}, Value: cli.Int(), Action: flagAction},
+							},
+							Args: []*cli.Arg{
+								{Name: "type", NArg: 1, Action: argAction},
+								{Name: "domain", NArg: 0},
+							},
+							Action: func(c *cli.Context) error {
+								return nil
+							},
+						}),
+					},
+				},
+				Action: func() {},
+			}
+
+			arguments, _ := cli.Split("dns-sd -B -t 30 _http._tcp local")
+			app.RunContext(context.Background(), arguments...)
+			Expect(flagSeesCommand).To(BeTrue())
+			Expect(argSeesCommand).To(BeTrue())
+		})
+
+	})
+})

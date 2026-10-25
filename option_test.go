@@ -53,6 +53,7 @@ var _ = Describe("Option", func() {
 			Entry("DisableSynopsisCategories", cli.DisableSynopsisCategories, "DISABLE_SYNOPSIS_CATEGORIES"),
 			Entry("OrderFirst", cli.OrderFirst, "ORDER_FIRST"),
 			Entry("OrderLast", cli.OrderLast, "ORDER_LAST"),
+			Entry("ExpandSubcommandSynopses", cli.ExpandSubcommandSynopses, "EXPAND_SUBCOMMAND_SYNOPSES"),
 			Entry("ReservedOption1", cli.ReservedOption1, "RESERVED_OPTION_1"),
 			Entry("ReservedOption2", cli.ReservedOption2, "RESERVED_OPTION_2"),
 			Entry("ReservedOption3", cli.ReservedOption3, "RESERVED_OPTION_3"),

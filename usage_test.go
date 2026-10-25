@@ -280,6 +280,40 @@ var _ = Describe("NewBuffer", func() {
 })
 
 var _ = Describe("DisplayHelpScreen", func() {
+	It("lists the synopsis of each sub-command with ExpandSubcommandSynopses", func() {
+		app := &cli.App{
+			Name:    "demo",
+			Options: cli.ExpandSubcommandSynopses,
+			Commands: []*cli.Command{
+				{Name: "add", Args: []*cli.Arg{{Name: "name", NArg: 1}}},
+				{Name: "remove", Args: []*cli.Arg{{Name: "name", NArg: 1}}},
+			},
+		}
+		Expect(renderScreen(app, "demo")).To(HavePrefix(
+			"usage: demo add <name>\n" +
+				"       demo remove <name>\n" +
+				"       demo {--help | --version}\n"))
+	})
+
+	It("indents each synopsis beneath the lineage", func() {
+		app := &cli.App{
+			Name: "demo",
+			Commands: []*cli.Command{
+				{
+					Name:    "sub",
+					Options: cli.ExpandSubcommandSynopses,
+					Subcommands: []*cli.Command{
+						{Name: "bent"},
+						{Name: "straight"},
+					},
+				},
+			},
+		}
+		Expect(renderScreen(app, "demo sub")).To(HavePrefix(
+			"usage: demo sub bent\n" +
+				"       demo sub straight\n"))
+	})
+
 	It("is the default action for an app with sub-commands", func() {
 		app := &cli.App{
 			Name: "demo",

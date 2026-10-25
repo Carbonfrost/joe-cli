@@ -138,6 +138,59 @@ var _ = Describe("help screen", HelpScreen, func() {
 				},
 			},
 		}),
+		Entry("pseudo commands", "pseudo_commands", &cli.App{
+			Name: "dns-sd",
+			Flags: []*cli.Flag{
+				{Name: "verbose", Aliases: []string{"v"}, Value: cli.Bool()},
+				{
+					Uses: cli.PseudoCommand(
+						&cli.Command{
+							Name:     "enumerate",
+							Aliases:  []string{"E"},
+							HelpText: "Enumerate registration domains",
+						},
+						&cli.Command{
+							Name:     "browse",
+							HelpText: "Browse for services",
+							Flags: []*cli.Flag{
+								{Name: "timeout", Aliases: []string{"t"}, Value: cli.Int()},
+							},
+							Args: []*cli.Arg{
+								{Name: "type"},
+								{Name: "domain"},
+							},
+						},
+					),
+				},
+			},
+		}),
+		Entry("pseudo commands (singleton)", "pseudo_commands_singleton", &cli.App{
+			Name: "dns-sd",
+			Flags: []*cli.Flag{
+				{Name: "verbose", Aliases: []string{"v"}, Value: cli.Bool()},
+				{
+					Name:    "enumerate",
+					Aliases: []string{"E"},
+					Uses: cli.PseudoCommand(&cli.Command{
+						HelpText: "Enumerate registration domains",
+					}),
+				},
+				{
+					Name:    "browse",
+					Aliases: []string{"B"},
+					Uses: cli.PseudoCommand(&cli.Command{
+						HelpText: "Browse for services",
+						Flags: []*cli.Flag{
+							{Name: "timeout", Aliases: []string{"t"}, Value: cli.Int()},
+						},
+						Args: []*cli.Arg{
+							{Name: "type", NArg: 1},
+							{Name: "domain", NArg: 0},
+						},
+					}),
+				},
+			},
+		}),
 	)
 })
 

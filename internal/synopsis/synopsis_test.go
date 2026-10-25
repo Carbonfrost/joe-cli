@@ -76,6 +76,51 @@ var _ = Describe("String", func() {
 				}, nil, false),
 			ContainSubstring("{**--help**=_VALUE_ | **--version**=_VALUE_}")),
 
+		Entry("operation flags",
+			synopsis.NewCommand("c",
+				[]*synopsis.Flag{
+					synopsis.NewFlag("browse", nil, "", "", new(bool), synopsis.OperationGroup),
+					synopsis.NewFlag("lookup", nil, "", "", new(bool), synopsis.OperationGroup),
+					synopsis.NewFlag("normal", nil, "", "", new(bool), synopsis.Other),
+				}, nil, false),
+			Equal("**c** **--normal**__ {**--browse**__ | **--lookup**__}")),
+
+		Entry("operation",
+			&synopsis.Operation{
+				Flag: synopsis.NewFlag("browse", nil, "", "", new(bool), synopsis.OperationGroup),
+				Command: synopsis.NewCommand("ignored",
+					[]*synopsis.Flag{
+						synopsis.NewFlag("timeout", nil, "", "", new(int), synopsis.OtherOptional),
+					},
+					[]*synopsis.Arg{{Value: "<type>"}}, false),
+			},
+			Equal("**--browse**__ [**--timeout**=_NUMBER_] <type>")),
+
+		Entry("operation with the name of the command",
+			&synopsis.Operation{
+				Flag: synopsis.NewFlag("global", nil, "", "", new(string), synopsis.OperationGroup),
+				Name: "browse",
+				Command: synopsis.NewCommand("browse", nil,
+					[]*synopsis.Arg{{Value: "<type>"}}, false),
+			},
+			Equal("**--global** **browse** <type>")),
+
+		Entry("invocation replaces name",
+			&synopsis.Command{Name: "browse", Invocation: "--browse"},
+			Equal("**--browse**")),
+
+		Entry("continued by next",
+			func() synopsis.Stringer {
+				cmd := synopsis.NewCommand("c", nil, []*synopsis.Arg{{Value: "<x>"}}, false)
+				cmd.Next = synopsis.NewCommand("sub",
+					[]*synopsis.Flag{
+						synopsis.NewFlag("n", nil, "", "", "", synopsis.OnlyShortNoValueOptional),
+					},
+					[]*synopsis.Arg{{Value: "<y>"}}, false)
+				return cmd
+			}(),
+			Equal("**c** <x> **sub** [-n] <y>")),
+
 		Entry("inline optional flags",
 			synopsis.NewCommand("c",
 				[]*synopsis.Flag{

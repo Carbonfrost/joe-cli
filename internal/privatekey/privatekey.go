@@ -9,6 +9,8 @@ const (
 	OptionalAliases   T = "__OptionalAliases"
 	OptionError       T = "_OptionError"
 	PanicData         T = "__PanicData"
+	PseudoCommand     T = "__PseudoCommand"
+	PseudoFlag        T = "__PseudoFlag"
 	ShellCompletes    T = "__ShellCompletes"
 	Synopsis          T = "_Synopsis"
 	Validator         T = "__Validator"

@@ -27,7 +27,7 @@ type Feature interface {
 // joe-cli is to define a bitmask representing features that apply in an extension
 type FeatureMap[T Feature] map[T]Action
 
-type internalFlags uint32
+type internalFlags uint64
 
 const (
 	// Hidden causes the option to be Hidden
@@ -110,7 +110,8 @@ const (
 
 	// NonPersistent marks a flag as being non-persistent.  By default, any flag defined by an ancestor
 	// command can be set by a sub-command.  However, when present, the NonPersistent option causes this to
-	// be treated as a usage error.
+	// be treated as a usage error.  A non-persistent flag is also left out of the persistent flags of
+	// the sub-command (see Context.PersistentFlags) and is not triggered again within it.
 	NonPersistent
 
 	// DisableSplitting disable splitting on commas.  This affects List arguments and flags.
@@ -248,7 +249,14 @@ const (
 	// OrderLast, OrderFirst wins.
 	OrderLast
 
-	maxNonReservedOption = OrderLast
+	// ExpandSubcommandSynopses when applied to a Command causes the usage on its help screen
+	// to list the synopsis of each visible sub-command, one per line, rather than the
+	// generic <command> [<args>].  This is most useful for commands whose sub-commands have
+	// distinct, non-overlapping forms.  The synopses are also available from
+	// Command.Synopses.
+	ExpandSubcommandSynopses
+
+	maxNonReservedOption = ExpandSubcommandSynopses
 
 	// None represents no options
 	None Option = 0
@@ -313,6 +321,7 @@ const (
 	internalFlagDisableSuggestions
 	internalFlagOrderFirst
 	internalFlagOrderLast
+	internalFlagExpandSubcommandSynopses
 )
 
 var (
@@ -356,6 +365,7 @@ var (
 		ReservedOption8:         ActionFunc(nil),
 
 		DisableSynopsisCategories: setInternalFlag(internalFlagDisableSynopsisCategories),
+		ExpandSubcommandSynopses:  setInternalFlag(internalFlagExpandSubcommandSynopses),
 	}
 
 	builtinOptionLabels = map[Option]string{
@@ -398,6 +408,7 @@ var (
 		ReservedOption8:         "RESERVED_OPTION_8",
 
 		DisableSynopsisCategories: "DISABLE_SYNOPSIS_CATEGORIES",
+		ExpandSubcommandSynopses:  "EXPAND_SUBCOMMAND_SYNOPSES",
 	}
 )
 
@@ -600,6 +611,10 @@ func (f internalFlags) numeric() bool {
 
 func (f internalFlags) disableSynopsisCategories() bool {
 	return f&internalFlagDisableSynopsisCategories == internalFlagDisableSynopsisCategories
+}
+
+func (f internalFlags) expandSubcommandSynopses() bool {
+	return f&internalFlagExpandSubcommandSynopses == internalFlagExpandSubcommandSynopses
 }
 
 func (f internalFlags) disableSuggestions() bool {

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Carbonfrost/joe-cli/internal/privatekey"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
@@ -252,6 +253,10 @@ func (f *Flag) newSynopsis() *synopsis.Flag {
 	syn := synopsis.NewFlag(f.Name, f.Aliases, f.HelpText, f.UsageText, f.value(), getGroup(f))
 	syn.Style = synopsis.StyleFromData(f.Data)
 	syn.Category = synopsis.CategoryFromData(f.Data)
+	if isPseudoFlag(f) && syn.Value.Placeholder != "" {
+		// The value of a selector can't be attached to the flag
+		syn.Separator = " "
+	}
 	if f.internalFlags().optional() {
 		syn.WithOptionalValue(f.optionalValueText)
 	}
@@ -670,4 +675,242 @@ func flagsByNameOrder(x, y *Flag) int {
 	return cmp.Compare(x.Name, y.Name)
 }
 
+// pseudoCategory is the help screen category for flags that name a pseudo command
+const pseudoCategory = "Operations"
+
+// PseudoCommand makes a flag which invokes a command, which is called a pseudo command.
+// Rather than being named by an argument, as sub-commands are, the pseudo command is
+// specified by a flag.  This is the way that tools such as dns-sd work, where
+// each operation is selected by a flag and each operation has its own flags and args:
+//
+//	&cli.Flag{
+//	    Name:    "browse",
+//	    Aliases: []string{"B"},
+//	    Uses:    cli.PseudoCommand(&cli.Command{
+//	        Args:   cli.Args("type", new(string), "domain", new(string)),
+//	        Action: browse,
+//	    }),
+//	}
+//
+// With this definition, app -B _http._tcp local runs the command with the arguments
+// that follow the flag.  The flag takes the rest of the command line, so it is expected
+// to be last among the flags of its command, and any flags which follow it are for
+// the pseudo command.  The pseudo command also inherits the persistent flags of its
+// command, so app -B -v _http._tcp works when -v is persistent.  When the flag is used, the
+// Action of the command that defines it does not run as is the case with ordinary sub-commands.
+//
+// PseudoCommand is instended to be used in the Uses pipeline of a flag, and it defines a prototype
+// which can apply useful defaults including making the flag non-persistent and ordered last, which
+// is required for it to work properly, and including listing it under the category "Operations" on
+// the help screen and expanding its alternative synopsis (see Command.Synopses).
+//
+// The PseudoCommand can be used in one of two modes: with a singleton command or with several
+// commands. When used with a singleton command, if the command defines its name, aliases, and help text,
+// these are copied to the flag by default. (This only works if the command sets it upfront, not in
+// its own Uses pipeline). When used with multiple commands, the flag selects among the commands by
+// naming one in its value using its name or alias, app -g browse _http._tcp local. The usage lists
+// each command as an alternative synopsis, and the help screen describes them with the values of the flag.
+// If no commands are present, this function panics.
+//
+// Note that the syntax of flags have quirks when used as pseudo commands.  A value cannot be
+// attached to the flag (e.g. `--browse=x`) for a singleton pseudo command, but when multiple are available
+// then the syntax only works for commands that take no arguments (`--global=browse`). In general,
+// the form with spaces instead of equal signs is always preferred.
+// The --help flag only works when appearing before the pseudo command.
+func PseudoCommand(cmds ...*Command) Action {
+	if len(cmds) == 0 {
+		panic("cli: PseudoCommandSelector requires at least one command")
+	}
+
+	ops := &pseudoOperations{commands: slices.Clone(cmds)}
+	proto := &Prototype{
+		Name:     "global",
+		Aliases:  []string{"g"},
+		HelpText: "Run an operation",
+		Category: pseudoCategory,
+		Options:  NonPersistent | OrderLast,
+		Value:    &pseudoValue{ops: ops},
+	}
+
+	if !ops.selector() {
+		proto.Name = cmds[0].Name
+		proto.Aliases = cmds[0].Aliases
+		proto.HelpText = cmds[0].HelpText
+	}
+
+	return Pipeline(
+		proto,
+		Data(privatekey.PseudoCommand, ops),
+		ActionFunc(func(c *Context) error {
+			f := c.Flag()
+
+			// The pseudo commands aren't sub-commands, so they are initialized as though they
+			// were after the flag and its peers have all been initialized
+			return c.WithCommand(ActionFunc(func(parent *Context) error {
+				for _, cmd := range ops.commands {
+					cmd.SetData(privatekey.PseudoFlag, f)
+				}
+
+				err := initializeChildren(parent, ops.commands)
+				if err != nil {
+					return err
+				}
+
+				if ops.selector() {
+					for _, cmd := range ops.commands {
+						// TODO Ensure non-nil, named commands, otherwise an internal error
+						c.SetValueHelpText(cmd.Name, cmd.HelpText)
+					}
+				} else if ops.commands[0].Name == "" {
+					ops.commands[0].Name = f.Name
+				}
+
+				return err
+			}))
+		}),
+		At(ActionTiming, ActionFunc(executePseudoCommand)),
+	)
+}
+
+type pseudoOperations struct {
+	commands []*Command
+}
+
+func (o *pseudoOperations) selector() bool {
+	return len(o.commands) > 1
+}
+
+func (o *pseudoOperations) resolve(tokens []string) (*Command, []string, error) {
+	if !o.selector() {
+		return o.commands[0], tokens, nil
+	}
+	if len(tokens) == 0 {
+		return nil, nil, expectedArgument(1)
+	}
+
+	cmd, _, ok := findCommandByName(o.commands, tokens[0])
+	if !ok {
+		return nil, nil, commandMissing(tokens[0])
+	}
+	return cmd, tokens[1:], nil
+}
+
+type pseudoValue struct {
+	ops  *pseudoOperations
+	args []string
+}
+
+// Set adds an argument for the pseudo command.  The parser passes a blank value when the flag is
+// followed by nothing at all, so a blank value is ignored unless it follows other arguments.
+func (v *pseudoValue) Set(s string) error {
+	if s == "" && len(v.args) == 0 {
+		return nil
+	}
+	v.args = append(v.args, s)
+	return nil
+}
+
+func (v *pseudoValue) String() string {
+	return strings.Join(v.args, " ")
+}
+
+func (v *pseudoValue) Get() any {
+	return slices.Clone(v.args)
+}
+
+func (v *pseudoValue) Reset() {
+	v.args = nil
+}
+
+func (v *pseudoValue) NewCounter() ArgCounter {
+	return ArgCount(TakeRemaining)
+}
+
+// Synopsis is blank for a flag that has a singleton pseudo command because the flag doesn't have
+// a value as far as users are concerned.  For a selector, it lists the names of the commands.
+func (v *pseudoValue) Synopsis() string {
+	if v.ops == nil || !v.ops.selector() {
+		return ""
+	}
+
+	names := make([]string, len(v.ops.commands))
+	for i, cmd := range v.ops.commands {
+		names[i] = cmd.Name
+	}
+	return synopsis.Choices(names)
+}
+
+func pseudoOf(t target) (*pseudoOperations, bool) {
+	if f, ok := t.(*Flag); ok && f.Data == nil {
+		return nil, false
+	}
+	data, ok := t.LookupData(privatekey.PseudoCommand)
+	if !ok {
+		return nil, false
+	}
+	ops, ok := data.(*pseudoOperations)
+	return ops, ok
+}
+
+func isPseudoFlag(f *Flag) bool {
+	_, ok := pseudoOf(f)
+	return ok
+}
+
+func executePseudoCommand(c *Context) error {
+	ops, ok := pseudoOf(c.target())
+	if !ok {
+		return nil
+	}
+
+	rest, _ := c.Value("").([]string)
+	cmd, args, err := ops.resolve(rest)
+	if err != nil {
+		return err
+	}
+
+	c.Parent().target().setInternalFlags(internalFlagDidSubcommandExecute, true)
+	return c.Parent().newChild(cmd, ActionTiming).Execute(append([]string{cmd.Name}, args...))
+}
+
+func completePseudoCommand(c *Context, cmd *Command, cc *CompletionRequest) ([]CompletionItem, bool) {
+	for _, f := range cmd.Flags {
+		ops, ok := pseudoOf(f)
+		if !ok || len(cc.Bindings.Bindings(f.Name)) == 0 {
+			continue
+		}
+
+		tokens := cc.Bindings.RawOccurrences(f.Name)
+		if len(tokens) == 1 && tokens[0] == "" {
+			// The parser passes a blank when the flag has nothing after it
+			tokens = nil
+		}
+
+		if ops.selector() && len(tokens) == 0 {
+			return completePseudoCommandNames(ops, cc), true
+		}
+
+		pseudo, args, err := ops.resolve(tokens)
+		if err != nil {
+			return nil, true
+		}
+		invoke := append([]string{pseudo.Name}, args...)
+		return c.newChild(pseudo, ActionTiming).Complete(invoke, cc.Incomplete), true
+	}
+	return nil, false
+}
+
+func completePseudoCommandNames(ops *pseudoOperations, cc *CompletionRequest) []CompletionItem {
+	var items []CompletionItem
+	for _, cmd := range ops.commands {
+		for _, name := range cmd.Names() {
+			if strings.HasPrefix(name, cc.Incomplete) {
+				items = append(items, CompletionItem{Value: name, HelpText: cmd.HelpText})
+			}
+		}
+	}
+	return items
+}
+
+var _ Value = (*pseudoValue)(nil)
 var _ target = (*Flag)(nil)

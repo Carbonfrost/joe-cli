@@ -485,6 +485,19 @@ func (c *Command) Synopsis() string {
 	return sprintSynopsis(c.newSynopsis())
 }
 
+// Synopses returns the alternative synopses of the command, of which there is at least one.
+// Ordinarily the only synopsis is the same as Synopsis.  When the command uses
+// ExpandSubcommandSynopses, there is one for each visible sub-command, in which the
+// generic placeholder for sub-commands is replaced by the synopsis of the sub-command.
+func (c *Command) Synopses() []string {
+	syns := c.newSynopses()
+	res := make([]string, len(syns))
+	for i, s := range syns {
+		res[i] = sprintSynopsis(s)
+	}
+	return res
+}
+
 // Command tries to obtain a sub-command by name or alias
 func (c *Command) Command(name string) (*Command, bool) {
 	r, _, ok := findCommandByName(c.Subcommands, name)
@@ -607,6 +620,10 @@ func defaultCommandCompletion(c *Context) []CompletionItem {
 	cmd := c.Target().(*Command)
 	var items []CompletionItem
 
+	if items, ok := completePseudoCommand(c, cmd, cc); ok {
+		return items
+	}
+
 	if strings.HasPrefix(cc.Incomplete, "-") {
 		// If a search only finds one match, then complete the flag
 		items = findSolitaryMatch(c)
@@ -685,7 +702,7 @@ func findSolitaryMatch(c *Context) []CompletionItem {
 	}
 
 	var suffix string
-	if !match.internalFlags().flagOnly() && len(matchName) > 2 {
+	if !match.internalFlags().flagOnly() && len(matchName) > 2 && !isPseudoFlag(match) {
 		suffix = "="
 	}
 	return []CompletionItem{
@@ -694,13 +711,84 @@ func findSolitaryMatch(c *Context) []CompletionItem {
 }
 
 func (c *Command) newSynopsis() *synopsis.Command {
-	flags := make([]*synopsis.Flag, len(c.Flags))
-	args := make([]*synopsis.Arg, len(c.Args))
-	for i, f := range c.Flags {
-		flags[i] = f.synopsis()
+	return c.newSynopsisOf(c.Args, nil)
+}
+
+// newSynopses obtains the alternative synopses, which is the same as the
+// synopsis unless the command has pseudo commands or asks to expand the synopses
+// of its sub-commands
+func (c *Command) newSynopses() []*synopsis.Command {
+	var (
+		expand     = c.internalFlags().expandSubcommandSynopses()
+		operations = c.operationFlags()
+	)
+	if !expand && len(operations) == 0 {
+		return []*synopsis.Command{c.newSynopsis()}
 	}
-	for i, a := range c.Args {
-		args[i] = a.newSynopsis()
+
+	var (
+		alternatives []*synopsis.Command
+		args         = c.Args
+		exits        = c.exitFlags()
+
+		// Flags that exit or name an operation are alternatives to everything else
+		common = func(f *Flag) bool {
+			return !slices.Contains(exits, f) && !slices.Contains(operations, f)
+		}
+	)
+	if expand || len(operations) > 0 {
+		args = slices.DeleteFunc(slices.Clone(args), isImplicitCommandArg)
+	}
+
+	for _, f := range operations {
+		ops, _ := pseudoOf(f)
+		for _, pseudo := range ops.commands {
+			// The operation takes the rest of the line, so the args of this command don't apply
+			parent := c.newSynopsisOf(nil, common)
+			parent.Next = &synopsis.Operation{Flag: f.synopsis(), Command: pseudo.newSynopsis()}
+			if ops.selector() {
+				parent.Next.(*synopsis.Operation).Name = pseudo.Name
+			}
+			alternatives = append(alternatives, parent)
+		}
+	}
+
+	switch {
+	case expand:
+		for _, sub := range c.VisibleSubcommands() {
+			if definedByPackage(sub.Data) {
+				// The implicit help and version commands are not operations
+				continue
+			}
+
+			parent := c.newSynopsisOf(args, common)
+			parent.Next = sub.newSynopsis()
+			alternatives = append(alternatives, parent)
+		}
+	case len(c.Args) > 0:
+		// The command can be used without naming an operation
+		alternatives = append(alternatives, c.newSynopsisOf(c.Args, common))
+	}
+
+	if len(alternatives) == 0 {
+		return []*synopsis.Command{c.newSynopsis()}
+	}
+	if len(exits) > 0 {
+		alternatives = append(alternatives, c.newSynopsisOf(nil, func(f *Flag) bool { return slices.Contains(exits, f) }))
+	}
+	return alternatives
+}
+
+func (c *Command) newSynopsisOf(a []*Arg, accept func(*Flag) bool) *synopsis.Command {
+	flags := make([]*synopsis.Flag, 0, len(c.Flags))
+	args := make([]*synopsis.Arg, len(a))
+	for _, f := range c.Flags {
+		if accept == nil || accept(f) {
+			flags = append(flags, f.synopsis())
+		}
+	}
+	for i, arg := range a {
+		args[i] = arg.newSynopsis()
 	}
 
 	syn := synopsis.NewCommand(
@@ -708,7 +796,59 @@ func (c *Command) newSynopsis() *synopsis.Command {
 	)
 	syn.Style = synopsis.StyleFromData(c.Data)
 	syn.CondenseCategories = !c.internalFlags().disableSynopsisCategories()
+	syn.Invocation = c.invocation()
 	return syn
+}
+
+// invocation gets the text used to invoke the command in place of its name, which
+// is the name of the flag for pseudo commands and otherwise empty
+func (c *Command) invocation() string {
+	f, ok := pseudoFlagOf(c)
+	if !ok {
+		return ""
+	}
+	if ops, _ := pseudoOf(f); ops != nil && ops.selector() {
+		return f.synopsis().Primary + " " + c.Name
+	}
+	return f.synopsis().Primary
+}
+
+func pseudoFlagOf(c *Command) (*Flag, bool) {
+	if c.Data == nil {
+		return nil, false
+	}
+	data, ok := c.LookupData(privatekey.PseudoFlag)
+	if !ok {
+		return nil, false
+	}
+	f, ok := data.(*Flag)
+	return f, ok
+}
+
+func (c *Command) exitFlags() []*Flag {
+	return c.flagsInGroup(synopsis.ActionGroup)
+}
+
+// operationFlags obtains the visible flags that name a pseudo command
+func (c *Command) operationFlags() []*Flag {
+	return c.flagsInGroup(synopsis.OperationGroup)
+}
+
+func (c *Command) flagsInGroup(group synopsis.OptionGroup) []*Flag {
+	return slices.DeleteFunc(slices.Clone(c.Flags), func(f *Flag) bool {
+		return f.synopsis().Group != group
+	})
+}
+
+// isImplicitCommandArg determines whether the arg is the one that joe-cli
+// implicitly adds to execute sub-commands
+func isImplicitCommandArg(a *Arg) bool {
+	return a.Name == "command" && definedByPackage(a.Data)
+}
+
+func definedByPackage(data map[string]any) bool {
+	key, value := SourceAnnotation()
+	return data[key] == value
 }
 
 // SetData sets internal data used by the command
@@ -1101,6 +1241,9 @@ func getGroup(f *Flag) synopsis.OptionGroup {
 	}
 	if f.internalFlags().exits() {
 		return synopsis.ActionGroup
+	}
+	if isPseudoFlag(f) {
+		return synopsis.OperationGroup
 	}
 	if hasOnlyShortName(f) && impliesValueFlagOnly(f.Value) {
 		if f.internalFlags().required() {

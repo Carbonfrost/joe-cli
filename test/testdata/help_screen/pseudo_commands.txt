@@ -1,0 +1,16 @@
+usage: dns-sd [--verbose] --global enumerate
+       dns-sd [--verbose] --global browse [--timeout=NUMBER] [<type>][<domain>]
+       dns-sd {--help | --version}
+
+  -v, --verbose  
+  -h, --help     Display this help screen then exit
+      --version  Print the build version then exit
+
+Operations:
+
+  -g, --global {browse|enumerate}  Run an operation
+
+         enumerate  Enumerate registration domains
+         browse     Browse for services
+
+

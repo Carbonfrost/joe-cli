@@ -720,6 +720,87 @@ var _ = Describe("Command", func() {
 
 	})
 
+	Describe("Synopses", func() {
+
+		DescribeTable("examples",
+			func(cmd *cli.Command, expected ...string) {
+				cli.Initialized(cmd)
+
+				actual := make([]string, 0, len(expected))
+				for _, s := range cmd.Synopses() {
+					actual = append(actual, normalizeWS(s))
+				}
+				for i := range expected {
+					expected[i] = normalizeWS(expected[i])
+				}
+				Expect(actual).To(Equal(expected))
+			},
+			Entry(
+				"one synopsis by default",
+				&cli.Command{
+					Name:        "cmd",
+					Subcommands: []*cli.Command{{Name: "add"}},
+				},
+				"cmd <command> [<args>]...",
+			),
+			Entry(
+				"one synopsis without sub-commands",
+				&cli.Command{
+					Name:    "cmd",
+					Flags:   []*cli.Flag{{Name: "v", Value: cli.Bool()}},
+					Options: cli.ExpandSubcommandSynopses,
+				},
+				"cmd [-v]",
+			),
+			Entry(
+				"one synopsis for each sub-command",
+				&cli.Command{
+					Name:    "cmd",
+					Options: cli.ExpandSubcommandSynopses,
+					Flags:   []*cli.Flag{{Name: "v", Value: cli.Bool()}},
+					Subcommands: []*cli.Command{
+						{
+							Name:  "add",
+							Flags: []*cli.Flag{{Name: "n", Value: cli.Bool()}},
+							Args:  []*cli.Arg{{Name: "name", NArg: 1}, {Name: "url", NArg: 1}},
+						},
+						{Name: "remove", Args: []*cli.Arg{{Name: "name", NArg: 1}}},
+					},
+				},
+				"cmd [-v] add [-n] <name> <url>",
+				"cmd [-v] remove <name>",
+			),
+			Entry(
+				"leaves out hidden sub-commands",
+				&cli.Command{
+					Name:    "cmd",
+					Options: cli.ExpandSubcommandSynopses,
+					Subcommands: []*cli.Command{
+						{Name: "add"},
+						{Name: "secret", Options: cli.Hidden},
+					},
+				},
+				"cmd add",
+			),
+		)
+
+		It("leaves out the implicit help and version commands", func() {
+			app := &cli.App{
+				Name:    "app",
+				Options: cli.ExpandSubcommandSynopses,
+				Commands: []*cli.Command{
+					{Name: "add"},
+				},
+			}
+			ctx, _ := app.Initialize(context.Background())
+
+			Expect(cli.FromContext(ctx).Command().Synopses()).To(Equal([]string{
+				"app add",
+				"app {--help | --version}",
+			}))
+		})
+	})
+
 	Describe("naming", func() {
 
 		It("implicitly names args", func() {

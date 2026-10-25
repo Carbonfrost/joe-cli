@@ -5,6 +5,7 @@
 package synopsis
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"slices"
@@ -44,6 +45,15 @@ type Command struct {
 	// CondenseCategories causes flags with a SynopsisCategory set to be condensed
 	// into groups
 	CondenseCategories bool
+
+	// Next, when set, continues the synopsis after the args of this command.  It is used
+	// to expand a synopsis through to the form of a sub-command, in which case the args
+	// of this command stop short of the implicit placeholder for the sub-command.
+	Next Stringer
+
+	// Invocation, when set, is written in place of the name.  It is used when
+	// the command is invoked by a flag rather than by its name.
+	Invocation string
 }
 
 type Flag struct {
@@ -63,6 +73,18 @@ type Flag struct {
 	Category string
 
 	OptionalValue bool
+}
+
+// Operation is the synopsis of a pseudo command, which is a command that is invoked by
+// naming a flag.  It is written as the name of the flag followed by the flags and args
+// of the command.  For a flag that selects among commands, the name of the command follows the flag.
+type Operation struct {
+	Flag    *Flag
+	Command *Command
+
+	// Name, when set, is the name of the command, which is written after the flag.
+	// This is the case when the flag selects among several commands.
+	Name string
 }
 
 type Arg struct {
@@ -98,6 +120,7 @@ const (
 	OtherOptional                                // [--long=value]
 	Other                                        // --long=value
 	ActionGroup                                  // { --help|--version}
+	OperationGroup                               // { --browse|--lookup}
 	Hidden
 )
 
@@ -189,6 +212,7 @@ func NewCommand(name string, flags []*Flag, args []*Arg, rtl bool) *Command {
 		OnlyShortNoValueOptional: {},
 		OtherOptional:            {},
 		ActionGroup:              {},
+		OperationGroup:           {},
 		Other:                    {},
 		Hidden:                   {},
 	}
@@ -305,8 +329,12 @@ func (v *Value) WriteTo(w styleWriter) {
 }
 
 func (c *Command) WriteTo(sb styleWriter) {
-	c.Style.write(sb, c.Name)
+	c.Style.write(sb, cmp.Or(c.Invocation, c.Name))
+	c.writeBody(sb)
+}
 
+// writeBody writes everything that follows the name of the command
+func (c *Command) writeBody(sb styleWriter) {
 	groups, categories := c.flagGroups()
 
 	if flags := groups[ActionGroup]; len(flags) > 0 {
@@ -350,6 +378,17 @@ func (c *Command) WriteTo(sb styleWriter) {
 		}
 	}
 
+	if flags := groups[OperationGroup]; len(flags) > 0 {
+		sb.WriteString(" {")
+		for i, f := range flags {
+			if i > 0 {
+				sb.WriteString(" | ")
+			}
+			f.primaryWriteTo(sb)
+		}
+		sb.WriteString("}")
+	}
+
 	for _, category := range categories {
 		sb.WriteString(" {")
 		sb.WriteString(nonBreakingSpace)
@@ -359,6 +398,23 @@ func (c *Command) WriteTo(sb styleWriter) {
 	}
 
 	writeArgList(sb, c.RTL, c.RequiredArgs, c.OptionalArgs)
+
+	if c.Next != nil {
+		sb.WriteString(" ")
+		c.Next.WriteTo(sb)
+	}
+}
+
+func (o *Operation) WriteTo(sb styleWriter) {
+	if o.Name == "" {
+		o.Flag.primaryWriteTo(sb)
+	} else {
+		// The name of the command stands in for the value of the flag
+		o.Flag.Style.write(sb, o.Flag.Primary)
+		sb.WriteString(" ")
+		o.Command.Style.write(sb, o.Name)
+	}
+	o.Command.writeBody(sb)
 }
 
 // flagGroups obtains the flags to display within the synopsis along with the names of

@@ -599,6 +599,14 @@ func wrapSynopsis[T synopsis.Stringer](s T) *synopsisWrapper[T] {
 	return &synopsisWrapper[T]{s}
 }
 
+func wrapSynopses[T synopsis.Stringer](items []T) []*synopsisWrapper[T] {
+	res := make([]*synopsisWrapper[T], len(items))
+	for i, s := range items {
+		res[i] = wrapSynopsis(s)
+	}
+	return res
+}
+
 func (s *synopsisWrapper[T]) String() string {
 	return support.Format(usageColor, func(sw support.StyleWriter) {
 		s.s.WriteTo(sw)

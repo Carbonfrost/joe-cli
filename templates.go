@@ -1,10 +1,11 @@
-// Copyright 2025 The Joe-cli Authors. All rights reserved.
+// Copyright 2025, 2026 The Joe-cli Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 	"text/template"
@@ -15,11 +16,13 @@ import (
 
 type commandData struct {
 	Name               string
+	Invocation         string
 	Names              []string
 	Description        any
 	HelpText           string
 	ManualText         string
 	Synopsis           *synopsisWrapper[*synopsis.Command]
+	Synopses           []*synopsisWrapper[*synopsis.Command]
 	Lineage            string
 	VisibleCommands    []*commandData
 	VisibleFlags       flagDataList
@@ -160,11 +163,14 @@ var (
 
 {{/* Usage is the entry point, which calls flags, sub-commands */}} 
 {{- define "Usage" -}}
-usage: {{ if .SelectedCommand.Lineage -}}
-	{{- .SelectedCommand.Lineage -}}
+usage: {{ range $i, $synopsis := .SelectedCommand.Synopses -}}
+{{- if $i }}{{ "\n" }}       {{ end -}}
+{{- if $.SelectedCommand.Lineage -}}
+	{{- $.SelectedCommand.Lineage -}}
 	{{- " " -}}
 {{- end -}}
-{{- .SelectedCommand.Synopsis | print | HangingIndent .SelectedCommand.HangingIndent -}}{{ "\n" }}
+{{- $synopsis | print | HangingIndent $.SelectedCommand.HangingIndent -}}
+{{- end }}{{ "\n" }}
 
 {{- if .SelectedCommand.Description -}}
 {{ "\n" }}{{- .SelectedCommand.Description | Wrap 4 -}}
@@ -261,7 +267,7 @@ func (c *commandData) withLineage(lineage string, persistent []*Flag) *commandDa
 		VisibleFlags:    visibleFlags(persistent),
 		FlagsByCategory: visibleFlagCategories(groupFlagsByCategory(persistent)),
 	}
-	c.HangingIndent = len("usage: ") + len(lineage) + 1 + len(c.Name)
+	c.HangingIndent = len("usage: ") + len(lineage) + 1 + len(c.Invocation)
 	return c
 }
 
@@ -328,11 +334,13 @@ func commandAdapter(val *Command) *commandData {
 
 	return &commandData{
 		Name:               val.Name,
+		Invocation:         cmp.Or(val.invocation(), val.Name),
 		Names:              val.Names(),
 		Description:        val.Description,
 		HelpText:           val.HelpText,
 		ManualText:         val.ManualText,
 		Synopsis:           wrapSynopsis(val.newSynopsis()),
+		Synopses:           wrapSynopses(val.newSynopses()),
 		VisibleArgs:        visibleArgs(val.VisibleArgs()),
 		VisibleFlags:       visibleFlags(val.VisibleFlags()),
 		VisibleCommands:    visibleCommands(val.VisibleSubcommands()),
