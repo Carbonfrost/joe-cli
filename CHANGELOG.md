@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.25.0 (October 4, 2026)
+
+### New Features
+
+* Expr extension:
+    * ba550108 `Binding`, `BindingState`
+    * b93d6802 Comma operator
+* 84bdf922 Pseudo commands; show sub-command synopses
+* 366533d8 `WithParent`, `WithArg`, `WithFlag`, `WithCommand`
+* 95bb70f8 Prompt extension: autoconfirm
+* 6bf8fb92 Bind extension: `DurationBinder`
+
+### Bug fixes and improvements
+
+* 62061e53 Include providers on help screen
+* f0d112a4 Marshal extension: expose certain private data with model
+* cf72a63a Bug fix: ensure non-persistent don't double invoke flag actions
+* 53e0ed4b Bug fix: fix `marshal.SetOutput` and `marshal.SetInput` prototypes
+* b95ebc7c Bug fix: stablize order in provider value help text
+* 19419450 Bug fix: ensure value target and command are initialized afterwards
+* 1dd8676c Bug fix: detect duplicate value target names
+* b7bb6188 Fix examples build; update modern Expr compiler
+* 7af62f2a Update test to check for implicitly seen
+* Chores:
+    * 46d01520 Update dependent versions
+
+
 ## v0.24.0 (October 4, 2026)
 
 ### New Features
