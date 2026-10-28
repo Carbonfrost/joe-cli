@@ -1453,6 +1453,8 @@ func (c *Context) AddFlag(f *Flag, actionopt ...Action) error {
 
 // AddCommand provides a convenience method that adds a Command to the current command or app.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
+// When the current target is a flag that has been set up by PseudoCommand, the command
+// is added to the pseudo commands of the flag instead.
 // actionopt can specify an optional initializer for the command.
 // Either the command or the initializer can be nil, but not both.
 // When the command is nil, it is implicitly created.
@@ -1512,7 +1514,8 @@ func (c *Context) RemoveArg(name any) error {
 // The name specifies the name or actual command.  This
 // is only valid during the initialization phase.  An error is returned for other timings.
 // If the Command does not exist, if the name or index is out of bounds, the operation
-// will still succeed.
+// will still succeed.  When the current target is a flag that has been set up by PseudoCommand,
+// the command is removed from the pseudo commands of the flag instead.
 func (c *Context) RemoveCommand(name any) error {
 	return c.updateSubcommands(func(cmds []*Command) []*Command {
 		if _, index, ok := findCommandByName(cmds, name); ok {
@@ -1547,6 +1550,8 @@ func (c *Context) AddFlags(flags ...*Flag) (err error) {
 }
 
 // AddCommands provides a convenience method for adding commands to the current command or app.
+// As with AddCommand, when the current target is a flag that has been set up by PseudoCommand,
+// the commands are added to the pseudo commands of the flag.
 func (c *Context) AddCommands(commands ...*Command) (err error) {
 	for _, cmd := range commands {
 		if err = c.AddCommand(cmd); err != nil {
@@ -1604,6 +1609,10 @@ func (c *Context) updateSubcommands(fn func([]*Command) []*Command) error {
 	err := c.requireInit()
 	if err != nil {
 		return err
+	}
+	if ops, ok := pseudoOfContext(c); ok {
+		ops.commands = fn(ops.commands)
+		return nil
 	}
 	cmd := c.Command()
 	cmd.Subcommands = fn(cmd.Subcommands)
