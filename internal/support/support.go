@@ -118,9 +118,9 @@ func FlattenValues(m map[string][]string) map[string]string {
 func ParseBool(value string) (bool, error) {
 	switch strings.ToLower(value) {
 
-	case "", "1", "true", "on", "t":
+	case "", "1", "true", "on", "t", "yes":
 		return true, nil
-	case "0", "false", "off", "f":
+	case "0", "false", "off", "f", "no":
 		return false, nil
 	default:
 		return false, fmt.Errorf("invalid value for bool %q", value)
