@@ -1296,6 +1296,24 @@ var _ = Describe("ExpandCommand", func() {
 		Expect(err).To(MatchError(ContainSubstring(`"x" is not a command`)))
 	})
 
+	It("is the only handler that runs a command when it runs one", func() {
+		exec := new(joeclifakes.FakeAction)
+		app := newApp(aliases)
+		app.Commands = append(app.Commands, &cli.Command{
+			Name:   "exec",
+			Args:   []*cli.Arg{{Name: "cmd", NArg: cli.TakeRemaining, Value: new([]string)}},
+			Action: exec,
+		})
+		app.Uses = cli.Pipeline(
+			cli.ImplicitCommand("exec"),
+			cli.ExpandCommand(aliases), // the last one registered is consulted first
+		)
+
+		Expect(app.RunContext(context.Background(), "app", "co", "main")).To(Succeed())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+		Expect(exec.ExecuteCallCount()).To(Equal(0))
+	})
+
 	It("consults the other handlers when it doesn't handle the name", func() {
 		app := newApp(aliases)
 		app.Uses = cli.Pipeline(
