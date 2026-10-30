@@ -262,6 +262,41 @@ func ImplicitCommand(name string) CommandNotFoundHandler {
 	})
 }
 
+// ExpandCommand provides a CommandNotFoundHandler which runs other arguments in place of
+// a command that is not found. One use case is to enable resolution of command aliases.
+// The function is passed the name that was not found, and it returns the arguments to use
+// instead, which begin with the command and can contain its flags and args. When it returns
+// false, this allows falling through to other command handlers when they are composed.
+// The arguments that followed the name follow the replacements. The first of the
+// replacements has to be a command; the function is not re-entrant and doesn't expand again.
+// If the result isn't a command, the original error is returned.
+func ExpandCommand(expand func(c *Context, name string) (args []string, ok bool)) CommandNotFoundHandler {
+	return HandleCommandNotFound(func(c *Context, originalErr error) (*Command, error) {
+		pe, ok := originalErr.(*ParseError)
+		if !ok || pe.Code != CommandNotFound {
+			return nil, originalErr
+		}
+		replacement, ok := expand(c, pe.Name)
+		if !ok || len(replacement) == 0 {
+			return nil, originalErr
+		}
+
+		rest := c.Args()
+		if len(rest) > 0 && rest[0] == pe.Name {
+			rest = rest[1:]
+		}
+		invoke := append(append([]string{}, replacement...), rest...)
+		err := subcommandCore(c, invoke, nil)
+		if pe2, ok := err.(*ParseError); ok && pe2.Code == CommandNotFound {
+			return nil, originalErr
+		}
+		if err != nil {
+			return nil, err
+		}
+		return nil, ErrSkipCommand
+	})
+}
+
 // SuggestCommand provides a CommandNotFoundHandler which suggests sub-commands
 // that are similar to the one that could not be found.  When suggestions are found, they are
 // recorded on the ParseError via its Suggestions attribute and rendered using
