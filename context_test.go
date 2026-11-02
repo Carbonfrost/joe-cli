@@ -819,6 +819,7 @@ var _ = Describe("Context", func() {
 			Entry("Alias", cli.Alias("x")),
 			Entry("RemoveAlias", cli.RemoveAlias("x")),
 			Entry("RemoveArg", cli.RemoveArg("x")),
+			Entry("Remove", cli.Remove()),
 			Entry("PreventSetup", cli.PreventSetup),
 			Entry("RemoveFlag", cli.RemoveFlag(nil)),
 			Entry("RemoveCommand", cli.RemoveCommand(nil)),

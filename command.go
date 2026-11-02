@@ -982,28 +982,25 @@ func (c *Command) contextName() string {
 
 func initializeFlagsArgs(ctx *Context) error {
 	var (
-		flagStart int
-		argStart  int
+		flagsDone = map[*Flag]bool{}
+		argsDone  = map[*Arg]bool{}
 		anyFlags  = true
 		anyArgs   = true
 	)
 
 	// New flags and/or args may have been introduced, so allow these to also initialize.
-	// They can ONLY be appended to the slice, not inserted elsewhere
+	// Flags and args can also be removed (including by themselves).
 	for anyFlags || anyArgs {
-		flags := ctx.LocalFlags()[flagStart:]
-		flagStart = len(ctx.LocalFlags())
-		if err := initializeChildren(ctx, flags); err != nil {
+		var err error
+		anyFlags, err = initializeChildren(ctx, ctx.LocalFlags, flagsDone)
+		if err != nil {
 			return err
 		}
-		anyFlags = len(flags) > 0
 
-		args := ctx.LocalArgs()[argStart:]
-		argStart = len(ctx.LocalArgs())
-		if err := initializeChildren(ctx, args); err != nil {
+		anyArgs, err = initializeChildren(ctx, ctx.LocalArgs, argsDone)
+		if err != nil {
 			return err
 		}
-		anyArgs = len(args) > 0
 	}
 
 	return nil
@@ -1011,32 +1008,42 @@ func initializeFlagsArgs(ctx *Context) error {
 
 func initializeSubcommands(ctx *Context) error {
 	cmd := ctx.target().(*Command)
+	done := map[*Command]bool{}
 	anySubcommands := true
-	var subcommandStart int
 
 	for anySubcommands {
-		subs := cmd.Subcommands[subcommandStart:]
-		subcommandStart = len(cmd.Subcommands)
-		if err := initializeChildren(ctx, subs); err != nil {
+		var err error
+		anySubcommands, err = initializeChildren(ctx, func() []*Command { return cmd.Subcommands }, done)
+		if err != nil {
 			return err
 		}
-		anySubcommands = len(subs) > 0
 	}
 	return nil
 }
 
-func initializeChildren[T target](ctx *Context, subs []T) error {
-	for _, sub := range subs {
-		if sub.internalFlags().initialized() {
+func initializeChildren[T interface {
+	comparable
+	target
+}](ctx *Context, children func() []T, done map[T]bool) (more bool, err error) {
+	var any bool
+	for _, sub := range slices.Clone(children()) {
+		if done[sub] || sub.internalFlags().initialized() {
 			continue
 		}
+		if !slices.Contains(children(), sub) {
+			// Removed before it had a chance to initialize
+			continue
+		}
+		done[sub] = true
+		any = true
 
 		originalName := sub.contextName()
 		child := ctx.newChild(sub, InitialTiming)
 		err := child.initialize()
 		if err != nil {
-			return err
+			return any, err
 		}
+
 		// The name has changed, so hooks need to run again
 		// on the flag
 		if sub.contextName() != originalName {
@@ -1045,7 +1052,7 @@ func initializeChildren[T target](ctx *Context, subs []T) error {
 		}
 		child.state.close()
 	}
-	return nil
+	return any, nil
 }
 
 func copyContextToOrigin(ctx *Context) error {

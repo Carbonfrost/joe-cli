@@ -764,7 +764,7 @@ func pseudoCommandPipeline(ops *pseudoOperations) Action {
 					cmd.SetData(privatekey.PseudoFlag, f)
 				}
 
-				err := initializeChildren(parent, ops.commands)
+				_, err := initializeChildren(parent, func() []*Command { return ops.commands }, map[*Command]bool{})
 				if err != nil {
 					return err
 				}
@@ -925,6 +925,18 @@ func pseudoOfContext(c *Context) (*pseudoOperations, bool) {
 		return pseudoOf(f)
 	}
 	return nil, false
+}
+
+func pseudoOfCommand(cmd *Command) (*pseudoOperations, bool) {
+	data, ok := cmd.LookupData(privatekey.PseudoFlag)
+	if !ok {
+		return nil, false
+	}
+	f, ok := data.(*Flag)
+	if !ok {
+		return nil, false
+	}
+	return pseudoOf(f)
 }
 
 func isPseudoFlag(f *Flag) bool {

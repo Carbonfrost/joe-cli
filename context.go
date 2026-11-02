@@ -1496,47 +1496,112 @@ func withInitializer[T any, TP interface {
 	return in
 }
 
+// Remove provides a convenience method that removes the current target from its parent.
+// The target must be a flag, arg, or sub-command, and it is removed from the command or app
+// that contains it. This is only valid during the initialization phase.  An error is returned
+// for other timings.  An error is also returned if the target cannot be removed, such as
+// the root command.  This is the equivalent of calling [Context.RemoveFlag], [Context.RemoveArg],
+// or [Context.RemoveCommand] with the empty string.
+func (c *Context) Remove() error {
+	if err := c.requireInit(); err != nil {
+		return err
+	}
+	switch c.target().(type) {
+	case *Flag:
+		return c.RemoveFlag("")
+	case *Arg:
+		return c.RemoveArg("")
+	case *Command:
+		if c.Parent() != nil {
+			return c.RemoveCommand("")
+		}
+	}
+	return c.internalError(errCantRemove)
+}
+
 // RemoveArg provides a convenience method that removes an Arg from the current command or app.
-// The name specifies the name, index, or actual arg.  This
+// The name specifies the name, index, or actual arg.  As a special case, if the empty string
+// is specified, it removes the current arg. This
 // is only valid during the initialization phase.  An error is returned for other timings.
 // If the arg does not exist, if the name or index is out of bounds, the operation
-// will still succeed.
+// will still succeed.  The name can be the empty string, which means that the current
+// arg removes itself; when the current target is not an arg, nothing is removed.
 func (c *Context) RemoveArg(name any) error {
-	return c.updateArgs(func(args []*Arg) []*Arg {
+	owner, name, err := c.removalScope(name, (*Context).IsArg)
+	if err != nil || owner == nil {
+		return err
+	}
+	return owner.updateArgs(func(args []*Arg) []*Arg {
 		if _, index, ok := findArgByName(args, name); ok {
-			return append(args[0:index], args[index+1:]...)
+			// return append(args[0:index], args[index+1:]...)
+			return slices.Concat(args[:index], args[index+1:])
 		}
 		return args
 	})
 }
 
 // RemoveCommand provides a convenience method that removes a command from the current command or app.
-// The name specifies the name or actual command.  This
+// The name specifies the name or actual command.  As a special case, if the empty string
+// is specified, it removes the current sub-command. This
 // is only valid during the initialization phase.  An error is returned for other timings.
 // If the Command does not exist, if the name or index is out of bounds, the operation
 // will still succeed.  When the current target is a flag that has been set up by PseudoCommand,
 // the command is removed from the pseudo commands of the flag instead.
+// The name can be the empty string, which means that the current sub-command removes itself;
+// when the current target is not a command, nothing is removed.
 func (c *Context) RemoveCommand(name any) error {
-	return c.updateSubcommands(func(cmds []*Command) []*Command {
+	owner, name, err := c.removalScope(name, (*Context).IsCommand)
+	if err != nil || owner == nil {
+		return err
+	}
+	if name == c.target() {
+		// Pseudo commands are initialized within the parent command, but belong to the flag
+		if ops, ok := pseudoOfCommand(c.Command()); ok {
+			ops.commands = slices.DeleteFunc(slices.Clone(ops.commands), func(cmd *Command) bool {
+				return cmd == name
+			})
+			return nil
+		}
+	}
+	return owner.updateSubcommands(func(cmds []*Command) []*Command {
 		if _, index, ok := findCommandByName(cmds, name); ok {
-			return slices.Delete(cmds, index, index+1)
+			return slices.Concat(cmds[:index], cmds[index+1:])
 		}
 		return cmds
 	})
 }
 
 // RemoveFlag provides a convenience method that removes a Flag from the current command or app.
-// The name specifies the name, index, or actual flag.  This
+// The name specifies the name, index, or actual flag.  As a special case, if the empty string
+// is specified, it removes the current flag. This action
 // is only valid during the initialization phase.  An error is returned for other timings.
 // If the flag does not exist, if the name or index is out of bounds, the operation
-// will still succeed.
+// will still succeed.  The name can be the empty string, which means that the current
+// flag removes itself; when the current target is not a flag, nothing is removed.
 func (c *Context) RemoveFlag(name any) error {
-	return c.updateFlags(func(flags []*Flag) []*Flag {
+	owner, name, err := c.removalScope(name, (*Context).IsFlag)
+	if err != nil || owner == nil {
+		return err
+	}
+	return owner.updateFlags(func(flags []*Flag) []*Flag {
 		if _, index, ok := findFlagByName(flags, name); ok {
-			return slices.Delete(flags, index, index+1)
+			return slices.Concat(flags[:index], flags[index+1:])
 		}
 		return flags
 	})
+}
+
+func (c *Context) removalScope(name any, isKind func(*Context) bool) (*Context, any, error) {
+	if err := c.requireInit(); err != nil {
+		return nil, nil, err
+	}
+	if name != "" {
+		return c, name, nil
+	}
+	if !isKind(c) || c.Parent() == nil {
+		return nil, nil, nil
+	}
+	return c.Parent(), c.target(), nil
 }
 
 // AddFlags provides a convenience method for adding flags to the current command or app.
