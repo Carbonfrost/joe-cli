@@ -1277,6 +1277,31 @@ var _ = Describe("Uses", func() {
 
 		Describe("RemoveArg", func() {
 
+			var findArgNames = func(app *cli.App) []string {
+				cmd, _ := app.Command("")
+				args := cmd.Args
+				actual := make([]string, 0, len(args))
+				for _, f := range args {
+					actual = append(actual, f.Name)
+				}
+				return actual
+			}
+
+			It("can remove itself", func() {
+				app := &cli.App{
+					Args: []*cli.Arg{
+						{Name: "1", Uses: cli.RemoveArg("")},
+						{Name: "2"},
+						{Name: "3"},
+						{Name: "4"},
+					},
+				}
+				_, err := app.Initialize(context.Background())
+				actual := findArgNames(app)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).NotTo(ContainElement("1"))
+			})
+
 			DescribeTable("examples", func(name any, expected []string) {
 				var actual []string
 				app := &cli.App{
@@ -1311,8 +1336,35 @@ var _ = Describe("Uses", func() {
 
 		Describe("RemoveFlag", func() {
 
+			var findFlagNames = func(app *cli.App) []string {
+				cmd, _ := app.Command("")
+				flags := cmd.Flags
+				actual := make([]string, 0, len(flags))
+				for _, f := range flags {
+					if f.Name == "help" || f.Name == "version" || f.Name == "zsh-completion" {
+						continue
+					}
+					actual = append(actual, f.Name)
+				}
+				return actual
+			}
+
+			It("can remove itself", func() {
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "1", Uses: cli.RemoveFlag("")},
+						{Name: "2"},
+						{Name: "3"},
+						{Name: "4"},
+					},
+				}
+				_, err := app.Initialize(context.Background())
+				actual := findFlagNames(app)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).NotTo(ContainElement("1"))
+			})
+
 			DescribeTable("examples", func(name any, expected []string) {
-				var actual []string
 				app := &cli.App{
 					Flags: []*cli.Flag{
 						{Name: "1"},
@@ -1320,26 +1372,162 @@ var _ = Describe("Uses", func() {
 						{Name: "3"},
 						{Name: "4"},
 					},
-					Action: func(c *cli.Context) {
-						flags := c.Command().Flags
-						actual = make([]string, 0, len(flags))
-						for _, f := range flags {
-							if f.Name == "help" || f.Name == "version" || f.Name == "zsh-completion" {
-								continue
-							}
-							actual = append(actual, f.Name)
-						}
-					},
-					Uses:   cli.RemoveFlag(name),
-					Stderr: io.Discard,
+					Uses: cli.RemoveFlag(name),
 				}
-				err := app.RunContext(context.Background(), "app")
+				_, err := app.Initialize(context.Background())
+				actual := findFlagNames(app)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actual).To(Equal(expected))
 			},
 				Entry("by name", "3", []string{"1", "2", "4"}),
 				Entry("by decorated name", "-3", []string{"1", "2", "4"}),
 			)
+		})
+
+		Describe("removing self", func() {
+
+			var (
+				initialized []string
+				remaining   []string
+			)
+
+			BeforeEach(func() {
+				initialized = nil
+				remaining = nil
+			})
+
+			track := func(name string, others ...cli.Action) cli.Action {
+				return cli.Pipeline(
+					cli.ActionFunc(func(*cli.Context) error {
+						initialized = append(initialized, name)
+						return nil
+					}),
+					cli.Pipeline(others),
+				)
+			}
+
+			DescribeTable("flags", func(remove cli.Action) {
+				app := &cli.App{
+					Flags: []*cli.Flag{
+						{Name: "1", Uses: track("1")},
+						{Name: "2", Uses: track("2", remove)},
+						{Name: "3", Uses: track("3")},
+						{Name: "4", Uses: track("4")},
+					},
+					Action: func(c *cli.Context) {
+						for _, f := range c.Command().Flags {
+							if f.Name == "help" || f.Name == "version" || f.Name == "zsh-completion" {
+								continue
+							}
+							remaining = append(remaining, f.Name)
+						}
+					},
+					Stderr: io.Discard,
+				}
+				Expect(app.RunContext(context.Background(), "app")).To(Succeed())
+				Expect(initialized).To(Equal([]string{"1", "2", "3", "4"}))
+				Expect(remaining).To(Equal([]string{"1", "3", "4"}))
+			},
+				Entry("RemoveFlag", cli.RemoveFlag("")),
+				Entry("Remove", cli.Remove()),
+			)
+
+			DescribeTable("args", func(remove cli.Action) {
+				app := &cli.App{
+					Args: []*cli.Arg{
+						{Name: "1", Uses: track("1")},
+						{Name: "2", Uses: track("2", remove)},
+						{Name: "3", Uses: track("3")},
+						{Name: "4", Uses: track("4")},
+					},
+					Action: func(c *cli.Context) {
+						for _, a := range c.Command().Args {
+							remaining = append(remaining, a.Name)
+						}
+					},
+					Stderr: io.Discard,
+				}
+				Expect(app.RunContext(context.Background(), "app")).To(Succeed())
+				Expect(initialized).To(Equal([]string{"1", "2", "3", "4"}))
+				Expect(remaining).To(Equal([]string{"1", "3", "4"}))
+			},
+				Entry("RemoveArg", cli.RemoveArg("")),
+				Entry("Remove", cli.Remove()),
+			)
+
+			DescribeTable("sub-commands", func(remove cli.Action) {
+				newApp := func() *cli.App {
+					return &cli.App{
+						Commands: []*cli.Command{
+							{Name: "1", Uses: track("1")},
+							{Name: "2", Uses: track("2", remove)},
+							{Name: "3", Uses: track("3")},
+							{Name: "4", Uses: track("4")},
+						},
+						Action: func(c *cli.Context) {
+							for _, cmd := range c.Command().Subcommands {
+								if cmd.Name == "help" || cmd.Name == "version" {
+									continue
+								}
+								remaining = append(remaining, cmd.Name)
+							}
+						},
+						Stderr: io.Discard,
+					}
+				}
+				Expect(newApp().RunContext(context.Background(), "app")).To(Succeed())
+				Expect(initialized).To(Equal([]string{"1", "2", "3", "4"}))
+				Expect(remaining).To(Equal([]string{"1", "3", "4"}))
+
+				err := newApp().RunContext(context.Background(), "app", "2")
+				Expect(err).To(MatchError(ContainSubstring(`"2" is not a command`)))
+			},
+				Entry("RemoveCommand", cli.RemoveCommand("")),
+				Entry("Remove", cli.Remove()),
+			)
+
+			It("removes a flag that was added during initialization", func() {
+				app := &cli.App{
+					Uses: cli.AddFlag(nil, cli.Pipeline(cli.Prototype{Name: "late"}, cli.Remove())),
+					Action: func(c *cli.Context) {
+						for _, f := range c.Command().Flags {
+							remaining = append(remaining, f.Name)
+						}
+					},
+					Stderr: io.Discard,
+				}
+				Expect(app.RunContext(context.Background(), "app")).To(Succeed())
+				Expect(remaining).NotTo(ContainElement("late"))
+			})
+
+			It("does nothing when the target isn't the expected kind", func() {
+				app := &cli.App{
+					Flags:    []*cli.Flag{{Name: "f"}},
+					Args:     []*cli.Arg{{Name: "a"}},
+					Commands: []*cli.Command{{Name: "c"}},
+					Uses: cli.Pipeline(
+						cli.RemoveFlag(""),
+						cli.RemoveArg(""),
+						cli.RemoveCommand(""),
+					),
+					Action: func(c *cli.Context) {
+						Expect(c.Command().Flags).To(ContainElement(HaveField("Name", "f")))
+						Expect(c.Command().Args).To(ContainElement(HaveField("Name", "a")))
+						Expect(c.Command().Subcommands).To(ContainElement(HaveField("Name", "c")))
+					},
+					Stderr: io.Discard,
+				}
+				Expect(app.RunContext(context.Background(), "app")).To(Succeed())
+			})
+
+			It("errors on the root command", func() {
+				app := &cli.App{
+					Uses:   cli.Remove(),
+					Stderr: io.Discard,
+				}
+				err := app.RunContext(context.Background(), "app")
+				Expect(err).To(MatchError(ContainSubstring("the target cannot be removed")))
+			})
 		})
 	})
 })

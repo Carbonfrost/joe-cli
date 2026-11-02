@@ -1206,6 +1206,22 @@ var _ = Describe("PseudoCommand with added commands", func() {
 			)
 			Expect(run(uses, "app -g two")).To(Succeed())
 		})
+
+		DescribeTable("removes itself", func(remove cli.Action) {
+			uses := func() cli.Action {
+				one := record("one")
+				one.Uses = remove
+				return cli.PseudoCommand(one, record("two"), record("three"))
+			}
+			Expect(run(uses(), "app -g two")).To(Succeed())
+			Expect(ran).To(Equal([]string{"two"}))
+
+			ran = nil
+			Expect(run(uses(), "app -g one")).To(MatchError(`"one" is not a command`))
+		},
+			Entry("RemoveCommand", cli.RemoveCommand("")),
+			Entry("Remove", cli.Remove()),
+		)
 	})
 
 	Describe("internal errors", func() {

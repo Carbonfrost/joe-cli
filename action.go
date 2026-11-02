@@ -486,6 +486,7 @@ var (
 	}
 
 	errCantHook      = errors.New("hooks are not supported in this context")
+	errCantRemove    = errors.New("the target cannot be removed")
 	errAssertFailed  = errors.New("context does not meet requirements for action")
 	errFlagOnly      = errors.New("action can only be used with a flag")
 	errFlagOrArgOnly = errors.New("action can only be used with a flag or arg")
@@ -1526,20 +1527,29 @@ func AddArg(a *Arg, actionopt ...Action) Action {
 	return actionThunkVar2((*Context).AddArg, a, actionopt)
 }
 
+// Remove provides an action which removes the current flag, arg, or sub-command from
+// the command or app that contains it.  See [Context.Remove].
+func Remove() Action {
+	return ActionFunc((*Context).Remove)
+}
+
 // RemoveArg provides an action which removes an arg from the command or app.
-// The name specifies the name, index, or arg itself
+// The name specifies the name, index, or arg itself.  The name can be
+// the empty string, which means that the arg removes itself.
 func RemoveArg(name any) Action {
 	return actionThunk1((*Context).RemoveArg, name)
 }
 
 // RemoveFlag provides an action which removes a flag from the command or app.
-// The name specifies the name, index, or Flag itself
+// The name specifies the name, index, or Flag itself.  The name can be
+// the empty string, which means that the flag removes itself.
 func RemoveFlag(name any) Action {
 	return actionThunk1((*Context).RemoveFlag, name)
 }
 
 // RemoveCommand provides an action which removes a Command from the command or app.
-// The name specifies the name, index, or Command itself.  When used in
+// The name specifies the name, index, or Command itself.  The name can be
+// the empty string, which means that the sub-command removes itself.  When used in
 // the pipeline of a flag after PseudoCommand, it removes a pseudo command from the flag.
 func RemoveCommand(name any) Action {
 	return actionThunk1((*Context).RemoveCommand, name)
