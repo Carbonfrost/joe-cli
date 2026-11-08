@@ -53,7 +53,7 @@ func (c *Cmd) CombinedOutput() ([]byte, error) {
 
 	defer c.useStdout(&buffer)()
 	defer c.useStderr(&buffer)()
-	defer c.useStdin(cmp.Or(c.Stdin, emptyReader()))
+	defer c.useStdin(cmp.Or(c.Stdin, emptyReader()))()
 
 	err := c.app.RunContext(c.ctx, c.args...)
 	return buffer.Bytes(), err
@@ -71,7 +71,7 @@ func (c *Cmd) String() string {
 
 // Run invokes the app
 func (c *Cmd) Run() error {
-	defer c.useIO()
+	defer c.useIO()()
 	return c.app.RunContext(c.ctx, c.args...)
 }
 
