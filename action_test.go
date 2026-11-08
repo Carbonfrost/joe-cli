@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing/fstest"
 	"time"
 
@@ -2990,6 +2991,45 @@ var _ = Describe("SetContext", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(actual).To(Equal("v"))
 	})
+})
+
+var _ = Describe("Once", func() {
+
+	It("executes only once", func() {
+		var calls atomic.Int32
+
+		action := cli.Once(cli.ActionOf(func() error {
+			calls.Add(1)
+			return nil
+		}))
+
+		err := action.Execute(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+
+		err = action.Execute(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(int(calls.Load())).To(Equal(1))
+	})
+
+	It("propagates error", func() {
+		wantErr := errors.New("action failed")
+		var calls atomic.Int32
+
+		action := cli.Once(cli.ActionOf(func(ctx context.Context) error {
+			calls.Add(1)
+			return wantErr
+		}))
+
+		err := action.Execute(context.Background())
+		Expect(err).To(MatchError(wantErr))
+
+		err = action.Execute(context.Background())
+		Expect(err).To(MatchError(wantErr))
+
+		Expect(int(calls.Load())).To(Equal(1))
+	})
+
 })
 
 var _ = Describe("Recover", func() {

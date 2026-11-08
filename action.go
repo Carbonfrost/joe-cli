@@ -741,6 +741,24 @@ func SuppressError(a Action) Action {
 	})
 }
 
+// Once wraps an action to ensure that it is run once and only once, similar to how
+// [sync.Once] works. If the underlying action returns an error, then that error is returned on
+// subsequent calls to Once.
+func Once(a Action) Action {
+	if a == nil {
+		return nil
+	}
+	var once sync.Once
+	var err error
+
+	return actionFunc(func(ctx context.Context) error {
+		once.Do(func() {
+			err = a.Execute(ctx)
+		})
+		return err
+	})
+}
+
 // Recover wraps an action to recover from a panic
 func Recover(a Action) Action {
 	return actionFunc(func(c context.Context) error {
