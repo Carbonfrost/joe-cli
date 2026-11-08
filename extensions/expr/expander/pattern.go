@@ -112,7 +112,7 @@ func NewRenderer(stdout, stderr io.Writer) *Renderer {
 	}
 }
 
-// Expands expands the pattern using the given expander and produces a string
+// Expand expands the pattern using the given expander and produces a string
 func Expand(pattern string, e Interface, opts ...Option) string {
 	return Compile(pattern, opts...).Expand(e)
 }

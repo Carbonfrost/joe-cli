@@ -123,6 +123,7 @@ var _ = Describe("Codec", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					conventional, err := co.New(opts...)
+					Expect(err).NotTo(HaveOccurred())
 					Expect(c).To(Equal(conventional))
 				},
 				Entry(

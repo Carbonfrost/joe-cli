@@ -1008,7 +1008,7 @@ func (c *Context) HelpText() string {
 	return c.target().helpText()
 }
 
-// DefaultTExt obtains the default text for the current target.
+// DefaultText obtains the default text for the current target.
 func (c *Context) DefaultText() string {
 	return c.target().defaultText()
 }

@@ -32,7 +32,7 @@ type binderInit interface {
 // Bind provides the binder the invokes the provider factory with
 // its configured arguments
 func Bind[T any](nameopt ...any) bind.Binder[T] {
-	var name any = nil
+	var name any
 	if len(nameopt) > 0 && nameopt[0] != "" {
 		name = nameopt[0]
 	}

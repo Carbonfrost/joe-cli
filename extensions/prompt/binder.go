@@ -201,14 +201,14 @@ func (b *MultiSelectBinder) Execute(ctx context.Context) error {
 	return b.binder.Execute(ctx)
 }
 
-// Index provides a binder which obtains the indexes of the selected options
+// Indexes provides a binder which obtains the indexes of the selected options
 func (b *MultiSelectBinder) Indexes() bind.Binder[[]int] {
 	return bind.Seq(b.binder, func(indexes []int) ([]int, error) {
 		return indexes, nil
 	})
 }
 
-// Value provides a binder which obtains the selected options
+// Values provides a binder which obtains the selected options
 func (b *MultiSelectBinder) Values() bind.Binder[[]string] {
 	return bind.Seq(b.binder, func(indexes []int) ([]string, error) {
 		return selectedOptions(b.options, indexes), nil

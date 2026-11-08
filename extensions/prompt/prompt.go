@@ -5,7 +5,6 @@
 // Package prompt provides an extension which defines the behavior
 // of interactively prompting for options, particularly when the
 // options are required and interactive filling is used as fallback.
-
 package prompt
 
 import (

@@ -1560,20 +1560,6 @@ func renderHelp(us *synopsis.Usage) string {
 	})
 }
 
-func setData(data map[string]any, name string, v any) map[string]any {
-	if v == nil {
-		delete(data, name)
-		return data
-	}
-	if data == nil {
-		return map[string]any{
-			name: v,
-		}
-	}
-	data[name] = v
-	return data
-}
-
 func finalizeExprs(e *Expression) error {
 	// Check for duplicative and invalid names of expressions
 	names := map[string]bool{}

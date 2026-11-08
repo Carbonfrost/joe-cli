@@ -100,7 +100,7 @@ type ValueHelp struct {
 	ManualText string `json:"manualText,omitempty"`
 }
 
-// Arg provides a representation of a value for use as data
+// Value provides a representation of a value for use as data
 type Value struct {
 	Type   *BuiltinType `json:"type,omitempty"`
 	String string       `json:"string,omitempty"`
