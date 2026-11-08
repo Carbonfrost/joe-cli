@@ -562,6 +562,14 @@ func (c *Context) LocalCommands() []*Command {
 	return c.Target().(*Command).Subcommands
 }
 
+// PseudoCommands retrieves the pseudo commands associated with the flag, if any.
+func (c *Context) PseudoCommands() []*Command {
+	if ops, ok := pseudoOf(c.target()); ok {
+		return ops.commands
+	}
+	return nil
+}
+
 // PersistentFlags locates the nearest command and obtains flags
 // from its parent and ancestor commands.  If the current
 // context is not a command, this is nil.
@@ -1675,10 +1683,14 @@ func (c *Context) updateSubcommands(fn func([]*Command) []*Command) error {
 	if err != nil {
 		return err
 	}
-	if ops, ok := pseudoOfContext(c); ok {
-		ops.commands = fn(ops.commands)
-		return nil
+
+	if f, ok := c.target().(*Flag); ok {
+		if ops, ok := pseudoOf(f); ok {
+			ops.commands = fn(ops.commands)
+			return nil
+		}
 	}
+
 	cmd := c.Command()
 	cmd.Subcommands = fn(cmd.Subcommands)
 	return nil

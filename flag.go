@@ -920,13 +920,6 @@ func pseudoOf(t target) (*pseudoOperations, bool) {
 	return ops, ok
 }
 
-func pseudoOfContext(c *Context) (*pseudoOperations, bool) {
-	if f, ok := c.target().(*Flag); ok {
-		return pseudoOf(f)
-	}
-	return nil, false
-}
-
 func pseudoOfCommand(cmd *Command) (*pseudoOperations, bool) {
 	data, ok := cmd.LookupData(privatekey.PseudoFlag)
 	if !ok {
