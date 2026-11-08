@@ -421,15 +421,21 @@ func FS() Binder[cli.FS] {
 
 // Stdout binds stdout.
 func Stdout() Binder[io.Writer] {
-	return then(Context(), func(c *cli.Context) io.Writer {
-		return c.Stdout
+	return bindFunc[io.Writer](func(c context.Context) (io.Writer, error) {
+		if ctx, ok := cli.TryFromContext(c); ok {
+			return ctx.Stdout, nil
+		}
+		return os.Stdout, nil
 	})
 }
 
 // Stderr binds stderr.
 func Stderr() Binder[io.Writer] {
-	return then(Context(), func(c *cli.Context) io.Writer {
-		return c.Stderr
+	return bindFunc[io.Writer](func(c context.Context) (io.Writer, error) {
+		if ctx, ok := cli.TryFromContext(c); ok {
+			return ctx.Stderr, nil
+		}
+		return os.Stderr, nil
 	})
 }
 

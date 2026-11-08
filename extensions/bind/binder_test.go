@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"os"
 	"reflect"
 	"regexp"
 	"testing/fstest"
@@ -772,30 +773,66 @@ var _ = Describe("Seen", func() {
 
 var _ = Describe("Stdout", func() {
 
+	It("falls back to os.Stdout", func() {
+		it, err := bind.Stdout().Bind(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(it).To(BeIdenticalTo(os.Stdout))
+	})
+
 	It("invokes with bind func with output buffer", func() {
-		testFunc := func(stdout, stderr io.Writer) error {
-			fmt.Fprintln(stdout, "hello out")
-			fmt.Fprintln(stderr, "hello err")
+		testFunc := func(out io.Writer) error {
+			fmt.Fprintln(out, "hello")
 			return nil
 		}
-		var stdout, stderr bytes.Buffer
+		var stdout bytes.Buffer
 
 		app := &cli.App{
 			Flags: []*cli.Flag{
 				{
 					Name: "f",
-					Uses: bind.Call2(testFunc, bind.Stdout(), bind.Stderr()),
+					Uses: bind.Call(testFunc, bind.Stdout()),
 				},
 			},
 			Stdout: &stdout,
+		}
+
+		args, _ := cli.Split("app -f r")
+		err := app.RunContext(context.Background(), args...)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stdout.String()).To(Equal("hello\n"))
+	})
+
+})
+
+var _ = Describe("Stderr", func() {
+
+	It("falls back to os.Stderr", func() {
+		it, err := bind.Stderr().Bind(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(it).To(BeIdenticalTo(os.Stderr))
+	})
+
+	It("invokes with bind func with output buffer", func() {
+		testFunc := func(out io.Writer) error {
+			fmt.Fprintln(out, "hello")
+			return nil
+		}
+		var stderr bytes.Buffer
+
+		app := &cli.App{
+			Flags: []*cli.Flag{
+				{
+					Name: "f",
+					Uses: bind.Call(testFunc, bind.Stderr()),
+				},
+			},
 			Stderr: &stderr,
 		}
 
 		args, _ := cli.Split("app -f r")
 		err := app.RunContext(context.Background(), args...)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(stdout.String()).To(Equal("hello out\n"))
-		Expect(stderr.String()).To(Equal("hello err\n"))
+		Expect(stderr.String()).To(Equal("hello\n"))
 	})
 
 })
