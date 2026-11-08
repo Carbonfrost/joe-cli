@@ -11,27 +11,27 @@ import (
 	"strings"
 )
 
-// LogFormat names the [log/slog] handler which backs a Logger.
-type LogFormat int
+// Format names the [log/slog] handler which backs a Logger.
+type Format int
 
 // The available formats for log output
 const (
 	// TextFormat writes logs using [slog.TextHandler].  This is the default.
-	TextFormat LogFormat = iota
+	TextFormat Format = iota
 
 	// JSONFormat writes logs using [slog.JSONHandler].
 	JSONFormat
 
-	maxLogFormat
+	maxFormat
 )
 
-var logFormatNames = [maxLogFormat]string{
+var logFormatNames = [maxFormat]string{
 	TextFormat: "text",
 	JSONFormat: "json",
 }
 
 // NewHandler creates the handler which corresponds to the format
-func (f LogFormat) NewHandler(w io.Writer, opts *slog.HandlerOptions) slog.Handler {
+func (f Format) NewHandler(w io.Writer, opts *slog.HandlerOptions) slog.Handler {
 	if f == JSONFormat {
 		return slog.NewJSONHandler(w, opts)
 	}
@@ -39,24 +39,24 @@ func (f LogFormat) NewHandler(w io.Writer, opts *slog.HandlerOptions) slog.Handl
 }
 
 // String provides the name of the format
-func (f LogFormat) String() string {
-	if f < 0 || f >= maxLogFormat {
+func (f Format) String() string {
+	if f < 0 || f >= maxFormat {
 		return ""
 	}
 	return logFormatNames[f]
 }
 
 // MarshalText provides the textual representation
-func (f LogFormat) MarshalText() ([]byte, error) {
+func (f Format) MarshalText() ([]byte, error) {
 	return []byte(f.String()), nil
 }
 
 // UnmarshalText converts the textual representation
-func (f *LogFormat) UnmarshalText(b []byte) error {
+func (f *Format) UnmarshalText(b []byte) error {
 	name := strings.TrimSpace(string(b))
 	for i, n := range logFormatNames {
 		if n == name {
-			*f = LogFormat(i)
+			*f = Format(i)
 			return nil
 		}
 	}

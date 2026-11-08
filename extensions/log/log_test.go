@@ -270,17 +270,17 @@ var _ = Describe("Logger", func() {
 	})
 })
 
-var _ = Describe("LogFormat", func() {
+var _ = Describe("Format", func() {
 
-	DescribeTable("String", func(f log.LogFormat, expected string) {
+	DescribeTable("String", func(f log.Format, expected string) {
 		Expect(f.String()).To(Equal(expected))
 	},
 		Entry("text", log.TextFormat, "text"),
 		Entry("JSON", log.JSONFormat, "json"),
 	)
 
-	DescribeTable("UnmarshalText", func(text string, expected log.LogFormat) {
-		var actual log.LogFormat
+	DescribeTable("UnmarshalText", func(text string, expected log.Format) {
+		var actual log.Format
 		Expect(actual.UnmarshalText([]byte(text))).NotTo(HaveOccurred())
 		Expect(actual).To(Equal(expected))
 	},
@@ -290,7 +290,7 @@ var _ = Describe("LogFormat", func() {
 	)
 
 	It("reports an error for an unknown name", func() {
-		var actual log.LogFormat
+		var actual log.Format
 		Expect(actual.UnmarshalText([]byte("xml"))).To(MatchError(`unexpected log format "xml"`))
 	})
 })

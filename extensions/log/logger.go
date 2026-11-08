@@ -35,7 +35,7 @@ type Logger struct {
 
 	mu             sync.Mutex
 	name           string
-	format         LogFormat
+	format         Format
 	handlerOptions slog.HandlerOptions
 	w              io.Writer
 
@@ -247,7 +247,7 @@ func WithLevel(v Level) Option {
 
 // WithLogFormat sets the format of the log output, which determines the
 // handler that the logger uses.
-func WithLogFormat(v LogFormat) Option {
+func WithLogFormat(v Format) Option {
 	return withLogFormat("", v)
 }
 
@@ -291,7 +291,7 @@ func withLevel(logger string, v Level) *optionFunc {
 	}}
 }
 
-func withLogFormat(logger string, v LogFormat) *optionFunc {
+func withLogFormat(logger string, v Format) *optionFunc {
 	return &optionFunc{logger: logger, fn: func(l *Logger) {
 		l.format = v
 	}}
@@ -353,7 +353,7 @@ func SetLevel(name string, v ...Level) cli.Action {
 
 // SetLogFormat sets the format of the logger named by name and provides
 // reasonable defaults for initializing a flag.
-func SetLogFormat(name string, v ...LogFormat) cli.Action {
+func SetLogFormat(name string, v ...Format) cli.Action {
 	return cli.Pipeline(
 		&cli.Prototype{
 			Name:       flagName(name, "format"),
