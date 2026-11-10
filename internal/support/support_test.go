@@ -11,6 +11,38 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
+var _ = Describe("ParseBool", func() {
+
+	DescribeTable("true", func(text string) {
+		Expect(support.ParseBool(text)).To(BeTrue())
+	},
+		Entry("empty", ""),
+		Entry("1", "1"),
+		Entry("true", "true"),
+		Entry("TRUE", "TRUE"),
+		Entry("on", "on"),
+		Entry("t", "t"),
+		Entry("yes", "yes"),
+		Entry("YES", "Yes"),
+	)
+
+	DescribeTable("false", func(text string) {
+		Expect(support.ParseBool(text)).To(BeFalse())
+	},
+		Entry("0", "0"),
+		Entry("false", "false"),
+		Entry("off", "off"),
+		Entry("f", "f"),
+		Entry("no", "no"),
+		Entry("NO", "No"),
+	)
+
+	It("rejects other text", func() {
+		_, err := support.ParseBool("maybe")
+		Expect(err).To(HaveOccurred())
+	})
+})
+
 var _ = Describe("ParseMap", func() {
 
 	DescribeTable("examples", func(text string, expected types.GomegaMatcher) {
