@@ -995,6 +995,272 @@ var _ = Describe("Flag", func() {
 
 })
 
+var _ = Describe("PseudoCommand with added commands", func() {
+
+	var (
+		ran []string
+		run func(flagUses cli.Action, args string) error
+	)
+
+	record := func(name string) *cli.Command {
+		return &cli.Command{
+			Name:   name,
+			Action: func() { ran = append(ran, name) },
+		}
+	}
+
+	BeforeEach(func() {
+		ran = nil
+		run = func(flagUses cli.Action, args string) error {
+			app := &cli.App{
+				Name:   "app",
+				Flags:  []*cli.Flag{{Uses: flagUses}},
+				Action: func() { ran = append(ran, "app") },
+			}
+			arguments, _ := cli.Split(args)
+			return app.RunContext(context.Background(), arguments...)
+		}
+	})
+
+	It("adds commands with AddCommand", func() {
+		uses := cli.Pipeline(
+			cli.PseudoCommand(),
+			cli.AddCommand(record("one")),
+			cli.AddCommand(record("two")),
+		)
+		Expect(run(uses, "app -g two")).To(Succeed())
+		Expect(ran).To(Equal([]string{"two"}))
+	})
+
+	It("adds commands with AddCommands", func() {
+		uses := cli.Pipeline(
+			cli.PseudoCommand(),
+			cli.AddCommands(record("one"), record("two")),
+		)
+		Expect(run(uses, "app -g one")).To(Succeed())
+		Expect(ran).To(Equal([]string{"one"}))
+	})
+
+	It("adds commands with an initializer", func() {
+		uses := cli.Pipeline(
+			cli.PseudoCommand(),
+			cli.AddCommand(nil, cli.Prototype{Name: "late", Action: func() { ran = append(ran, "late") }}),
+			cli.AddCommand(record("one")),
+		)
+		Expect(run(uses, "app -g late")).To(Succeed())
+		Expect(ran).To(Equal([]string{"late"}))
+	})
+
+	It("adds to the commands given to PseudoCommand", func() {
+		uses := cli.Pipeline(
+			cli.PseudoCommand(record("one"), record("two")),
+			cli.AddCommand(record("three")),
+		)
+		Expect(run(uses, "app -g three")).To(Succeed())
+		Expect(ran).To(Equal([]string{"three"}))
+	})
+
+	Describe("defaults of the flag", func() {
+
+		It("are copied from the command when only one is added", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(),
+				cli.AddCommand(nil, cli.Prototype{
+					Name:     "one",
+					Aliases:  []string{"o"},
+					HelpText: "Run one",
+					Action:   func() { ran = append(ran, "one") },
+				}),
+			)
+			Expect(run(uses, "app --one")).To(Succeed())
+			Expect(run(uses, "app -o")).To(Succeed())
+			Expect(ran).To(Equal([]string{"one", "one"}))
+			Expect(run(uses, "app -g one")).NotTo(Succeed())
+		})
+
+		It("are copied from the remaining command when others are removed", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(record("one"), record("two")),
+				cli.RemoveCommand("one"),
+			)
+			Expect(run(uses, "app --two")).To(Succeed())
+			Expect(ran).To(Equal([]string{"two"}))
+		})
+
+		It("are conventional when several commands are added", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(record("one")),
+				cli.AddCommand(record("two")),
+			)
+			app := &cli.App{Name: "app", Flags: []*cli.Flag{{Uses: uses}}}
+			ctx, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			f, ok := cli.FromContext(ctx).Command().Flag("global")
+			Expect(ok).To(BeTrue())
+			Expect(f.Aliases).To(ConsistOf("g"))
+			Expect(f.HelpText).To(Equal("Run an operation"))
+		})
+
+		It("are not applied over values set by the flag", func() {
+			app := &cli.App{Name: "app", Flags: []*cli.Flag{{
+				Name:     "operation",
+				Aliases:  []string{"o"},
+				HelpText: "Mine",
+				Uses: cli.Pipeline(
+					cli.PseudoCommand(),
+					cli.AddCommand(nil, cli.Prototype{Name: "one", HelpText: "Theirs"}),
+				),
+			}}}
+			ctx, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			f, ok := cli.FromContext(ctx).Command().Flag("operation")
+			Expect(ok).To(BeTrue())
+			Expect(f.Aliases).To(ConsistOf("o"))
+			Expect(f.HelpText).To(Equal("Mine"))
+		})
+
+		It("run customizations that match the new name", func() {
+			app := &cli.App{
+				Name: "app",
+				Uses: cli.Customize("--one", cli.Data("matched", "yes")),
+				Flags: []*cli.Flag{{
+					Uses: cli.Pipeline(cli.PseudoCommand(), cli.AddCommand(record("one"))),
+				}},
+			}
+			ctx, err := app.Initialize(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			f, ok := cli.FromContext(ctx).Command().Flag("one")
+			Expect(ok).To(BeTrue())
+			Expect(f.Data).To(HaveKeyWithValue("matched", "yes"))
+		})
+	})
+
+	It("does not add to the sub-commands of the command", func() {
+		app := &cli.App{
+			Name: "app",
+			Flags: []*cli.Flag{{
+				Uses: cli.Pipeline(cli.PseudoCommand(), cli.AddCommand(record("one"))),
+			}},
+		}
+		Expect(app.RunContext(context.Background(), "app", "one")).NotTo(Succeed())
+		Expect(ran).To(BeEmpty())
+
+		ctx, err := app.Initialize(context.Background())
+		Expect(err).NotTo(HaveOccurred())
+		_, ok := cli.FromContext(ctx).Command().Command("one")
+		Expect(ok).To(BeFalse())
+	})
+
+	It("can use the same action for more than one flag", func() {
+		uses := cli.Pipeline(
+			cli.PseudoCommand(),
+			cli.AddCommand(record("one")),
+			cli.AddCommand(record("two")),
+		)
+		Expect(run(uses, "app -g one")).To(Succeed())
+		Expect(run(uses, "app -g two")).To(Succeed())
+		Expect(ran).To(Equal([]string{"one", "two"}))
+	})
+
+	Describe("RemoveCommand", func() {
+
+		It("removes by name", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(record("one"), record("two")),
+				cli.RemoveCommand("one"),
+			)
+			Expect(run(uses, "app --two")).To(Succeed())
+			Expect(ran).To(Equal([]string{"two"}))
+		})
+
+		It("removes by name from a selector", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(record("one"), record("two"), record("three")),
+				cli.RemoveCommand("one"),
+			)
+			Expect(run(uses, "app -g two")).To(Succeed())
+			Expect(ran).To(Equal([]string{"two"}))
+
+			ran = nil
+			Expect(run(uses, "app -g one")).To(MatchError(`"one" is not a command`))
+		})
+
+		It("removes by command", func() {
+			one := record("one")
+			uses := cli.Pipeline(
+				cli.PseudoCommand(one, record("two"), record("three")),
+				cli.RemoveCommand(one),
+			)
+			Expect(run(uses, "app -g one")).To(MatchError(`"one" is not a command`))
+		})
+
+		It("succeeds when the command doesn't exist", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(),
+				cli.AddCommand(record("one")),
+				cli.AddCommand(record("two")),
+				cli.RemoveCommand("nope"),
+			)
+			Expect(run(uses, "app -g two")).To(Succeed())
+		})
+	})
+
+	Describe("internal errors", func() {
+
+		It("when no commands are added", func() {
+			err := run(cli.PseudoCommand(), "app")
+			Expect(err).To(MatchError(ContainSubstring(`internal error, at "app" (initial timing):`)))
+			Expect(err).To(MatchError(ContainSubstring("pseudo command requires at least one command")))
+		})
+
+		It("when all commands are removed", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(record("one")),
+				cli.RemoveCommand("one"),
+			)
+			Expect(run(uses, "app")).To(MatchError(ContainSubstring("pseudo command requires at least one command")))
+		})
+
+		It("when names are duplicated", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(),
+				cli.AddCommand(record("one")),
+				cli.AddCommand(record("one")),
+			)
+			err := run(uses, "app")
+			Expect(err).To(MatchError(ContainSubstring(`internal error, at "app" (initial timing):`)))
+			Expect(err).To(MatchError(ContainSubstring(`duplicate name used: "one"`)))
+		})
+
+		It("when an alias duplicates a name", func() {
+			dup := record("two")
+			dup.Aliases = []string{"one"}
+			uses := cli.Pipeline(
+				cli.PseudoCommand(record("one"), record("three")),
+				cli.AddCommand(dup),
+			)
+			Expect(run(uses, "app")).To(MatchError(ContainSubstring(`duplicate name used: "one"`)))
+		})
+
+		It("when names are duplicated by commands given to PseudoCommand", func() {
+			uses := cli.PseudoCommand(record("one"), record("one"))
+			Expect(run(uses, "app")).To(MatchError(ContainSubstring(`duplicate name used: "one"`)))
+		})
+
+		It("when a command is unnamed", func() {
+			uses := cli.Pipeline(
+				cli.PseudoCommand(),
+				cli.AddCommand(&cli.Command{}),
+				cli.AddCommand(record("one")),
+			)
+			Expect(run(uses, "app")).To(MatchError(ContainSubstring("must have a name")))
+		})
+	})
+})
+
 var _ = Describe("PseudoCommand", func() {
 
 	Context("when a singleton", func() {
@@ -1388,10 +1654,6 @@ var _ = Describe("PseudoCommand", func() {
 
 				Expect(run("dns-sd -o enumerate")).To(Succeed())
 				Expect(ran).To(Equal([]string{"enumerate"}))
-			})
-
-			It("panics without commands", func() {
-				Expect(func() { cli.PseudoCommand() }).To(Panic())
 			})
 
 			It("panics with a nil command", func() {

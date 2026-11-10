@@ -6,11 +6,13 @@ package cli
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
 	"github.com/Carbonfrost/joe-cli/internal/privatekey"
+	"github.com/Carbonfrost/joe-cli/internal/support"
 	"github.com/Carbonfrost/joe-cli/internal/synopsis"
 )
 
@@ -704,38 +706,45 @@ const pseudoCategory = "Operations"
 // is required for it to work properly, and including listing it under the category "Operations" on
 // the help screen and expanding its alternative synopsis (see Command.Synopses).
 //
-// The PseudoCommand can be used in one of two modes: with a singleton command or with several
-// commands. When used with a singleton command, if the command defines its name, aliases, and help text,
-// these are copied to the flag by default. (This only works if the command sets it upfront, not in
-// its own Uses pipeline). When used with multiple commands, the flag selects among the commands by
-// naming one in its value using its name or alias, app -g browse _http._tcp local. The usage lists
+// The PseudoCommand can be used in one of two modes, which depends on how many commands the flag has once
+// its initialization is complete: a singleton command or several commands. With a singleton command, the name,
+// aliases, and help text of the command are copied to the flag by default. With several commands, the flag
+// selects among them by naming one in its value, app -g browse _http._tcp local. The usage lists
 // each command as an alternative synopsis, and the help screen describes them with the values of the flag.
-// If no commands are present, this function panics.
+// Either way, the defaults only apply when the flag does not set them itself.
+//
+// The commands can also be provided from within the same pipeline.  The AddCommand, AddCommands, and RemoveCommand
+// actions apply to the pseudo commands of the flag rather than to the sub-commands of its command,
+// provided that they appear after PseudoCommand in the pipeline.
+//
+// It is an internal error if the flag has no commands once it has been initialized, or if the
+// names or aliases of the commands of a selector are not unique.  This function panics if any
+// of the commands is nil.
 //
 // Note that the syntax of flags have quirks when used as pseudo commands.  A value cannot be
 // attached to the flag (e.g. `--browse=x`) for a singleton pseudo command, but when multiple are available
 // then the syntax only works for commands that take no arguments (`--global=browse`). In general,
 // the form with spaces instead of equal signs is always preferred.
-// The --help flag only works when appearing before the pseudo command.
+// The --help flag only works when it appears before the pseudo command.
 func PseudoCommand(cmds ...*Command) Action {
-	if len(cmds) == 0 {
-		panic("cli: PseudoCommandSelector requires at least one command")
+	if slices.Contains(cmds, nil) {
+		panic("cli: PseudoCommand requires non-nil commands")
 	}
 
-	ops := &pseudoOperations{commands: slices.Clone(cmds)}
+	// Each flag gets its own state because commands can be added to or removed from
+	// it, and the action can be used by more than one flag
+	return ActionFunc(func(c *Context) error {
+		return Do(c, pseudoCommandPipeline(&pseudoOperations{commands: slices.Clone(cmds)}))
+	})
+}
+
+func pseudoCommandPipeline(ops *pseudoOperations) Action {
+	// The name, aliases, and help text of the flag depend on how many commands there are,
+	// which isn't known until its pipeline is complete, so they're defaulted afterwards
 	proto := &Prototype{
-		Name:     "global",
-		Aliases:  []string{"g"},
-		HelpText: "Run an operation",
 		Category: pseudoCategory,
 		Options:  NonPersistent | OrderLast,
 		Value:    &pseudoValue{ops: ops},
-	}
-
-	if !ops.selector() {
-		proto.Name = cmds[0].Name
-		proto.Aliases = cmds[0].Aliases
-		proto.HelpText = cmds[0].HelpText
 	}
 
 	return Pipeline(
@@ -747,6 +756,10 @@ func PseudoCommand(cmds ...*Command) Action {
 			// The pseudo commands aren't sub-commands, so they are initialized as though they
 			// were after the flag and its peers have all been initialized
 			return c.WithCommand(ActionFunc(func(parent *Context) error {
+				if len(ops.commands) == 0 {
+					return parent.internalError(errPseudoNoCommands)
+				}
+
 				for _, cmd := range ops.commands {
 					cmd.SetData(privatekey.PseudoFlag, f)
 				}
@@ -757,15 +770,31 @@ func PseudoCommand(cmds ...*Command) Action {
 				}
 
 				if ops.selector() {
-					for _, cmd := range ops.commands {
-						// TODO Ensure non-nil, named commands, otherwise an internal error
-						c.SetValueHelpText(cmd.Name, cmd.HelpText)
+					// Names can be provided late by the commands, so they're checked after
+					// they've been initialized
+					if err := ops.checkNames(); err != nil {
+						return parent.internalError(err)
 					}
-				} else if ops.commands[0].Name == "" {
-					ops.commands[0].Name = f.Name
 				}
 
-				return err
+				originalName := f.contextName()
+				ops.applyDefaults(f)
+				if f.contextName() != originalName {
+					// Hooks that match the flag by name need to run again
+					child := parent.newChild(f, InitialTiming)
+					err = child.reinitialize()
+					child.state.close()
+					if err != nil {
+						return err
+					}
+				}
+
+				if ops.selector() {
+					for _, cmd := range ops.commands {
+						c.SetValueHelpText(cmd.Name, cmd.HelpText)
+					}
+				}
+				return nil
 			}))
 		}),
 		At(ActionTiming, ActionFunc(executePseudoCommand)),
@@ -778,6 +807,45 @@ type pseudoOperations struct {
 
 func (o *pseudoOperations) selector() bool {
 	return len(o.commands) > 1
+}
+
+func (o *pseudoOperations) applyDefaults(f *Flag) {
+	name, aliases, helpText := "global", []string{"g"}, "Run an operation"
+	if !o.selector() {
+		cmd := o.commands[0]
+		name, aliases, helpText = cmd.Name, cmd.Aliases, cmd.HelpText
+	}
+
+	if f.Name == "" {
+		f.Name = name
+
+		// Only set up aliases if the name was set
+		if len(f.Aliases) == 0 {
+			f.Aliases = slices.Clone(aliases)
+		}
+	}
+	if f.HelpText == "" {
+		f.HelpText = helpText
+	}
+	if !o.selector() && o.commands[0].Name == "" {
+		o.commands[0].Name = f.Name
+	}
+}
+
+func (o *pseudoOperations) checkNames() error {
+	names := map[string]bool{}
+	var errs []error
+	for i, cmd := range o.commands {
+		if cmd.Name == "" {
+			errs = append(errs, fmt.Errorf("command at index #%d must have a name", i))
+			continue
+		}
+		errs = append(errs, support.ValidateNames(names, cmd.Name, cmd.Aliases, nil)...)
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("errors initializing pseudo commands: %w", errors.Join(errs...))
+	}
+	return nil
 }
 
 func (o *pseudoOperations) resolve(tokens []string) (*Command, []string, error) {
@@ -850,6 +918,13 @@ func pseudoOf(t target) (*pseudoOperations, bool) {
 	}
 	ops, ok := data.(*pseudoOperations)
 	return ops, ok
+}
+
+func pseudoOfContext(c *Context) (*pseudoOperations, bool) {
+	if f, ok := c.target().(*Flag); ok {
+		return pseudoOf(f)
+	}
+	return nil, false
 }
 
 func isPseudoFlag(f *Flag) bool {

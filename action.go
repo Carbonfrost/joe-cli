@@ -491,6 +491,8 @@ var (
 	errFlagOrArgOnly = errors.New("action can only be used with a flag or arg")
 	errNoContainer   = errors.New("no container available to defer the action")
 
+	errPseudoNoCommands = errors.New("pseudo command requires at least one command")
+
 	timingLabels = map[Timing][2]string{
 		ActionTiming:        {"action timing", "ACTION"},
 		AfterTiming:         {"after timing", "AFTER"},
@@ -1511,7 +1513,8 @@ func AddFlag(f *Flag, actionopt ...Action) Action {
 	return actionThunkVar2((*Context).AddFlag, f, actionopt)
 }
 
-// AddCommand provides an action which adds a sub-command to the command or app
+// AddCommand provides an action which adds a sub-command to the command or app.  When used in
+// the pipeline of a flag after PseudoCommand, it adds a pseudo command to the flag.
 func AddCommand(c *Command, actionopt ...Action) Action {
 	return actionThunkVar2((*Context).AddCommand, c, actionopt)
 }
@@ -1536,7 +1539,8 @@ func RemoveFlag(name any) Action {
 }
 
 // RemoveCommand provides an action which removes a Command from the command or app.
-// The name specifies the name, index, or Command itself
+// The name specifies the name, index, or Command itself.  When used in
+// the pipeline of a flag after PseudoCommand, it removes a pseudo command from the flag.
 func RemoveCommand(name any) Action {
 	return actionThunk1((*Context).RemoveCommand, name)
 }
@@ -1558,7 +1562,8 @@ func AddArgs(args ...*Arg) Action {
 	return actionThunkVar1((*Context).AddArgs, args)
 }
 
-// AddCommands provides an action which adds the specified commands to the command
+// AddCommands provides an action which adds the specified commands to the command.  When used in
+// the pipeline of a flag after PseudoCommand, it adds pseudo commands to the flag.
 func AddCommands(commands ...*Command) Action {
 	return actionThunkVar1((*Context).AddCommands, commands)
 }
