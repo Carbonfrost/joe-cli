@@ -1212,6 +1212,101 @@ var _ = Describe("ImplicitCommand", func() {
 	})
 })
 
+var _ = Describe("ExpandCommand", func() {
+
+	var (
+		act    *joeclifakes.FakeAction
+		newApp = func(expand func(*cli.Context, string) ([]string, bool)) *cli.App {
+			return &cli.App{
+				Name: "app",
+				Commands: []*cli.Command{
+					{
+						Name:  "checkout",
+						Flags: []*cli.Flag{{Name: "force", Value: new(bool)}, {Name: "b", Value: new(string)}},
+						Args:  []*cli.Arg{{Name: "branch", Value: new(string)}},
+						Action: func(c context.Context) error {
+							return act.Execute(c)
+						},
+					},
+				},
+				Uses: cli.ExpandCommand(expand),
+			}
+		}
+	)
+
+	BeforeEach(func() {
+		act = new(joeclifakes.FakeAction)
+	})
+
+	aliases := func(c *cli.Context, name string) ([]string, bool) {
+		switch name {
+		case "co":
+			return []string{"checkout"}, true
+		case "cof":
+			return []string{"checkout", "--force"}, true
+		case "missing":
+			return []string{"nothing"}, true
+		}
+		return nil, false
+	}
+
+	It("runs the replacement with the rest of the arguments", func() {
+		app := newApp(aliases)
+		Expect(app.RunContext(context.Background(), "app", "co", "main")).To(Succeed())
+		Expect(act.ExecuteCallCount()).To(Equal(1))
+		Expect(app.Commands[0].Args[0].Value).To(PointTo(Equal("main")))
+	})
+
+	It("replaces the name with flags too", func() {
+		app := newApp(aliases)
+		Expect(app.RunContext(context.Background(), "app", "cof", "-b", "x", "main")).To(Succeed())
+		Expect(app.Commands[0].Flags[0].Value).To(PointTo(BeTrue()))
+		Expect(app.Commands[0].Flags[1].Value).To(PointTo(Equal("x")))
+		Expect(app.Commands[0].Args[0].Value).To(PointTo(Equal("main")))
+	})
+
+	It("doesn't expand a command that exists", func() {
+		called := false
+		app := newApp(func(*cli.Context, string) ([]string, bool) {
+			called = true
+			return nil, false
+		})
+		Expect(app.RunContext(context.Background(), "app", "checkout")).To(Succeed())
+		Expect(called).To(BeFalse())
+	})
+
+	It("returns the original error when the function doesn't handle the name", func() {
+		app := newApp(aliases)
+		err := app.RunContext(context.Background(), "app", "other")
+		Expect(err).To(MatchError(`"other" is not a command`))
+	})
+
+	It("returns the original error when the replacement is not a command", func() {
+		app := newApp(aliases)
+		err := app.RunContext(context.Background(), "app", "missing")
+		Expect(err).To(MatchError(`"missing" is not a command`))
+		Expect(act.ExecuteCallCount()).To(Equal(0))
+	})
+
+	It("is not expanded again", func() {
+		app := newApp(func(c *cli.Context, name string) ([]string, bool) {
+			return []string{"co"}, true // an alias of an alias
+		})
+		err := app.RunContext(context.Background(), "app", "x")
+		Expect(err).To(MatchError(ContainSubstring(`"x" is not a command`)))
+	})
+
+	It("consults the other handlers when it doesn't handle the name", func() {
+		app := newApp(aliases)
+		app.Uses = cli.Pipeline(
+			cli.ImplicitCommand("checkout"),
+			cli.ExpandCommand(aliases),
+		)
+		Expect(app.RunContext(context.Background(), "app", "main")).To(Succeed())
+		Expect(app.Commands[0].Args[0].Value).To(PointTo(Equal("main")))
+	})
+})
+
 var _ = Describe("SuggestCommand", func() {
 
 	var newApp = func(opts cli.Option) (*cli.App, *bytes.Buffer) {
