@@ -205,7 +205,8 @@ func (h CommandNotFoundHandler) Execute(ctx context.Context) error {
 }
 
 // ComposeCommandNotFoundHandler combines handlers into a single handler.  Each handler is invoked
-// in turn until one returns a command (without an error), in which case that command is used.
+// in turn until one returns a command (without an error), in which case that command is used, or
+// returns ErrSkipCommand, which means that it ran the command itself, and is returned as it is.
 // Otherwise, the error from a handler is passed along to the next, and the result of the last
 // handler is returned.
 func ComposeCommandNotFoundHandler(handlers ...CommandNotFoundHandler) CommandNotFoundHandler {
@@ -215,7 +216,7 @@ func ComposeCommandNotFoundHandler(handlers ...CommandNotFoundHandler) CommandNo
 				continue
 			}
 			cmd, hErr := h(c, err)
-			if (cmd != nil && hErr == nil) || i == len(handlers)-1 {
+			if (cmd != nil && hErr == nil) || hErr == ErrSkipCommand || i == len(handlers)-1 {
 				return cmd, hErr
 			}
 			err = hErr
